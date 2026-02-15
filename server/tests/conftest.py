@@ -2,11 +2,10 @@
 
 # Standard Library
 import os
-
-# Third-Party
 import sys
 from pathlib import Path
 
+# Third-Party
 import asyncpg
 import pytest
 
@@ -36,7 +35,13 @@ MIGRATION_FILES = [
     "016_jobs_privacy_scopes.sql",
 ]
 
-TEST_DB = "nebula_test"
+TEST_DB = os.getenv("NEBULA_TEST_DB", "postgres")
+TEST_SCHEMA = os.getenv("NEBULA_TEST_SCHEMA", "nebula_test")
+ADMIN_SERVER_SETTINGS = {
+    # Prevent hangs in CI/local when teardown/setup is waiting on locks.
+    "statement_timeout": "5000",  # ms
+    "lock_timeout": "5000",  # ms
+}
 
 MUTABLE_TABLES = [
     "api_keys",
@@ -54,42 +59,72 @@ MUTABLE_TABLES = [
 ]
 
 
-def _admin_dsn() -> str:
+def _admin_dsn(port: str | None = None) -> str:
     """DSN to connect to the default 'postgres' database for admin ops."""
 
     host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "6432")
+    port = port or os.getenv("POSTGRES_PORT", "6432")
     user = os.getenv("POSTGRES_USER", "nebula")
     password = os.getenv("POSTGRES_PASSWORD", "nebula-agent-database-pass")
     return f"postgresql://{user}:{password}@{host}:{port}/postgres"
 
 
-def _test_dsn() -> str:
+def _test_dsn(port: str | None = None) -> str:
     """DSN to connect to the test database."""
 
     host = os.getenv("POSTGRES_HOST", "localhost")
-    port = os.getenv("POSTGRES_PORT", "6432")
+    port = port or os.getenv("POSTGRES_PORT", "6432")
     user = os.getenv("POSTGRES_USER", "nebula")
     password = os.getenv("POSTGRES_PASSWORD", "nebula-agent-database-pass")
     return f"postgresql://{user}:{password}@{host}:{port}/{TEST_DB}"
 
 
+async def _connect_with_port_fallback(
+    dsn_builder: callable,
+    *,
+    server_settings: dict[str, str] | None = None,
+) -> tuple[asyncpg.Connection, str]:
+    """Connect to Postgres, falling back to localhost:5432 when needed.
+
+    Docker Desktop can go into recovery mode or crash while we are developing.
+    This keeps local test runs usable by falling back to a local Postgres.
+    """
+
+    primary_port = os.getenv("POSTGRES_PORT", "6432")
+    fallback_port = os.getenv("POSTGRES_FALLBACK_PORT", "5432")
+    last_err: Exception | None = None
+
+    for port in (primary_port, fallback_port):
+        try:
+            dsn = dsn_builder(port)
+            conn = await asyncpg.connect(dsn, server_settings=server_settings)
+            return conn, dsn
+        except (asyncpg.CannotConnectNowError, OSError) as exc:
+            last_err = exc
+
+    if last_err:
+        raise last_err
+    raise RuntimeError("Failed to connect to Postgres")
+
+
 @pytest.fixture(scope="session")
 async def test_db_dsn():
-    """Create a fresh test database and run all migrations."""
+    """Create a fresh test schema and run all migrations.
 
-    admin_conn = await asyncpg.connect(_admin_dsn())
-    try:
-        # Drop if leftover from a previous failed run
-        await admin_conn.execute(f"DROP DATABASE IF EXISTS {TEST_DB}")
-        await admin_conn.execute(f"CREATE DATABASE {TEST_DB}")
-    finally:
-        await admin_conn.close()
+    Notes:
+        Dropping databases can hang under Docker Desktop / bind mounts. For
+        reliability, tests run in an isolated schema within a configurable DB.
+    """
 
-    # Run migrations against the test database
-    dsn = _test_dsn()
-    conn = await asyncpg.connect(dsn)
+    conn, dsn = await _connect_with_port_fallback(
+        _test_dsn, server_settings=ADMIN_SERVER_SETTINGS
+    )
     try:
+        # Fresh schema per run.
+        await conn.execute(f"DROP SCHEMA IF EXISTS {TEST_SCHEMA} CASCADE")
+        await conn.execute(f"CREATE SCHEMA {TEST_SCHEMA}")
+        await conn.execute(f"SET search_path TO {TEST_SCHEMA}, public")
+
         for migration_file in MIGRATION_FILES:
             sql = (MIGRATIONS_DIR / migration_file).read_text(encoding="utf-8")
             await conn.execute(sql)
@@ -98,25 +133,23 @@ async def test_db_dsn():
 
     yield dsn
 
-    # Teardown: drop test database
-    admin_conn = await asyncpg.connect(_admin_dsn())
+    conn = await asyncpg.connect(dsn, server_settings=ADMIN_SERVER_SETTINGS)
     try:
-        # Terminate active connections before drop
-        await admin_conn.execute(f"""
-            SELECT pg_terminate_backend(pid)
-            FROM pg_stat_activity
-            WHERE datname = '{TEST_DB}' AND pid <> pg_backend_pid()
-        """)
-        await admin_conn.execute(f"DROP DATABASE IF EXISTS {TEST_DB}")
+        await conn.execute(f"DROP SCHEMA IF EXISTS {TEST_SCHEMA} CASCADE")
     finally:
-        await admin_conn.close()
+        await conn.close()
 
 
 @pytest.fixture(scope="session")
 async def db_pool(test_db_dsn):
     """Session-scoped asyncpg pool connected to the test DB."""
 
-    pool = await asyncpg.create_pool(test_db_dsn, min_size=2, max_size=5)
+    pool = await asyncpg.create_pool(
+        test_db_dsn,
+        min_size=2,
+        max_size=5,
+        server_settings={"search_path": f"{TEST_SCHEMA}, public"},
+    )
     yield pool
     await pool.close()
 
