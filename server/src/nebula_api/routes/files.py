@@ -12,7 +12,7 @@ from pydantic import BaseModel
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
-from nebula_mcp.enums import EnumRegistry
+from nebula_mcp.enums import EnumRegistry, require_status
 from nebula_mcp.executors import execute_create_file, execute_update_file
 from nebula_mcp.query_loader import QueryLoader
 
@@ -172,10 +172,18 @@ async def create_file(
     if data.get("metadata") is None:
         data["metadata"] = {}
 
+    # Validate taxonomy-backed fields before queuing approvals.
+    try:
+        require_status(data["status"], enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if resp := await maybe_check_agent_approval(pool, auth, "create_file", data):
         return resp
 
-    result = await execute_create_file(pool, enums, data)
+    try:
+        result = await execute_create_file(pool, enums, data)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     return success(result)
 
 
@@ -204,10 +212,19 @@ async def update_file(
     ):
         api_error("FORBIDDEN", "Access denied", 403)
 
+    # Validate taxonomy-backed fields before queuing approvals.
+    try:
+        if data.get("status"):
+            require_status(str(data["status"]), enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if resp := await maybe_check_agent_approval(pool, auth, "update_file", data):
         return resp
 
-    result = await execute_update_file(pool, enums, data)
+    try:
+        result = await execute_update_file(pool, enums, data)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if not result:
         api_error("NOT_FOUND", f"File '{file_id}' not found", 404)
     return success(result)

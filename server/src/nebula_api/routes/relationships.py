@@ -13,7 +13,7 @@ from pydantic import BaseModel
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
-from nebula_mcp.enums import EnumRegistry, require_status
+from nebula_mcp.enums import EnumRegistry, require_relationship_type, require_status
 from nebula_mcp.executors import execute_create_relationship
 from nebula_mcp.query_loader import QueryLoader
 
@@ -145,6 +145,11 @@ async def create_relationship(
     await _validate_relationship_node(
         pool, enums, auth, data["target_type"], data["target_id"]
     )
+    # Validate taxonomy-backed fields before queuing approvals.
+    try:
+        require_relationship_type(data["relationship_type"], enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if resp := await maybe_check_agent_approval(
         pool, auth, "create_relationship", data
     ):
@@ -303,15 +308,15 @@ async def update_relationship(
     await _validate_relationship_node(
         pool, enums, auth, row["target_type"], row["target_id"]
     )
-    if resp := await maybe_check_agent_approval(
-        pool, auth, "update_relationship", change
-    ):
-        return resp
-
+    # Validate taxonomy-backed fields before queuing approvals.
     try:
         status_id = require_status(payload.status, enums) if payload.status else None
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
+    if resp := await maybe_check_agent_approval(
+        pool, auth, "update_relationship", change
+    ):
+        return resp
 
     row = await pool.fetchrow(
         QUERIES["relationships/update"],

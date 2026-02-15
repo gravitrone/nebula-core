@@ -145,9 +145,16 @@ async def create_protocol(
         data["metadata"] = {}
     if not _is_admin(auth, enums):
         data["trusted"] = False
+    try:
+        require_status(data["status"], enums)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if resp := await maybe_check_agent_approval(pool, auth, "create_protocol", data):
         return resp
-    result = await execute_create_protocol(pool, enums, data)
+    try:
+        result = await execute_create_protocol(pool, enums, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return success(result)
 
 
@@ -165,10 +172,16 @@ async def update_protocol(
     data = payload.model_dump()
     data["name"] = protocol_name
     if data.get("status") is not None:
-        require_status(data["status"], enums)
+        try:
+            require_status(data["status"], enums)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     if not _is_admin(auth, enums) and data.get("trusted") is not None:
         data["trusted"] = False
     if resp := await maybe_check_agent_approval(pool, auth, "update_protocol", data):
         return resp
-    result = await execute_update_protocol(pool, enums, data)
+    try:
+        result = await execute_update_protocol(pool, enums, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return success(result)

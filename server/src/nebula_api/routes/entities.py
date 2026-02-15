@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, paginated, success
-from nebula_mcp.enums import require_entity_type
+from nebula_mcp.enums import require_entity_type, require_scopes, require_status
 from nebula_mcp.executors import execute_create_entity, execute_update_entity
 from nebula_mcp.helpers import (
     bulk_update_entity_scopes as do_bulk_update_entity_scopes,
@@ -234,7 +234,19 @@ async def create_entity(
         data["metadata"] = {}
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
-        data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        try:
+            data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
+
+    # Validate taxonomy-backed fields before queuing approvals.
+    try:
+        require_entity_type(data["type"], enums)
+        require_status(data["status"], enums)
+        require_scopes(data["scopes"], enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
+
     if resp := await maybe_check_agent_approval(pool, auth, "create_entity", data):
         return resp
     try:
@@ -379,12 +391,12 @@ async def bulk_update_entity_tags(
         api_error("VALIDATION_ERROR", "No tags provided", 400)
 
     pool = request.app.state.pool
+    enums = request.app.state.enums
+    await _require_entity_write_access(pool, enums, auth, payload.entity_ids)
     if resp := await maybe_check_agent_approval(
         pool, auth, "bulk_update_entity_tags", payload.model_dump()
     ):
         return resp
-    enums = request.app.state.enums
-    await _require_entity_write_access(pool, enums, auth, payload.entity_ids)
 
     updated = await do_bulk_update_entity_tags(
         pool, payload.entity_ids, payload.tags, op
@@ -423,7 +435,16 @@ async def bulk_update_entity_scopes(
     scopes = payload.scopes
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
-        scopes = enforce_scope_subset(scopes, allowed)
+        try:
+            scopes = enforce_scope_subset(scopes, allowed)
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
+
+    # Validate scope names before queuing approvals.
+    try:
+        require_scopes(scopes, enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     data = payload.model_dump()
     data["scopes"] = scopes
     if resp := await maybe_check_agent_approval(
@@ -526,7 +547,17 @@ async def update_entity(
         change.pop("metadata", None)
     if auth["caller_type"] == "agent" and change.get("scopes") is not None:
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
-        change["scopes"] = enforce_scope_subset(change["scopes"], allowed)
+        try:
+            change["scopes"] = enforce_scope_subset(change["scopes"], allowed)
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
+
+    # Validate taxonomy-backed fields before queuing approvals.
+    if change.get("status") is not None:
+        try:
+            require_status(change["status"], enums)
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
     if resp := await maybe_check_agent_approval(pool, auth, "update_entity", change):
         return resp
     try:

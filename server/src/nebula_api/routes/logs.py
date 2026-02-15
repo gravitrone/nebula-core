@@ -13,7 +13,7 @@ from pydantic import BaseModel
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
-from nebula_mcp.enums import require_log_type
+from nebula_mcp.enums import require_log_type, require_status
 from nebula_mcp.executors import execute_create_log, execute_update_log
 from nebula_mcp.query_loader import QueryLoader
 
@@ -129,10 +129,19 @@ async def create_log(
     if data.get("metadata") is None:
         data["metadata"] = {}
 
+    # Validate taxonomy-backed fields before queuing approvals.
+    try:
+        require_log_type(data["log_type"], enums)
+        require_status(data["status"], enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if resp := await maybe_check_agent_approval(pool, auth, "create_log", data):
         return resp
 
-    result = await execute_create_log(pool, enums, data)
+    try:
+        result = await execute_create_log(pool, enums, data)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     return success(result)
 
 
@@ -177,7 +186,10 @@ async def query_logs(
     pool = request.app.state.pool
     enums = request.app.state.enums
 
-    log_type_id = require_log_type(log_type, enums) if log_type else None
+    try:
+        log_type_id = require_log_type(log_type, enums) if log_type else None
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
 
     rows = await pool.fetch(
         QUERIES["logs/query"],
@@ -222,13 +234,25 @@ async def update_log(
     ):
         api_error("FORBIDDEN", "Access denied", 403)
 
+    # Validate taxonomy-backed fields before queuing approvals.
+    try:
+        if data.get("log_type"):
+            require_log_type(str(data["log_type"]), enums)
+        if data.get("status"):
+            require_status(str(data["status"]), enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
+
     if resp := await maybe_check_agent_approval(pool, auth, "update_log", data):
         return resp
 
     if payload.log_type:
         data["log_type"] = payload.log_type
 
-    result = await execute_update_log(pool, enums, data)
+    try:
+        result = await execute_update_log(pool, enums, data)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if not result:
         api_error("NOT_FOUND", f"Log '{log_id}' not found", 404)
     return success(result)

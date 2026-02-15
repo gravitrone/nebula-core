@@ -12,6 +12,12 @@ from starlette.responses import JSONResponse
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
+from nebula_mcp.enums import (
+    require_entity_type,
+    require_relationship_type,
+    require_scopes,
+    require_status,
+)
 from nebula_mcp.executors import (
     execute_create_entity,
     execute_create_job,
@@ -36,6 +42,33 @@ from nebula_mcp.query_loader import QueryLoader
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
+JOB_PRIORITY_VALUES = {"low", "medium", "high", "critical"}
+
+
+def _validate_taxonomy_before_approval(
+    approval_action: str, enums: Any, normalized: dict[str, Any]
+) -> None:
+    """Validate taxonomy-backed fields before queuing approvals.
+
+    This prevents "queued poison" approvals that later explode during execution.
+    """
+
+    if approval_action == "bulk_import_entities":
+        require_entity_type(str(normalized.get("type") or ""), enums)
+        require_status(str(normalized.get("status") or ""), enums)
+        require_scopes(list(normalized.get("scopes") or []), enums)
+        return
+    if approval_action == "bulk_import_knowledge":
+        require_scopes(list(normalized.get("scopes") or []), enums)
+        return
+    if approval_action == "bulk_import_relationships":
+        require_relationship_type(str(normalized.get("relationship_type") or ""), enums)
+        return
+    if approval_action == "bulk_import_jobs":
+        priority = normalized.get("priority")
+        if priority and str(priority) not in JOB_PRIORITY_VALUES:
+            raise ValueError(f"Invalid priority: {priority}")
+        return
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
@@ -192,6 +225,7 @@ async def _run_import(
                         normalized.get("target_type", ""),
                         normalized.get("target_id", ""),
                     )
+                _validate_taxonomy_before_approval(approval_action, enums, normalized)
                 approval = await create_approval_request(
                     pool,
                     agent["id"],

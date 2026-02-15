@@ -30,6 +30,7 @@ from nebula_mcp.enums import (
     load_enums,
     require_entity_type,
     require_log_type,
+    require_relationship_type,
     require_scopes,
     require_status,
 )
@@ -142,6 +143,7 @@ QUERIES = QueryLoader(Path(__file__).resolve().parents[1] / "queries")
 load_dotenv()
 
 ADMIN_SCOPES = {"admin"}
+JOB_PRIORITY_VALUES = {"low", "medium", "high", "critical"}
 
 TAXONOMY_KIND_MAP = {
     "scopes": {
@@ -571,6 +573,26 @@ async def _run_bulk_import(
     created: list[dict] = []
     errors: list[dict] = []
 
+    def _validate_taxonomy_before_approval(normalized: dict[str, Any]) -> None:
+        if action == "bulk_import_entities":
+            require_entity_type(str(normalized.get("type") or ""), enums)
+            require_status(str(normalized.get("status") or ""), enums)
+            require_scopes(list(normalized.get("scopes") or []), enums)
+            return
+        if action == "bulk_import_knowledge":
+            require_scopes(list(normalized.get("scopes") or []), enums)
+            return
+        if action == "bulk_import_relationships":
+            require_relationship_type(
+                str(normalized.get("relationship_type") or ""), enums
+            )
+            return
+        if action == "bulk_import_jobs":
+            priority = normalized.get("priority")
+            if priority and str(priority) not in JOB_PRIORITY_VALUES:
+                raise ValueError(f"Invalid priority: {priority}")
+            return
+
     if agent.get("requires_approval", True):
         await ensure_approval_capacity(pool, agent["id"], len(items))
         approvals: list[dict] = []
@@ -602,6 +624,7 @@ async def _run_bulk_import(
                         "Target",
                         require_write=True,
                     )
+                _validate_taxonomy_before_approval(normalized)
                 approval = await create_approval_request(
                     pool,
                     agent["id"],
@@ -1052,6 +1075,9 @@ async def update_entity(payload: UpdateEntityInput, ctx: Context) -> dict:
     ):
         raise ValueError("Access denied")
 
+    if payload.status is not None:
+        require_status(payload.status, enums)
+
     if resp := await maybe_require_approval(
         pool, agent, "update_entity", payload.model_dump()
     ):
@@ -1093,6 +1119,7 @@ async def bulk_update_entity_scopes(
     op = normalize_bulk_operation(payload.op)
     allowed_scopes = scope_names_from_ids(agent.get("scopes", []), enums)
     requested_scopes = enforce_scope_subset(payload.scopes, allowed_scopes)
+    require_scopes(requested_scopes, enums)
     data = payload.model_dump()
     data["scopes"] = requested_scopes
     if resp := await maybe_require_approval(
@@ -1142,6 +1169,10 @@ async def create_entity(payload: CreateEntityInput, ctx: Context) -> dict:
     requested_scopes = enforce_scope_subset(payload.scopes, allowed_scopes)
     data = payload.model_dump()
     data["scopes"] = requested_scopes
+
+    require_entity_type(payload.type, enums)
+    require_status(payload.status, enums)
+    require_scopes(requested_scopes, enums)
 
     if resp := await maybe_require_approval(pool, agent, "create_entity", data):
         return resp
@@ -1240,6 +1271,7 @@ async def create_knowledge(payload: CreateKnowledgeInput, ctx: Context) -> dict:
             raise ValueError("URL must start with http:// or https://")
         data["url"] = url
 
+    require_scopes(requested_scopes, enums)
     if resp := await maybe_require_approval(pool, agent, "create_knowledge", data):
         return resp
 
@@ -1312,6 +1344,7 @@ async def link_knowledge_to_entity(payload: LinkKnowledgeInput, ctx: Context) ->
         "relationship_type": payload.relationship_type,
         "properties": {},
     }
+    require_relationship_type(payload.relationship_type, enums)
     if resp := await maybe_require_approval(
         pool, agent, "create_relationship", relationship_payload
     ):
@@ -1328,6 +1361,8 @@ async def create_log(payload: CreateLogInput, ctx: Context) -> dict:
     """Create a log entry."""
 
     pool, enums, agent = await require_context(ctx)
+    require_log_type(payload.log_type, enums)
+    require_status(payload.status, enums)
     if resp := await maybe_require_approval(
         pool, agent, "create_log", payload.model_dump()
     ):
@@ -1384,6 +1419,10 @@ async def update_log(payload: UpdateLogInput, ctx: Context) -> dict:
     _require_uuid(payload.id, "log")
     if await _has_hidden_relationships(pool, enums, agent, "log", payload.id):
         raise ValueError("Access denied")
+    if payload.log_type is not None:
+        require_log_type(payload.log_type, enums)
+    if payload.status is not None:
+        require_status(payload.status, enums)
     if resp := await maybe_require_approval(
         pool, agent, "update_log", payload.model_dump()
     ):
@@ -1417,6 +1456,7 @@ async def create_relationship(payload: CreateRelationshipInput, ctx: Context) ->
         "Target",
         require_write=True,
     )
+    require_relationship_type(payload.relationship_type, enums)
 
     if resp := await maybe_require_approval(
         pool, agent, "create_relationship", payload.model_dump()
@@ -1520,12 +1560,11 @@ async def update_relationship(payload: UpdateRelationshipInput, ctx: Context) ->
         require_write=True,
     )
 
+    status_id = require_status(payload.status, enums) if payload.status else None
     if resp := await maybe_require_approval(
         pool, agent, "update_relationship", payload.model_dump()
     ):
         return resp
-
-    status_id = require_status(payload.status, enums) if payload.status else None
 
     row = await pool.fetchrow(
         QUERIES["relationships/update"],
@@ -1650,12 +1689,15 @@ async def create_job(payload: CreateJobInput, ctx: Context) -> dict:
     data = payload.model_dump()
     if not data.get("scopes"):
         data["scopes"] = ["public"]
+    if data.get("priority") and data["priority"] not in JOB_PRIORITY_VALUES:
+        raise ValueError(f"Invalid priority: {data['priority']}")
     if not _is_admin(agent, enums):
         allowed_scopes = scope_names_from_ids(agent.get("scopes", []), enums)
         data["scopes"] = enforce_scope_subset(data["scopes"], allowed_scopes)
     if not _is_admin(agent, enums):
         agent_id = agent.get("id")
         data["agent_id"] = str(agent_id) if agent_id else None
+    require_scopes(data["scopes"], enums)
 
     if resp := await maybe_require_approval(pool, agent, "create_job", data):
         return resp
@@ -1707,12 +1749,11 @@ async def update_job_status(payload: UpdateJobStatusInput, ctx: Context) -> dict
     pool, enums, agent = await require_context(ctx)
     job = await _get_job_row(pool, payload.job_id)
     _require_job_owner(agent, enums, job)
+    status_id = require_status(payload.status, enums)
     if resp := await maybe_require_approval(
         pool, agent, "update_job_status", payload.model_dump()
     ):
         return resp
-
-    status_id = require_status(payload.status, enums)
 
     row = await pool.fetchrow(
         QUERIES["jobs/update_status"],
@@ -1749,6 +1790,9 @@ async def create_subtask(payload: CreateSubtaskInput, ctx: Context) -> dict:
         "due_at": payload.due_at,
         "metadata": {},
     }
+    if subtask_payload.get("priority") not in JOB_PRIORITY_VALUES:
+        raise ValueError(f"Invalid priority: {subtask_payload['priority']}")
+    require_scopes(subtask_payload["scopes"], enums)
     if resp := await maybe_require_approval(pool, agent, "create_job", subtask_payload):
         return resp
     return await execute_create_job(pool, enums, subtask_payload)
@@ -1763,6 +1807,7 @@ async def create_file(payload: CreateFileInput, ctx: Context) -> dict:
 
     pool, enums, agent = await require_context(ctx)
 
+    require_status(payload.status, enums)
     if resp := await maybe_require_approval(
         pool, agent, "create_file", payload.model_dump()
     ):
@@ -1827,17 +1872,11 @@ async def _attach_file(
     """
     pool, enums, agent = await require_context(ctx)
 
-    if resp := await maybe_require_approval(
-        pool,
-        agent,
-        f"attach_file_to_{target_type}",
-        {"file_id": payload.file_id, "target_id": payload.target_id},
-    ):
-        return resp
-
     file_row = await pool.fetchrow(QUERIES["files/get"], payload.file_id)
     if not file_row:
         raise ValueError("File not found")
+    if await _has_hidden_relationships(pool, enums, agent, "file", payload.file_id):
+        raise ValueError("Access denied")
     await _validate_relationship_node(
         pool,
         enums,
@@ -1847,6 +1886,7 @@ async def _attach_file(
         "Target",
         require_write=True,
     )
+    require_relationship_type(payload.relationship_type, enums)
 
     relationship = {
         "source_type": "file",
@@ -1856,6 +1896,14 @@ async def _attach_file(
         "relationship_type": payload.relationship_type,
         "properties": {},
     }
+
+    if resp := await maybe_require_approval(
+        pool,
+        agent,
+        "create_relationship",
+        relationship,
+    ):
+        return resp
 
     return await execute_create_relationship(pool, enums, relationship)
 
@@ -1907,6 +1955,7 @@ async def create_protocol(payload: CreateProtocolInput, ctx: Context) -> dict:
     data = payload.model_dump()
     if not _is_admin(agent, enums):
         data["trusted"] = False
+    require_status(data["status"], enums)
     if resp := await maybe_require_approval(pool, agent, "create_protocol", data):
         return resp
     return await execute_create_protocol(pool, enums, data)
@@ -1918,6 +1967,8 @@ async def update_protocol(payload: UpdateProtocolInput, ctx: Context) -> dict:
 
     pool, enums, agent = await require_context(ctx)
     data = payload.model_dump()
+    if data.get("status") is not None:
+        require_status(str(data["status"]), enums)
     if not _is_admin(agent, enums) and data.get("trusted") is not None:
         data["trusted"] = False
     if resp := await maybe_require_approval(pool, agent, "update_protocol", data):
