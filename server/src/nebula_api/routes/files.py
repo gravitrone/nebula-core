@@ -66,7 +66,10 @@ async def _file_visible(
                     return False
             if rel_type == "job":
                 job_row = await pool.fetchrow(QUERIES["jobs/get"], rel_id)
-                if job_row and job_row.get("agent_id") != auth.get("agent_id"):
+                if not job_row:
+                    return False
+                scopes = job_row.get("privacy_scope_ids") or []
+                if scopes and not any(s in scope_ids for s in scopes):
                     return False
     return True
 

@@ -49,13 +49,17 @@ def _resolve_scope_ids(scopes: list[str], auth: dict, enums: Any) -> list:
         api_error("VALIDATION_ERROR", str(exc), 400)
 
 
-async def _job_visible(pool: Any, auth: dict, job_id: str) -> bool:
-    if auth["caller_type"] != "agent":
+async def _job_visible(pool: Any, auth: dict, enums: Any, job_id: str) -> bool:
+    if _is_admin(auth, enums):
         return True
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         return False
-    return row.get("agent_id") == auth.get("agent_id")
+    job_scopes = row.get("privacy_scope_ids") or []
+    caller_scopes = auth.get("scopes", []) or []
+    if not job_scopes:
+        return True
+    return any(scope in caller_scopes for scope in job_scopes)
 
 
 def _flatten_value(value: Any) -> str:
@@ -147,6 +151,7 @@ async def export_entities(
         Export response payload.
     """
     pool = request.app.state.pool
+    enums = request.app.state.enums
     scope_ids = auth.get("scopes", [])
     enums = request.app.state.enums
 
@@ -255,6 +260,7 @@ async def export_relationships(
         Export response payload.
     """
     pool = request.app.state.pool
+    enums = request.app.state.enums
     scope_ids = auth.get("scopes", [])
 
     rows = await pool.fetch(
@@ -266,15 +272,15 @@ async def export_relationships(
         limit,
         scope_ids,
     )
-    if auth["caller_type"] != "agent" or _is_admin(auth, request.app.state.enums):
+    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
         return _export_response([dict(r) for r in rows], format)
     results = []
     for row in rows:
         if row["source_type"] == "job":
-            if not await _job_visible(pool, auth, row["source_id"]):
+            if not await _job_visible(pool, auth, enums, row["source_id"]):
                 continue
         if row["target_type"] == "job":
-            if not await _job_visible(pool, auth, row["target_id"]):
+            if not await _job_visible(pool, auth, enums, row["target_id"]):
                 continue
         results.append(dict(row))
     return _export_response(results, format)
@@ -317,8 +323,7 @@ async def export_jobs(
     pool = request.app.state.pool
     enums = request.app.state.enums
     agent_filter = agent_id
-    if auth["caller_type"] == "agent" and not _is_admin(auth, enums):
-        agent_filter = auth.get("agent_id")
+    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
 
     rows = await pool.fetch(
         QUERIES["jobs/query"],
@@ -330,6 +335,7 @@ async def export_jobs(
         due_after,
         overdue,
         parent_job_id,
+        scope_filter,
         limit,
     )
     return _export_response([dict(r) for r in rows], format)
@@ -391,8 +397,7 @@ async def export_context(
         scope_ids,
     )
     job_agent_filter = None
-    if auth["caller_type"] == "agent" and not _is_admin(auth, enums):
-        job_agent_filter = auth.get("agent_id")
+    scope_filter = None if _is_admin(auth, enums) else (scope_ids or [])
     jobs_rows = await pool.fetch(
         QUERIES["jobs/query"],
         None,
@@ -403,6 +408,7 @@ async def export_context(
         None,
         False,
         None,
+        scope_filter,
         limit,
     )
 
@@ -425,10 +431,10 @@ async def export_context(
     else:
         for row in relationships_rows:
             if row["source_type"] == "job":
-                if not await _job_visible(pool, auth, row["source_id"]):
+                if not await _job_visible(pool, auth, enums, row["source_id"]):
                     continue
             if row["target_type"] == "job":
-                if not await _job_visible(pool, auth, row["target_id"]):
+                if not await _job_visible(pool, auth, enums, row["target_id"]):
                     continue
             relationships.append(dict(row))
 

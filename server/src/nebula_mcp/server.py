@@ -339,8 +339,22 @@ async def _get_job_row(pool: Pool, job_id: str) -> dict:
 
 
 def _require_job_owner(agent: dict, enums: Any, job: dict) -> None:
+    _require_job_write(agent, enums, job)
+
+
+def _require_job_read(agent: dict, enums: Any, job: dict) -> None:
     if _is_admin(agent, enums):
         return
+    job_scopes = job.get("privacy_scope_ids") or []
+    agent_scopes = agent.get("scopes", []) or []
+    if job_scopes and not any(scope in agent_scopes for scope in job_scopes):
+        raise ValueError("Job not in your scopes")
+
+
+def _require_job_write(agent: dict, enums: Any, job: dict) -> None:
+    if _is_admin(agent, enums):
+        return
+    _require_job_read(agent, enums, job)
     if job.get("agent_id") != agent.get("id"):
         raise ValueError("Access denied")
 
@@ -399,7 +413,11 @@ async def _has_hidden_relationships(
                         return True
                 if rel_type == "job":
                     job_row = await pool.fetchrow(QUERIES["jobs/get"], rel_id)
-                    if job_row and job_row.get("agent_id") != agent.get("id"):
+                    if not job_row:
+                        return True
+                    try:
+                        _require_job_read(agent, enums, dict(job_row))
+                    except ValueError:
                         return True
         return False
 
@@ -411,7 +429,11 @@ async def _has_hidden_relationships(
                 rel["source_id"] if rel["source_type"] == "job" else rel["target_id"]
             )
             job_row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
-            if job_row and job_row.get("agent_id") != agent.get("id"):
+            if not job_row:
+                return True
+            try:
+                _require_job_read(agent, enums, dict(job_row))
+            except ValueError:
                 return True
     return False
 
@@ -437,7 +459,11 @@ async def _node_allowed(
         row = await pool.fetchrow(QUERIES["jobs/get"], node_id)
         if not row:
             return False
-        return row.get("agent_id") == agent.get("id")
+        try:
+            _require_job_read(agent, enums, dict(row))
+        except ValueError:
+            return False
+        return True
     if node_type in {"file", "log"}:
         return not await _has_hidden_relationships(
             pool, enums, agent, node_type, node_id
@@ -482,9 +508,11 @@ async def _validate_relationship_node(
         row = await pool.fetchrow(QUERIES["jobs/get"], node_id)
         if not row:
             raise ValueError(f"{label} job not found")
-        if require_write and not _is_admin(agent, enums):
-            if row.get("agent_id") != agent.get("id"):
-                raise ValueError("Access denied")
+        job = dict(row)
+        if require_write:
+            _require_job_write(agent, enums, job)
+        else:
+            _require_job_read(agent, enums, job)
         return
     raise ValueError(f"Unsupported {label.lower()} type")
 
@@ -1608,6 +1636,11 @@ async def create_job(payload: CreateJobInput, ctx: Context) -> dict:
 
     pool, enums, agent = await require_context(ctx)
     data = payload.model_dump()
+    if not data.get("scopes"):
+        data["scopes"] = ["public"]
+    if not _is_admin(agent, enums):
+        allowed_scopes = scope_names_from_ids(agent.get("scopes", []), enums)
+        data["scopes"] = enforce_scope_subset(data["scopes"], allowed_scopes)
     if not _is_admin(agent, enums):
         agent_id = agent.get("id")
         data["agent_id"] = str(agent_id) if agent_id else None
@@ -1625,7 +1658,7 @@ async def get_job(payload: GetJobInput, ctx: Context) -> dict:
     pool, enums, agent = await require_context(ctx)
 
     job = await _get_job_row(pool, payload.job_id)
-    _require_job_owner(agent, enums, job)
+    _require_job_read(agent, enums, job)
     return job
 
 
@@ -1637,20 +1670,19 @@ async def query_jobs(payload: QueryJobsInput, ctx: Context) -> list[dict]:
     limit = _clamp_limit(payload.limit)
     if payload.assigned_to:
         _require_uuid(payload.assigned_to, "assignee")
-    agent_id = payload.agent_id
-    if not _is_admin(agent, enums):
-        agent_id = agent.get("id")
+    scope_filter = _scope_filter_ids(agent, enums)
 
     rows = await pool.fetch(
         QUERIES["jobs/query"],
         payload.status_names or None,
         payload.assigned_to,
-        agent_id,
+        payload.agent_id,
         payload.priority,
         payload.due_before,
         payload.due_after,
         payload.overdue_only,
         payload.parent_job_id,
+        scope_filter,
         limit,
     )
     return [dict(r) for r in rows]
@@ -1690,6 +1722,9 @@ async def create_subtask(payload: CreateSubtaskInput, ctx: Context) -> dict:
     pool, enums, agent = await require_context(ctx)
     parent_job = await _get_job_row(pool, payload.parent_job_id)
     _require_job_owner(agent, enums, parent_job)
+    parent_scopes = scope_names_from_ids(
+        parent_job.get("privacy_scope_ids") or [], enums
+    )
     subtask_payload = {
         "title": payload.title,
         "description": payload.description,
@@ -1697,6 +1732,7 @@ async def create_subtask(payload: CreateSubtaskInput, ctx: Context) -> dict:
         "assigned_to": None,
         "agent_id": parent_job.get("agent_id"),
         "priority": payload.priority,
+        "scopes": parent_scopes or ["public"],
         "parent_job_id": payload.parent_job_id,
         "due_at": payload.due_at,
         "metadata": {},

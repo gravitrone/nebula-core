@@ -819,6 +819,10 @@ class CreateJobInput(BaseModel):
     assigned_to: str | None = Field(default=None, description="Assignee entity UUID")
     agent_id: str | None = Field(default=None, description="Agent UUID")
     priority: str = Field(default="medium", description="low, medium, high, critical")
+    scopes: list[str] = Field(
+        default_factory=lambda: ["public"],
+        description="Privacy scopes (defaults to public)",
+    )
     parent_job_id: str | None = Field(
         default=None, description="Parent job ID for subtasks"
     )

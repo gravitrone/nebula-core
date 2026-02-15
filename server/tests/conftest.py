@@ -32,6 +32,8 @@ MIGRATION_FILES = [
     "012_taxonomy_lifecycle.sql",
     "013_taxonomy_generalization.sql",
     "014_mcp_agent_enrollment.sql",
+    "015_add_default_log_types.sql",
+    "016_jobs_privacy_scopes.sql",
 ]
 
 TEST_DB = "nebula_test"

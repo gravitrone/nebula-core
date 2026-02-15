@@ -56,21 +56,23 @@ async def _make_entity(db_pool, enums, name):
     return dict(row)
 
 
-async def _make_job(db_pool, enums, title, agent_id):
+async def _make_job(db_pool, enums, title, agent_id, scopes):
     """Insert a test job for relationships API scenarios."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4::jsonb, $5)
         RETURNING *
         """,
         title,
         status_id,
         agent_id,
         json.dumps({"secret": "job"}),
+        scope_ids,
     )
     return dict(row)
 
@@ -124,14 +126,20 @@ def _auth_override(agent_id, enums):
 
 @pytest.mark.asyncio
 async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
-    """Relationships API should not leak job links for other agents."""
+    """Relationships API should filter job links by job scopes."""
 
     owner = await _make_agent(db_pool, enums, "rel-owner-api")
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api")
     entity = await _make_entity(db_pool, enums, "Public Node")
-    job = await _make_job(db_pool, enums, "Private Job", owner["id"])
-    rel = await _make_relationship(
-        db_pool, enums, "entity", str(entity["id"]), "job", job["id"]
+    public_job = await _make_job(db_pool, enums, "Public Job", owner["id"], ["public"])
+    private_job = await _make_job(
+        db_pool, enums, "Private Job", owner["id"], ["personal"]
+    )
+    public_rel = await _make_relationship(
+        db_pool, enums, "entity", str(entity["id"]), "job", public_job["id"]
+    )
+    private_rel = await _make_relationship(
+        db_pool, enums, "entity", str(entity["id"]), "job", private_job["id"]
     )
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -144,19 +152,26 @@ async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
 
     assert resp.status_code == 200
     ids = {row["id"] for row in resp.json()["data"]}
-    assert rel["id"] not in ids
+    assert str(public_rel["id"]) in ids
+    assert str(private_rel["id"]) not in ids
 
 
 @pytest.mark.asyncio
 async def test_query_relationships_hides_foreign_job_links(db_pool, enums):
-    """Query relationships should not leak job relationships to other agents."""
+    """Query relationships should filter job relationships by job scopes."""
 
     owner = await _make_agent(db_pool, enums, "rel-owner-api-2")
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-2")
     entity = await _make_entity(db_pool, enums, "Public Node 2")
-    job = await _make_job(db_pool, enums, "Private Job 2", owner["id"])
-    rel = await _make_relationship(
-        db_pool, enums, "job", job["id"], "entity", str(entity["id"])
+    public_job = await _make_job(db_pool, enums, "Public Job 2", owner["id"], ["public"])
+    private_job = await _make_job(
+        db_pool, enums, "Private Job 2", owner["id"], ["personal"]
+    )
+    public_rel = await _make_relationship(
+        db_pool, enums, "job", public_job["id"], "entity", str(entity["id"])
+    )
+    private_rel = await _make_relationship(
+        db_pool, enums, "job", private_job["id"], "entity", str(entity["id"])
     )
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -171,4 +186,5 @@ async def test_query_relationships_hides_foreign_job_links(db_pool, enums):
 
     assert resp.status_code == 200
     ids = {row["id"] for row in resp.json()["data"]}
-    assert rel["id"] not in ids
+    assert str(public_rel["id"]) in ids
+    assert str(private_rel["id"]) not in ids

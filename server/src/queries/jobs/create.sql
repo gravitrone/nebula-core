@@ -9,9 +9,10 @@ INSERT INTO jobs (
     priority,
     parent_job_id,
     due_at,
-    metadata
+    metadata,
+    privacy_scope_ids
 )
-VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6, $7, $8, $9::timestamptz, $10::jsonb)
+VALUES ($1, $2, $3, $4::uuid, $5::uuid, $6, $7, $8, $9::timestamptz, $10::jsonb, $11::uuid[])
 RETURNING 
     id, title, description, job_type, assigned_to, agent_id,
-    status_id, priority, parent_job_id, due_at, metadata, created_at;
+    status_id, priority, parent_job_id, due_at, metadata, privacy_scope_ids, created_at;

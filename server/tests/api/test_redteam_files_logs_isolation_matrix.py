@@ -33,19 +33,21 @@ async def _make_agent(db_pool, enums, name, scopes):
     return dict(row)
 
 
-async def _make_job(db_pool, enums, title, agent_id):
-    """Insert a job owned by a specific agent."""
+async def _make_job(db_pool, enums, title, agent_id, scopes):
+    """Insert a job owned by a specific agent with privacy scopes."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids, metadata)
+        VALUES ($1, $2, $3, $4, $5::jsonb)
         RETURNING *
         """,
         title,
         status_id,
         agent_id,
+        scope_ids,
         json.dumps({"note": "owned"}),
     )
     return dict(row)
@@ -180,12 +182,12 @@ async def test_api_file_hidden_when_attached_to_private_knowledge(db_pool, enums
 
 
 @pytest.mark.asyncio
-async def test_api_file_denied_when_attached_to_foreign_job(db_pool, enums):
-    """Public agent should not see or update files attached to another agent's job."""
+async def test_api_file_hidden_when_attached_to_out_of_scope_job(db_pool, enums):
+    """Public agent should not see or update files attached to out-of-scope jobs."""
 
     owner = await _make_agent(db_pool, enums, "file-job-owner", ["public"])
     viewer = await _make_agent(db_pool, enums, "file-job-viewer", ["public"])
-    job = await _make_job(db_pool, enums, "Owner Job", owner["id"])
+    job = await _make_job(db_pool, enums, "Owner Job", owner["id"], ["personal"])
     file_row = await _make_file(db_pool, enums)
     await _attach_relationship(
         db_pool, enums, "job", job["id"], "file", file_row["id"], "has-file"
@@ -240,12 +242,12 @@ async def test_api_log_hidden_when_attached_to_private_knowledge(db_pool, enums)
 
 
 @pytest.mark.asyncio
-async def test_api_log_denied_when_attached_to_foreign_job(db_pool, enums):
-    """Public agent should not see or update logs attached to another agent's job."""
+async def test_api_log_hidden_when_attached_to_out_of_scope_job(db_pool, enums):
+    """Public agent should not see or update logs attached to out-of-scope jobs."""
 
     owner = await _make_agent(db_pool, enums, "log-job-owner", ["public"])
     viewer = await _make_agent(db_pool, enums, "log-job-viewer", ["public"])
-    job = await _make_job(db_pool, enums, "Owner Job", owner["id"])
+    job = await _make_job(db_pool, enums, "Owner Job", owner["id"], ["personal"])
     log_row = await _make_log(db_pool, enums)
     await _attach_relationship(
         db_pool, enums, "log", log_row["id"], "job", job["id"], "related-to"
@@ -270,4 +272,3 @@ async def test_api_log_denied_when_attached_to_foreign_job(db_pool, enums):
     ids = {row["id"] for row in list_resp.json()["data"]}
     assert str(log_row["id"]) not in ids
     assert patch_resp.status_code == 403
-

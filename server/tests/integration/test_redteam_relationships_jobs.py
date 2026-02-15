@@ -68,20 +68,22 @@ async def _make_entity(db_pool, enums, name, scopes):
     return dict(row)
 
 
-async def _make_job(db_pool, enums, title, agent_id):
+async def _make_job(db_pool, enums, title, agent_id, scopes):
     """Insert a test job for relationship job scenarios."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids, metadata)
+        VALUES ($1, $2, $3, $4, $5::jsonb)
         RETURNING *
         """,
         title,
         status_id,
         agent_id,
+        scope_ids,
         json.dumps({"secret": "job"}),
     )
     return dict(row)
@@ -113,13 +115,13 @@ async def _make_relationship(
 
 
 @pytest.mark.asyncio
-async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
-    """Agents should not see job relationships for other agents."""
+async def test_get_relationships_hides_out_of_scope_job_links(db_pool, enums):
+    """Agents should not see job relationships for jobs outside their scopes."""
 
     owner = await _make_agent(db_pool, enums, "rel-owner", ["public"])
     viewer = await _make_agent(db_pool, enums, "rel-viewer", ["public"])
     entity = await _make_entity(db_pool, enums, "Public Node", ["public"])
-    job = await _make_job(db_pool, enums, "Private Job", owner["id"])
+    job = await _make_job(db_pool, enums, "Private Job", owner["id"], ["personal"])
     rel = await _make_relationship(
         db_pool, enums, "entity", str(entity["id"]), "job", job["id"]
     )
@@ -138,13 +140,13 @@ async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_query_relationships_hides_foreign_job_links(db_pool, enums):
-    """Querying relationships should not expose other agents' jobs."""
+async def test_query_relationships_hides_out_of_scope_job_links(db_pool, enums):
+    """Querying relationships should not expose jobs outside the agent scopes."""
 
     owner = await _make_agent(db_pool, enums, "rel-owner-2", ["public"])
     viewer = await _make_agent(db_pool, enums, "rel-viewer-2", ["public"])
     entity = await _make_entity(db_pool, enums, "Public Node 2", ["public"])
-    job = await _make_job(db_pool, enums, "Private Job 2", owner["id"])
+    job = await _make_job(db_pool, enums, "Private Job 2", owner["id"], ["personal"])
     rel = await _make_relationship(
         db_pool, enums, "job", job["id"], "entity", str(entity["id"])
     )

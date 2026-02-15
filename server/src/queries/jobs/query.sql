@@ -11,6 +11,7 @@ SELECT
     j.parent_job_id,
     j.due_at,
     j.completed_at,
+    j.privacy_scope_ids,
     j.created_at
 FROM jobs j
 JOIN statuses s ON j.status_id = s.id
@@ -23,5 +24,10 @@ WHERE
     AND ($6::timestamptz IS NULL OR j.due_at > $6)
     AND (NOT $7 OR (j.due_at < NOW() AND s.name != 'completed'))
     AND ($8::text IS NULL OR j.parent_job_id = $8)
+    AND (
+        $9::uuid[] IS NULL
+        OR cardinality(j.privacy_scope_ids) = 0
+        OR j.privacy_scope_ids && $9
+    )
 ORDER BY j.created_at DESC
-LIMIT $9;
+LIMIT $10;

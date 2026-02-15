@@ -41,13 +41,17 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
     return set(node_scopes).issubset(set(agent_scopes))
 
 
-async def _job_visible(pool: Any, auth: dict, job_id: str) -> bool:
-    if auth["caller_type"] != "agent":
+async def _job_visible(pool: Any, auth: dict, enums: EnumRegistry, job_id: str) -> bool:
+    if _is_admin(auth, enums):
         return True
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         return False
-    return row.get("agent_id") == auth.get("agent_id")
+    job_scopes = row.get("privacy_scope_ids") or []
+    caller_scopes = auth.get("scopes", []) or []
+    if not job_scopes:
+        return True
+    return any(scope in caller_scopes for scope in job_scopes)
 
 
 async def _validate_relationship_node(
@@ -76,7 +80,7 @@ async def _validate_relationship_node(
             api_error("FORBIDDEN", "Access denied", 403)
         return
     if node_type == "job":
-        if not await _job_visible(pool, auth, node_id):
+        if not await _job_visible(pool, auth, enums, node_id):
             api_error("FORBIDDEN", "Access denied", 403)
         return
     return
@@ -197,10 +201,10 @@ async def get_relationships(
     results = []
     for row in rows:
         if row["source_type"] == "job":
-            if not await _job_visible(pool, auth, row["source_id"]):
+            if not await _job_visible(pool, auth, enums, row["source_id"]):
                 continue
         if row["target_type"] == "job":
-            if not await _job_visible(pool, auth, row["target_id"]):
+            if not await _job_visible(pool, auth, enums, row["target_id"]):
                 continue
         results.append(dict(row))
     return success(results)
@@ -250,10 +254,10 @@ async def query_relationships(
     results = []
     for row in rows:
         if row["source_type"] == "job":
-            if not await _job_visible(pool, auth, row["source_id"]):
+            if not await _job_visible(pool, auth, enums, row["source_id"]):
                 continue
         if row["target_type"] == "job":
-            if not await _job_visible(pool, auth, row["target_id"]):
+            if not await _job_visible(pool, auth, enums, row["target_id"]):
                 continue
         results.append(dict(row))
     return success(results)

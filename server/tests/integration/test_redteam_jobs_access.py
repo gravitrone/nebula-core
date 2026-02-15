@@ -61,24 +61,26 @@ async def _make_job(db_pool, enums, agent_id):
     """Insert a job for job access tests."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id["public"]]
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4::jsonb, $5)
         RETURNING *
         """,
         "Private Job",
         status_id,
         agent_id,
         json.dumps({"secret": "job"}),
+        scope_ids,
     )
     return dict(row)
 
 
 @pytest.mark.asyncio
-async def test_get_job_denies_other_agent(db_pool, enums):
-    """Job read should be denied to other agents."""
+async def test_get_job_allows_other_agent_in_scope(db_pool, enums):
+    """Job read should be allowed for agents with matching scopes."""
 
     owner = await _make_agent(db_pool, enums, "job-owner", ["public"], False)
     other = await _make_agent(db_pool, enums, "job-viewer", ["public"], False)
@@ -87,13 +89,13 @@ async def test_get_job_denies_other_agent(db_pool, enums):
     ctx = _make_context(db_pool, enums, other)
     payload = GetJobInput(job_id=job["id"])
 
-    with pytest.raises(ValueError):
-        await get_job(payload, ctx)
+    result = await get_job(payload, ctx)
+    assert result["id"] == job["id"]
 
 
 @pytest.mark.asyncio
-async def test_query_jobs_filters_by_agent_context(db_pool, enums):
-    """Job list should not expose other agents' jobs."""
+async def test_query_jobs_includes_other_agents_jobs_in_scope(db_pool, enums):
+    """Job list should include jobs from other agents when scopes allow."""
 
     owner = await _make_agent(db_pool, enums, "job-owner-2", ["public"], False)
     other = await _make_agent(db_pool, enums, "job-viewer-2", ["public"], False)
@@ -104,7 +106,36 @@ async def test_query_jobs_filters_by_agent_context(db_pool, enums):
     rows = await query_jobs(payload, ctx)
 
     ids = {row["id"] for row in rows}
-    assert job["id"] not in ids
+    assert job["id"] in ids
+
+
+@pytest.mark.asyncio
+async def test_get_job_denies_agent_outside_scopes(db_pool, enums):
+    """Job read should be denied when scopes do not overlap."""
+
+    owner = await _make_agent(db_pool, enums, "job-owner-scopes", ["personal"], False)
+    other = await _make_agent(db_pool, enums, "job-viewer-scopes", ["public"], False)
+
+    status_id = enums.statuses.name_to_id["active"]
+    private_scope_ids = [enums.scopes.name_to_id["personal"]]
+    job = await db_pool.fetchrow(
+        """
+        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4::jsonb, $5)
+        RETURNING *
+        """,
+        "Scoped Job",
+        status_id,
+        owner["id"],
+        json.dumps({"secret": "job"}),
+        private_scope_ids,
+    )
+
+    ctx = _make_context(db_pool, enums, other)
+    payload = GetJobInput(job_id=job["id"])
+
+    with pytest.raises(ValueError):
+        await get_job(payload, ctx)
 
 
 @pytest.mark.asyncio

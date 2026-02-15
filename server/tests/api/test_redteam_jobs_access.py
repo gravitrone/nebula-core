@@ -1,4 +1,4 @@
-"""Red team API tests for job access isolation."""
+"""Red team API tests for job access + write isolation."""
 
 # Standard Library
 import json
@@ -37,24 +37,26 @@ async def _make_job(db_pool, enums, agent_id):
     """Insert a test job for job access scenarios."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id["public"]]
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4::jsonb, $5)
         RETURNING *
         """,
         "API Private Job",
         status_id,
         agent_id,
         json.dumps({"secret": "job"}),
+        scope_ids,
     )
     return dict(row)
 
 
 @pytest.mark.asyncio
-async def test_api_get_job_denies_other_agent(db_pool, enums):
-    """Agent should not fetch another agent's job via API."""
+async def test_api_get_job_allows_other_agent_in_scope(db_pool, enums):
+    """Agent should be able to fetch scoped jobs via API."""
 
     owner = await _make_agent(db_pool, enums, "api-owner", False)
     viewer = await _make_agent(db_pool, enums, "api-viewer", False)
@@ -83,12 +85,12 @@ async def test_api_get_job_denies_other_agent(db_pool, enums):
         resp = await client.get(f"/api/jobs/{job['id']}")
     app.dependency_overrides.pop(require_auth, None)
 
-    assert resp.status_code == 403
+    assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_api_query_jobs_filters_by_agent(db_pool, enums):
-    """Agent should not list other agents' jobs via API."""
+async def test_api_query_jobs_includes_other_agents_jobs_in_scope(db_pool, enums):
+    """Agent job list should include scoped jobs via API."""
 
     owner = await _make_agent(db_pool, enums, "api-owner-2", False)
     viewer = await _make_agent(db_pool, enums, "api-viewer-2", False)
@@ -122,7 +124,7 @@ async def test_api_query_jobs_filters_by_agent(db_pool, enums):
     assert resp.status_code == 200
     data = resp.json()["data"]
     ids = {row["id"] for row in data}
-    assert job["id"] not in ids
+    assert job["id"] in ids
 
 
 @pytest.mark.asyncio

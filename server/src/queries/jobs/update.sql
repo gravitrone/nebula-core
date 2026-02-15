@@ -24,6 +24,7 @@ SELECT
     u.due_at,
     u.completed_at,
     u.metadata,
+    u.privacy_scope_ids,
     u.created_at,
     u.updated_at
 FROM updated u

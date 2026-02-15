@@ -68,20 +68,22 @@ async def _make_entity(db_pool, enums, name, scopes):
     return dict(row)
 
 
-async def _make_job(db_pool, enums, title, agent_id):
+async def _make_job(db_pool, enums, title, agent_id, scopes):
     """Insert a job for graph job tests."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids, metadata)
+        VALUES ($1, $2, $3, $4, $5::jsonb)
         RETURNING *
         """,
         title,
         status_id,
         agent_id,
+        scope_ids,
         json.dumps({"secret": "job"}),
     )
     return dict(row)
@@ -111,13 +113,13 @@ async def _make_relationship(
 
 
 @pytest.mark.asyncio
-async def test_graph_neighbors_hides_foreign_jobs(db_pool, enums):
-    """Graph traversal should not expose jobs owned by other agents."""
+async def test_graph_neighbors_hides_out_of_scope_jobs(db_pool, enums):
+    """Graph traversal should not expose jobs outside the agent scopes."""
 
     owner = await _make_agent(db_pool, enums, "job-owner", ["public"])
     viewer = await _make_agent(db_pool, enums, "job-viewer", ["public"])
     entity = await _make_entity(db_pool, enums, "Public Node", ["public"])
-    job = await _make_job(db_pool, enums, "Private Job", owner["id"])
+    job = await _make_job(db_pool, enums, "Private Job", owner["id"], ["personal"])
     await _make_relationship(
         db_pool, enums, "entity", str(entity["id"]), "job", job["id"]
     )
@@ -136,13 +138,13 @@ async def test_graph_neighbors_hides_foreign_jobs(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_graph_shortest_path_hides_foreign_jobs(db_pool, enums):
-    """Shortest path should deny access to foreign job nodes."""
+async def test_graph_shortest_path_hides_out_of_scope_jobs(db_pool, enums):
+    """Shortest path should deny access to job nodes outside the agent scopes."""
 
     owner = await _make_agent(db_pool, enums, "path-owner", ["public"])
     viewer = await _make_agent(db_pool, enums, "path-viewer", ["public"])
     entity = await _make_entity(db_pool, enums, "Path Node", ["public"])
-    job = await _make_job(db_pool, enums, "Path Job", owner["id"])
+    job = await _make_job(db_pool, enums, "Path Job", owner["id"], ["personal"])
     await _make_relationship(
         db_pool, enums, "entity", str(entity["id"]), "job", job["id"]
     )

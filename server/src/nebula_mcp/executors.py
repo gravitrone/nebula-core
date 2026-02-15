@@ -283,6 +283,7 @@ async def execute_create_job(
     payload = CreateJobInput(**change_details)
 
     status_id = require_status("in-progress", enums)
+    scope_ids = require_scopes(payload.scopes, enums)
 
     row = await pool.fetchrow(
         QUERIES["jobs/create"],
@@ -296,6 +297,7 @@ async def execute_create_job(
         payload.parent_job_id,
         payload.due_at,
         json.dumps(payload.metadata) if payload.metadata else "{}",
+        scope_ids,
     )
 
     return dict(row) if row else {}

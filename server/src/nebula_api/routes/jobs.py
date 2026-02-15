@@ -14,12 +14,13 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_status
 from nebula_mcp.executors import execute_create_job
+from nebula_mcp.helpers import scope_names_from_ids
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
-ADMIN_SCOPE_NAMES = {"vault-only", "sensitive"}
+ADMIN_SCOPE_NAMES = {"admin", "vault-only"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
@@ -32,7 +33,17 @@ def _is_admin(auth: dict, enums: Any) -> bool:
     return bool(scope_ids.intersection(allowed_ids))
 
 
-def _require_job_owner(auth: dict, enums: Any, job: dict) -> None:
+def _require_job_read(auth: dict, enums: Any, job: dict) -> None:
+    if _is_admin(auth, enums):
+        return
+    job_scopes = job.get("privacy_scope_ids") or []
+    caller_scopes = auth.get("scopes", []) or []
+    if job_scopes and not any(scope in caller_scopes for scope in job_scopes):
+        api_error("FORBIDDEN", "Job not in your scopes", 403)
+
+
+def _require_job_write(auth: dict, enums: Any, job: dict) -> None:
+    _require_job_read(auth, enums, job)
     if auth["caller_type"] != "agent":
         return
     if _is_admin(auth, enums):
@@ -69,6 +80,7 @@ class CreateJobBody(BaseModel):
     assigned_to: str | None = None
     agent_id: str | None = None
     priority: str = "medium"
+    scopes: list[str] | None = None
     parent_job_id: str | None = None
     due_at: str | None = None
     metadata: dict | None = None
@@ -143,6 +155,8 @@ async def create_job(
     data = payload.model_dump()
     if data.get("metadata") is None:
         data["metadata"] = {}
+    if not data.get("scopes"):
+        data["scopes"] = ["public"]
     if auth["caller_type"] == "agent" and not _is_admin(auth, enums):
         agent_id = auth.get("agent_id")
         data["agent_id"] = str(agent_id) if agent_id else None
@@ -175,7 +189,7 @@ async def get_job(
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
 
     job = dict(row)
-    _require_job_owner(auth, request.app.state.enums, job)
+    _require_job_read(auth, request.app.state.enums, job)
     return success(job)
 
 
@@ -218,8 +232,7 @@ async def query_jobs(
     if assigned_to:
         _require_uuid(assigned_to, "assignee")
     agent_filter = agent_id
-    if auth["caller_type"] == "agent" and not _is_admin(auth, enums):
-        agent_filter = auth.get("agent_id")
+    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
 
     rows = await pool.fetch(
         QUERIES["jobs/query"],
@@ -231,6 +244,7 @@ async def query_jobs(
         due_after,
         overdue_only,
         parent_job_id,
+        scope_filter,
         limit,
     )
     return success([dict(r) for r in rows])
@@ -259,7 +273,7 @@ async def update_job_status(
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
-    _require_job_owner(auth, enums, dict(row))
+    _require_job_write(auth, enums, dict(row))
     change = {
         "job_id": job_id,
         "status": payload.status,
@@ -312,7 +326,7 @@ async def update_job(
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
-    _require_job_owner(auth, enums, dict(row))
+    _require_job_write(auth, enums, dict(row))
     data = payload.model_dump()
     status_id = None
     if data.get("status"):
@@ -360,7 +374,11 @@ async def create_subtask(
     parent_row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not parent_row:
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
-    _require_job_owner(auth, enums, dict(parent_row))
+    parent_job = dict(parent_row)
+    _require_job_write(auth, enums, parent_job)
+    parent_scope_names = scope_names_from_ids(
+        parent_job.get("privacy_scope_ids") or [], enums
+    )
     data = {
         "title": payload.title,
         "description": payload.description,
@@ -368,6 +386,7 @@ async def create_subtask(
         "assigned_to": None,
         "agent_id": parent_row.get("agent_id"),
         "priority": payload.priority,
+        "scopes": parent_scope_names or ["public"],
         "parent_job_id": job_id,
         "due_at": payload.due_at,
         "metadata": {},

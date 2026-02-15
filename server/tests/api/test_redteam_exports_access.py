@@ -56,21 +56,23 @@ async def _make_agent(db_pool, enums, name):
     return dict(row)
 
 
-async def _make_job(db_pool, enums, agent_id):
+async def _make_job(db_pool, enums, agent_id, scopes):
     """Insert a job for export access tests."""
 
     status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4::jsonb, $5)
         RETURNING *
         """,
         "Export Private Job",
         status_id,
         agent_id,
         json.dumps({"secret": "job"}),
+        scope_ids,
     )
     return dict(row)
 
@@ -195,11 +197,12 @@ async def test_export_entities_denies_scope_override(db_pool, enums):
 
 @pytest.mark.asyncio
 async def test_export_context_filters_jobs_by_agent(db_pool, enums):
-    """Context export should not expose jobs owned by other agents."""
+    """Context export should filter jobs by scopes."""
 
     owner = await _make_agent(db_pool, enums, "job-owner-export")
     viewer = await _make_agent(db_pool, enums, "job-viewer-export")
-    job = await _make_job(db_pool, enums, owner["id"])
+    public_job = await _make_job(db_pool, enums, owner["id"], ["public"])
+    private_job = await _make_job(db_pool, enums, owner["id"], ["personal"])
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
     app.state.pool = db_pool
@@ -212,21 +215,26 @@ async def test_export_context_filters_jobs_by_agent(db_pool, enums):
     assert resp.status_code == 200
     jobs = resp.json()["data"]["jobs"]
     ids = {row["id"] for row in jobs}
-    assert job["id"] not in ids
+    assert public_job["id"] in ids
+    assert private_job["id"] not in ids
 
 
 @pytest.mark.asyncio
 async def test_export_context_filters_job_relationships(db_pool, enums):
-    """Context export should not leak relationships tied to other agents' jobs."""
+    """Context export should filter relationships tied to jobs by job scopes."""
 
     owner = await _make_agent(db_pool, enums, "job-owner-export-rel")
     viewer = await _make_agent(db_pool, enums, "job-viewer-export-rel")
     entity = await _make_entity(
         db_pool, enums, "Public Link", ["public"], {"note": "public"}
     )
-    job = await _make_job(db_pool, enums, owner["id"])
-    rel = await _make_relationship(
-        db_pool, enums, "job", job["id"], "entity", str(entity["id"])
+    public_job = await _make_job(db_pool, enums, owner["id"], ["public"])
+    private_job = await _make_job(db_pool, enums, owner["id"], ["personal"])
+    public_rel = await _make_relationship(
+        db_pool, enums, "job", public_job["id"], "entity", str(entity["id"])
+    )
+    private_rel = await _make_relationship(
+        db_pool, enums, "job", private_job["id"], "entity", str(entity["id"])
     )
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -240,16 +248,18 @@ async def test_export_context_filters_job_relationships(db_pool, enums):
     assert resp.status_code == 200
     rels = resp.json()["data"]["relationships"]
     ids = {row["id"] for row in rels}
-    assert rel["id"] not in ids
+    assert str(public_rel["id"]) in ids
+    assert str(private_rel["id"]) not in ids
 
 
 @pytest.mark.asyncio
 async def test_export_jobs_filters_by_agent(db_pool, enums):
-    """Job exports should not expose jobs owned by other agents."""
+    """Job exports should filter by scopes."""
 
     owner = await _make_agent(db_pool, enums, "job-owner-export-jobs")
     viewer = await _make_agent(db_pool, enums, "job-viewer-export-jobs")
-    job = await _make_job(db_pool, enums, owner["id"])
+    public_job = await _make_job(db_pool, enums, owner["id"], ["public"])
+    private_job = await _make_job(db_pool, enums, owner["id"], ["personal"])
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
     app.state.pool = db_pool
@@ -262,7 +272,8 @@ async def test_export_jobs_filters_by_agent(db_pool, enums):
     assert resp.status_code == 200
     items = resp.json()["data"]["items"]
     ids = {row["id"] for row in items}
-    assert job["id"] not in ids
+    assert public_job["id"] in ids
+    assert private_job["id"] not in ids
 
 
 @pytest.mark.asyncio
@@ -317,17 +328,21 @@ async def test_export_knowledge_denies_scope_override(db_pool, enums):
 
 @pytest.mark.asyncio
 async def test_export_relationships_filters_job_ownership(db_pool, enums):
-    """Relationship exports should not leak relationships tied to other agents' jobs."""
+    """Relationship exports should filter relationships tied to jobs by scopes."""
 
     owner = await _make_agent(db_pool, enums, "rel-job-owner")
     viewer = await _make_agent(db_pool, enums, "rel-job-viewer")
-    job = await _make_job(db_pool, enums, owner["id"])
+    public_job = await _make_job(db_pool, enums, owner["id"], ["public"])
+    private_job = await _make_job(db_pool, enums, owner["id"], ["personal"])
     entity = await _make_entity(
         db_pool, enums, "Public Link", ["public"], {"note": "public"}
     )
 
-    rel = await _make_relationship(
-        db_pool, enums, "job", job["id"], "entity", str(entity["id"])
+    public_rel = await _make_relationship(
+        db_pool, enums, "job", public_job["id"], "entity", str(entity["id"])
+    )
+    private_rel = await _make_relationship(
+        db_pool, enums, "job", private_job["id"], "entity", str(entity["id"])
     )
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -341,4 +356,5 @@ async def test_export_relationships_filters_job_ownership(db_pool, enums):
     assert resp.status_code == 200
     items = resp.json()["data"]["items"]
     ids = {row["id"] for row in items}
-    assert rel["id"] not in ids
+    assert str(public_rel["id"]) in ids
+    assert str(private_rel["id"]) not in ids
