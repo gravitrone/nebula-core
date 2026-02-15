@@ -12,8 +12,12 @@ from pydantic import BaseModel, field_validator
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import paginated, success
-from nebula_mcp.enums import require_status
-from nebula_mcp.executors import execute_create_knowledge, execute_create_relationship
+from nebula_mcp.enums import require_relationship_type, require_scopes, require_status
+from nebula_mcp.executors import (
+    execute_create_knowledge,
+    execute_create_relationship,
+    execute_update_knowledge,
+)
 from nebula_mcp.helpers import (
     enforce_scope_subset,
     filter_context_segments,
@@ -202,10 +206,22 @@ async def create_knowledge(
         data["metadata"] = {}
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
-        data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        try:
+            data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+
+    # Validate scopes before queuing approvals.
+    try:
+        require_scopes(data["scopes"], enums)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if resp := await maybe_check_agent_approval(pool, auth, "create_knowledge", data):
         return resp
-    result = await execute_create_knowledge(pool, enums, data)
+    try:
+        result = await execute_create_knowledge(pool, enums, data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return success(result)
 
 
@@ -327,12 +343,19 @@ async def link_to_entity(
         "relationship_type": payload.relationship_type,
         "properties": {},
     }
+    try:
+        require_relationship_type(payload.relationship_type, enums)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if resp := await maybe_check_agent_approval(
         pool, auth, "create_relationship", relationship_payload
     ):
         return resp
 
-    result = await execute_create_relationship(pool, enums, relationship_payload)
+    try:
+        result = await execute_create_relationship(pool, enums, relationship_payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     return success(result)
 
 
@@ -364,29 +387,29 @@ async def update_knowledge(
     await _require_knowledge_write_access(pool, enums, auth, knowledge_id)
 
     data = payload.model_dump()
-    status_id = None
     if data.get("status"):
-        status_id = require_status(data["status"], enums)
+        try:
+            require_status(data["status"], enums)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     if data.get("metadata") is None:
         data.pop("metadata", None)
     if auth["caller_type"] == "agent" and data.get("scopes") is not None:
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
-        data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        try:
+            data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+    if data.get("scopes") is not None:
+        try:
+            require_scopes(data["scopes"], enums)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     change = {"knowledge_id": knowledge_id, **data}
     if resp := await maybe_check_agent_approval(pool, auth, "update_knowledge", change):
         return resp
-    row = await pool.fetchrow(
-        QUERIES["knowledge/update"],
-        knowledge_id,
-        data.get("title"),
-        data.get("url"),
-        data.get("source_type"),
-        data.get("content"),
-        status_id,
-        data.get("tags"),
-        data.get("scopes"),
-        data.get("metadata"),
-    )
-    if not row:
-        raise HTTPException(status_code=404, detail="Not Found")
-    return success(dict(row))
+    try:
+        updated = await execute_update_knowledge(pool, enums, change)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return success(updated)

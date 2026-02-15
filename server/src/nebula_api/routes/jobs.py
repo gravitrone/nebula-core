@@ -12,15 +12,16 @@ from pydantic import BaseModel
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
-from nebula_mcp.enums import require_status
-from nebula_mcp.executors import execute_create_job
-from nebula_mcp.helpers import scope_names_from_ids
+from nebula_mcp.enums import require_scopes, require_status
+from nebula_mcp.executors import execute_create_job, execute_update_job
+from nebula_mcp.helpers import enforce_scope_subset, scope_names_from_ids
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
+JOB_PRIORITY_VALUES = {"low", "medium", "high", "critical"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
@@ -157,12 +158,26 @@ async def create_job(
         data["metadata"] = {}
     if not data.get("scopes"):
         data["scopes"] = ["public"]
+    if data.get("priority") and data["priority"] not in JOB_PRIORITY_VALUES:
+        api_error("INVALID_INPUT", f"Invalid priority: {data['priority']}", 400)
     if auth["caller_type"] == "agent" and not _is_admin(auth, enums):
+        allowed = scope_names_from_ids(auth.get("scopes", []), enums)
+        try:
+            data["scopes"] = enforce_scope_subset(data["scopes"], allowed)
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
         agent_id = auth.get("agent_id")
         data["agent_id"] = str(agent_id) if agent_id else None
+    try:
+        require_scopes(data["scopes"], enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if resp := await maybe_check_agent_approval(pool, auth, "create_job", data):
         return resp
-    result = await execute_create_job(pool, enums, data)
+    try:
+        result = await execute_create_job(pool, enums, data)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     return success(result)
 
 
@@ -274,6 +289,10 @@ async def update_job_status(
     if not row:
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
     _require_job_write(auth, enums, dict(row))
+    try:
+        status_id = require_status(payload.status, enums)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     change = {
         "job_id": job_id,
         "status": payload.status,
@@ -284,11 +303,6 @@ async def update_job_status(
         pool, auth, "update_job_status", change
     ):
         return resp
-
-    try:
-        status_id = require_status(payload.status, enums)
-    except ValueError as exc:
-        api_error("INVALID_INPUT", str(exc), 400)
 
     row = await pool.fetchrow(
         QUERIES["jobs/update_status"],
@@ -328,27 +342,23 @@ async def update_job(
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
     _require_job_write(auth, enums, dict(row))
     data = payload.model_dump()
-    status_id = None
     if data.get("status"):
-        status_id = require_status(data["status"], enums)
+        try:
+            require_status(data["status"], enums)
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
+    if data.get("priority") and data["priority"] not in JOB_PRIORITY_VALUES:
+        api_error("INVALID_INPUT", f"Invalid priority: {data['priority']}", 400)
     if data.get("metadata") is None:
         data.pop("metadata", None)
-    if resp := await maybe_check_agent_approval(
-        pool, auth, "update_job", {"job_id": job_id, **data}
-    ):
+    change = {"job_id": job_id, **data}
+    if resp := await maybe_check_agent_approval(pool, auth, "update_job", change):
         return resp
-    row = await pool.fetchrow(
-        QUERIES["jobs/update"],
-        job_id,
-        data.get("title"),
-        data.get("description"),
-        status_id,
-        data.get("priority"),
-        data.get("metadata"),
-    )
-    if not row:
-        api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
-    return success(dict(row))
+    try:
+        updated = await execute_update_job(pool, enums, change)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
+    return success(updated)
 
 
 @router.post("/{job_id}/subtasks")
@@ -379,6 +389,8 @@ async def create_subtask(
     parent_scope_names = scope_names_from_ids(
         parent_job.get("privacy_scope_ids") or [], enums
     )
+    if payload.priority and payload.priority not in JOB_PRIORITY_VALUES:
+        api_error("INVALID_INPUT", f"Invalid priority: {payload.priority}", 400)
     data = {
         "title": payload.title,
         "description": payload.description,
@@ -393,5 +405,8 @@ async def create_subtask(
     }
     if resp := await maybe_check_agent_approval(pool, auth, "create_job", data):
         return resp
-    result = await execute_create_job(pool, enums, data)
+    try:
+        result = await execute_create_job(pool, enums, data)
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     return success(result)

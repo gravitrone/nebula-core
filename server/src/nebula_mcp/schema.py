@@ -31,7 +31,11 @@ AUDIT_ACTION_VALUES = ["insert", "update", "delete"]
 AUDIT_ACTOR_TYPE_VALUES = ["agent", "entity", "system"]
 
 
-def _stringify_ids(rows: list[dict[str, Any]], *, id_key: str = "id") -> list[dict[str, Any]]:
+def _stringify_ids(
+    rows: list[dict[str, Any]],
+    *,
+    id_key: str = "id",
+) -> list[dict[str, Any]]:
     """Convert UUID ids to strings for JSON-safe tool responses."""
 
     out: list[dict[str, Any]] = []
@@ -53,7 +57,9 @@ async def load_schema_contract(pool: Pool) -> dict[str, Any]:
         Dict containing active taxonomy lists, statuses, and core constraints.
     """
 
-    scopes = _stringify_ids([dict(r) for r in await pool.fetch(QUERIES["schema/list_active_scopes"])])
+    scopes = _stringify_ids(
+        [dict(r) for r in await pool.fetch(QUERIES["schema/list_active_scopes"])]
+    )
     entity_types = _stringify_ids(
         [dict(r) for r in await pool.fetch(QUERIES["schema/list_active_entity_types"])]
     )
@@ -66,7 +72,9 @@ async def load_schema_contract(pool: Pool) -> dict[str, Any]:
     log_types = _stringify_ids(
         [dict(r) for r in await pool.fetch(QUERIES["schema/list_active_log_types"])]
     )
-    statuses = _stringify_ids([dict(r) for r in await pool.fetch(QUERIES["schema/list_statuses"])])
+    statuses = _stringify_ids(
+        [dict(r) for r in await pool.fetch(QUERIES["schema/list_statuses"])]
+    )
 
     return {
         "taxonomy": {
@@ -92,4 +100,3 @@ async def load_schema_contract(pool: Pool) -> dict[str, Any]:
             },
         },
     }
-

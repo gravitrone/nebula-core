@@ -587,6 +587,45 @@ class CreateKnowledgeInput(BaseModel):
         return _sanitize_metadata(v)
 
 
+class UpdateKnowledgeInput(BaseModel):
+    """Input payload for updating a knowledge item."""
+
+    knowledge_id: str = Field(..., description="Knowledge item UUID")
+    title: str | None = Field(default=None, description="Updated title")
+    url: str | None = Field(default=None, description="Updated URL")
+    source_type: str | None = Field(default=None, description="Updated source type")
+    content: str | None = Field(default=None, description="Updated content")
+    status: str | None = Field(default=None, description="Updated status name")
+    tags: list[str] | None = Field(default=None, description="Updated tags")
+    scopes: list[str] | None = Field(default=None, description="Updated scopes")
+    metadata: dict | None = Field(default=None, description="Updated metadata")
+
+    @field_validator("title", "source_type", mode="before")
+    @classmethod
+    def _clean_update_knowledge_text(cls, v: str | None) -> str | None:
+        return _sanitize_text(v)
+
+    @field_validator("url", mode="before")
+    @classmethod
+    def _validate_update_knowledge_url(cls, v: str | None) -> str | None:
+        if not v:
+            return v
+        v = v.strip()
+        if not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("URL must start with http:// or https://")
+        return v
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _clean_update_knowledge_tags(cls, v: list[str] | None) -> list[str] | None:
+        return _sanitize_tags(v)
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _clean_update_knowledge_metadata(cls, v: dict | None) -> dict | None:
+        return _sanitize_metadata(v)
+
+
 class QueryKnowledgeInput(BaseModel):
     """Input payload for searching knowledge items."""
 
@@ -876,6 +915,22 @@ class UpdateJobStatusInput(BaseModel):
     completed_at: str | None = Field(
         default=None, description="ISO8601 completion timestamp"
     )
+
+
+class UpdateJobInput(BaseModel):
+    """Input payload for updating a job."""
+
+    job_id: str = Field(..., description="Job ID")
+    title: str | None = Field(default=None, description="Updated title")
+    description: str | None = Field(default=None, description="Updated description")
+    status: str | None = Field(default=None, description="Updated status name")
+    priority: str | None = Field(default=None, description="Updated priority")
+    metadata: dict | None = Field(default=None, description="Updated metadata")
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def _clean_update_job_metadata(cls, v: dict | None) -> dict | None:
+        return _sanitize_metadata(v)
 
 
 class CreateSubtaskInput(BaseModel):

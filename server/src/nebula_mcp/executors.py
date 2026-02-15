@@ -204,6 +204,53 @@ async def execute_create_knowledge(
     return dict(row) if row else {}
 
 
+async def execute_update_knowledge(
+    pool: Pool, enums: EnumRegistry, change_details: dict
+) -> dict:
+    """Execute knowledge item update from approved request.
+
+    Args:
+        pool: Database connection pool.
+        enums: Enum registry for validation.
+        change_details: Payload dict from approval request.
+
+    Returns:
+        Updated knowledge row as dict.
+    """
+
+    from .models import UpdateKnowledgeInput
+
+    if isinstance(change_details, str):
+        change_details = json.loads(change_details)
+
+    payload = UpdateKnowledgeInput(**change_details)
+
+    status_id = None
+    if payload.status:
+        status_id = require_status(payload.status, enums)
+
+    scope_ids = None
+    if payload.scopes is not None:
+        scope_ids = require_scopes(payload.scopes, enums)
+
+    row = await pool.fetchrow(
+        QUERIES["knowledge/update"],
+        payload.knowledge_id,
+        payload.title,
+        payload.url,
+        payload.source_type,
+        payload.content,
+        status_id,
+        payload.tags,
+        scope_ids,
+        json.dumps(payload.metadata) if payload.metadata is not None else None,
+    )
+
+    if not row:
+        raise ValueError("Knowledge not found")
+    return dict(row)
+
+
 async def execute_create_relationship(
     pool: Pool, enums: EnumRegistry, change_details: dict
 ) -> dict:
@@ -301,6 +348,46 @@ async def execute_create_job(
     )
 
     return dict(row) if row else {}
+
+
+async def execute_update_job(
+    pool: Pool, enums: EnumRegistry, change_details: dict
+) -> dict:
+    """Execute job update from approved request.
+
+    Args:
+        pool: Database connection pool.
+        enums: Enum registry for validation.
+        change_details: Payload dict from approval request.
+
+    Returns:
+        Updated job row as dict.
+    """
+
+    from .models import UpdateJobInput
+
+    if isinstance(change_details, str):
+        change_details = json.loads(change_details)
+
+    payload = UpdateJobInput(**change_details)
+
+    status_id = None
+    if payload.status:
+        status_id = require_status(payload.status, enums)
+
+    row = await pool.fetchrow(
+        QUERIES["jobs/update"],
+        payload.job_id,
+        payload.title,
+        payload.description,
+        status_id,
+        payload.priority,
+        json.dumps(payload.metadata) if payload.metadata is not None else None,
+    )
+
+    if not row:
+        raise ValueError("Job not found")
+    return dict(row)
 
 
 async def execute_update_relationship(
@@ -783,8 +870,10 @@ async def execute_bulk_import_jobs(
 EXECUTORS = {
     "create_entity": execute_create_entity,
     "create_knowledge": execute_create_knowledge,
+    "update_knowledge": execute_update_knowledge,
     "create_relationship": execute_create_relationship,
     "create_job": execute_create_job,
+    "update_job": execute_update_job,
     "update_relationship": execute_update_relationship,
     "update_job_status": execute_update_job_status,
     "create_file": execute_create_file,
