@@ -38,6 +38,11 @@ var (
 				Foreground(ColorMuted).
 				Padding(0, 1)
 
+	TabSelectedStyle = lipgloss.NewStyle().
+				Foreground(ColorText).
+				Bold(true).
+				Padding(0, 1)
+
 	StatusBarStyle = lipgloss.NewStyle().
 			Foreground(ColorMuted).
 			PaddingTop(1)

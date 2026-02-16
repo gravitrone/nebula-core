@@ -402,8 +402,11 @@ func DiffTable(title string, rows []DiffRow, width int) string {
 	addStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3f866b"))
 	renderValue := func(style lipgloss.Style, prefix string, value string) string {
 		value = SanitizeText(value)
-		if value == "" {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
 			value = "None"
+		} else {
+			value = trimmed
 		}
 		lines := strings.Split(value, "\n")
 		var out strings.Builder

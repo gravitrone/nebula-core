@@ -16,9 +16,9 @@ var previewBoxStyle = lipgloss.NewStyle().
 	Padding(1, 2)
 
 const (
-	previewWidthPercent = 32
-	previewMinWidth     = 38
-	previewMaxWidth     = 56
+	previewWidthPercent = 28
+	previewMinWidth     = 34
+	previewMaxWidth     = 52
 )
 
 func preferredPreviewWidth(contentWidth int) int {

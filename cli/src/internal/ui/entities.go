@@ -1806,7 +1806,7 @@ func (m EntitiesModel) renderEditTags(focused bool) string {
 
 func (m EntitiesModel) handleConfirmKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch {
-	case isKey(msg, "y"):
+	case isKey(msg, "y"), isEnter(msg):
 		switch m.confirmKind {
 		case "entity-archive":
 			if m.detail == nil {
@@ -2381,11 +2381,7 @@ func (m EntitiesModel) loadRelationships() tea.Cmd {
 		if m.detail == nil {
 			return relationshipsLoadedMsg{items: nil}
 		}
-		sourceType := m.detail.Type
-		if sourceType == "" {
-			sourceType = "entity"
-		}
-		items, err := m.client.GetRelationships(sourceType, m.detail.ID)
+		items, err := m.client.GetRelationships("entity", m.detail.ID)
 		if err != nil {
 			return errMsg{err}
 		}

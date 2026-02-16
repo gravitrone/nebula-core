@@ -325,8 +325,8 @@ func (m RelationshipsModel) renderList() string {
 		availableCols = 30
 	}
 
-	relWidth := 14
-	statusWidth := 11
+	relWidth := 12
+	statusWidth := 9
 	atWidth := 11
 	edgeWidth := availableCols - (relWidth + statusWidth + atWidth)
 	if edgeWidth < 12 {
@@ -584,7 +584,7 @@ func (m RelationshipsModel) saveEdit() (RelationshipsModel, tea.Cmd) {
 
 func (m RelationshipsModel) handleConfirmKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
-	case isKey(msg, "y"):
+	case isKey(msg, "y"), isEnter(msg):
 		status := "archived"
 		input := api.UpdateRelationshipInput{Status: &status}
 		m.view = relsViewDetail

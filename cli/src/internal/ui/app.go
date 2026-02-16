@@ -348,7 +348,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if a.quitConfirm {
 			switch {
-			case isKey(msg, "y"):
+			case isKey(msg, "y"), isEnter(msg):
 				return a, tea.Quit
 			case isKey(msg, "n"), isBack(msg):
 				a.quitConfirm = false
@@ -535,12 +535,15 @@ func (a App) View() string {
 		if a.showRecoveryHints {
 			message += "\n\nRecovery: [r] re-login  [s] settings  [c] show command"
 		}
-		feedback = "\n\n" + centerBlockUniform(components.ErrorBox("Error", message, a.width), a.width)
+		feedback = centerBlockUniform(components.ErrorBox("Error", message, a.width), a.width)
 	} else if a.toast != nil {
-		feedback = "\n\n" + centerBlockUniform(a.renderToast(), a.width)
+		feedback = centerBlockUniform(a.renderToast(), a.width)
+	}
+	if feedback != "" {
+		content = content + "\n\n" + feedback
 	}
 
-	return fmt.Sprintf("%s\n%s%s\n\n%s\n\n\n%s%s", banner, tabs, startupPanel, content, hints, feedback)
+	return fmt.Sprintf("%s\n%s%s\n\n%s\n\n%s", banner, tabs, startupPanel, content, hints)
 }
 
 func (a *App) switchTab(newTab int) (App, tea.Cmd) {
@@ -584,7 +587,11 @@ func (a App) renderTabs() string {
 	for i, name := range tabNames {
 		label := name
 		if i == a.tab {
-			segments = append(segments, TabActiveStyle.Render(label))
+			if a.tabNav {
+				segments = append(segments, TabActiveStyle.Render(label))
+			} else {
+				segments = append(segments, TabSelectedStyle.Render(label))
+			}
 		} else {
 			segments = append(segments, TabInactiveStyle.Render(label))
 		}

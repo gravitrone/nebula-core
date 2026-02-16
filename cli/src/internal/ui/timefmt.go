@@ -6,7 +6,7 @@ func formatLocalTimeCompact(ts time.Time) string {
 	if ts.IsZero() {
 		return "None"
 	}
-	return ts.Local().Format("01-02 15:04 MST")
+	return ts.Local().Format("01-02 15:04")
 }
 
 func formatLocalTimeFull(ts time.Time) string {

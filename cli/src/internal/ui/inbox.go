@@ -96,7 +96,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 	case tea.KeyMsg:
 		if m.confirming {
 			switch {
-			case isKey(msg, "y"):
+			case isKey(msg, "y"), isEnter(msg):
 				m.confirming = false
 				return m.approveSelected()
 			case isKey(msg, "n"), isBack(msg):
@@ -531,7 +531,7 @@ func (m InboxModel) renderDetail() string {
 		{Label: "Type", Value: a.RequestType},
 		{Label: "Status", Value: a.Status},
 		{Label: "Agent", Value: a.AgentName},
-		{Label: "Requested By", Value: a.RequestedBy},
+		{Label: "Requested By", Value: approvalRequestedBy(*a)},
 		{Label: "Created", Value: formatLocalTimeFull(a.CreatedAt)},
 	}
 	if a.JobID != nil {
@@ -611,9 +611,29 @@ func (m InboxModel) renderDetail() string {
 				nested[k] = val
 				continue
 			}
+			display := formatAny(v)
+			switch strings.ToLower(k) {
+			case "source_id":
+				if label := approvalEndpointLabel(a.ChangeDetails, "source"); label != "" {
+					display = label
+				}
+			case "target_id":
+				if label := approvalEndpointLabel(a.ChangeDetails, "target"); label != "" {
+					display = label
+				}
+			case "entity_ids":
+				ids := parseStringList(v)
+				if len(ids) > 0 {
+					short := make([]string, 0, len(ids))
+					for _, id := range ids {
+						short = append(short, shortID(id))
+					}
+					display = strings.Join(short, ", ")
+				}
+			}
 			summaryRows = append(summaryRows, components.TableRow{
 				Label: detailLabel(k),
-				Value: formatAny(v),
+				Value: display,
 			})
 		}
 
@@ -797,18 +817,24 @@ func approvalTitle(a api.Approval) string {
 	switch reqType {
 	case "create_relationship", "update_relationship":
 		relType := strings.TrimSpace(fmt.Sprintf("%v", a.ChangeDetails["relationship_type"]))
-		srcType := strings.TrimSpace(fmt.Sprintf("%v", a.ChangeDetails["source_type"]))
-		tgtType := strings.TrimSpace(fmt.Sprintf("%v", a.ChangeDetails["target_type"]))
-
 		relType = components.SanitizeOneLine(relType)
-		srcType = components.SanitizeOneLine(srcType)
-		tgtType = components.SanitizeOneLine(tgtType)
-
+		src := approvalEndpointLabel(a.ChangeDetails, "source")
+		tgt := approvalEndpointLabel(a.ChangeDetails, "target")
 		if relType != "" && relType != "<nil>" {
-			if srcType != "" && srcType != "<nil>" && tgtType != "" && tgtType != "<nil>" {
-				return components.SanitizeOneLine(fmt.Sprintf("%s (%s -> %s)", relType, srcType, tgtType))
+			if src != "" && tgt != "" {
+				return components.SanitizeOneLine(fmt.Sprintf("%s (%s -> %s)", relType, src, tgt))
 			}
 			return relType
+		}
+	case "bulk_update_entity_scopes", "bulk_update_entity_tags":
+		entityIDs := parseStringList(a.ChangeDetails["entity_ids"])
+		if len(entityIDs) == 1 {
+			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), shortID(entityIDs[0])))
+		}
+		if len(entityIDs) > 1 {
+			return components.SanitizeOneLine(
+				fmt.Sprintf("%s (%d entities)", humanizeApprovalType(reqType), len(entityIDs)),
+			)
 		}
 	case "create_log", "update_log":
 		logType := strings.TrimSpace(fmt.Sprintf("%v", a.ChangeDetails["log_type"]))
@@ -882,11 +908,18 @@ func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 	if rel := previewStringValue(a.ChangeDetails, "relationship_type"); rel != "" {
 		lines = append(lines, renderPreviewRow("Rel", rel, width))
 	}
-	if src := previewStringValue(a.ChangeDetails, "source_type"); src != "" {
+	if src := approvalEndpointLabel(a.ChangeDetails, "source"); src != "" {
 		lines = append(lines, renderPreviewRow("From", src, width))
 	}
-	if tgt := previewStringValue(a.ChangeDetails, "target_type"); tgt != "" {
+	if tgt := approvalEndpointLabel(a.ChangeDetails, "target"); tgt != "" {
 		lines = append(lines, renderPreviewRow("To", tgt, width))
+	}
+	if ids := parseStringList(a.ChangeDetails["entity_ids"]); len(ids) > 0 {
+		display := make([]string, 0, len(ids))
+		for _, id := range ids {
+			display = append(display, shortID(id))
+		}
+		lines = append(lines, renderPreviewRow("Entities", strings.Join(display, ", "), width))
 	}
 	if logType := previewStringValue(a.ChangeDetails, "log_type"); logType != "" {
 		lines = append(lines, renderPreviewRow("Log", logType, width))
@@ -1008,7 +1041,7 @@ func (m *InboxModel) startReject() (InboxModel, tea.Cmd) {
 
 func (m InboxModel) handleRejectPreview(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	switch {
-	case isKey(msg, "y"):
+	case isKey(msg, "y"), isEnter(msg):
 		ids := append([]string(nil), m.bulkRejectIDs...)
 		notes := m.rejectBuf
 		m.rejectPreview = false
@@ -1100,6 +1133,43 @@ func parseStringList(raw any) []string {
 	default:
 		return nil
 	}
+}
+
+func approvalRequestedBy(a api.Approval) string {
+	requested := strings.TrimSpace(a.RequestedBy)
+	agent := strings.TrimSpace(components.SanitizeOneLine(a.AgentName))
+	if requested == "" {
+		if agent == "" {
+			return "None"
+		}
+		return agent
+	}
+	if agent == "" {
+		return shortID(requested)
+	}
+	return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", agent, shortID(requested)))
+}
+
+func approvalEndpointLabel(details api.JSONMap, prefix string) string {
+	nameKeys := []string{
+		prefix + "_name",
+		prefix + "_title",
+		prefix + "_label",
+	}
+	for _, key := range nameKeys {
+		if value := previewStringValue(details, key); value != "" {
+			return value
+		}
+	}
+	idKey := prefix + "_id"
+	if id := previewStringValue(details, idKey); id != "" {
+		return shortID(id)
+	}
+	typeKey := prefix + "_type"
+	if kind := previewStringValue(details, typeKey); kind != "" {
+		return kind
+	}
+	return ""
 }
 
 func parseScopesCSV(raw string) []string {

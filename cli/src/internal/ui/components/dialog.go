@@ -157,8 +157,11 @@ func renderDiffRows(rows []DiffRow, width int) string {
 
 func renderDiffValue(style lipgloss.Style, prefix, value string, valueWidth int) string {
 	safe := SanitizeText(value)
-	if safe == "" {
+	trimmed := strings.TrimSpace(safe)
+	if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
 		safe = "None"
+	} else {
+		safe = trimmed
 	}
 	lines := strings.Split(safe, "\n")
 

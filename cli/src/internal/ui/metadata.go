@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
@@ -235,7 +237,16 @@ func metadataPreview(data map[string]any, maxLen int) string {
 	if len(data) == 0 || maxLen <= 0 {
 		return ""
 	}
-	keys := []string{"summary", "notes", "content", "url", "author"}
+	keys := []string{
+		"summary",
+		"notes",
+		"content",
+		"text",
+		"context_segments",
+		"url",
+		"author",
+		"title",
+	}
 	for _, key := range keys {
 		if val, ok := data[key]; ok {
 			if preview := metadataValuePreview(val, maxLen); preview != "" {
@@ -264,9 +275,48 @@ func metadataValuePreview(value any, maxLen int) string {
 	case []any:
 		parts := make([]string, 0, len(typed))
 		for _, item := range typed {
-			parts = append(parts, components.SanitizeText(fmt.Sprintf("%v", item)))
+			snippet := metadataValuePreview(item, maxLen)
+			if snippet == "" {
+				continue
+			}
+			parts = append(parts, snippet)
+			joined := strings.Join(parts, " | ")
+			if lipgloss.Width(joined) >= maxLen {
+				break
+			}
 		}
-		return truncateString(strings.Join(parts, ", "), maxLen)
+		return truncateString(strings.Join(parts, " | "), maxLen)
+	case map[string]any:
+		if textRaw, ok := typed["text"]; ok {
+			text := strings.TrimSpace(components.SanitizeText(fmt.Sprintf("%v", textRaw)))
+			if text != "" {
+				if scopesRaw, hasScopes := typed["scopes"]; hasScopes {
+					scopes := metadataValuePreview(scopesRaw, maxLen/3)
+					if scopes != "" {
+						return truncateString("["+scopes+"] "+text, maxLen)
+					}
+				}
+				return truncateString(text, maxLen)
+			}
+		}
+		for _, key := range []string{"summary", "notes", "content", "title", "name"} {
+			if v, ok := typed[key]; ok {
+				if snippet := metadataValuePreview(v, maxLen); snippet != "" {
+					return snippet
+				}
+			}
+		}
+		keys := make([]string, 0, len(typed))
+		for k := range typed {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			if snippet := metadataValuePreview(typed[key], maxLen); snippet != "" {
+				return truncateString(key+": "+snippet, maxLen)
+			}
+		}
+		return ""
 	default:
 		return truncateString(components.SanitizeText(fmt.Sprintf("%v", value)), maxLen)
 	}

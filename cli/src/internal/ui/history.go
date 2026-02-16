@@ -634,11 +634,8 @@ func (m HistoryModel) renderActors() string {
 		}
 		actor := m.actors[absIdx]
 
-		name := "unknown"
-		if actor.ActorName != nil && strings.TrimSpace(*actor.ActorName) != "" {
-			name = strings.TrimSpace(*actor.ActorName)
-		}
-		display := fmt.Sprintf("%s  %s:%s", name, actor.ActorType, shortID(actor.ActorID))
+		name := actorDisplayName(actor)
+		display := formatActorDisplay(actor, name)
 
 		if m.actorList.IsSelected(absIdx) {
 			activeRowRel = len(tableRows)
@@ -674,10 +671,7 @@ func (m HistoryModel) renderActorPreview(actor api.AuditActor, width int) string
 		return ""
 	}
 
-	name := "unknown"
-	if actor.ActorName != nil && strings.TrimSpace(*actor.ActorName) != "" {
-		name = strings.TrimSpace(*actor.ActorName)
-	}
+	name := actorDisplayName(actor)
 	title := name
 
 	var lines []string
@@ -687,7 +681,7 @@ func (m HistoryModel) renderActorPreview(actor api.AuditActor, width int) string
 	}
 	lines = append(lines, "")
 
-	lines = append(lines, renderPreviewRow("Actor", actor.ActorType+":"+shortID(actor.ActorID), width))
+	lines = append(lines, renderPreviewRow("Actor", formatActorRef(actor), width))
 	lines = append(lines, renderPreviewRow("Actions", fmt.Sprintf("%d", actor.ActionCount), width))
 	lines = append(lines, renderPreviewRow("Last", formatLocalTimeFull(actor.LastSeen), width))
 
@@ -827,19 +821,48 @@ func formatScopeLine(scope api.AuditScope) string {
 }
 
 func formatActorLine(actor api.AuditActor) string {
-	name := "unknown"
-	if actor.ActorName != nil && *actor.ActorName != "" {
-		name = *actor.ActorName
-	}
+	name := actorDisplayName(actor)
 	when := formatLocalTimeCompact(actor.LastSeen)
 	return fmt.Sprintf(
-		"%s  %s:%s  actions:%d  last:%s",
+		"%s  %s  actions:%d  last:%s",
 		name,
-		actor.ActorType,
-		shortID(actor.ActorID),
+		formatActorRef(actor),
 		actor.ActionCount,
 		when,
 	)
+}
+
+func actorDisplayName(actor api.AuditActor) string {
+	if actor.ActorName != nil {
+		if name := strings.TrimSpace(*actor.ActorName); name != "" {
+			return name
+		}
+	}
+	actorType := strings.TrimSpace(actor.ActorType)
+	if actorType == "" {
+		return "system"
+	}
+	return actorType
+}
+
+func formatActorRef(actor api.AuditActor) string {
+	actorType := strings.TrimSpace(actor.ActorType)
+	if actorType == "" {
+		actorType = "system"
+	}
+	actorID := strings.TrimSpace(actor.ActorID)
+	if actorID == "" {
+		return actorType
+	}
+	return actorType + ":" + shortID(actorID)
+}
+
+func formatActorDisplay(actor api.AuditActor, name string) string {
+	ref := formatActorRef(actor)
+	if strings.EqualFold(strings.TrimSpace(name), strings.TrimSpace(ref)) {
+		return name
+	}
+	return fmt.Sprintf("%s  %s", name, ref)
 }
 
 func formatAuditFilters(filter auditFilter) string {
@@ -911,7 +934,7 @@ func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
 			continue
 		}
 		rows = append(rows, components.DiffRow{
-			Label: key,
+			Label: humanizeAuditField(key),
 			From:  formatAuditValue(from),
 			To:    formatAuditValue(to),
 		})
@@ -921,21 +944,58 @@ func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
 
 func formatAuditValue(value any) string {
 	if value == nil {
-		return "null"
+		return "None"
 	}
 	switch v := value.(type) {
 	case string:
-		if v == "" {
-			return "-"
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
+			return "None"
 		}
-		return v
+		return components.SanitizeText(trimmed)
 	case time.Time:
 		return formatLocalTimeFull(v)
+	case map[string]any, []any:
+		b, err := json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			return components.SanitizeText(fmt.Sprintf("%v", v))
+		}
+		return components.SanitizeText(string(b))
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
-			return fmt.Sprintf("%v", v)
+			return components.SanitizeText(fmt.Sprintf("%v", v))
 		}
-		return string(b)
+		rendered := strings.TrimSpace(string(b))
+		if rendered == "" || rendered == "null" || rendered == "\"\"" {
+			return "None"
+		}
+		return components.SanitizeText(rendered)
 	}
+}
+
+func humanizeAuditField(raw string) string {
+	key := strings.TrimSpace(raw)
+	if key == "" {
+		return ""
+	}
+	key = strings.ReplaceAll(key, "-", "_")
+	parts := strings.Split(key, "_")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		lower := strings.ToLower(part)
+		if lower == "id" {
+			out = append(out, "ID")
+			continue
+		}
+		out = append(out, strings.ToUpper(lower[:1])+lower[1:])
+	}
+	if len(out) == 0 {
+		return components.SanitizeOneLine(raw)
+	}
+	return components.SanitizeOneLine(strings.Join(out, " "))
 }

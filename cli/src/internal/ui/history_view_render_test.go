@@ -91,7 +91,7 @@ func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 	assert.Contains(t, out, "Table")
 	assert.Contains(t, out, "entities")
 	assert.Contains(t, out, "Changes")
-	assert.Contains(t, out, "status")
+	assert.Contains(t, out, "Status")
 	assert.Contains(t, out, "inactive")
 	assert.Contains(t, out, "active")
 	assert.Contains(t, out, "Reason")
