@@ -1513,15 +1513,7 @@ async def update_entity(payload: UpdateEntityInput, ctx: Context) -> dict:
     pool, enums, agent = await require_context(ctx)
 
     _require_uuid(payload.entity_id, "entity")
-
-    row = await pool.fetchrow(QUERIES["entities/get_by_id"], payload.entity_id)
-    if not row:
-        raise ValueError("Entity not found")
-    entity = dict(row)
-    if not _has_write_scopes(
-        agent.get("scopes", []), entity.get("privacy_scope_ids") or []
-    ):
-        raise ValueError("Access denied")
+    await _require_entity_write_access(pool, enums, agent, [payload.entity_id])
 
     if payload.status is not None:
         require_status(payload.status, enums)
