@@ -133,6 +133,7 @@ func metadataInputLines(data map[string]any, indent int) []string {
 }
 
 func formatMetadataValue(value any) string {
+	value = normalizeStructuredMetadataValue(value)
 	switch typed := value.(type) {
 	case []any:
 		parts := make([]string, 0, len(typed))
@@ -147,7 +148,11 @@ func formatMetadataValue(value any) string {
 		}
 		return components.SanitizeText(string(b))
 	case string:
-		return components.SanitizeText(typed)
+		trimmed := strings.TrimSpace(typed)
+		if trimmed == "" || trimmed == "<nil>" {
+			return "None"
+		}
+		return components.SanitizeText(trimmed)
 	case nil:
 		return "None"
 	default:
@@ -160,9 +165,14 @@ func formatMetadataValue(value any) string {
 }
 
 func formatMetadataInline(value any) string {
+	value = normalizeStructuredMetadataValue(value)
 	switch typed := value.(type) {
 	case string:
-		return components.SanitizeText(typed)
+		trimmed := strings.TrimSpace(typed)
+		if trimmed == "" || trimmed == "<nil>" {
+			return "None"
+		}
+		return components.SanitizeText(trimmed)
 	case map[string]any:
 		b, err := json.Marshal(sanitizeMetadataValue(typed))
 		if err != nil {
@@ -266,6 +276,7 @@ func metadataPreview(data map[string]any, maxLen int) string {
 }
 
 func metadataValuePreview(value any, maxLen int) string {
+	value = normalizeStructuredMetadataValue(value)
 	if maxLen <= 0 {
 		return ""
 	}
@@ -369,7 +380,8 @@ func metadataLinesStyled(data map[string]any, indent int) []string {
 	var lines []string
 	pad := strings.Repeat(" ", indent)
 	for _, k := range keys {
-		switch typed := data[k].(type) {
+		value := normalizeStructuredMetadataValue(data[k])
+		switch typed := value.(type) {
 		case map[string]any:
 			lines = append(
 				lines,
@@ -377,6 +389,26 @@ func metadataLinesStyled(data map[string]any, indent int) []string {
 					MetaPunctStyle.Render(":"),
 			)
 			lines = append(lines, metadataLinesStyled(typed, indent+2)...)
+		case []any:
+			if len(typed) == 0 {
+				lines = append(
+					lines,
+					fmt.Sprintf(
+						"%s%s%s %s",
+						pad,
+						MetaKeyStyle.Render(components.SanitizeText(k)),
+						MetaPunctStyle.Render(":"),
+						MetaValueStyle.Render("[]"),
+					),
+				)
+				continue
+			}
+			lines = append(
+				lines,
+				pad+MetaKeyStyle.Render(components.SanitizeText(k))+
+					MetaPunctStyle.Render(":"),
+			)
+			lines = append(lines, metadataListLinesStyled(typed, indent+2)...)
 		default:
 			value := formatMetadataValue(typed)
 			lines = append(
@@ -404,10 +436,14 @@ func metadataLinesPlain(data map[string]any, indent int) []string {
 	var lines []string
 	pad := strings.Repeat(" ", indent)
 	for _, k := range keys {
-		switch typed := data[k].(type) {
+		value := normalizeStructuredMetadataValue(data[k])
+		switch typed := value.(type) {
 		case map[string]any:
 			lines = append(lines, pad+components.SanitizeText(k)+":")
 			lines = append(lines, metadataLinesPlain(typed, indent+2)...)
+		case []any:
+			lines = append(lines, pad+components.SanitizeText(k)+":")
+			lines = append(lines, metadataListLinesPlain(typed, indent+2)...)
 		default:
 			lines = append(
 				lines,
@@ -493,4 +529,129 @@ func normalizeScopeList(values []string) []string {
 		out = append(out, scope)
 	}
 	return out
+}
+
+func metadataListLinesStyled(items []any, indent int) []string {
+	if len(items) == 0 {
+		return nil
+	}
+	pad := strings.Repeat(" ", indent)
+	var lines []string
+	for _, rawItem := range items {
+		item := normalizeStructuredMetadataValue(rawItem)
+		switch typed := item.(type) {
+		case map[string]any:
+			if textRaw, ok := typed["text"]; ok {
+				text := strings.TrimSpace(components.SanitizeText(fmt.Sprintf("%v", textRaw)))
+				if text != "" {
+					scopeText := ""
+					if scopesRaw, hasScopes := typed["scopes"]; hasScopes {
+						scopes := parseStringSlice(scopesRaw)
+						if len(scopes) > 0 {
+							scopeText = "[" + strings.Join(scopes, ", ") + "] "
+						}
+					}
+					lines = append(
+						lines,
+						pad+MetaPunctStyle.Render("- ")+MetaValueStyle.Render(scopeText+text),
+					)
+					continue
+				}
+			}
+			lines = append(lines, pad+MetaPunctStyle.Render("- ")+MetaValueStyle.Render("{...}"))
+			lines = append(lines, metadataLinesStyled(typed, indent+2)...)
+		case []any:
+			lines = append(lines, pad+MetaPunctStyle.Render("- ")+MetaValueStyle.Render("[...]"))
+			lines = append(lines, metadataListLinesStyled(typed, indent+2)...)
+		default:
+			lines = append(
+				lines,
+				pad+MetaPunctStyle.Render("- ")+MetaValueStyle.Render(formatMetadataValue(typed)),
+			)
+		}
+	}
+	return lines
+}
+
+func metadataListLinesPlain(items []any, indent int) []string {
+	if len(items) == 0 {
+		return nil
+	}
+	pad := strings.Repeat(" ", indent)
+	var lines []string
+	for _, rawItem := range items {
+		item := normalizeStructuredMetadataValue(rawItem)
+		switch typed := item.(type) {
+		case map[string]any:
+			lines = append(lines, pad+"-")
+			lines = append(lines, metadataLinesPlain(typed, indent+2)...)
+		case []any:
+			lines = append(lines, pad+"-")
+			lines = append(lines, metadataListLinesPlain(typed, indent+2)...)
+		default:
+			lines = append(lines, pad+"- "+formatMetadataValue(typed))
+		}
+	}
+	return lines
+}
+
+func normalizeStructuredMetadataValue(value any) any {
+	switch typed := value.(type) {
+	case string:
+		if parsed, ok := parseJSONStructuredString(typed); ok {
+			return parsed
+		}
+		return typed
+	default:
+		return value
+	}
+}
+
+func parseJSONStructuredString(raw string) (any, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) < 2 {
+		return nil, false
+	}
+	if !((strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]"))) {
+		return nil, false
+	}
+	var parsed any
+	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+		return nil, false
+	}
+	switch parsed.(type) {
+	case map[string]any, []any:
+		return parsed, true
+	default:
+		return nil, false
+	}
+}
+
+func parseStringSlice(value any) []string {
+	switch typed := value.(type) {
+	case []string:
+		return normalizeScopeList(typed)
+	case []any:
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			text := strings.TrimSpace(fmt.Sprintf("%v", item))
+			if text != "" {
+				out = append(out, text)
+			}
+		}
+		return normalizeScopeList(out)
+	case string:
+		parts := strings.Split(typed, ",")
+		out := make([]string, 0, len(parts))
+		for _, part := range parts {
+			text := strings.TrimSpace(part)
+			if text != "" {
+				out = append(out, text)
+			}
+		}
+		return normalizeScopeList(out)
+	default:
+		return nil
+	}
 }
