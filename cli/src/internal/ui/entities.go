@@ -69,8 +69,8 @@ const (
 	relEditFieldCount
 )
 
-var entityStatusOptions = []string{"active", "archived"}
-var relationshipStatusOptions = []string{"active", "archived"}
+var entityStatusOptions = []string{"active", "inactive"}
+var relationshipStatusOptions = []string{"active", "inactive"}
 
 type bulkTarget int
 
@@ -908,7 +908,7 @@ func (m EntitiesModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -1380,7 +1380,7 @@ func (m EntitiesModel) renderHistory() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -1814,7 +1814,7 @@ func (m EntitiesModel) handleConfirmKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 				m.resetConfirmState()
 				return m, nil
 			}
-			status := "archived"
+			status := "inactive"
 			input := api.UpdateEntityInput{Status: &status}
 			m.view = m.confirmReturn
 			m.resetConfirmState()
@@ -1848,7 +1848,7 @@ func (m EntitiesModel) handleConfirmKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 				m.resetConfirmState()
 				return m, nil
 			}
-			status := "archived"
+			status := "inactive"
 			input := api.UpdateRelationshipInput{Status: &status}
 			m.view = m.confirmReturn
 			m.resetConfirmState()
@@ -1883,7 +1883,7 @@ func (m EntitiesModel) renderConfirm() string {
 			diffs = append(diffs, components.DiffRow{
 				Label: "status",
 				From:  firstNonEmpty(m.detail.Status, "active"),
-				To:    "archived",
+				To:    "inactive",
 			})
 		}
 	case "entity-revert":
@@ -1916,7 +1916,7 @@ func (m EntitiesModel) renderConfirm() string {
 			diffs = append(diffs, components.DiffRow{
 				Label: "status",
 				From:  firstNonEmpty(rel.Status, "active"),
-				To:    "archived",
+				To:    "inactive",
 			})
 		}
 	}
@@ -2127,7 +2127,7 @@ func (m EntitiesModel) renderRelate() string {
 
 		gap := 3
 		tableWidth := contentWidth
-		sideBySide := contentWidth >= 110
+		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
 			tableWidth = contentWidth - previewWidth - gap
 			if tableWidth < 60 {

@@ -46,7 +46,7 @@ const (
 	logEditFieldCount
 )
 
-var logStatusOptions = []string{"active", "archived"}
+var logStatusOptions = []string{"active", "inactive"}
 
 // --- Logs Model ---
 
@@ -301,7 +301,7 @@ func (m LogsModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {

@@ -202,7 +202,7 @@ func renderGridCell(text string, width int, align lipgloss.Position) string {
 		return ""
 	}
 
-	clamped := ClampTextWidth(text, width)
+	clamped := ClampTextWidthEllipsis(text, width)
 	w := lipgloss.Width(clamped)
 	if w >= width {
 		return truncateRunes(clamped, width)

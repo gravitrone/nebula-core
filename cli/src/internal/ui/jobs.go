@@ -55,6 +55,7 @@ type JobsModel struct {
 	allItems        []api.Job
 	items           []api.Job
 	list            *components.List
+	selected        map[string]bool
 	loading         bool
 	detail          *api.Job
 	searchBuf       string
@@ -63,6 +64,7 @@ type JobsModel struct {
 	modeFocus       bool
 	changingSt      bool
 	statusBuf       string
+	statusTargets   []string
 	creatingSubtask bool
 	subtaskBuf      string
 	metaExpanded    bool
@@ -92,9 +94,10 @@ type JobsModel struct {
 // NewJobsModel builds the jobs UI model.
 func NewJobsModel(client *api.Client) JobsModel {
 	return JobsModel{
-		client: client,
-		list:   components.NewList(15),
-		view:   jobsViewList,
+		client:   client,
+		list:     components.NewList(15),
+		selected: map[string]bool{},
+		view:     jobsViewList,
 		addFields: []formField{
 			{label: "Title"},
 			{label: "Description"},
@@ -119,6 +122,8 @@ func (m JobsModel) Init() tea.Cmd {
 	m.addErr = ""
 	m.searchBuf = ""
 	m.searchSuggest = ""
+	m.selected = map[string]bool{}
+	m.statusTargets = nil
 	return m.loadJobs
 }
 
@@ -139,6 +144,7 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.detail = nil
 		m.changingSt = false
 		m.statusBuf = ""
+		m.statusTargets = nil
 		return m, m.loadJobs
 	case subtaskCreatedMsg:
 		m.detail = nil
@@ -155,6 +161,7 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.addSaving = false
 		m.editSaving = false
 		m.changingSt = false
+		m.statusTargets = nil
 		m.creatingSubtask = false
 		m.addErr = msg.err.Error()
 		return m, nil
@@ -202,7 +209,7 @@ func (m JobsModel) View() string {
 		return components.Indent(components.InputDialog("New Subtask Title", m.subtaskBuf), 1)
 	}
 
-	if m.changingSt && m.detail != nil {
+	if m.changingSt {
 		return components.Indent(components.InputDialog("New Status (pending/active/completed/failed)", m.statusBuf), 1)
 	}
 	modeLine := m.renderModeLine()
@@ -288,7 +295,7 @@ func (m JobsModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -308,9 +315,9 @@ func (m JobsModel) renderList() string {
 		availableCols = 30
 	}
 
-	statusWidth := 11
+	statusWidth := 12
 	prioWidth := 10
-	atWidth := 11
+	atWidth := 14
 	titleWidth := availableCols - (statusWidth + prioWidth + atWidth)
 	if titleWidth < 12 {
 		titleWidth = 12
@@ -352,8 +359,17 @@ func (m JobsModel) renderList() string {
 		if m.list.IsSelected(absIdx) {
 			activeRowRel = len(tableRows)
 		}
+		titleValue := components.SanitizeOneLine(j.Title)
+		if len(m.selected) > 0 {
+			if m.selected[j.ID] {
+				titleValue = "[X] " + titleValue
+			} else {
+				titleValue = "[ ] " + titleValue
+			}
+		}
+
 		tableRows = append(tableRows, []string{
-			components.ClampTextWidthEllipsis(components.SanitizeOneLine(j.Title), titleWidth),
+			components.ClampTextWidthEllipsis(titleValue, titleWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			components.ClampTextWidthEllipsis(priority, prioWidth),
 			formatLocalTimeCompact(at),
@@ -361,6 +377,9 @@ func (m JobsModel) renderList() string {
 	}
 	title := "Jobs"
 	countLine := fmt.Sprintf("%d total", len(m.items))
+	if selected := m.selectedCount(); selected > 0 {
+		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
+	}
 	if strings.TrimSpace(m.searchBuf) != "" {
 		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
 		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
@@ -443,12 +462,16 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 		} else {
 			m.list.Up()
 		}
-	case isEnter(msg), isSpace(msg):
+	case isEnter(msg):
 		if idx := m.list.Selected(); idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.view = jobsViewDetail
 		}
+	case isSpace(msg):
+		m.toggleSelected()
+	case isKey(msg, "b"):
+		m.toggleSelectAll()
 	case isKey(msg, "backspace", "delete"):
 		if len(m.searchBuf) > 0 {
 			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
@@ -472,12 +495,20 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.applyJobSearch()
 		}
 	case isKey(msg, "s"):
+		targets := m.selectedIDs()
+		if len(targets) > 0 {
+			m.changingSt = true
+			m.statusBuf = ""
+			m.statusTargets = targets
+			return m, nil
+		}
 		if idx := m.list.Selected(); idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.view = jobsViewDetail
 			m.changingSt = true
 			m.statusBuf = ""
+			m.statusTargets = []string{item.ID}
 		}
 	default:
 		ch := msg.String()
@@ -890,7 +921,79 @@ func (m *JobsModel) applyJobSearch() {
 		labels[i] = formatJobLine(j)
 	}
 	m.list.SetItems(labels)
+	m.retainSelection()
 	m.updateSearchSuggest()
+}
+
+func (m *JobsModel) retainSelection() {
+	if len(m.selected) == 0 {
+		return
+	}
+	visible := make(map[string]struct{}, len(m.allItems))
+	for _, item := range m.allItems {
+		visible[item.ID] = struct{}{}
+	}
+	next := make(map[string]bool, len(m.selected))
+	for id := range m.selected {
+		if _, ok := visible[id]; ok {
+			next[id] = true
+		}
+	}
+	m.selected = next
+}
+
+func (m *JobsModel) toggleSelected() {
+	idx := m.list.Selected()
+	if idx < 0 || idx >= len(m.items) {
+		return
+	}
+	id := strings.TrimSpace(m.items[idx].ID)
+	if id == "" {
+		return
+	}
+	if m.selected[id] {
+		delete(m.selected, id)
+		return
+	}
+	m.selected[id] = true
+}
+
+func (m *JobsModel) toggleSelectAll() {
+	if len(m.items) == 0 {
+		return
+	}
+	if len(m.selected) == len(m.items) {
+		m.selected = map[string]bool{}
+		return
+	}
+	selected := make(map[string]bool, len(m.items))
+	for _, item := range m.items {
+		selected[item.ID] = true
+	}
+	m.selected = selected
+}
+
+func (m JobsModel) selectedIDs() []string {
+	if len(m.selected) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(m.selected))
+	for _, item := range m.items {
+		if m.selected[item.ID] {
+			ids = append(ids, item.ID)
+		}
+	}
+	if len(ids) > 0 {
+		return ids
+	}
+	for id := range m.selected {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+func (m JobsModel) selectedCount() int {
+	return len(m.selectedIDs())
 }
 
 func (m *JobsModel) updateSearchSuggest() {
@@ -919,6 +1022,7 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	case isKey(msg, "s"):
 		m.changingSt = true
 		m.statusBuf = ""
+		m.statusTargets = []string{m.detail.ID}
 	case isKey(msg, "n"):
 		m.creatingSubtask = true
 		m.subtaskBuf = ""
@@ -936,15 +1040,28 @@ func (m JobsModel) handleStatusInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	case isBack(msg):
 		m.changingSt = false
 		m.statusBuf = ""
+		m.statusTargets = nil
 	case isEnter(msg):
-		id := m.detail.ID
-		status := m.statusBuf
+		ids := append([]string(nil), m.statusTargets...)
+		if len(ids) == 0 && m.detail != nil {
+			ids = []string{m.detail.ID}
+		}
+		status := strings.TrimSpace(m.statusBuf)
+		if len(ids) == 0 || status == "" {
+			m.changingSt = false
+			m.statusBuf = ""
+			m.statusTargets = nil
+			return m, nil
+		}
 		m.changingSt = false
 		m.statusBuf = ""
+		m.statusTargets = nil
+		m.selected = map[string]bool{}
 		return m, func() tea.Msg {
-			_, err := m.client.UpdateJobStatus(id, status)
-			if err != nil {
-				return errMsg{err}
+			for _, id := range ids {
+				if _, err := m.client.UpdateJobStatus(id, status); err != nil {
+					return errMsg{err}
+				}
 			}
 			return jobStatusUpdatedMsg{}
 		}

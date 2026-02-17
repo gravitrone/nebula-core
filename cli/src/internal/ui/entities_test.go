@@ -61,7 +61,7 @@ func TestEntitiesSaveEditCallsUpdate(t *testing.T) {
 	cmd()
 
 	if assert.NotNil(t, captured.Status) {
-		assert.Equal(t, "archived", *captured.Status)
+		assert.Equal(t, "inactive", *captured.Status)
 	}
 	if assert.NotNil(t, captured.Tags) {
 		assert.Equal(t, []string{"alpha"}, *captured.Tags)

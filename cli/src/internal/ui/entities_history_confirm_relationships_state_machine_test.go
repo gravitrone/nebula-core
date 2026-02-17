@@ -134,10 +134,10 @@ func TestEntitiesArchiveConfirmCallsUpdateEntity(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	assert.Equal(t, "archived", gotStatus)
+	assert.Equal(t, "inactive", gotStatus)
 	assert.Equal(t, entitiesViewDetail, model.view)
 	require.NotNil(t, model.detail)
-	assert.Equal(t, "archived", model.detail.Status)
+	assert.Equal(t, "inactive", model.detail.Status)
 }
 
 func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
@@ -320,7 +320,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	msg = cmd()
 	model, _ = model.Update(msg)
 
-	assert.Equal(t, "archived", gotPatchStatus)
+	assert.Equal(t, "inactive", gotPatchStatus)
 
 	// Relationship edit validation: invalid JSON blocks save.
 	model.view = entitiesViewRelationships

@@ -359,6 +359,7 @@ type Approval struct {
 	JobID         *string   `json:"job_id"`
 	RequestType   string    `json:"request_type"`
 	RequestedBy   string    `json:"requested_by"`
+	RequestedByName string  `json:"requested_by_name"`
 	AgentName     string    `json:"agent_name"`
 	ChangeDetails JSONMap   `json:"change_details"`
 	ReviewDetails JSONMap   `json:"review_details"`

@@ -53,16 +53,16 @@ var (
 )
 
 func boxWidth(width int) int {
-	// Use most of the terminal width, capped to keep a centered layout.
+	// Prefer near-full width so dense tables do not clip on common laptop sizes.
 	if width <= 0 {
 		return 0
 	}
-	w := width * 80 / 100
+	w := width - 6
 	if w < 40 {
 		w = 40
 	}
-	if w > 140 {
-		w = 140
+	if w > 220 {
+		w = 220
 	}
 	return w
 }

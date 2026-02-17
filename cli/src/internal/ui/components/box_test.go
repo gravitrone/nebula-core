@@ -10,8 +10,8 @@ import (
 
 func TestBoxWidthBounds(t *testing.T) {
 	assert.Equal(t, 40, boxWidth(10))
-	assert.Equal(t, 140, boxWidth(200))
-	assert.Equal(t, 80, boxWidth(100))
+	assert.Equal(t, 194, boxWidth(200))
+	assert.Equal(t, 94, boxWidth(100))
 }
 
 func TestBoxNarrowTerminalClampsWidth(t *testing.T) {

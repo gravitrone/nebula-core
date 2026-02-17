@@ -292,7 +292,7 @@ func (m ProfileModel) renderTaxonomy() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {

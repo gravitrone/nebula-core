@@ -223,7 +223,7 @@ func (m InboxModel) View() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -284,7 +284,7 @@ func (m InboxModel) View() string {
 		}
 		title := components.ClampTextWidthEllipsis(fullTitle, titleWidth)
 		action := components.ClampTextWidthEllipsis(humanizeApprovalType(item.RequestType), actionWidth)
-		who := components.ClampTextWidthEllipsis(components.SanitizeOneLine(item.AgentName), whoWidth)
+		who := components.ClampTextWidthEllipsis(approvalWhoLabel(item), whoWidth)
 		when := formatLocalTimeCompact(item.CreatedAt)
 
 		if m.list.IsSelected(absIdx) {
@@ -622,13 +622,18 @@ func (m InboxModel) renderDetail() string {
 					display = label
 				}
 			case "entity_ids":
-				ids := parseStringList(v)
-				if len(ids) > 0 {
-					short := make([]string, 0, len(ids))
-					for _, id := range ids {
-						short = append(short, shortID(id))
+				names := parseStringList(a.ChangeDetails["entity_names"])
+				if len(names) > 0 {
+					display = strings.Join(names, ", ")
+				} else {
+					ids := parseStringList(v)
+					if len(ids) > 0 {
+						short := make([]string, 0, len(ids))
+						for _, id := range ids {
+							short = append(short, shortID(id))
+						}
+						display = strings.Join(short, ", ")
 					}
-					display = strings.Join(short, ", ")
 				}
 			}
 			summaryRows = append(summaryRows, components.TableRow{
@@ -827,6 +832,17 @@ func approvalTitle(a api.Approval) string {
 			return relType
 		}
 	case "bulk_update_entity_scopes", "bulk_update_entity_tags":
+		entityNames := parseStringList(a.ChangeDetails["entity_names"])
+		if len(entityNames) == 1 {
+			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), entityNames[0]))
+		}
+		if len(entityNames) > 1 {
+			preview := strings.Join(entityNames[:min(2, len(entityNames))], ", ")
+			if len(entityNames) > 2 {
+				preview += fmt.Sprintf(" +%d", len(entityNames)-2)
+			}
+			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), preview))
+		}
 		entityIDs := parseStringList(a.ChangeDetails["entity_ids"])
 		if len(entityIDs) == 1 {
 			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), shortID(entityIDs[0])))
@@ -873,7 +889,7 @@ func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 
 	title := components.SanitizeOneLine(approvalTitle(a))
 	action := components.SanitizeOneLine(humanizeApprovalType(a.RequestType))
-	who := components.SanitizeOneLine(a.AgentName)
+	who := approvalWhoLabel(a)
 	status := components.SanitizeOneLine(a.Status)
 	when := formatLocalTimeCompact(a.CreatedAt)
 
@@ -916,8 +932,13 @@ func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 	}
 	if ids := parseStringList(a.ChangeDetails["entity_ids"]); len(ids) > 0 {
 		display := make([]string, 0, len(ids))
-		for _, id := range ids {
-			display = append(display, shortID(id))
+		names := parseStringList(a.ChangeDetails["entity_names"])
+		if len(names) == len(ids) {
+			display = append(display, names...)
+		} else {
+			for _, id := range ids {
+				display = append(display, shortID(id))
+			}
 		}
 		lines = append(lines, renderPreviewRow("Entities", strings.Join(display, ", "), width))
 	}
@@ -1137,17 +1158,36 @@ func parseStringList(raw any) []string {
 
 func approvalRequestedBy(a api.Approval) string {
 	requested := strings.TrimSpace(a.RequestedBy)
+	requestedByName := strings.TrimSpace(components.SanitizeOneLine(a.RequestedByName))
 	agent := strings.TrimSpace(components.SanitizeOneLine(a.AgentName))
+	if requestedByName == "" {
+		requestedByName = agent
+	}
 	if requested == "" {
-		if agent == "" {
+		if requestedByName == "" {
 			return "None"
 		}
-		return agent
+		return requestedByName
 	}
-	if agent == "" {
+	if requestedByName == "" {
 		return shortID(requested)
 	}
-	return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", agent, shortID(requested)))
+	return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", requestedByName, shortID(requested)))
+}
+
+func approvalWhoLabel(a api.Approval) string {
+	label := strings.TrimSpace(components.SanitizeOneLine(a.RequestedByName))
+	if label != "" {
+		return label
+	}
+	label = strings.TrimSpace(components.SanitizeOneLine(a.AgentName))
+	if label != "" {
+		return label
+	}
+	if strings.TrimSpace(a.RequestedBy) != "" {
+		return shortID(a.RequestedBy)
+	}
+	return "system"
 }
 
 func approvalEndpointLabel(details api.JSONMap, prefix string) string {
@@ -1188,6 +1228,7 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 	if m.detail == nil {
 		return nil
 	}
+	details := m.detail.ChangeDetails
 	raw, ok := m.detail.ChangeDetails["changes"]
 	if !ok {
 		return nil
@@ -1202,8 +1243,8 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 		if !ok {
 			continue
 		}
-		from := formatAny(diffObj["from"])
-		to := formatAny(diffObj["to"])
+		from := approvalDiffValue(details, field, diffObj["from"])
+		to := approvalDiffValue(details, field, diffObj["to"])
 		if from == to {
 			continue
 		}
@@ -1214,6 +1255,32 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 		})
 	}
 	return rows
+}
+
+func approvalDiffValue(details api.JSONMap, field string, raw any) string {
+	base := formatAny(raw)
+	if base == "None" {
+		return base
+	}
+	switch strings.ToLower(strings.TrimSpace(field)) {
+	case "source_id":
+		if label := approvalEndpointLabel(details, "source"); label != "" {
+			return label
+		}
+	case "target_id":
+		if label := approvalEndpointLabel(details, "target"); label != "" {
+			return label
+		}
+	case "entity_id":
+		if label := previewStringValue(details, "entity_name"); label != "" {
+			return label
+		}
+	case "entity_ids":
+		if names := parseStringList(details["entity_names"]); len(names) > 0 {
+			return strings.Join(names, ", ")
+		}
+	}
+	return base
 }
 
 func (m InboxModel) handleFilterInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {

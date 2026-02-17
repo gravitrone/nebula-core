@@ -590,7 +590,7 @@ func (a App) renderTabs() string {
 			if a.tabNav {
 				segments = append(segments, TabActiveStyle.Render(label))
 			} else {
-				segments = append(segments, TabSelectedStyle.Render(label))
+				segments = append(segments, TabCurrentStyle.Render(label))
 			}
 		} else {
 			segments = append(segments, TabInactiveStyle.Render(label))
@@ -905,6 +905,8 @@ func (a App) statusHintsForTab() []string {
 			components.Hint("↑/↓", "Scroll"),
 			components.Hint("tab", "Complete"),
 			components.Hint("enter", "Details"),
+			components.Hint("space", "Select"),
+			components.Hint("b", "Select All"),
 			components.Hint("s", "Status"),
 		)
 	case tabLogs:
@@ -1139,15 +1141,13 @@ func (a App) renderToast() string {
 	}
 	switch a.toast.level {
 	case "success":
-		header := lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
-		return components.TitledBoxWithHeaderStyle("Success", a.toast.text, a.width, header)
+		return SuccessStyle.Render("[Success] ") + NormalStyle.Render(a.toast.text)
 	case "warning":
-		header := lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
-		return components.TitledBoxWithHeaderStyle("Warning", a.toast.text, a.width, header)
+		return WarningStyle.Render("[Warning] ") + NormalStyle.Render(a.toast.text)
 	case "error":
 		return components.ErrorBox("Error", a.toast.text, a.width)
 	default:
-		return components.TitledBox("Info", a.toast.text, a.width)
+		return MutedStyle.Render("[Info] ") + NormalStyle.Render(a.toast.text)
 	}
 }
 

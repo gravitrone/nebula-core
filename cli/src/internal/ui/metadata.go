@@ -148,7 +148,7 @@ func formatMetadataValue(value any) string {
 		}
 		return components.SanitizeText(string(b))
 	case string:
-		trimmed := strings.TrimSpace(typed)
+		trimmed := strings.TrimSpace(humanizeGoMapString(typed))
 		if trimmed == "" || trimmed == "<nil>" {
 			return "None"
 		}
@@ -282,7 +282,8 @@ func metadataValuePreview(value any, maxLen int) string {
 	}
 	switch typed := value.(type) {
 	case string:
-		return truncateString(strings.TrimSpace(components.SanitizeText(typed)), maxLen)
+		pretty := strings.TrimSpace(humanizeGoMapString(typed))
+		return truncateString(strings.TrimSpace(components.SanitizeText(pretty)), maxLen)
 	case []any:
 		parts := make([]string, 0, len(typed))
 		for _, item := range typed {
@@ -333,6 +334,38 @@ func metadataValuePreview(value any, maxLen int) string {
 	}
 }
 
+func humanizeGoMapString(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if !strings.HasPrefix(trimmed, "map[") || !strings.HasSuffix(trimmed, "]") {
+		return raw
+	}
+
+	scopes := ""
+	if start := strings.Index(trimmed, "scopes:["); start >= 0 {
+		start += len("scopes:[")
+		if end := strings.Index(trimmed[start:], "]"); end >= 0 {
+			scopes = strings.TrimSpace(trimmed[start : start+end])
+		}
+	}
+
+	text := ""
+	if start := strings.Index(trimmed, "text:"); start >= 0 {
+		start += len("text:")
+		text = strings.TrimSpace(trimmed[start:])
+		text = strings.TrimSuffix(text, "]")
+		text = strings.TrimSpace(text)
+	}
+
+	switch {
+	case text != "" && scopes != "":
+		return "[" + scopes + "] " + text
+	case text != "":
+		return text
+	default:
+		return raw
+	}
+}
+
 func sanitizeMetadataValue(value any) any {
 	switch typed := value.(type) {
 	case string:
@@ -363,7 +396,7 @@ func renderMetadataBlockWithTitle(title string, data map[string]any, width int, 
 		return ""
 	}
 	lines := metadataLinesStyled(data, 0)
-	maxLines := 6
+	maxLines := 16
 	if !expanded && len(lines) > maxLines {
 		lines = append(lines[:maxLines], MutedStyle.Render("..."))
 	}

@@ -53,7 +53,7 @@ const (
 	protoEditFieldCount
 )
 
-var protocolStatusOptions = []string{"active", "archived"}
+var protocolStatusOptions = []string{"active", "inactive"}
 
 // --- Protocols Model ---
 
@@ -326,7 +326,7 @@ func (m ProtocolsModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {

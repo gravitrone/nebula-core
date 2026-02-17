@@ -32,7 +32,7 @@ var contextTypes = []string{
 	"thread",
 }
 
-var contextStatusOptions = []string{"active", "archived"}
+var contextStatusOptions = []string{"active", "inactive"}
 
 type contextView int
 
@@ -909,7 +909,7 @@ func (m ContextModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -1554,7 +1554,7 @@ func (m ContextModel) renderLinkSearch() string {
 
 		gap := 3
 		tableWidth := contentWidth
-		sideBySide := contentWidth >= 110
+		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
 			tableWidth = contentWidth - previewWidth - gap
 			if tableWidth < 60 {

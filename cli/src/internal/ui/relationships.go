@@ -46,7 +46,7 @@ const (
 	relsEditFieldCount
 )
 
-var relsStatusOptions = []string{"active", "archived"}
+var relsStatusOptions = []string{"active", "inactive"}
 
 // --- Relationships Model ---
 
@@ -305,7 +305,7 @@ func (m RelationshipsModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -585,7 +585,7 @@ func (m RelationshipsModel) saveEdit() (RelationshipsModel, tea.Cmd) {
 func (m RelationshipsModel) handleConfirmKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
-		status := "archived"
+		status := "inactive"
 		input := api.UpdateRelationshipInput{Status: &status}
 		m.view = relsViewDetail
 		return m, func() tea.Msg {
@@ -615,7 +615,7 @@ func (m RelationshipsModel) renderConfirm() string {
 	diffs := []components.DiffRow{{
 		Label: "status",
 		From:  firstNonEmpty(m.detail.Status, "active"),
-		To:    "archived",
+		To:    "inactive",
 	}}
 	return components.ConfirmPreviewDialog("Archive Relationship", summary, diffs, m.width)
 }
@@ -859,7 +859,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 
 		gap := 3
 		tableWidth := contentWidth
-		sideBySide := contentWidth >= 110
+		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
 			tableWidth = contentWidth - previewWidth - gap
 			if tableWidth < 60 {
@@ -975,7 +975,7 @@ func (m RelationshipsModel) renderCreateType() string {
 
 		gap := 3
 		tableWidth := contentWidth
-		sideBySide := contentWidth >= 110
+		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
 			tableWidth = contentWidth - previewWidth - gap
 			if tableWidth < 60 {

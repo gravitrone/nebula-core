@@ -42,7 +42,7 @@ const (
 	fileFieldCount
 )
 
-var fileStatusOptions = []string{"active", "archived"}
+var fileStatusOptions = []string{"active", "inactive"}
 
 // --- Files Model ---
 
@@ -292,7 +292,7 @@ func (m FilesModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {

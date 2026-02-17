@@ -17,6 +17,10 @@ import (
 type historyLoadedMsg struct{ items []api.AuditEntry }
 type historyScopesLoadedMsg struct{ items []api.AuditScope }
 type historyActorsLoadedMsg struct{ items []api.AuditActor }
+type historyRevertedMsg struct {
+	entityID string
+	auditID  string
+}
 
 type historyView int
 
@@ -55,6 +59,7 @@ type HistoryModel struct {
 	actors    []api.AuditActor
 	scopeList *components.List
 	actorList *components.List
+	reverting bool
 }
 
 // NewHistoryModel builds the audit history UI model.
@@ -105,8 +110,15 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 		}
 		m.actorList.SetItems(labels)
 		return m, nil
+	case historyRevertedMsg:
+		m.reverting = false
+		m.view = historyViewList
+		m.detail = nil
+		m.loading = true
+		return m, m.loadHistory()
 	case errMsg:
 		m.loading = false
+		m.reverting = false
 		m.errText = msg.err.Error()
 		return m, nil
 	case tea.KeyMsg:
@@ -117,9 +129,23 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 		case historyViewList:
 			return m.handleListKeys(msg)
 		case historyViewDetail:
+			if m.reverting {
+				switch {
+				case isKey(msg, "y"), isEnter(msg):
+					return m.confirmRevert()
+				case isKey(msg, "n"), isBack(msg):
+					m.reverting = false
+					return m, nil
+				}
+				return m, nil
+			}
 			if isBack(msg) {
 				m.view = historyViewList
 				m.detail = nil
+				return m, nil
+			}
+			if isKey(msg, "r") && canRevertAuditEntry(m.detail) {
+				m.reverting = true
 				return m, nil
 			}
 		case historyViewScopes:
@@ -149,6 +175,9 @@ func (m HistoryModel) View() string {
 		return components.Indent(components.ErrorBox("Error", m.errText, m.width), 1)
 	}
 	if m.view == historyViewDetail && m.detail != nil {
+		if m.reverting {
+			return m.renderRevertConfirm(*m.detail)
+		}
 		return m.renderDetail(*m.detail)
 	}
 	if m.view == historyViewScopes {
@@ -158,6 +187,50 @@ func (m HistoryModel) View() string {
 		return m.renderActors()
 	}
 	return m.renderList()
+}
+
+func canRevertAuditEntry(entry *api.AuditEntry) bool {
+	if entry == nil {
+		return false
+	}
+	if strings.TrimSpace(entry.RecordID) == "" || strings.TrimSpace(entry.ID) == "" {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(entry.TableName), "entities")
+}
+
+func (m HistoryModel) renderRevertConfirm(entry api.AuditEntry) string {
+	summary := []components.TableRow{
+		{Label: "Action", Value: "Revert entity to selected audit entry"},
+		{Label: "Entity", Value: shortID(entry.RecordID)},
+		{Label: "Audit Entry", Value: shortID(entry.ID)},
+		{Label: "Changed At", Value: formatLocalTimeFull(entry.ChangedAt)},
+	}
+	diffs := buildAuditDiffRows(entry)
+	return components.Indent(
+		components.ConfirmPreviewDialog("Revert Entity", summary, diffs, m.width),
+		1,
+	)
+}
+
+func (m HistoryModel) confirmRevert() (HistoryModel, tea.Cmd) {
+	if m.detail == nil {
+		m.reverting = false
+		return m, nil
+	}
+	entityID := strings.TrimSpace(m.detail.RecordID)
+	auditID := strings.TrimSpace(m.detail.ID)
+	if entityID == "" || auditID == "" {
+		m.reverting = false
+		return m, nil
+	}
+	m.reverting = false
+	return m, func() tea.Msg {
+		if _, err := m.client.RevertEntity(entityID, auditID); err != nil {
+			return errMsg{err}
+		}
+		return historyRevertedMsg{entityID: entityID, auditID: auditID}
+	}
 }
 
 func (m HistoryModel) handleListKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
@@ -305,7 +378,7 @@ func (m HistoryModel) renderList() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -468,7 +541,7 @@ func (m HistoryModel) renderScopes() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -587,7 +660,7 @@ func (m HistoryModel) renderActors() string {
 
 	gap := 3
 	tableWidth := contentWidth
-	sideBySide := contentWidth >= 110
+	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
 		if tableWidth < 60 {
@@ -787,10 +860,14 @@ func formatAuditActor(entry api.AuditEntry) string {
 		return *entry.ActorName
 	}
 	if entry.ChangedByType != nil && entry.ChangedByID != nil {
-		return fmt.Sprintf("%s:%s", *entry.ChangedByType, shortID(*entry.ChangedByID))
+		kind := normalizeActorType(*entry.ChangedByType)
+		if strings.TrimSpace(*entry.ChangedByID) == "" {
+			return kind
+		}
+		return fmt.Sprintf("%s:%s", kind, shortID(*entry.ChangedByID))
 	}
 	if entry.ChangedByType != nil {
-		return *entry.ChangedByType
+		return normalizeActorType(*entry.ChangedByType)
 	}
 	return "system"
 }
@@ -834,19 +911,29 @@ func formatActorLine(actor api.AuditActor) string {
 
 func actorDisplayName(actor api.AuditActor) string {
 	if actor.ActorName != nil {
-		if name := strings.TrimSpace(*actor.ActorName); name != "" {
+		if name := strings.TrimSpace(*actor.ActorName); name != "" && !isUnknownLabel(name) {
 			return name
 		}
 	}
-	actorType := strings.TrimSpace(actor.ActorType)
-	if actorType == "" {
+	actorType := normalizeActorType(actor.ActorType)
+	if actorType == "" || actorType == "system" {
 		return "system"
 	}
 	return actorType
 }
 
+func isUnknownLabel(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(value, ":")))
+	switch normalized {
+	case "", "unknown", "none", "null", "n/a":
+		return true
+	default:
+		return false
+	}
+}
+
 func formatActorRef(actor api.AuditActor) string {
-	actorType := strings.TrimSpace(actor.ActorType)
+	actorType := normalizeActorType(actor.ActorType)
 	if actorType == "" {
 		actorType = "system"
 	}
@@ -855,6 +942,16 @@ func formatActorRef(actor api.AuditActor) string {
 		return actorType
 	}
 	return actorType + ":" + shortID(actorID)
+}
+
+func normalizeActorType(raw string) string {
+	actorType := strings.TrimSpace(strings.TrimSuffix(raw, ":"))
+	lower := strings.ToLower(actorType)
+	switch lower {
+	case "", "unknown", "none", "null", "system":
+		return "system"
+	}
+	return actorType
 }
 
 func formatActorDisplay(actor api.AuditActor, name string) string {
@@ -952,15 +1049,25 @@ func formatAuditValue(value any) string {
 		if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
 			return "None"
 		}
+		if parsed, ok := parseJSONStructuredString(trimmed); ok {
+			return formatAuditValue(parsed)
+		}
+		trimmed = humanizeGoMapString(trimmed)
 		return components.SanitizeText(trimmed)
 	case time.Time:
 		return formatLocalTimeFull(v)
-	case map[string]any, []any:
-		b, err := json.MarshalIndent(v, "", "  ")
-		if err != nil {
-			return components.SanitizeText(fmt.Sprintf("%v", v))
+	case map[string]any:
+		lines := metadataLinesPlain(v, 0)
+		if len(lines) == 0 {
+			return "None"
 		}
-		return components.SanitizeText(string(b))
+		return components.SanitizeText(strings.Join(lines, "\n"))
+	case []any:
+		lines := metadataListLinesPlain(v, 0)
+		if len(lines) == 0 {
+			return "None"
+		}
+		return components.SanitizeText(strings.Join(lines, "\n"))
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
