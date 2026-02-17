@@ -3,6 +3,7 @@
 # Standard Library
 import inspect
 import json
+import os
 import re
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -84,7 +85,18 @@ def filter_context_segments(metadata: dict | str, agent_scopes: list[str]) -> di
 
 # --- Approval Workflow ---
 
-MAX_PENDING_APPROVALS = 10
+def _pending_approval_limit() -> int:
+    """Return global pending-approval queue cap with sane bounds."""
+
+    raw = os.getenv("NEBULA_MAX_PENDING_APPROVALS", "500")
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 500
+    return max(1, min(value, 5000))
+
+
+MAX_PENDING_APPROVALS = _pending_approval_limit()
 ENROLLMENT_TTL_HOURS = 24
 ENROLLMENT_WAIT_POLL_SECONDS = 1
 
@@ -1077,6 +1089,9 @@ async def list_audit_actors(pool: Pool, actor_type: str | None = None) -> list[d
         if changed_by_type in {"", "unknown", "none", "null"}:
             item["changed_by_type"] = "system"
             item["changed_by_id"] = ""
+        actor_name = str(item.get("actor_name") or "").strip()
+        if actor_name.lower() in {"", "unknown", "none", "null", "n/a"}:
+            item["actor_name"] = None
         normalized.append(item)
     return normalized
 

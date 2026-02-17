@@ -8,6 +8,7 @@ from pydantic import ValidationError
 import pytest
 
 # Local
+import nebula_mcp.helpers as helper_mod
 from nebula_mcp.models import (
     BulkImportInput,
     CreateEntityInput,
@@ -167,9 +168,10 @@ async def test_bulk_import_requires_per_item_approval(db_pool, untrusted_mcp_con
 
 
 @pytest.mark.asyncio
-async def test_approval_queue_rate_limit(db_pool, untrusted_mcp_context):
+async def test_approval_queue_rate_limit(db_pool, untrusted_mcp_context, monkeypatch):
     """Approval queue should cap pending approvals per agent."""
 
+    monkeypatch.setattr(helper_mod, "MAX_PENDING_APPROVALS", 10)
     start_count = await db_pool.fetchval("SELECT COUNT(*) FROM approval_requests")
     rejected = False
     for i in range(20):

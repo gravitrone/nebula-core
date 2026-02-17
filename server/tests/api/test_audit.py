@@ -24,6 +24,11 @@ async def test_list_audit_actors(api, test_entity, auth_override, enums):
     assert r.status_code == 200
     data = r.json()["data"]
     assert len(data) >= 1
+    for row in data:
+        assert row.get("changed_by_type") not in {"", "unknown", "none", "null"}
+        actor_name = row.get("actor_name")
+        if actor_name is not None:
+            assert str(actor_name).strip().lower() not in {"", "unknown", "none", "null"}
 
 
 @pytest.mark.asyncio
