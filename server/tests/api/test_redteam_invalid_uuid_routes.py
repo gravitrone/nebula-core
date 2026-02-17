@@ -24,6 +24,16 @@ async def test_api_get_relationships_rejects_invalid_uuid(api):
 
 
 @pytest.mark.asyncio
+async def test_api_get_relationships_accepts_job_style_ids(api):
+    """Job relationship lookups should accept canonical job ids (non-UUID)."""
+
+    resp = await api.get("/api/relationships/job/2026Q1-ABCD")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert isinstance(body.get("data"), list)
+
+
+@pytest.mark.asyncio
 async def test_api_update_relationship_rejects_invalid_uuid(api):
     """Invalid UUIDs should not crash relationship update routes."""
 

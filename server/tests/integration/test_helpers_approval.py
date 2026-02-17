@@ -342,6 +342,52 @@ async def test_approve_bulk_scope_update_does_not_require_single_entity_id(
     assert result["entity"]["entity_ids"] == [str(test_entity["id"])]
 
 
+async def test_approve_mixed_entity_updates_do_not_fail_with_missing_id(
+    db_pool, enums, untrusted_agent, test_entity
+):
+    """Sequentially approving mixed entity mutations should not raise KeyError('id')."""
+
+    bulk_approval = await create_approval_request(
+        db_pool,
+        str(untrusted_agent["id"]),
+        "bulk_update_entity_scopes",
+        {
+            "entity_ids": [str(test_entity["id"])],
+            "scopes": ["admin"],
+            "op": "add",
+        },
+    )
+    update_approval = await create_approval_request(
+        db_pool,
+        str(untrusted_agent["id"]),
+        "update_entity",
+        {
+            "entity_id": str(test_entity["id"]),
+            "tags": ["bulk-approved"],
+            "status": "active",
+        },
+    )
+
+    reviewer = str(test_entity["id"])
+    bulk_result = await approve_request(
+        db_pool,
+        enums,
+        str(bulk_approval["id"]),
+        reviewer,
+    )
+    update_result = await approve_request(
+        db_pool,
+        enums,
+        str(update_approval["id"]),
+        reviewer,
+    )
+
+    assert bulk_result["approval"]["status"] == "approved"
+    assert bulk_result["entity"]["updated"] == 1
+    assert update_result["approval"]["status"] == "approved"
+    assert "bulk-approved" in (update_result["entity"].get("tags") or [])
+
+
 async def test_approve_revert_entity_executes(db_pool, enums, untrusted_agent, test_entity):
     """revert_entity approvals should execute via executor registry."""
 

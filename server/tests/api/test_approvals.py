@@ -78,6 +78,92 @@ async def test_get_approval(api, pending_approval, auth_override, enums):
 
 
 @pytest.mark.asyncio
+async def test_get_approval_enriches_bulk_entity_scope_targets(
+    api, db_pool, auth_override, enums, test_entity, untrusted_agent
+):
+    """Bulk entity scope approvals should expose readable target entity names."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    approval = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        RETURNING *
+        """,
+        "bulk_update_entity_scopes",
+        str(untrusted_agent["id"]),
+        json.dumps(
+            {
+                "entity_ids": [str(test_entity["id"])],
+                "scopes": ["public", "admin"],
+                "op": "add",
+            }
+        ),
+        "pending",
+    )
+
+    r = await api.get(f"/api/approvals/{approval['id']}")
+    assert r.status_code == 200
+    body = r.json()["data"]
+    details = body["change_details"]
+    assert details["entity_names"] == [test_entity["name"]]
+    assert details["entity_name"] == test_entity["name"]
+    assert body["requested_by_name"] == untrusted_agent["name"]
+
+
+@pytest.mark.asyncio
+async def test_get_approval_enriches_relationship_endpoints_with_labels(
+    api, db_pool, auth_override, enums, test_entity, untrusted_agent
+):
+    """Relationship approvals should include source/target labels for inbox readability."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    target = await db_pool.fetchrow(
+        """
+        INSERT INTO entities
+            (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES
+            ($1, $2, $3, $4, $5, $6::jsonb)
+        RETURNING *
+        """,
+        "Approval target",
+        enums.entity_types.name_to_id["person"],
+        enums.statuses.name_to_id["active"],
+        [enums.scopes.name_to_id["public"]],
+        [],
+        "{}",
+    )
+
+    approval = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        RETURNING *
+        """,
+        "create_relationship",
+        str(untrusted_agent["id"]),
+        json.dumps(
+            {
+                "relationship_type": "related-to",
+                "source_type": "entity",
+                "source_id": str(test_entity["id"]),
+                "target_type": "entity",
+                "target_id": str(target["id"]),
+            }
+        ),
+        "pending",
+    )
+
+    r = await api.get(f"/api/approvals/{approval['id']}")
+    assert r.status_code == 200
+    details = r.json()["data"]["change_details"]
+    assert details["source_name"] == test_entity["name"]
+    assert details["target_name"] == target["name"]
+
+
+@pytest.mark.asyncio
 async def test_approve_request(api, pending_approval, auth_override, enums):
     """Test approve request."""
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
@@ -229,6 +315,61 @@ async def test_approve_register_agent_invalid_grant_scope_returns_4xx(
     )
     assert r.status_code == 400
     assert r.json()["detail"]["error"]["code"] == "INVALID_INPUT"
+
+
+@pytest.mark.asyncio
+async def test_approve_revert_entity_request_executes(
+    api, db_pool, auth_override, enums, untrusted_agent, test_entity
+):
+    """Approving revert_entity via API should execute and restore entity state."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+    entity_id = str(test_entity["id"])
+
+    await db_pool.execute(
+        "UPDATE entities SET name = $2 WHERE id = $1::uuid",
+        entity_id,
+        "Revert Midpoint",
+    )
+    audit_id = await db_pool.fetchval(
+        """
+        SELECT id
+        FROM audit_log
+        WHERE table_name = 'entities' AND record_id = $1
+        ORDER BY changed_at DESC
+        LIMIT 1
+        """,
+        entity_id,
+    )
+    assert audit_id is not None
+
+    await db_pool.execute(
+        "UPDATE entities SET name = $2 WHERE id = $1::uuid",
+        entity_id,
+        "Revert Current",
+    )
+
+    approval = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2, $3::jsonb, $4)
+        RETURNING *
+        """,
+        "revert_entity",
+        untrusted_agent["id"],
+        json.dumps({"entity_id": entity_id, "audit_id": str(audit_id)}),
+        "pending",
+    )
+    assert approval is not None
+
+    resp = await api.post(f"/api/approvals/{approval['id']}/approve")
+    assert resp.status_code == 200
+
+    refreshed = await db_pool.fetchrow(
+        "SELECT name FROM entities WHERE id = $1::uuid",
+        entity_id,
+    )
+    assert refreshed["name"] == "Revert Midpoint"
 
 
 @pytest.mark.asyncio

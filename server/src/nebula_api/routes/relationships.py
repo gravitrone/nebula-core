@@ -2,6 +2,7 @@
 
 # Standard Library
 import json
+import re
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -21,6 +22,8 @@ QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
+RELATIONSHIP_NODE_TYPES = {"entity", "context", "log", "job", "agent", "file", "protocol"}
+JOB_ID_PATTERN = re.compile(r"^\d{4}Q[1-4]-[A-Z2-9]{4}$")
 
 
 def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
@@ -84,6 +87,23 @@ async def _validate_relationship_node(
             api_error("FORBIDDEN", "Access denied", 403)
         return
     return
+
+
+def _normalize_relationship_lookup(source_type: str, source_id: str) -> tuple[str, str]:
+    kind = str(source_type or "").strip().lower()
+    raw_id = str(source_id or "").strip()
+    if kind not in RELATIONSHIP_NODE_TYPES:
+        api_error("INVALID_INPUT", "Invalid source type", 400)
+    if kind == "job":
+        job_id = raw_id.upper()
+        if not JOB_ID_PATTERN.fullmatch(job_id):
+            api_error("INVALID_INPUT", "Invalid source id", 400)
+        return kind, job_id
+    try:
+        UUID(raw_id)
+    except ValueError:
+        api_error("INVALID_INPUT", "Invalid source id", 400)
+    return kind, raw_id
 
 
 class CreateRelationshipBody(BaseModel):
@@ -186,10 +206,7 @@ async def get_relationships(
     pool = request.app.state.pool
     enums = request.app.state.enums
 
-    try:
-        UUID(source_id)
-    except ValueError:
-        api_error("INVALID_INPUT", "Invalid source id", 400)
+    source_type, source_id = _normalize_relationship_lookup(source_type, source_id)
 
     scope_ids = None if _is_admin(auth, enums) else auth.get("scopes", [])
 
