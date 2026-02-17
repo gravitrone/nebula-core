@@ -5,7 +5,17 @@ import copy
 
 import pytest
 
-from nebula_mcp.helpers import _pending_approval_limit, filter_context_segments
+from nebula_mcp.helpers import (
+    _extract_string_list,
+    _normalize_change_details,
+    _pending_approval_limit,
+    _safe_parse_uuid,
+    _to_uuid_list,
+    enforce_scope_subset,
+    filter_context_segments,
+    generate_enrollment_token,
+    verify_enrollment_token,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -126,3 +136,64 @@ class TestPendingApprovalLimit:
 
         monkeypatch.setenv("NEBULA_MAX_PENDING_APPROVALS", "0")
         assert _pending_approval_limit() == 1
+
+
+class TestHelperUtilities:
+    """Coverage for helper utility edge cases."""
+
+    def test_enforce_scope_subset_returns_allowed_when_requested_empty(self):
+        """Empty request should inherit allowed set."""
+
+        assert enforce_scope_subset([], ["public", "private"]) == ["public", "private"]
+
+    def test_enforce_scope_subset_raises_on_missing_scope(self):
+        """Unknown requested scopes should fail with clear error."""
+
+        with pytest.raises(ValueError):
+            enforce_scope_subset(["admin"], ["public"])
+
+    def test_enrollment_token_roundtrip(self):
+        """Generated enrollment token should verify against its hash."""
+
+        raw, hashed = generate_enrollment_token()
+        assert raw.startswith("nbe_")
+        assert verify_enrollment_token(hashed, raw) is True
+        assert verify_enrollment_token(hashed, raw + "-bad") is False
+
+    def test_safe_parse_uuid_handles_invalid_values(self):
+        """UUID parser should normalize valid inputs and reject bad values."""
+
+        valid = "123e4567-e89b-12d3-a456-426614174000"
+        assert _safe_parse_uuid(valid) == valid
+        assert _safe_parse_uuid("  " + valid + "  ") == valid
+        assert _safe_parse_uuid("not-a-uuid") is None
+        assert _safe_parse_uuid("") is None
+
+    def test_to_uuid_list_filters_invalid_entries(self):
+        """UUID list extractor should drop invalid ids."""
+
+        values = {
+            "123e4567-e89b-12d3-a456-426614174000",
+            "bad-id",
+        }
+        assert set(_to_uuid_list(values)) == {"123e4567-e89b-12d3-a456-426614174000"}
+
+    def test_normalize_change_details(self):
+        """Change detail parser should accept dict/json and reject invalid payloads."""
+
+        assert _normalize_change_details({"name": "ok"}) == {"name": "ok"}
+        assert _normalize_change_details('{"name":"ok"}') == {"name": "ok"}
+        assert _normalize_change_details("[1,2,3]") == {}
+        assert _normalize_change_details("{bad-json") == {}
+        assert _normalize_change_details(None) == {}
+
+    def test_extract_string_list_variants(self):
+        """String list extraction should normalize list and string forms."""
+
+        assert _extract_string_list(["a", " b ", ""]) == ["a", "b"]
+        assert _extract_string_list(("a", "b")) == ["a", "b"]
+        assert _extract_string_list({"a", "b"}) in (["a", "b"], ["b", "a"])
+        assert _extract_string_list('{"a","b"}') == ["a", "b"]
+        assert _extract_string_list('["a","b"]') == ["a", "b"]
+        assert _extract_string_list("a,b") == ["a", "b"]
+        assert _extract_string_list("") == []

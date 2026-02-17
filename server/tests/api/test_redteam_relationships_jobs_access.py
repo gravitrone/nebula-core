@@ -33,12 +33,12 @@ async def _make_agent(db_pool, enums, name):
     return dict(row)
 
 
-async def _make_entity(db_pool, enums, name):
+async def _make_entity(db_pool, enums, name, scopes=None):
     """Insert a test entity for relationships API scenarios."""
 
     status_id = enums.statuses.name_to_id["active"]
     type_id = enums.entity_types.name_to_id["person"]
-    scope_ids = [enums.scopes.name_to_id["public"]]
+    scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
 
     row = await db_pool.fetchrow(
         """
@@ -52,6 +52,29 @@ async def _make_entity(db_pool, enums, name):
         scope_ids,
         ["test"],
         json.dumps({"note": "public"}),
+    )
+    return dict(row)
+
+
+async def _make_context(db_pool, enums, title, scopes=None):
+    """Insert a test context item for relationships API scenarios."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
+
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        RETURNING *
+        """,
+        title,
+        "note",
+        "relationship context",
+        scope_ids,
+        status_id,
+        ["test"],
+        json.dumps({"note": "ctx"}),
     )
     return dict(row)
 
@@ -102,10 +125,10 @@ async def _make_relationship(
     return dict(row)
 
 
-def _auth_override(agent_id, enums):
+def _auth_override(agent_id, enums, scopes=None):
     """Build an auth override for public agent API requests."""
 
-    scope_ids = [enums.scopes.name_to_id["public"]]
+    scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
     auth_dict = {
         "key_id": None,
         "caller_type": "agent",
@@ -154,6 +177,98 @@ async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
     ids = {row["id"] for row in resp.json()["data"]}
     assert str(public_rel["id"]) in ids
     assert str(private_rel["id"]) not in ids
+
+
+@pytest.mark.asyncio
+async def test_create_relationship_denies_private_entity_for_public_agent(db_pool, enums):
+    """Public agents should not create links from private entities."""
+
+    viewer = await _make_agent(db_pool, enums, "rel-viewer-api-private-entity")
+    private_entity = await _make_entity(
+        db_pool, enums, "Sensitive Node", scopes=["sensitive"]
+    )
+    public_entity = await _make_entity(db_pool, enums, "Public Node 3")
+
+    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/relationships/",
+            json={
+                "source_type": "entity",
+                "source_id": str(private_entity["id"]),
+                "target_type": "entity",
+                "target_id": str(public_entity["id"]),
+                "relationship_type": "related-to",
+            },
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_relationship_denies_private_context_for_public_agent(db_pool, enums):
+    """Public agents should not create links from private context items."""
+
+    viewer = await _make_agent(db_pool, enums, "rel-viewer-api-private-context")
+    private_context = await _make_context(
+        db_pool, enums, "Sensitive Context", scopes=["sensitive"]
+    )
+    public_entity = await _make_entity(db_pool, enums, "Public Node 4")
+
+    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/relationships/",
+            json={
+                "source_type": "context",
+                "source_id": str(private_context["id"]),
+                "target_type": "entity",
+                "target_id": str(public_entity["id"]),
+                "relationship_type": "references",
+            },
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_update_relationship_denies_private_source_for_public_agent(db_pool, enums):
+    """Public agents should not update links attached to private entities."""
+
+    viewer = await _make_agent(db_pool, enums, "rel-viewer-api-update-private")
+    private_entity = await _make_entity(
+        db_pool, enums, "Sensitive Node 2", scopes=["sensitive"]
+    )
+    public_entity = await _make_entity(db_pool, enums, "Public Node 5")
+    relationship = await _make_relationship(
+        db_pool,
+        enums,
+        "entity",
+        str(private_entity["id"]),
+        "entity",
+        str(public_entity["id"]),
+    )
+
+    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/relationships/{relationship['id']}",
+            json={"properties": {"note": "hijack"}},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
 
 
 @pytest.mark.asyncio
