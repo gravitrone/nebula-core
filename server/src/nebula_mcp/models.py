@@ -114,6 +114,11 @@ def _sanitize_metadata(value: dict | None) -> dict | None:
         return None
     if not isinstance(value, dict):
         raise ValueError("Metadata must be an object")
+    if "visibility" in value:
+        raise ValueError(
+            "Metadata key 'visibility' is not supported. "
+            "Use context_segments with explicit scopes."
+        )
     _reject_metadata_keys(value)
     return value
 

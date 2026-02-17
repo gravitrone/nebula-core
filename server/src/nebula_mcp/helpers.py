@@ -7,6 +7,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 # Third-Party
 from argon2 import PasswordHasher
@@ -395,7 +396,234 @@ async def get_pending_approvals_all(
     """
 
     rows = await pool.fetch(QUERIES["approvals/get_pending"], limit, offset)
-    return [dict(r) for r in rows]
+    return await _enrich_approval_rows(pool, [dict(r) for r in rows])
+
+
+async def get_approval_request(pool: Pool, approval_id: str) -> dict | None:
+    """Get one approval request with human-readable enrichment."""
+
+    row = await pool.fetchrow(QUERIES["approvals/get_request"], approval_id)
+    if not row:
+        return None
+    enriched = await _enrich_approval_rows(pool, [dict(row)])
+    return enriched[0] if enriched else None
+
+
+def _safe_parse_uuid(value: str | None) -> str | None:
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    try:
+        return str(UUID(text))
+    except ValueError:
+        return None
+
+
+def _to_uuid_list(values: set[str]) -> list[str]:
+    out: list[str] = []
+    for value in values:
+        parsed = _safe_parse_uuid(value)
+        if parsed:
+            out.append(parsed)
+    return out
+
+
+def _normalize_change_details(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return dict(raw)
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _extract_string_list(value: Any) -> list[str]:
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return []
+
+
+async def _fetch_name_map(
+    pool: Pool, sql: str, ids: set[str]
+) -> dict[str, str]:
+    uuid_ids = _to_uuid_list(ids)
+    if not uuid_ids:
+        return {}
+    rows = await pool.fetch(sql, uuid_ids)
+    resolved: dict[str, str] = {}
+    for row in rows:
+        identifier = str(row["id"])
+        label = str(row["label"]).strip() if row["label"] else ""
+        if identifier and label:
+            resolved[identifier] = label
+    return resolved
+
+
+async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
+    if not rows:
+        return rows
+
+    requested_ids: set[str] = set()
+    entity_ids: set[str] = set()
+    context_ids: set[str] = set()
+    job_ids: set[str] = set()
+    log_ids: set[str] = set()
+    file_ids: set[str] = set()
+    protocol_ids: set[str] = set()
+    agent_ids: set[str] = set()
+
+    for row in rows:
+        requested = _safe_parse_uuid(row.get("requested_by"))
+        if requested:
+            requested_ids.add(requested)
+
+        details = _normalize_change_details(row.get("change_details"))
+        row["change_details"] = details
+
+        for key in ("entity_id", "source_id", "target_id"):
+            value = _safe_parse_uuid(details.get(key))
+            if value:
+                node_type = details.get(key.replace("_id", "_type"))
+                if key == "entity_id":
+                    entity_ids.add(value)
+                elif isinstance(node_type, str):
+                    node_type = node_type.strip().lower()
+                    if node_type == "entity":
+                        entity_ids.add(value)
+                    elif node_type == "context":
+                        context_ids.add(value)
+                    elif node_type == "job":
+                        job_ids.add(value)
+                    elif node_type == "log":
+                        log_ids.add(value)
+                    elif node_type == "file":
+                        file_ids.add(value)
+                    elif node_type == "protocol":
+                        protocol_ids.add(value)
+                    elif node_type == "agent":
+                        agent_ids.add(value)
+
+        for entity_id in _extract_string_list(details.get("entity_ids")):
+            parsed = _safe_parse_uuid(entity_id)
+            if parsed:
+                entity_ids.add(parsed)
+
+    entity_name_map = await _fetch_name_map(
+        pool,
+        "SELECT id::text AS id, name AS label FROM entities WHERE id = ANY($1::uuid[])",
+        entity_ids,
+    )
+    context_name_map = await _fetch_name_map(
+        pool,
+        "SELECT id::text AS id, title AS label FROM context_items WHERE id = ANY($1::uuid[])",
+        context_ids,
+    )
+    job_name_map = await _fetch_name_map(
+        pool,
+        "SELECT id::text AS id, title AS label FROM jobs WHERE id = ANY($1::uuid[])",
+        job_ids,
+    )
+    log_name_map = await _fetch_name_map(
+        pool,
+        (
+            "SELECT l.id::text AS id, COALESCE(lt.name, 'log') AS label "
+            "FROM logs l LEFT JOIN log_types lt ON l.type_id = lt.id "
+            "WHERE l.id = ANY($1::uuid[])"
+        ),
+        log_ids,
+    )
+    file_name_map = await _fetch_name_map(
+        pool,
+        "SELECT id::text AS id, filename AS label FROM files WHERE id = ANY($1::uuid[])",
+        file_ids,
+    )
+    protocol_name_map = await _fetch_name_map(
+        pool,
+        (
+            "SELECT id::text AS id, COALESCE(title, name, 'protocol') AS label "
+            "FROM protocols WHERE id = ANY($1::uuid[])"
+        ),
+        protocol_ids,
+    )
+    agent_name_map = await _fetch_name_map(
+        pool,
+        "SELECT id::text AS id, name AS label FROM agents WHERE id = ANY($1::uuid[])",
+        requested_ids.union(agent_ids),
+    )
+    requested_entity_map = await _fetch_name_map(
+        pool,
+        "SELECT id::text AS id, name AS label FROM entities WHERE id = ANY($1::uuid[])",
+        requested_ids,
+    )
+
+    def resolve_node_label(node_type: str | None, node_id: str | None) -> str | None:
+        parsed_id = _safe_parse_uuid(node_id)
+        if not parsed_id:
+            return None
+        kind = (node_type or "").strip().lower()
+        if kind == "entity":
+            return entity_name_map.get(parsed_id)
+        if kind == "context":
+            return context_name_map.get(parsed_id)
+        if kind == "job":
+            return job_name_map.get(parsed_id)
+        if kind == "log":
+            return log_name_map.get(parsed_id)
+        if kind == "file":
+            return file_name_map.get(parsed_id)
+        if kind == "protocol":
+            return protocol_name_map.get(parsed_id)
+        if kind == "agent":
+            return agent_name_map.get(parsed_id)
+        return None
+
+    for row in rows:
+        requested_id = _safe_parse_uuid(row.get("requested_by"))
+        row["requested_by_name"] = None
+        if requested_id:
+            row["requested_by_name"] = (
+                agent_name_map.get(requested_id)
+                or requested_entity_map.get(requested_id)
+            )
+
+        details = _normalize_change_details(row.get("change_details"))
+        source_label = resolve_node_label(
+            details.get("source_type"), details.get("source_id")
+        )
+        target_label = resolve_node_label(
+            details.get("target_type"), details.get("target_id")
+        )
+        if source_label:
+            details["source_name"] = source_label
+        if target_label:
+            details["target_name"] = target_label
+
+        entity_names: list[str] = []
+        for raw_id in _extract_string_list(details.get("entity_ids")):
+            parsed = _safe_parse_uuid(raw_id)
+            if not parsed:
+                continue
+            name = entity_name_map.get(parsed)
+            if name:
+                entity_names.append(name)
+        if entity_names:
+            details["entity_names"] = entity_names
+            if len(entity_names) == 1:
+                details["entity_name"] = entity_names[0]
+
+        entity_name = resolve_node_label("entity", details.get("entity_id"))
+        if entity_name:
+            details["entity_name"] = entity_name
+
+        row["change_details"] = details
+
+    return rows
 
 
 async def approve_request(
@@ -438,14 +666,16 @@ async def approve_request(
     if not approval:
         raise ValueError("Approval request not found or already processed")
 
-    executor = EXECUTORS.get(approval["request_type"])
+    request_type = str(approval["request_type"] or "").strip()
+    normalized_request_type = request_type.lower().replace("-", "_")
+    executor = EXECUTORS.get(request_type) or EXECUTORS.get(normalized_request_type)
     if not executor:
         await pool.execute(
             QUERIES["approvals/mark_failed"],
-            f"No executor for: {approval['request_type']}",
+            f"No executor for: {request_type}",
             approval_id,
         )
-        raise ValueError(f"No executor for: {approval['request_type']}")
+        raise ValueError(f"No executor for: {request_type}")
 
     try:
         if reviewed_by:
@@ -457,7 +687,7 @@ async def approve_request(
             await pool.execute("SET app.changed_by_type = 'system'")
             await pool.execute("RESET app.changed_by_id")
 
-        if approval["request_type"] == "register_agent":
+        if normalized_request_type == "register_agent":
             raw_review_details = approval.get("review_details") or {}
             if isinstance(raw_review_details, str):
                 try:
@@ -727,7 +957,15 @@ async def list_audit_actors(pool: Pool, actor_type: str | None = None) -> list[d
     """List audit actors with activity counts."""
 
     rows = await pool.fetch(QUERIES["audit/actors"], actor_type)
-    return [dict(r) for r in rows]
+    normalized: list[dict] = []
+    for row in rows:
+        item = dict(row)
+        changed_by_type = str(item.get("changed_by_type") or "").strip().lower()
+        if changed_by_type in {"", "unknown", "none", "null"}:
+            item["changed_by_type"] = "system"
+            item["changed_by_id"] = ""
+        normalized.append(item)
+    return normalized
 
 
 def _normalize_diff_value(value: object) -> object:

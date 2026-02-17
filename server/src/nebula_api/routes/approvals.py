@@ -20,6 +20,9 @@ from nebula_mcp.helpers import (
     get_approval_diff as compute_approval_diff,
 )
 from nebula_mcp.helpers import (
+    get_approval_request,
+)
+from nebula_mcp.helpers import (
     get_pending_approvals_all,
 )
 from nebula_mcp.helpers import (
@@ -119,11 +122,11 @@ async def get_approval(
     _require_admin_scope(auth, enums)
     _require_uuid(approval_id, "approval")
 
-    row = await pool.fetchrow(QUERIES["approvals/get_request"], approval_id)
+    row = await get_approval_request(pool, approval_id)
     if not row:
         api_error("NOT_FOUND", "Approval request not found", 404)
 
-    return success(dict(row))
+    return success(row)
 
 
 @router.post("/{approval_id}/approve")
@@ -148,7 +151,7 @@ async def approve(
     _require_admin_scope(auth, enums)
     _require_uuid(approval_id, "approval")
 
-    approval_row = await pool.fetchrow(QUERIES["approvals/get_request"], approval_id)
+    approval_row = await get_approval_request(pool, approval_id)
     if not approval_row:
         api_error("NOT_FOUND", "Approval request not found", 404)
     approval = dict(approval_row)

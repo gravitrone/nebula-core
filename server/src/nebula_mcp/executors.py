@@ -727,7 +727,14 @@ async def execute_bulk_update_entity_tags(
         op,
         payload.tags,
     )
-    return {"updated": len(rows), "entity_ids": [str(r["id"]) for r in rows]}
+    updated_ids: list[str] = []
+    for row in rows:
+        row_id = row.get("id")
+        if row_id is None and len(row.values()) > 0:
+            row_id = list(row.values())[0]
+        if row_id is not None:
+            updated_ids.append(str(row_id))
+    return {"updated": len(updated_ids), "entity_ids": updated_ids}
 
 
 async def execute_bulk_update_entity_scopes(
@@ -750,7 +757,14 @@ async def execute_bulk_update_entity_scopes(
         op,
         scope_ids,
     )
-    return {"updated": len(rows), "entity_ids": [str(r["id"]) for r in rows]}
+    updated_ids: list[str] = []
+    for row in rows:
+        row_id = row.get("id")
+        if row_id is None and len(row.values()) > 0:
+            row_id = list(row.values())[0]
+        if row_id is not None:
+            updated_ids.append(str(row_id))
+    return {"updated": len(updated_ids), "entity_ids": updated_ids}
 
 
 async def execute_register_agent(

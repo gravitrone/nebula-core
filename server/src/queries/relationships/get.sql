@@ -8,14 +8,18 @@ SELECT
     rt.name AS relationship_type,
     s.name AS status,
     r.properties,
-    r.created_at
+    r.created_at,
+    COALESCE(es.name, ks.title, js.title) AS source_name,
+    COALESCE(et.name, kt.title, jt.title) AS target_name
 FROM relationships r
 JOIN relationship_types rt ON r.type_id = rt.id
 JOIN statuses s ON r.status_id = s.id
 LEFT JOIN entities es ON r.source_type = 'entity' AND es.id::text = r.source_id
 LEFT JOIN context_items ks ON r.source_type = 'context' AND ks.id::text = r.source_id
+LEFT JOIN jobs js ON r.source_type = 'job' AND js.id = r.source_id
 LEFT JOIN entities et ON r.target_type = 'entity' AND et.id::text = r.target_id
 LEFT JOIN context_items kt ON r.target_type = 'context' AND kt.id::text = r.target_id
+LEFT JOIN jobs jt ON r.target_type = 'job' AND jt.id = r.target_id
 WHERE 
     CASE 
         WHEN $3 = 'outgoing' THEN r.source_type = $1 AND r.source_id = $2
