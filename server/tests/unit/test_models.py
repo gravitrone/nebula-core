@@ -78,6 +78,21 @@ class TestCreateEntityInput:
         )
         assert inp.metadata == {}
 
+    def test_rejects_visibility_metadata_key(self):
+        """Reject ad-hoc visibility metadata in favor of scoped segments."""
+
+        with pytest.raises(
+            ValidationError,
+            match="Metadata key 'visibility' is not supported",
+        ):
+            CreateEntityInput(
+                name="Alice",
+                type="person",
+                status="active",
+                scopes=["public"],
+                metadata={"visibility": "private"},
+            )
+
 
 # --- PersonMetadata Birth Date Validation ---
 

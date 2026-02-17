@@ -71,7 +71,14 @@ def require_status(name: str, enums: EnumRegistry) -> UUID:
         raise ValueError("Status required")
     key = name.strip().lower()
     if key == "archived":
-        for candidate in ("inactive", "completed", "abandoned", "deleted", "replaced"):
+        for candidate in (
+            "inactive",
+            "completed",
+            "abandoned",
+            "deleted",
+            "replaced",
+            "on-hold",
+        ):
             if candidate in enums.statuses.name_to_id:
                 key = candidate
                 break

@@ -54,6 +54,20 @@ class TestRequireStatus:
         with pytest.raises(ValueError, match="Status required"):
             require_status("", mock_enums)
 
+    def test_archived_alias_maps_to_terminal_status(self, mock_enums):
+        """Map archived alias to a known terminal status UUID."""
+
+        result = require_status("archived", mock_enums)
+        assert result in mock_enums.statuses.id_to_name
+        assert mock_enums.statuses.id_to_name[result] in {
+            "inactive",
+            "completed",
+            "abandoned",
+            "deleted",
+            "replaced",
+            "on-hold",
+        }
+
 
 # --- require_entity_type ---
 

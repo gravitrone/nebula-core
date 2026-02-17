@@ -3,6 +3,7 @@
 # Standard Library
 import inspect
 import json
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -446,6 +447,20 @@ def _normalize_change_details(raw: Any) -> dict[str, Any]:
 def _extract_string_list(value: Any) -> list[str]:
     if isinstance(value, list):
         return [str(v).strip() for v in value if str(v).strip()]
+    if isinstance(value, tuple | set):
+        return [str(v).strip() for v in value if str(v).strip()]
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return []
+        if text.startswith("[") and text.endswith("]"):
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(v).strip() for v in parsed if str(v).strip()]
+        return [part.strip() for part in text.split(",") if part.strip()]
     return []
 
 
@@ -477,6 +492,7 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
     file_ids: set[str] = set()
     protocol_ids: set[str] = set()
     agent_ids: set[str] = set()
+    relationship_ids: set[str] = set()
 
     for row in rows:
         requested = _safe_parse_uuid(row.get("requested_by"))
@@ -485,6 +501,9 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
 
         details = _normalize_change_details(row.get("change_details"))
         row["change_details"] = details
+        relationship_id = _safe_parse_uuid(details.get("relationship_id"))
+        if relationship_id:
+            relationship_ids.add(relationship_id)
 
         for key in ("entity_id", "source_id", "target_id"):
             value = _safe_parse_uuid(details.get(key))
@@ -561,6 +580,25 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
         "SELECT id::text AS id, name AS label FROM entities WHERE id = ANY($1::uuid[])",
         requested_ids,
     )
+    relationship_map: dict[str, dict[str, Any]] = {}
+    relationship_uuid_ids = _to_uuid_list(relationship_ids)
+    if relationship_uuid_ids:
+        rel_rows = await pool.fetch(
+            """
+            SELECT
+                r.id::text AS id,
+                rt.name AS relationship_type,
+                r.source_type,
+                r.source_id::text AS source_id,
+                r.target_type,
+                r.target_id::text AS target_id
+            FROM relationships r
+            LEFT JOIN relationship_types rt ON r.type_id = rt.id
+            WHERE r.id = ANY($1::uuid[])
+            """,
+            relationship_uuid_ids,
+        )
+        relationship_map = {str(r["id"]): dict(r) for r in rel_rows}
 
     def resolve_node_label(node_type: str | None, node_id: str | None) -> str | None:
         parsed_id = _safe_parse_uuid(node_id)
@@ -593,6 +631,20 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
             )
 
         details = _normalize_change_details(row.get("change_details"))
+
+        relationship_id = _safe_parse_uuid(details.get("relationship_id"))
+        if relationship_id and relationship_id in relationship_map:
+            rel = relationship_map[relationship_id]
+            if not details.get("relationship_type") and rel.get("relationship_type"):
+                details["relationship_type"] = rel["relationship_type"]
+            if not details.get("source_type") and rel.get("source_type"):
+                details["source_type"] = rel["source_type"]
+            if not details.get("source_id") and rel.get("source_id"):
+                details["source_id"] = rel["source_id"]
+            if not details.get("target_type") and rel.get("target_type"):
+                details["target_type"] = rel["target_type"]
+            if not details.get("target_id") and rel.get("target_id"):
+                details["target_id"] = rel["target_id"]
         source_label = resolve_node_label(
             details.get("source_type"), details.get("source_id")
         )
@@ -667,7 +719,11 @@ async def approve_request(
         raise ValueError("Approval request not found or already processed")
 
     request_type = str(approval["request_type"] or "").strip()
-    normalized_request_type = request_type.lower().replace("-", "_")
+    normalized_request_type = re.sub(
+        r"[^a-z0-9]+",
+        "_",
+        request_type.lower(),
+    ).strip("_")
     executor = EXECUTORS.get(request_type) or EXECUTORS.get(normalized_request_type)
     if not executor:
         await pool.execute(
@@ -878,7 +934,14 @@ async def bulk_update_entity_tags(
     """
 
     rows = await pool.fetch(QUERIES["entities/bulk_update_tags"], entity_ids, op, tags)
-    return [str(r["id"]) for r in rows]
+    updated_ids: list[str] = []
+    for row in rows:
+        row_id = row.get("id")
+        if row_id is None and len(row.values()) > 0:
+            row_id = list(row.values())[0]
+        if row_id is not None:
+            updated_ids.append(str(row_id))
+    return updated_ids
 
 
 async def bulk_update_entity_scopes(
@@ -901,7 +964,14 @@ async def bulk_update_entity_scopes(
     rows = await pool.fetch(
         QUERIES["entities/bulk_update_scopes"], entity_ids, op, scope_ids
     )
-    return [str(r["id"]) for r in rows]
+    updated_ids: list[str] = []
+    for row in rows:
+        row_id = row.get("id")
+        if row_id is None and len(row.values()) > 0:
+            row_id = list(row.values())[0]
+        if row_id is not None:
+            updated_ids.append(str(row_id))
+    return updated_ids
 
 
 async def query_audit_log(

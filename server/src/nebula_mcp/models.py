@@ -55,6 +55,7 @@ BANNED_METADATA_KEYS = {
     "__proto__",
     "prototype",
     "constructor",
+    "visibility",
 }
 
 
@@ -100,6 +101,11 @@ def _validate_node_type(value: str | None) -> str | None:
 def _reject_metadata_keys(value: object) -> None:
     if isinstance(value, dict):
         for key, item in value.items():
+            if isinstance(key, str) and key == "visibility":
+                raise ValueError(
+                    "Metadata key 'visibility' is not supported. "
+                    "Use context_segments with explicit scopes."
+                )
             if isinstance(key, str) and key in BANNED_METADATA_KEYS:
                 raise ValueError(f"Metadata key '{key}' is not allowed")
             _reject_metadata_keys(item)

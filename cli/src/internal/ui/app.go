@@ -590,7 +590,9 @@ func (a App) renderTabs() string {
 			if a.tabNav {
 				segments = append(segments, TabActiveStyle.Render(label))
 			} else {
-				segments = append(segments, TabCurrentStyle.Render(label))
+				// Keep active tab readable but do not show focused highlight
+				// unless tab navigation mode is explicitly active.
+				segments = append(segments, TabInactiveStyle.Render(label))
 			}
 		} else {
 			segments = append(segments, TabInactiveStyle.Render(label))

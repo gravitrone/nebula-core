@@ -462,18 +462,123 @@ func renderMetadataLines(data map[string]any, indent int) []string {
 	var lines []string
 	pad := strings.Repeat(" ", indent)
 	for _, k := range keys {
-		switch typed := data[k].(type) {
-		case map[string]any:
-			lines = append(lines, pad+k+":")
-			lines = append(lines, renderMetadataLines(typed, indent+2)...)
-		default:
-			lines = append(lines, fmt.Sprintf("%s%s: %s", pad, k, formatMetadataValue(typed)))
+		key := SanitizeOneLine(k)
+		rendered := renderMetadataValueLines(data[k], indent+2)
+		if len(rendered) == 0 {
+			lines = append(lines, fmt.Sprintf("%s%s: None", pad, key))
+			continue
 		}
+		if len(rendered) == 1 {
+			lines = append(lines, fmt.Sprintf("%s%s: %s", pad, key, strings.TrimSpace(rendered[0])))
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("%s%s:", pad, key))
+		lines = append(lines, rendered...)
 	}
 	return lines
 }
 
+func renderMetadataValueLines(val any, indent int) []string {
+	pad := strings.Repeat(" ", indent)
+	val = normalizeStructuredValue(val)
+	switch typed := val.(type) {
+	case map[string]any:
+		if len(typed) == 0 {
+			return []string{"{}"}
+		}
+		return renderMetadataLines(typed, indent)
+	case []any:
+		if len(typed) == 0 {
+			return []string{"[]"}
+		}
+		out := make([]string, 0, len(typed))
+		for _, item := range typed {
+			item = normalizeStructuredValue(item)
+			switch nested := item.(type) {
+			case map[string]any:
+				if textRaw, ok := nested["text"]; ok {
+					text := strings.TrimSpace(SanitizeOneLine(fmt.Sprintf("%v", textRaw)))
+					if text != "" {
+						scopes := parseMetadataScopesInline(nested["scopes"])
+						if scopes != "" {
+							out = append(out, fmt.Sprintf("%s- [%s] %s", pad, scopes, text))
+						} else {
+							out = append(out, fmt.Sprintf("%s- %s", pad, text))
+						}
+						continue
+					}
+				}
+				out = append(out, pad+"-")
+				out = append(out, renderMetadataLines(nested, indent+2)...)
+			case []any:
+				out = append(out, fmt.Sprintf("%s- %s", pad, formatMetadataValue(nested)))
+			default:
+				out = append(out, fmt.Sprintf("%s- %s", pad, formatMetadataValue(nested)))
+			}
+		}
+		return out
+	default:
+		return []string{formatMetadataValue(typed)}
+	}
+}
+
+func normalizeStructuredValue(val any) any {
+	switch typed := val.(type) {
+	case string:
+		trimmed := strings.TrimSpace(typed)
+		if len(trimmed) >= 2 {
+			if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+				(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+				var parsed any
+				if err := json.Unmarshal([]byte(trimmed), &parsed); err == nil {
+					switch parsed.(type) {
+					case map[string]any, []any:
+						return parsed
+					}
+				}
+			}
+			// Handle double-encoded JSON strings.
+			if strings.HasPrefix(trimmed, "\"") && strings.HasSuffix(trimmed, "\"") {
+				var unquoted string
+				if err := json.Unmarshal([]byte(trimmed), &unquoted); err == nil {
+					return normalizeStructuredValue(unquoted)
+				}
+			}
+		}
+	}
+	return val
+}
+
+func parseMetadataScopesInline(value any) string {
+	switch typed := value.(type) {
+	case []string:
+		clean := make([]string, 0, len(typed))
+		for _, item := range typed {
+			s := strings.TrimSpace(SanitizeOneLine(item))
+			if s != "" {
+				clean = append(clean, s)
+			}
+		}
+		return strings.Join(clean, ", ")
+	case []any:
+		clean := make([]string, 0, len(typed))
+		for _, item := range typed {
+			s := strings.TrimSpace(SanitizeOneLine(fmt.Sprintf("%v", item)))
+			if s != "" {
+				clean = append(clean, s)
+			}
+		}
+		return strings.Join(clean, ", ")
+	case string:
+		s := strings.TrimSpace(SanitizeOneLine(typed))
+		return s
+	default:
+		return ""
+	}
+}
+
 func formatMetadataValue(val any) string {
+	val = normalizeStructuredValue(val)
 	switch typed := val.(type) {
 	case []any:
 		if len(typed) == 0 {
@@ -495,15 +600,18 @@ func formatMetadataValue(val any) string {
 		}
 		return "[" + strings.Join(parts, ", ") + "]"
 	case map[string]any:
+		if len(typed) == 0 {
+			return "{}"
+		}
 		encoded, err := json.Marshal(typed)
 		if err != nil {
-			return fmt.Sprintf("%v", typed)
+			return SanitizeOneLine(fmt.Sprintf("%v", typed))
 		}
-		return string(encoded)
+		return SanitizeOneLine(string(encoded))
 	case nil:
 		return "None"
 	default:
-		s := strings.TrimSpace(fmt.Sprintf("%v", typed))
+		s := strings.TrimSpace(SanitizeOneLine(fmt.Sprintf("%v", typed)))
 		if s == "" || s == "<nil>" {
 			return "None"
 		}
