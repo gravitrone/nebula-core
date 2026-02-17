@@ -453,6 +453,15 @@ def _extract_string_list(value: Any) -> list[str]:
         text = value.strip()
         if not text:
             return []
+        if text.startswith("{") and text.endswith("}"):
+            inner = text[1:-1].strip()
+            if not inner:
+                return []
+            return [
+                part.strip().strip('"').strip("'")
+                for part in inner.split(",")
+                if part.strip().strip('"').strip("'")
+            ]
         if text.startswith("[") and text.endswith("]"):
             try:
                 parsed = json.loads(text)
@@ -474,6 +483,22 @@ async def _fetch_name_map(
     resolved: dict[str, str] = {}
     for row in rows:
         identifier = str(row["id"])
+        label = str(row["label"]).strip() if row["label"] else ""
+        if identifier and label:
+            resolved[identifier] = label
+    return resolved
+
+
+async def _fetch_name_map_text(
+    pool: Pool, sql: str, ids: set[str]
+) -> dict[str, str]:
+    text_ids = sorted({str(v).strip() for v in ids if str(v).strip()})
+    if not text_ids:
+        return {}
+    rows = await pool.fetch(sql, text_ids)
+    resolved: dict[str, str] = {}
+    for row in rows:
+        identifier = str(row["id"]).strip()
         label = str(row["label"]).strip() if row["label"] else ""
         if identifier and label:
             resolved[identifier] = label
@@ -506,27 +531,35 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
             relationship_ids.add(relationship_id)
 
         for key in ("entity_id", "source_id", "target_id"):
-            value = _safe_parse_uuid(details.get(key))
-            if value:
-                node_type = details.get(key.replace("_id", "_type"))
-                if key == "entity_id":
-                    entity_ids.add(value)
-                elif isinstance(node_type, str):
-                    node_type = node_type.strip().lower()
-                    if node_type == "entity":
-                        entity_ids.add(value)
-                    elif node_type == "context":
-                        context_ids.add(value)
-                    elif node_type == "job":
-                        job_ids.add(value)
-                    elif node_type == "log":
-                        log_ids.add(value)
-                    elif node_type == "file":
-                        file_ids.add(value)
-                    elif node_type == "protocol":
-                        protocol_ids.add(value)
-                    elif node_type == "agent":
-                        agent_ids.add(value)
+            raw_value = details.get(key)
+            value_text = str(raw_value).strip() if raw_value is not None else ""
+            node_type = details.get(key.replace("_id", "_type"))
+            if key == "entity_id":
+                parsed = _safe_parse_uuid(value_text)
+                if parsed:
+                    entity_ids.add(parsed)
+                continue
+            if not isinstance(node_type, str) or not value_text:
+                continue
+            node_type = node_type.strip().lower()
+            if node_type == "job":
+                job_ids.add(value_text)
+                continue
+            parsed = _safe_parse_uuid(value_text)
+            if not parsed:
+                continue
+            if node_type == "entity":
+                entity_ids.add(parsed)
+            elif node_type == "context":
+                context_ids.add(parsed)
+            elif node_type == "log":
+                log_ids.add(parsed)
+            elif node_type == "file":
+                file_ids.add(parsed)
+            elif node_type == "protocol":
+                protocol_ids.add(parsed)
+            elif node_type == "agent":
+                agent_ids.add(parsed)
 
         for entity_id in _extract_string_list(details.get("entity_ids")):
             parsed = _safe_parse_uuid(entity_id)
@@ -540,12 +573,15 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
     )
     context_name_map = await _fetch_name_map(
         pool,
-        "SELECT id::text AS id, title AS label FROM context_items WHERE id = ANY($1::uuid[])",
+        (
+            "SELECT id::text AS id, title AS label "
+            "FROM context_items WHERE id = ANY($1::uuid[])"
+        ),
         context_ids,
     )
-    job_name_map = await _fetch_name_map(
+    job_name_map = await _fetch_name_map_text(
         pool,
-        "SELECT id::text AS id, title AS label FROM jobs WHERE id = ANY($1::uuid[])",
+        "SELECT id::text AS id, title AS label FROM jobs WHERE id = ANY($1::text[])",
         job_ids,
     )
     log_name_map = await _fetch_name_map(
@@ -559,7 +595,10 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
     )
     file_name_map = await _fetch_name_map(
         pool,
-        "SELECT id::text AS id, filename AS label FROM files WHERE id = ANY($1::uuid[])",
+        (
+            "SELECT id::text AS id, filename AS label "
+            "FROM files WHERE id = ANY($1::uuid[])"
+        ),
         file_ids,
     )
     protocol_name_map = await _fetch_name_map(
@@ -601,16 +640,20 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
         relationship_map = {str(r["id"]): dict(r) for r in rel_rows}
 
     def resolve_node_label(node_type: str | None, node_id: str | None) -> str | None:
+        kind = (node_type or "").strip().lower()
+        if kind == "job":
+            text_id = str(node_id or "").strip()
+            if not text_id:
+                return None
+            return job_name_map.get(text_id)
+
         parsed_id = _safe_parse_uuid(node_id)
         if not parsed_id:
             return None
-        kind = (node_type or "").strip().lower()
         if kind == "entity":
             return entity_name_map.get(parsed_id)
         if kind == "context":
             return context_name_map.get(parsed_id)
-        if kind == "job":
-            return job_name_map.get(parsed_id)
         if kind == "log":
             return log_name_map.get(parsed_id)
         if kind == "file":

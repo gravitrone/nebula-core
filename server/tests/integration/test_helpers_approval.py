@@ -71,6 +71,74 @@ async def test_get_pending_approvals_count(db_pool, enums, untrusted_agent):
     assert len(pending) == 2
 
 
+async def test_get_pending_approvals_enriches_relationship_endpoint_names(
+    db_pool, enums, untrusted_agent, test_entity
+):
+    """Relationship approvals should include readable endpoint labels."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    scope_ids = [enums.scopes.name_to_id["public"]]
+
+    target = await db_pool.fetchrow(
+        """
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        RETURNING id, name
+        """,
+        "Target Person",
+        type_id,
+        status_id,
+        scope_ids,
+        ["test"],
+        "{}",
+    )
+
+    await create_approval_request(
+        db_pool,
+        str(untrusted_agent["id"]),
+        "create_relationship",
+        {
+            "relationship_type": "owns",
+            "source_type": "entity",
+            "source_id": str(test_entity["id"]),
+            "target_type": "entity",
+            "target_id": str(target["id"]),
+        },
+    )
+
+    pending = await get_pending_approvals_all(db_pool)
+    assert len(pending) == 1
+
+    details = pending[0]["change_details"]
+    assert details["source_name"] == "Test Person"
+    assert details["target_name"] == "Target Person"
+
+
+async def test_get_pending_approvals_enriches_bulk_entity_names(
+    db_pool, enums, untrusted_agent, test_entity
+):
+    """Bulk entity approvals should include readable entity names."""
+
+    await create_approval_request(
+        db_pool,
+        str(untrusted_agent["id"]),
+        "bulk_update_entity_scopes",
+        {
+            "entity_ids": [str(test_entity["id"])],
+            "scopes": ["admin"],
+            "op": "add",
+        },
+    )
+
+    pending = await get_pending_approvals_all(db_pool)
+    assert len(pending) == 1
+
+    details = pending[0]["change_details"]
+    assert details["entity_names"] == ["Test Person"]
+    assert details["entity_name"] == "Test Person"
+
+
 # --- approve_request ---
 
 
