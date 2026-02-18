@@ -17,14 +17,17 @@ from nebula_mcp.helpers import (
     _to_uuid_list,
     bulk_update_entity_scopes,
     bulk_update_entity_tags,
+    approve_request,
     create_approval_request,
     create_enrollment_session,
     enforce_scope_subset,
     ensure_approval_capacity,
     filter_context_segments,
     get_approval_diff,
+    get_approval_request,
     get_entity_history,
     get_enrollment_for_wait,
+    get_pending_approvals_all,
     list_audit_actors,
     list_audit_scopes,
     maybe_expire_enrollment,
@@ -180,6 +183,11 @@ class TestHelperUtilities:
 
         assert enforce_scope_subset([], ["public", "private"]) == ["public", "private"]
 
+    def test_enforce_scope_subset_accepts_valid_non_empty_subset(self):
+        """Valid non-empty requests should be returned unchanged."""
+
+        assert enforce_scope_subset(["public"], ["public", "private"]) == ["public"]
+
     def test_enforce_scope_subset_raises_on_missing_scope(self):
         """Unknown requested scopes should fail with clear error."""
 
@@ -202,6 +210,7 @@ class TestHelperUtilities:
         assert _safe_parse_uuid("  " + valid + "  ") == valid
         assert _safe_parse_uuid("not-a-uuid") is None
         assert _safe_parse_uuid("") is None
+        assert _safe_parse_uuid("   ") is None
 
     def test_to_uuid_list_filters_invalid_entries(self):
         """UUID list extractor should drop invalid ids."""
@@ -237,6 +246,7 @@ class TestHelperUtilities:
 
         assert _extract_string_list("{}") == []
         assert _extract_string_list("[not-json") == ["[not-json"]
+        assert _extract_string_list("[oops]") == ["[oops]"]
 
     def test_scope_names_from_ids_ignores_unknown_ids(self):
         """Scope name mapping should skip unknown scope IDs."""
@@ -364,12 +374,20 @@ class _EnrollmentConn:
 class _EnrollmentPool:
     """Pool stub exposing fetchrow/fetch/acquire for enrollment helpers."""
 
-    def __init__(self, conn=None, fetchrow_results=None, fetch_results=None):
+    def __init__(
+        self,
+        conn=None,
+        fetchrow_results=None,
+        fetch_results=None,
+        fetchval_results=None,
+    ):
         self._conn = conn
         self._fetchrow_results = list(fetchrow_results or [])
         self._fetch_results = list(fetch_results or [])
+        self._fetchval_results = list(fetchval_results or [])
         self.fetchrow_calls = []
         self.fetch_calls = []
+        self.fetchval_calls = []
         self.execute_calls = []
 
     async def fetchrow(self, query, *args):
@@ -384,6 +402,12 @@ class _EnrollmentPool:
         if not self._fetch_results:
             return []
         return self._fetch_results.pop(0)
+
+    async def fetchval(self, query, *args):
+        self.fetchval_calls.append((query, args))
+        if not self._fetchval_results:
+            return None
+        return self._fetchval_results.pop(0)
 
     async def execute(self, query, *args):
         self.execute_calls.append((query, args))
@@ -454,6 +478,18 @@ class TestApprovalCapacityAndCreation:
         pool = _DummyPoolAsyncAcquire(fetchval_result=2)
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
         assert len(pool.calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_acquire_branch(self, monkeypatch):
+        """Sync acquire path should recurse into connection branch."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolWithAcquire(_DummyConn(fetchval_result=3))
+        await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=2)
+
+        overflow = _DummyPoolWithAcquire(_DummyConn(fetchval_result=10))
+        with pytest.raises(ValueError):
+            await ensure_approval_capacity(pool=overflow, agent_id="agent-1", requested=1)
 
     @pytest.mark.asyncio
     async def test_ensure_approval_capacity_conn_branch_requested_zero(self, monkeypatch):
@@ -785,6 +821,24 @@ class TestEnrollmentHelpers:
                 enrollment_token=raw_token,
             )
 
+        not_approved = _EnrollmentPool(
+            conn=_EnrollmentConn(
+                fetchrow_results=[
+                    {
+                        "status": "pending_approval",
+                        "enrollment_token_hash": token_hash,
+                        "expires_at": datetime.now(UTC) + timedelta(hours=1),
+                    }
+                ]
+            )
+        )
+        with pytest.raises(ValueError):
+            await redeem_enrollment_key(
+                not_approved,
+                registration_id="sess-pending",
+                enrollment_token=raw_token,
+            )
+
     @pytest.mark.asyncio
     async def test_redeem_enrollment_key_success_and_mark_redeemed_failure(
         self, monkeypatch
@@ -905,6 +959,130 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert details["entity_name"] == "Bro"
 
     @pytest.mark.asyncio
+    async def test_enrich_approval_rows_covers_node_type_maps_and_fallback_edges(self):
+        """Enrichment should handle all node types and relationship fallback hydration."""
+
+        requested_by = "6d0cdce8-f930-4518-b261-a0bac7ac89d0"
+        entity_id = "4f26cf1f-12ad-48dc-a6e0-954d7fd1fe66"
+        context_id = "2de6c91b-770c-4ef1-bf8a-568f1f2dc6a6"
+        log_id = "5b855890-490a-47f1-8dd2-c7ce93f71ebf"
+        file_id = "17010f1b-d80a-4413-bc89-f338ae3d4ec0"
+        protocol_id = "3395e6cd-4068-4254-9db7-721bd2d4a21a"
+        agent_id = "043cd753-f356-4890-8481-f4ce7f9f4937"
+        relationship_id = "2940971e-937a-4ba0-a7b6-30f3302da49e"
+        rows = [
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "relationship_id": relationship_id,
+                    "source_id": "",  # trigger source_id fallback
+                    "target_id": "",  # trigger target_id fallback
+                    "entity_id": entity_id,
+                },
+            },
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "source_type": "agent",
+                    "source_id": agent_id,
+                    "target_type": "file",
+                    "target_id": file_id,
+                },
+            },
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "source_type": "protocol",
+                    "source_id": protocol_id,
+                    "target_type": "log",
+                    "target_id": log_id,
+                },
+            },
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "source_type": "job",
+                    "source_id": "",  # empty job id path
+                    "target_type": "context",
+                    "target_id": context_id,
+                },
+            },
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "source_type": "entity",
+                    "source_id": entity_id,
+                    "target_type": "entity",
+                    "target_id": "not-a-uuid",  # invalid uuid parse-skip branch
+                },
+            },
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "source_type": "weird",
+                    "source_id": entity_id,  # unknown node type return branch
+                },
+            },
+        ]
+        pool = _EnrollmentPool(
+            fetch_results=[
+                [{"id": entity_id, "label": "Bro"}],  # entities
+                [{"id": context_id, "label": "Ctx"}],  # context
+                [{"id": log_id, "label": "event"}],  # logs
+                [{"id": file_id, "label": "spec.md"}],  # files
+                [{"id": protocol_id, "label": "Protocol A"}],  # protocols
+                [  # agents
+                    {"id": requested_by, "label": "req-agent"},
+                    {"id": agent_id, "label": "source-agent"},
+                ],
+                [],  # requested_by entities fallback map
+                [  # relationship map for fallback hydration
+                    {
+                        "id": relationship_id,
+                        "relationship_type": "references",
+                        "source_type": "context",
+                        "source_id": context_id,
+                        "target_type": "entity",
+                        "target_id": entity_id,
+                    }
+                ],
+            ]
+        )
+        enriched = await _enrich_approval_rows(pool, rows)
+        first = enriched[0]["change_details"]
+        assert first["source_type"] == "context"
+        assert first["target_type"] == "entity"
+        assert first["source_name"] == "Ctx"
+        assert first["target_name"] == "Bro"
+        assert enriched[1]["change_details"]["source_name"] == "source-agent"
+        assert enriched[1]["change_details"]["target_name"] == "spec.md"
+        assert enriched[2]["change_details"]["source_name"] == "Protocol A"
+        assert enriched[2]["change_details"]["target_name"] == "event"
+        assert "target_name" not in enriched[4]["change_details"]
+        assert "source_name" not in enriched[5]["change_details"]
+
+    @pytest.mark.asyncio
+    async def test_get_pending_and_single_approval_helpers(self, monkeypatch):
+        """Approval list/get helpers should route through enrichment utility."""
+
+        async def _fake_enrich(_pool, rows):
+            for row in rows:
+                row["enriched"] = True
+            return rows
+
+        monkeypatch.setattr("nebula_mcp.helpers._enrich_approval_rows", _fake_enrich)
+        pool = _EnrollmentPool(
+            fetch_results=[[{"id": "ap-1"}]],
+            fetchrow_results=[{"id": "ap-2"}],
+        )
+        pending = await get_pending_approvals_all(pool, limit=5, offset=2)
+        single = await get_approval_request(pool, "ap-2")
+        missing = await get_approval_request(pool, "ap-missing")
+        assert pending[0]["enriched"] is True
+        assert single["enriched"] is True
+        assert missing is None
+
+    @pytest.mark.asyncio
     async def test_reject_request_marks_register_agent_enrollment(self):
         """Register-agent rejects should mark enrollment status."""
 
@@ -925,6 +1103,14 @@ class TestApprovalEnrichmentAndAuditHelpers:
         )
         assert result["status"] == "rejected"
         assert len(pool.execute_calls) == 1
+
+        with pytest.raises(ValueError):
+            await reject_request(
+                _EnrollmentPool(fetchrow_results=[None]),
+                approval_id="approval-404",
+                reviewed_by="reviewer-1",
+                review_notes="nope",
+            )
 
     @pytest.mark.asyncio
     async def test_get_entity_history_and_revert_entity_error_paths(self):
@@ -1008,6 +1194,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
     def test_normalize_bulk_operation_aliases_and_invalid(self):
         """Bulk op normalizer should map aliases and reject unknown ops."""
 
+        assert normalize_bulk_operation("add") == "add"
         assert normalize_bulk_operation("remove") == "remove"
         assert normalize_bulk_operation("-") == "remove"
         assert normalize_bulk_operation("set") == "set"
@@ -1151,9 +1338,256 @@ class TestApprovalEnrichmentAndAuditHelpers:
         with pytest.raises(ValueError):
             await get_approval_diff(missing_job_pool, "approval-job-missing")
 
+    @pytest.mark.asyncio
+    async def test_get_approval_diff_update_entity_success(self):
+        """update_entity diff should include changed fields only."""
+
+        pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "update_entity",
+                    "change_details": {"entity_id": "entity-1", "name": "new", "tags": ["x"]},
+                },
+                {"name": "old", "tags": ["x"]},
+            ]
+        )
+        diff = await get_approval_diff(pool, "approval-update-entity")
+        assert diff["changes"]["name"]["from"] == "old"
+        assert diff["changes"]["name"]["to"] == "new"
+        assert "tags" not in diff["changes"]
+
+    @pytest.mark.asyncio
+    async def test_get_approval_diff_other_request_type_branches(self):
+        """Diff helper should cover create-context plus relationship/job updates."""
+
+        create_context_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "create_context",
+                    "change_details": '{"title":"Ctx","status":"active"}',
+                }
+            ]
+        )
+        create_context_diff = await get_approval_diff(
+            create_context_pool, "approval-create-context"
+        )
+        assert create_context_diff["changes"]["title"]["to"] == "Ctx"
+
+        rel_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "update_relationship",
+                    "change_details": {
+                        "relationship_id": "rel-1",
+                        "status": "archived",
+                        "metadata": {"a": 2},
+                    },
+                },
+                {"status": "active", "metadata": {"a": 1}},
+            ]
+        )
+        rel_diff = await get_approval_diff(rel_pool, "approval-rel-update")
+        assert rel_diff["changes"]["status"]["from"] == "active"
+        assert rel_diff["changes"]["metadata"]["to"] == {"a": 2}
+
+        job_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "update_job_status",
+                    "change_details": {"job_id": "2026Q1-ABCD", "status": "done"},
+                },
+                {"status": "in-progress"},
+            ]
+        )
+        job_diff = await get_approval_diff(job_pool, "approval-job-update")
+        assert job_diff["changes"]["status"]["from"] == "in-progress"
+        assert job_diff["changes"]["status"]["to"] == "done"
+
     def test_normalize_diff_value_for_structured_data(self):
         """Diff value normalizer should JSON-normalize lists and dicts."""
 
         assert _normalize_diff_value({"b": 2, "a": 1}) == '{"a": 1, "b": 2}'
         assert _normalize_diff_value([2, 1]) == "[2, 1]"
         assert _normalize_diff_value("plain") == "plain"
+
+    @pytest.mark.asyncio
+    async def test_approve_request_register_agent_with_system_actor_variants(
+        self, monkeypatch
+    ):
+        """Register-agent approvals should normalize malformed review_details."""
+
+        from nebula_mcp import executors as executor_mod
+
+        seen = []
+
+        async def _executor(_pool, _enums, _details, review_details):
+            seen.append(review_details)
+            return {"id": "agent-created"}
+
+        monkeypatch.setitem(executor_mod.EXECUTORS, "register_agent", _executor)
+
+        approval_base = {
+            "id": "approval-1",
+            "request_type": "register_agent",
+            "change_details": {"name": "agent-a"},
+        }
+        # Invalid JSON string -> {}
+        pool_invalid = _EnrollmentPool(
+            fetchrow_results=[{**approval_base, "review_details": "{bad-json"}]
+        )
+        result_invalid = await approve_request(
+            pool_invalid,
+            enums=None,
+            approval_id="approval-1",
+            reviewed_by=None,
+            review_details=None,
+            review_notes=None,
+        )
+        assert result_invalid["entity"]["id"] == "agent-created"
+
+        # JSON list -> normalized to {}
+        pool_list = _EnrollmentPool(
+            fetchrow_results=[{**approval_base, "review_details": "[]"}]
+        )
+        await approve_request(
+            pool_list,
+            enums=None,
+            approval_id="approval-2",
+            reviewed_by=None,
+            review_details=None,
+            review_notes=None,
+        )
+        assert all("_approval_id" in item for item in seen)
+        assert all("_reviewed_by" not in item for item in seen)
+        # system actor path should set + reset change tracking keys.
+        assert any(
+            "SET app.changed_by_type = 'system'" in call[0] for call in pool_invalid.execute_calls
+        )
+        assert any(
+            "RESET app.changed_by_id" in call[0] for call in pool_invalid.execute_calls
+        )
+
+    @pytest.mark.asyncio
+    async def test_approve_request_error_and_non_register_paths(self, monkeypatch):
+        """approve_request should fail cleanly for missing/executor/runtime paths."""
+
+        from nebula_mcp import executors as executor_mod
+
+        with pytest.raises(ValueError):
+            await approve_request(
+                _EnrollmentPool(fetchrow_results=[None]),
+                enums=None,
+                approval_id="approval-missing",
+                reviewed_by=None,
+            )
+
+        no_exec_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "id": "approval-no-exec",
+                    "request_type": "unknown_type",
+                    "change_details": {},
+                }
+            ]
+        )
+        with pytest.raises(ValueError):
+            await approve_request(
+                no_exec_pool,
+                enums=None,
+                approval_id="approval-no-exec",
+                reviewed_by=None,
+            )
+        assert any(
+            str(call[1][0]).startswith("No executor for:")
+            for call in no_exec_pool.execute_calls
+            if call[1]
+        )
+
+        async def _create_entity_exec(_pool, _enums, _details):
+            return {"id": "entity-1"}
+
+        async def _raise_exec(_pool, _enums, _details):
+            raise RuntimeError("boom")
+
+        monkeypatch.setitem(executor_mod.EXECUTORS, "create_entity", _create_entity_exec)
+        good_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "id": "approval-ok",
+                    "request_type": "create_entity",
+                    "change_details": {"name": "N"},
+                }
+            ],
+            fetchval_results=[None],
+        )
+        result = await approve_request(
+            good_pool,
+            enums=None,
+            approval_id="approval-ok",
+            reviewed_by="reviewer-1",
+        )
+        assert result["entity"]["id"] == "entity-1"
+        assert any(
+            "SET app.changed_by_type = 'entity'" in call[0] for call in good_pool.execute_calls
+        )
+        assert any(
+            "_reviewed_by" in str(call[1]) for call in good_pool.fetchval_calls
+        ) is False
+
+        monkeypatch.setitem(executor_mod.EXECUTORS, "create_entity", _raise_exec)
+        fail_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "id": "approval-fail",
+                    "request_type": "create_entity",
+                    "change_details": {"name": "N"},
+                }
+            ],
+            fetchval_results=[None],
+        )
+        with pytest.raises(RuntimeError):
+            await approve_request(
+                fail_pool,
+                enums=None,
+                approval_id="approval-fail",
+                reviewed_by="reviewer-1",
+            )
+        assert any(
+            str(call[1][0]) == "boom" for call in fail_pool.execute_calls if call[1]
+        )
+
+    @pytest.mark.asyncio
+    async def test_approve_request_register_agent_with_reviewed_by_sets_marker(
+        self, monkeypatch
+    ):
+        """register_agent approvals should include reviewed-by marker when set."""
+
+        from nebula_mcp import executors as executor_mod
+
+        seen: list[dict] = []
+
+        async def _executor(_pool, _enums, _details, review_details):
+            seen.append(review_details)
+            return {"id": "agent-created"}
+
+        monkeypatch.setitem(executor_mod.EXECUTORS, "register_agent", _executor)
+        pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "id": "approval-3",
+                    "request_type": "register_agent",
+                    "change_details": {"name": "agent-a"},
+                    "review_details": {},
+                }
+            ],
+            fetchval_results=[None],
+        )
+        await approve_request(
+            pool,
+            enums=None,
+            approval_id="approval-3",
+            reviewed_by="reviewer-1",
+            review_details=None,
+            review_notes=None,
+        )
+        assert seen[0]["_reviewed_by"] == "reviewer-1"
