@@ -330,7 +330,7 @@ func (m FilesModel) renderList() string {
 
 	statusWidth := 11
 	sizeWidth := 10
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	fileWidth := availableCols - (statusWidth + sizeWidth + atWidth)
 	if fileWidth < 12 {
 		fileWidth = 12

@@ -333,7 +333,7 @@ func (m JobsModel) renderList() string {
 
 	statusWidth := 12
 	prioWidth := 10
-	atWidth := 14
+	atWidth := compactTimeColumnWidth
 	titleWidth := availableCols - (statusWidth + prioWidth + atWidth)
 	if titleWidth < 12 {
 		titleWidth = 12

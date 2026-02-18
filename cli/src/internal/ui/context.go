@@ -972,7 +972,7 @@ func (m ContextModel) renderList() string {
 
 	typeWidth := 10
 	statusWidth := 11
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	titleWidth := availableCols - (typeWidth + statusWidth + atWidth)
 	if titleWidth < 12 {
 		titleWidth = 12

@@ -246,7 +246,7 @@ func (m InboxModel) View() string {
 
 	actionWidth := 19
 	whoWidth := 14
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 
 	titleWidth := availableCols - (actionWidth + whoWidth + atWidth)
 	if titleWidth < 12 {

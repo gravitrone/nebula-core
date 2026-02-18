@@ -338,7 +338,7 @@ func (m LogsModel) renderList() string {
 	}
 
 	statusWidth := 11
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	typeWidth := 16
 	valueWidth := availableCols - (typeWidth + statusWidth + atWidth)
 	if valueWidth < 14 {

@@ -984,7 +984,7 @@ func (m EntitiesModel) renderList() string {
 
 	typeWidth := 12
 	statusWidth := 11
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	nameWidth := availableCols - (typeWidth + statusWidth + atWidth)
 	if nameWidth < 12 {
 		nameWidth = 12
@@ -1461,7 +1461,7 @@ func (m EntitiesModel) renderHistory() string {
 		availableCols = 30
 	}
 
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	actionWidth := 10
 	fieldsWidth := availableCols - (atWidth + actionWidth)
 	if fieldsWidth < 14 {

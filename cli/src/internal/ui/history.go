@@ -398,7 +398,7 @@ func (m HistoryModel) renderList() string {
 		availableCols = 30
 	}
 
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	actionWidth := 6
 	tableNameWidth := 17
 	actorWidth := availableCols - (atWidth + actionWidth + tableNameWidth)

@@ -394,7 +394,7 @@ func (m ProtocolsModel) renderList() string {
 	}
 
 	statusWidth := 11
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	nameWidth := 18
 	titleWidth := availableCols - (nameWidth + statusWidth + atWidth)
 	if titleWidth < 14 {

@@ -367,7 +367,7 @@ func (m RelationshipsModel) renderList() string {
 
 	relWidth := 12
 	statusWidth := 9
-	atWidth := 11
+	atWidth := compactTimeColumnWidth
 	edgeWidth := availableCols - (relWidth + statusWidth + atWidth)
 	if edgeWidth < 12 {
 		edgeWidth = 12

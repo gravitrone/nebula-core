@@ -537,7 +537,7 @@ func (m ProfileModel) renderKeys() string {
 	}
 
 	prefixWidth := 12
-	atWidth := 8
+	atWidth := compactTimeColumnWidth
 	ownerWidth := 18
 	nameWidth := availableCols - (prefixWidth + ownerWidth + atWidth)
 	if nameWidth < 14 {
