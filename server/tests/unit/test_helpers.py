@@ -9,18 +9,31 @@ import pytest
 
 from nebula_mcp.helpers import (
     _extract_string_list,
+    _enrich_approval_rows,
+    _normalize_diff_value,
     _normalize_change_details,
     _pending_approval_limit,
     _safe_parse_uuid,
     _to_uuid_list,
+    bulk_update_entity_scopes,
+    bulk_update_entity_tags,
     create_approval_request,
     create_enrollment_session,
     enforce_scope_subset,
     ensure_approval_capacity,
     filter_context_segments,
+    get_approval_diff,
+    get_entity_history,
     get_enrollment_for_wait,
+    list_audit_actors,
+    list_audit_scopes,
     maybe_expire_enrollment,
+    normalize_bulk_operation,
+    query_audit_log,
+    reject_request,
     redeem_enrollment_key,
+    revert_entity,
+    scope_names_from_ids,
     wait_for_enrollment_status,
     generate_enrollment_token,
     verify_enrollment_token,
@@ -218,6 +231,22 @@ class TestHelperUtilities:
         assert _extract_string_list('["a","b"]') == ["a", "b"]
         assert _extract_string_list("a,b") == ["a", "b"]
         assert _extract_string_list("") == []
+
+    def test_extract_string_list_edge_strings(self):
+        """String-list parser should handle empty braces and malformed JSON arrays."""
+
+        assert _extract_string_list("{}") == []
+        assert _extract_string_list("[not-json") == ["[not-json"]
+
+    def test_scope_names_from_ids_ignores_unknown_ids(self):
+        """Scope name mapping should skip unknown scope IDs."""
+
+        enums = type(
+            "Enums",
+            (),
+            {"scopes": type("Scopes", (), {"id_to_name": {"id-public": "public"}})()},
+        )()
+        assert scope_names_from_ids(["id-public", "id-missing"], enums) == ["public"]
 
 
 class _DummyTransaction:
@@ -816,3 +845,315 @@ class TestEnrollmentHelpers:
                 registration_id="sess-fail",
                 enrollment_token=raw_token,
             )
+
+
+class TestApprovalEnrichmentAndAuditHelpers:
+    """Coverage for approval enrichment, bulk ops, and audit utilities."""
+
+    @pytest.mark.asyncio
+    async def test_enrich_approval_rows_handles_empty_input(self):
+        """Empty row lists should pass through without DB calls."""
+
+        pool = _EnrollmentPool(fetch_results=[])
+        assert await _enrich_approval_rows(pool, []) == []
+        assert pool.fetch_calls == []
+
+    @pytest.mark.asyncio
+    async def test_enrich_approval_rows_populates_labels_and_relationship_fallbacks(self):
+        """Enrichment should attach readable labels for ids and relationship fields."""
+
+        requested_by = "6d0cdce8-f930-4518-b261-a0bac7ac89d0"
+        entity_id = "4f26cf1f-12ad-48dc-a6e0-954d7fd1fe66"
+        relationship_id = "2940971e-937a-4ba0-a7b6-30f3302da49e"
+        rows = [
+            {
+                "requested_by": requested_by,
+                "change_details": {
+                    "relationship_id": relationship_id,
+                    "source_type": "job",
+                    "source_id": "2026Q1-ABCD",
+                    "target_type": "entity",
+                    "target_id": entity_id,
+                    "entity_ids": [entity_id, "not-a-uuid"],
+                },
+            }
+        ]
+        pool = _EnrollmentPool(
+            fetch_results=[
+                [{"id": entity_id, "label": "Bro"}],  # entities
+                [{"id": "2026Q1-ABCD", "label": "Sprint Job"}],  # jobs
+                [{"id": requested_by, "label": "agent-1"}],  # agents
+                [],  # requested_by entities fallback map
+                [  # relationship map
+                    {
+                        "id": relationship_id,
+                        "relationship_type": "owns",
+                        "source_type": "job",
+                        "source_id": "2026Q1-ABCD",
+                        "target_type": "entity",
+                        "target_id": entity_id,
+                    }
+                ],
+            ]
+        )
+        enriched = await _enrich_approval_rows(pool, rows)
+        details = enriched[0]["change_details"]
+        assert enriched[0]["requested_by_name"] == "agent-1"
+        assert details["source_name"] == "Sprint Job"
+        assert details["target_name"] == "Bro"
+        assert details["entity_names"] == ["Bro"]
+        assert details["entity_name"] == "Bro"
+
+    @pytest.mark.asyncio
+    async def test_reject_request_marks_register_agent_enrollment(self):
+        """Register-agent rejects should mark enrollment status."""
+
+        pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "id": "approval-1",
+                    "request_type": "register_agent",
+                    "status": "rejected",
+                }
+            ]
+        )
+        result = await reject_request(
+            pool,
+            approval_id="approval-1",
+            reviewed_by="reviewer-1",
+            review_notes="nope",
+        )
+        assert result["status"] == "rejected"
+        assert len(pool.execute_calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_get_entity_history_and_revert_entity_error_paths(self):
+        """History and revert helpers should validate audit input states."""
+
+        history_pool = _EnrollmentPool(
+            fetch_results=[[{"id": "audit-1", "table_name": "entities"}]]
+        )
+        history = await get_entity_history(
+            history_pool,
+            entity_id="4f26cf1f-12ad-48dc-a6e0-954d7fd1fe66",
+        )
+        assert history[0]["id"] == "audit-1"
+
+        with pytest.raises(ValueError):
+            await revert_entity(
+                _EnrollmentPool(fetchrow_results=[None]),
+                "entity-1",
+                "audit-1",
+            )
+
+        wrong_table = _EnrollmentPool(
+            fetchrow_results=[
+                {"table_name": "jobs", "record_id": "entity-1", "new_data": {"name": "x"}}
+            ]
+        )
+        with pytest.raises(ValueError):
+            await revert_entity(wrong_table, "entity-1", "audit-1")
+
+        wrong_record = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "table_name": "entities",
+                    "record_id": "entity-2",
+                    "new_data": {"name": "x"},
+                }
+            ]
+        )
+        with pytest.raises(ValueError):
+            await revert_entity(wrong_record, "entity-1", "audit-1")
+
+        empty_snapshot = _EnrollmentPool(
+            fetchrow_results=[
+                {"table_name": "entities", "record_id": "entity-1", "new_data": None}
+            ]
+        )
+        with pytest.raises(ValueError):
+            await revert_entity(empty_snapshot, "entity-1", "audit-1")
+
+    @pytest.mark.asyncio
+    async def test_revert_entity_uses_old_data_for_delete_actions(self):
+        """Delete audit actions should use old_data snapshot on revert."""
+
+        entity_id = "4f26cf1f-12ad-48dc-a6e0-954d7fd1fe66"
+        snapshot = {
+            "privacy_scope_ids": [],
+            "name": "Restored Name",
+            "type_id": "type-1",
+            "status_id": "status-1",
+            "status_changed_at": None,
+            "status_reason": None,
+            "tags": ["a"],
+            "metadata": {"k": "v"},
+            "source_path": None,
+        }
+        pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "table_name": "entities",
+                    "record_id": entity_id,
+                    "action": "delete",
+                    "new_data": None,
+                    "old_data": json.dumps(snapshot),
+                },
+                {"id": entity_id, "name": "Restored Name"},
+            ]
+        )
+        result = await revert_entity(pool, entity_id, "audit-1")
+        assert result["name"] == "Restored Name"
+
+    def test_normalize_bulk_operation_aliases_and_invalid(self):
+        """Bulk op normalizer should map aliases and reject unknown ops."""
+
+        assert normalize_bulk_operation("remove") == "remove"
+        assert normalize_bulk_operation("-") == "remove"
+        assert normalize_bulk_operation("set") == "set"
+        with pytest.raises(ValueError):
+            normalize_bulk_operation("merge")
+
+    @pytest.mark.asyncio
+    async def test_bulk_update_helpers_handle_rows_without_id_column(self):
+        """Bulk update helpers should fallback to first row value when id key is absent."""
+
+        pool = _EnrollmentPool(
+            fetch_results=[
+                [{"entity_id": "id-a"}, {"id": "id-b"}],  # tags
+                [{"entity_id": "id-c"}, {"id": "id-d"}],  # scopes
+            ]
+        )
+        tags = await bulk_update_entity_tags(pool, ["id-a"], ["x"], "add")
+        enums = type(
+            "Enums",
+            (),
+            {"scopes": type("Scopes", (), {"name_to_id": {"public": "scope-public"}})()},
+        )()
+        scopes = await bulk_update_entity_scopes(
+            pool,
+            enums,
+            ["id-c"],
+            ["public"],
+            "set",
+        )
+        assert tags == ["id-a", "id-b"]
+        assert scopes == ["id-c", "id-d"]
+
+    @pytest.mark.asyncio
+    async def test_audit_query_and_actor_normalization(self):
+        """Audit helpers should pass filters and normalize unknown actor rows."""
+
+        pool = _EnrollmentPool(
+            fetch_results=[
+                [{"id": "audit-1"}],  # query_audit_log
+                [{"scope_name": "public", "count": 1}],  # list_audit_scopes
+                [  # list_audit_actors
+                    {
+                        "changed_by_type": "unknown",
+                        "changed_by_id": "abc",
+                        "actor_name": "unknown",
+                    },
+                    {
+                        "changed_by_type": "agent",
+                        "changed_by_id": "agent-1",
+                        "actor_name": "codex",
+                    },
+                ],
+            ]
+        )
+        audit_rows = await query_audit_log(pool, actor_type="agent", actor_id="")
+        scope_rows = await list_audit_scopes(pool)
+        actor_rows = await list_audit_actors(pool, actor_type="agent")
+
+        assert audit_rows[0]["id"] == "audit-1"
+        assert scope_rows[0]["scope_name"] == "public"
+        assert actor_rows[0]["changed_by_type"] == "system"
+        assert actor_rows[0]["changed_by_id"] == ""
+        assert actor_rows[0]["actor_name"] is None
+        assert actor_rows[1]["actor_name"] == "codex"
+
+    @pytest.mark.asyncio
+    async def test_get_approval_diff_branches_and_errors(self):
+        """Approval diff helper should cover create/update and missing-resource errors."""
+
+        with pytest.raises(ValueError):
+            await get_approval_diff(
+                _EnrollmentPool(fetchrow_results=[None]),
+                "approval-missing",
+            )
+
+        create_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {"request_type": "create_entity", "change_details": {"name": "N"}},
+            ]
+        )
+        create_diff = await get_approval_diff(create_pool, "approval-create")
+        assert create_diff["changes"]["name"]["to"] == "N"
+
+        missing_entity_id_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {"request_type": "update_entity", "change_details": {}},
+            ]
+        )
+        with pytest.raises(ValueError):
+            await get_approval_diff(missing_entity_id_pool, "approval-update-missing-id")
+
+        missing_entity_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "update_entity",
+                    "change_details": {"entity_id": "entity-1", "name": "new"},
+                },
+                None,
+            ]
+        )
+        with pytest.raises(ValueError):
+            await get_approval_diff(missing_entity_pool, "approval-update-missing-entity")
+
+        missing_rel_id_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {"request_type": "update_relationship", "change_details": {}},
+            ]
+        )
+        with pytest.raises(ValueError):
+            await get_approval_diff(missing_rel_id_pool, "approval-rel-missing-id")
+
+        missing_rel_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "update_relationship",
+                    "change_details": {"relationship_id": "rel-1", "status": "active"},
+                },
+                None,
+            ]
+        )
+        with pytest.raises(ValueError):
+            await get_approval_diff(missing_rel_pool, "approval-rel-missing")
+
+        missing_job_id_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {"request_type": "update_job_status", "change_details": {}},
+            ]
+        )
+        with pytest.raises(ValueError):
+            await get_approval_diff(missing_job_id_pool, "approval-job-missing-id")
+
+        missing_job_pool = _EnrollmentPool(
+            fetchrow_results=[
+                {
+                    "request_type": "update_job_status",
+                    "change_details": {"job_id": "job-1", "status": "done"},
+                },
+                None,
+            ]
+        )
+        with pytest.raises(ValueError):
+            await get_approval_diff(missing_job_pool, "approval-job-missing")
+
+    def test_normalize_diff_value_for_structured_data(self):
+        """Diff value normalizer should JSON-normalize lists and dicts."""
+
+        assert _normalize_diff_value({"b": 2, "a": 1}) == '{"a": 1, "b": 2}'
+        assert _normalize_diff_value([2, 1]) == "[2, 1]"
+        assert _normalize_diff_value("plain") == "plain"
