@@ -561,11 +561,11 @@ func renderMetadataSelectableBlockWithTitle(
 		row := rows[absIdx]
 		mark := "[ ]"
 		if selected != nil && selected[absIdx] {
-			mark = "[x]"
+			mark = "[X]"
 		}
 		if list.IsSelected(absIdx) {
 			activeVisible = len(gridRows)
-			mark = ">" + mark
+			mark = "›" + mark
 		} else {
 			mark = " " + mark
 		}
