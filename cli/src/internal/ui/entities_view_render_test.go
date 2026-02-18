@@ -136,5 +136,8 @@ func TestEntitiesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	clean := components.SanitizeText(out)
 	assert.Contains(t, clean, "Alpha")
 	assert.Contains(t, clean, "Metadata")
-	assert.Contains(t, clean, "note: hello")
+	assert.Contains(t, clean, "Field")
+	assert.Contains(t, clean, "Value")
+	assert.Contains(t, clean, "note")
+	assert.Contains(t, clean, "hello")
 }

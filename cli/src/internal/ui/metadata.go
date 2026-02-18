@@ -395,12 +395,169 @@ func renderMetadataBlockWithTitle(title string, data map[string]any, width int, 
 	if len(data) == 0 {
 		return ""
 	}
-	lines := metadataLinesStyled(data, 0)
-	maxLines := 16
-	if !expanded && len(lines) > maxLines {
-		lines = append(lines[:maxLines], MutedStyle.Render("..."))
+	contentWidth := components.BoxContentWidth(width) - 2
+	if contentWidth < 24 {
+		contentWidth = 24
 	}
-	return components.TitledBox(title, strings.Join(lines, "\n"), width)
+	rows := metadataDisplayRows(data)
+	if len(rows) == 0 {
+		return components.TitledBox(title, MetaValueStyle.Render("None"), width)
+	}
+	maxRows := 12
+	if expanded {
+		maxRows = 26
+	}
+	if len(rows) > maxRows {
+		remaining := len(rows) - maxRows
+		rows = append(rows[:maxRows], metadataDisplayRow{
+			field: "...",
+			value: fmt.Sprintf("+%d more rows (press m to expand)", remaining),
+		})
+	}
+	fieldWidth := contentWidth * 34 / 100
+	if fieldWidth < 18 {
+		fieldWidth = 18
+	}
+	if fieldWidth > 42 {
+		fieldWidth = 42
+	}
+	valueWidth := contentWidth - fieldWidth - 1
+	if valueWidth < 14 {
+		valueWidth = 14
+		fieldWidth = contentWidth - valueWidth - 1
+		if fieldWidth < 12 {
+			fieldWidth = 12
+		}
+	}
+	columns := []components.TableColumn{
+		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
+		{Header: "Value", Width: valueWidth, Align: lipgloss.Left},
+	}
+	gridRows := make([][]string, 0, len(rows))
+	for _, row := range rows {
+		gridRows = append(gridRows, []string{row.field, row.value})
+	}
+	rendered := components.TableGrid(columns, gridRows, contentWidth)
+	return components.TitledBox(title, colorizeScopeBadges(rendered), width)
+}
+
+type metadataDisplayRow struct {
+	field string
+	value string
+}
+
+func metadataDisplayRows(data map[string]any) []metadataDisplayRow {
+	rows := make([]metadataDisplayRow, 0, len(data)*2)
+	flattenMetadataMapRows("", data, &rows)
+	return rows
+}
+
+func flattenMetadataMapRows(prefix string, data map[string]any, rows *[]metadataDisplayRow) {
+	if len(data) == 0 {
+		if prefix != "" {
+			*rows = append(*rows, metadataDisplayRow{field: prefix, value: "None"})
+		}
+		return
+	}
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		path := key
+		if prefix != "" {
+			path = prefix + "." + key
+		}
+		value := normalizeStructuredMetadataValue(data[key])
+		if strings.EqualFold(strings.TrimSpace(key), "scopes") {
+			scopes := parseStringSlice(value)
+			if len(scopes) == 0 {
+				*rows = append(*rows, metadataDisplayRow{field: path, value: "None"})
+			} else {
+				*rows = append(*rows, metadataDisplayRow{
+					field: path,
+					value: strings.Join(scopeBadgesText(scopes), " "),
+				})
+			}
+			continue
+		}
+
+		switch typed := value.(type) {
+		case map[string]any:
+			flattenMetadataMapRows(path, typed, rows)
+		case []any:
+			flattenMetadataListRows(path, typed, rows)
+		default:
+			*rows = append(*rows, metadataDisplayRow{
+				field: path,
+				value: formatMetadataValue(typed),
+			})
+		}
+	}
+}
+
+func flattenMetadataListRows(prefix string, items []any, rows *[]metadataDisplayRow) {
+	if len(items) == 0 {
+		*rows = append(*rows, metadataDisplayRow{field: prefix, value: "None"})
+		return
+	}
+
+	// Compact simple scalar lists into one row.
+	allScalars := true
+	for _, raw := range items {
+		switch normalizeStructuredMetadataValue(raw).(type) {
+		case map[string]any, []any:
+			allScalars = false
+		}
+		if !allScalars {
+			break
+		}
+	}
+	if allScalars {
+		values := make([]string, 0, len(items))
+		for _, raw := range items {
+			values = append(values, formatMetadataValue(raw))
+		}
+		*rows = append(*rows, metadataDisplayRow{
+			field: prefix,
+			value: strings.Join(values, ", "),
+		})
+		return
+	}
+
+	for idx, raw := range items {
+		path := fmt.Sprintf("%s[%d]", prefix, idx)
+		value := normalizeStructuredMetadataValue(raw)
+		switch typed := value.(type) {
+		case map[string]any:
+			if textRaw, ok := typed["text"]; ok {
+				text := strings.TrimSpace(components.SanitizeText(fmt.Sprintf("%v", textRaw)))
+				if text != "" {
+					scopePrefix := ""
+					if scopesRaw, hasScopes := typed["scopes"]; hasScopes {
+						scopes := parseStringSlice(scopesRaw)
+						if len(scopes) > 0 {
+							scopePrefix = strings.Join(scopeBadgesText(scopes), " ") + " "
+						}
+					}
+					*rows = append(*rows, metadataDisplayRow{
+						field: path,
+						value: scopePrefix + text,
+					})
+					continue
+				}
+			}
+			flattenMetadataMapRows(path, typed, rows)
+		case []any:
+			flattenMetadataListRows(path, typed, rows)
+		default:
+			*rows = append(*rows, metadataDisplayRow{
+				field: path,
+				value: formatMetadataValue(typed),
+			})
+		}
+	}
 }
 
 func metadataLinesStyled(data map[string]any, indent int) []string {
@@ -475,6 +632,15 @@ func metadataLinesPlain(data map[string]any, indent int) []string {
 			lines = append(lines, pad+components.SanitizeText(k)+":")
 			lines = append(lines, metadataLinesPlain(typed, indent+2)...)
 		case []any:
+			if strings.EqualFold(strings.TrimSpace(k), "scopes") {
+				scopes := parseStringSlice(typed)
+				if len(scopes) == 0 {
+					lines = append(lines, fmt.Sprintf("%s%s: None", pad, components.SanitizeText(k)))
+				} else {
+					lines = append(lines, fmt.Sprintf("%s%s: %s", pad, components.SanitizeText(k), strings.Join(scopeBadgesText(scopes), " ")))
+				}
+				continue
+			}
 			lines = append(lines, pad+components.SanitizeText(k)+":")
 			lines = append(lines, metadataListLinesPlain(typed, indent+2)...)
 		default:
@@ -616,6 +782,20 @@ func metadataListLinesPlain(items []any, indent int) []string {
 		item := normalizeStructuredMetadataValue(rawItem)
 		switch typed := item.(type) {
 		case map[string]any:
+			if textRaw, ok := typed["text"]; ok {
+				text := strings.TrimSpace(components.SanitizeText(fmt.Sprintf("%v", textRaw)))
+				if text != "" {
+					scopePrefix := ""
+					if scopesRaw, hasScopes := typed["scopes"]; hasScopes {
+						scopes := parseStringSlice(scopesRaw)
+						if len(scopes) > 0 {
+							scopePrefix = strings.Join(scopeBadgesText(scopes), " ") + " "
+						}
+					}
+					lines = append(lines, pad+"- "+scopePrefix+text)
+					continue
+				}
+			}
 			lines = append(lines, pad+"-")
 			lines = append(lines, metadataLinesPlain(typed, indent+2)...)
 		case []any:
@@ -729,4 +909,117 @@ func parseStringSlice(value any) []string {
 	default:
 		return nil
 	}
+}
+
+func scopeBadgesText(scopes []string) []string {
+	if len(scopes) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(scopes))
+	for _, scope := range scopes {
+		scope = strings.TrimSpace(scope)
+		if scope == "" {
+			continue
+		}
+		out = append(out, "["+scope+"]")
+	}
+	return out
+}
+
+func wrapMetadataDisplayLines(lines []string, width int) []string {
+	if width <= 0 || len(lines) == 0 {
+		return lines
+	}
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		out = append(out, wrapMetadataDisplayLine(line, width)...)
+	}
+	return out
+}
+
+func wrapMetadataDisplayLine(line string, width int) []string {
+	clean := strings.TrimRight(components.SanitizeText(line), " ")
+	if clean == "" {
+		return []string{""}
+	}
+	if lipgloss.Width(clean) <= width {
+		return []string{clean}
+	}
+
+	indentSize := leadingSpaces(clean)
+	prefix := strings.Repeat(" ", indentSize)
+	trimmed := strings.TrimSpace(clean)
+
+	if strings.HasPrefix(trimmed, "- ") {
+		bulletPrefix := prefix + "- "
+		chunks := wrapMetadataWords(strings.TrimSpace(strings.TrimPrefix(trimmed, "- ")), width-lipgloss.Width(bulletPrefix))
+		if len(chunks) == 0 {
+			return []string{components.ClampTextWidthEllipsis(clean, width)}
+		}
+		out := make([]string, 0, len(chunks))
+		out = append(out, bulletPrefix+chunks[0])
+		contPrefix := prefix + "  "
+		for _, chunk := range chunks[1:] {
+			out = append(out, contPrefix+chunk)
+		}
+		return out
+	}
+
+	chunks := wrapMetadataWords(trimmed, width-lipgloss.Width(prefix))
+	if len(chunks) == 0 {
+		return []string{components.ClampTextWidthEllipsis(clean, width)}
+	}
+	out := make([]string, 0, len(chunks))
+	for _, chunk := range chunks {
+		out = append(out, prefix+chunk)
+	}
+	return out
+}
+
+func wrapMetadataWords(text string, width int) []string {
+	if width <= 0 {
+		return []string{components.SanitizeOneLine(text)}
+	}
+	text = strings.TrimSpace(components.SanitizeText(text))
+	if text == "" {
+		return nil
+	}
+	if lipgloss.Width(text) <= width {
+		return []string{text}
+	}
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{components.ClampTextWidthEllipsis(text, width)}
+	}
+	out := make([]string, 0, len(words))
+	current := ""
+	for _, word := range words {
+		if lipgloss.Width(word) > width {
+			word = components.ClampTextWidthEllipsis(word, width)
+		}
+		if current == "" {
+			current = word
+			continue
+		}
+		candidate := current + " " + word
+		if lipgloss.Width(candidate) <= width {
+			current = candidate
+			continue
+		}
+		out = append(out, current)
+		current = word
+	}
+	if current != "" {
+		out = append(out, current)
+	}
+	return out
+}
+
+func colorizeScopeBadges(text string) string {
+	rendered := text
+	for _, scope := range []string{"public", "private", "sensitive", "admin"} {
+		token := "[" + scope + "]"
+		rendered = strings.ReplaceAll(rendered, token, renderScopeBadge(scope))
+	}
+	return rendered
 }

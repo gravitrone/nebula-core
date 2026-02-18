@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -189,4 +190,36 @@ func TestAppClearsErrorOnInput(t *testing.T) {
 	updated := model.(App)
 
 	assert.Empty(t, updated.err)
+}
+
+func TestClampBodyForViewportSupportsScrollMarkers(t *testing.T) {
+	lines := make([]string, 0, 24)
+	for i := 1; i <= 24; i++ {
+		lines = append(lines, "line "+strconv.Itoa(i))
+	}
+	body := strings.Join(lines, "\n")
+
+	topScroll, clipped := clampBodyForViewport(body, 18, 3, 4, 0)
+	assert.True(t, clipped)
+	assert.Contains(t, topScroll, "... ↓ more")
+	assert.NotContains(t, topScroll, "... ↑ more")
+
+	midScroll, _ := clampBodyForViewport(body, 18, 3, 4, 6)
+	assert.Contains(t, midScroll, "... ↑ more")
+	assert.Contains(t, midScroll, "... ↓ more")
+
+	endScroll, _ := clampBodyForViewport(body, 18, 3, 4, 99)
+	assert.Contains(t, endScroll, "... ↑ more")
+	assert.NotContains(t, endScroll, "... ↓ more")
+}
+
+func TestAppBodyScrollHotkeys(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	app = model.(App)
+	assert.Equal(t, 8, app.bodyScroll)
+
+	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
+	app = model.(App)
+	assert.Equal(t, 0, app.bodyScroll)
 }

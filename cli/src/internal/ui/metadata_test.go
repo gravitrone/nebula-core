@@ -3,6 +3,7 @@ package ui
 import (
 	"testing"
 
+	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,4 +98,47 @@ func TestMetadataLinesStyledRenderContextSegmentsCleanly(t *testing.T) {
 		joined += line
 	}
 	assert.Contains(t, joined, "[public] Public profile block.")
+}
+
+func TestMetadataDisplayRowsFlattensNestedMapsAndLists(t *testing.T) {
+	data := map[string]any{
+		"owner": "alxx",
+		"profile": map[string]any{
+			"timezone": "Europe/Warsaw",
+		},
+		"context_segments": []any{
+			map[string]any{
+				"scopes": []any{"public", "private"},
+				"text":   "Scoped note",
+			},
+		},
+	}
+
+	rows := metadataDisplayRows(data)
+	assert.NotEmpty(t, rows)
+
+	var fields []string
+	for _, row := range rows {
+		fields = append(fields, row.field)
+	}
+	assert.Contains(t, fields, "owner")
+	assert.Contains(t, fields, "profile.timezone")
+	assert.Contains(t, fields, "context_segments[0]")
+}
+
+func TestRenderMetadataBlockWithTitleUsesTableLayoutAndScopes(t *testing.T) {
+	data := map[string]any{
+		"scopes": []any{"public", "admin"},
+		"profile": map[string]any{
+			"timezone": "Europe/Warsaw",
+		},
+	}
+
+	out := renderMetadataBlockWithTitle("Metadata", data, 80, false)
+	clean := components.SanitizeText(out)
+	assert.Contains(t, clean, "Field")
+	assert.Contains(t, clean, "Value")
+	assert.Contains(t, clean, "profile.timezone")
+	assert.Contains(t, clean, "[public]")
+	assert.Contains(t, clean, "[admin]")
 }

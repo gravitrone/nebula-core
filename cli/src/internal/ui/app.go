@@ -119,6 +119,7 @@ type App struct {
 	paletteSelections    map[string]paletteSelection
 
 	importExportOpen bool
+	bodyScroll       int
 
 	inbox     InboxModel
 	entities  EntitiesModel
@@ -407,8 +408,22 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Command palette
 		if isKey(msg, "/") {
+			a.bodyScroll = 0
 			a.openPaletteCommand()
 			return a, a.refreshPaletteFiltered()
+		}
+
+		// Global body scrolling for long detail panes.
+		if isKey(msg, "pgdown", "ctrl+d") {
+			a.bodyScroll += 8
+			return a, nil
+		}
+		if isKey(msg, "pgup", "ctrl+u") {
+			a.bodyScroll -= 8
+			if a.bodyScroll < 0 {
+				a.bodyScroll = 0
+			}
+			return a, nil
 		}
 
 		if idx, ok := tabIndexForKey(msg.String()); ok {
@@ -554,11 +569,12 @@ func (a App) View() string {
 			// Keep feedback boxes intact by reserving viewport budget up front.
 			reservedFeedbackLines = countViewLines(feedback) + 2
 		}
-		body = clampBodyForViewport(
+		body, _ = clampBodyForViewport(
 			body,
 			a.height,
 			countViewLines(top),
 			countViewLines(hints)+reservedFeedbackLines,
+			a.bodyScroll,
 		)
 	}
 	if feedback != "" {
@@ -571,6 +587,7 @@ func (a App) View() string {
 func (a *App) switchTab(newTab int) (App, tea.Cmd) {
 	oldTab := a.tab
 	a.tab = newTab
+	a.bodyScroll = 0
 	if oldTab != newTab {
 		return *a, a.initTab(newTab)
 	}
@@ -701,6 +718,7 @@ func (a App) statusHintsForTab() []string {
 		components.Hint("/", "Command"),
 		components.Hint("?", "Help"),
 		components.Hint("q", "Quit"),
+		components.Hint("ctrl+u/d", "View"),
 	}
 
 	switch a.tab {
@@ -1219,10 +1237,10 @@ func countViewLines(block string) int {
 	return strings.Count(block, "\n") + 1
 }
 
-func clampBodyForViewport(body string, totalHeight, topLines, hintLines int) string {
+func clampBodyForViewport(body string, totalHeight, topLines, hintLines, scroll int) (string, bool) {
 	lines := strings.Split(body, "\n")
 	if len(lines) == 0 {
-		return body
+		return body, false
 	}
 
 	// Layout is rendered as: top + blank + body + blank + hints.
@@ -1232,27 +1250,58 @@ func clampBodyForViewport(body string, totalHeight, topLines, hintLines int) str
 		budget = 6
 	}
 	if len(lines) <= budget {
-		return body
+		return body, false
 	}
 
-	trimmed := append([]string{}, lines[:budget-1]...)
-	trimmed = append(trimmed, MutedStyle.Render("..."))
-	return strings.Join(trimmed, "\n")
+	maxScroll := len(lines) - budget
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if scroll < 0 {
+		scroll = 0
+	}
+	if scroll > maxScroll {
+		scroll = maxScroll
+	}
+	start := scroll
+	end := start + budget
+	if end > len(lines) {
+		end = len(lines)
+		start = end - budget
+		if start < 0 {
+			start = 0
+		}
+	}
+
+	trimmed := append([]string{}, lines[start:end]...)
+	if len(trimmed) > 0 {
+		if start > 0 {
+			trimmed[0] = MutedStyle.Render("... ↑ more")
+		}
+		if end < len(lines) {
+			trimmed[len(trimmed)-1] = MutedStyle.Render("... ↓ more")
+		}
+	}
+	return strings.Join(trimmed, "\n"), true
 }
 
 func (a App) renderToast() string {
 	if a.toast == nil {
 		return ""
 	}
+	header := lipgloss.NewStyle().Bold(true)
 	switch a.toast.level {
 	case "success":
-		return SuccessStyle.Render("[Success] ") + NormalStyle.Render(a.toast.text)
+		header = header.Foreground(ColorSuccess)
+		return components.TitledBoxWithHeaderStyle("Success", NormalStyle.Render(a.toast.text), a.width, header)
 	case "warning":
-		return WarningStyle.Render("[Warning] ") + NormalStyle.Render(a.toast.text)
+		header = header.Foreground(ColorWarning)
+		return components.TitledBoxWithHeaderStyle("Warning", NormalStyle.Render(a.toast.text), a.width, header)
 	case "error":
 		return components.ErrorBox("Error", a.toast.text, a.width)
 	default:
-		return MutedStyle.Render("[Info] ") + NormalStyle.Render(a.toast.text)
+		header = header.Foreground(ColorMuted)
+		return components.TitledBoxWithHeaderStyle("Info", NormalStyle.Render(a.toast.text), a.width, header)
 	}
 }
 
