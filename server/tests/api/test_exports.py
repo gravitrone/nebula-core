@@ -1,7 +1,11 @@
 """Export route tests."""
 
 # Third-Party
+from fastapi import HTTPException
 import pytest
+
+# Local
+from nebula_api.routes import exports as exports_routes
 
 
 @pytest.mark.asyncio
@@ -80,3 +84,35 @@ async def test_export_snapshot_json(api):
     assert data["format"] == "json"
     assert "entities" in data
     assert "context" in data
+
+
+def test_export_helpers_handle_none_and_empty_rows():
+    """Export helpers should normalize none values and empty csv payloads."""
+
+    assert exports_routes._flatten_value(None) == ""
+    assert exports_routes._to_csv([]) == ""
+
+
+def test_export_response_rejects_invalid_format():
+    """Export response helper should validate output format."""
+
+    with pytest.raises(HTTPException):
+        exports_routes._export_response([], "yaml")
+
+
+@pytest.mark.asyncio
+async def test_export_schema_returns_contract(api):
+    """Export schema endpoint should return a schema contract payload."""
+
+    r = await api.get("/api/export/schema")
+    assert r.status_code == 200
+    assert isinstance(r.json()["data"], dict)
+
+
+@pytest.mark.asyncio
+async def test_export_snapshot_rejects_non_json_format(api):
+    """Snapshot endpoint should reject non-json formats."""
+
+    r = await api.get("/api/export/snapshot", params={"format": "csv"})
+    assert r.status_code == 400
+    assert r.json()["detail"]["error"]["code"] == "VALIDATION_ERROR"
