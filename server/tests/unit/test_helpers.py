@@ -11,7 +11,9 @@ from nebula_mcp.helpers import (
     _pending_approval_limit,
     _safe_parse_uuid,
     _to_uuid_list,
+    create_approval_request,
     enforce_scope_subset,
+    ensure_approval_capacity,
     filter_context_segments,
     generate_enrollment_token,
     verify_enrollment_token,
@@ -109,6 +111,18 @@ class TestFilterContextSegments:
         filter_context_segments(meta, ["public"])
         assert meta == original
 
+    def test_json_string_metadata_is_supported(self):
+        """JSON string metadata should be parsed before filtering."""
+
+        payload = {
+            "context_segments": [
+                {"text": "public note", "scopes": ["public"]},
+                {"text": "private note", "scopes": ["private"]},
+            ]
+        }
+        result = filter_context_segments(str(payload).replace("'", '"'), ["public"])
+        assert [s["text"] for s in result["context_segments"]] == ["public note"]
+
 
 class TestPendingApprovalLimit:
     """Tests for pending queue cap normalization."""
@@ -197,3 +211,248 @@ class TestHelperUtilities:
         assert _extract_string_list('["a","b"]') == ["a", "b"]
         assert _extract_string_list("a,b") == ["a", "b"]
         assert _extract_string_list("") == []
+
+
+class _DummyTransaction:
+    """Async no-op transaction context for helper tests."""
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class _DummyAcquire:
+    """Async wrapper returning a provided connection."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class _DummyConn:
+    """Tiny asyncpg-like connection stub for approval helper tests."""
+
+    def __init__(self, fetchval_result=0, fetchrow_result=None):
+        self.fetchval_result = fetchval_result
+        self.fetchrow_result = fetchrow_result
+        self.executed = []
+        self.fetchval_calls = []
+        self.fetchrow_calls = []
+
+    async def execute(self, query, *args):
+        self.executed.append((query, args))
+
+    async def fetchval(self, query, *args):
+        self.fetchval_calls.append((query, args))
+        return self.fetchval_result
+
+    async def fetchrow(self, query, *args):
+        self.fetchrow_calls.append((query, args))
+        return self.fetchrow_result
+
+    def transaction(self):
+        return _DummyTransaction()
+
+
+class _DummyPoolNoAcquire:
+    """Pool stub without acquire; drives fetchval fallback branch."""
+
+    def __init__(self, fetchval_result=0):
+        self.fetchval_result = fetchval_result
+        self.calls = []
+
+    async def fetchval(self, query, *args):
+        self.calls.append((query, args))
+        return self.fetchval_result
+
+
+class _DummyPoolNoFetch:
+    """Pool stub missing both acquire and fetchval."""
+
+    pass
+
+
+class _DummyPoolAsyncAcquire:
+    """Pool stub where acquire is async (triggers fallback path)."""
+
+    def __init__(self, fetchval_result=0):
+        self.fetchval_result = fetchval_result
+        self.calls = []
+
+    async def acquire(self):  # pragma: no cover - never awaited in helper path
+        return None
+
+    async def fetchval(self, query, *args):
+        self.calls.append((query, args))
+        return self.fetchval_result
+
+
+class _DummyPoolWithAcquire:
+    """Pool stub with acquire context manager."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def acquire(self):
+        return _DummyAcquire(self._conn)
+
+
+class TestApprovalCapacityAndCreation:
+    """Async coverage for approval queue helper branches."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fetchval_fallback_accepts(self, monkeypatch):
+        """Fallback fetchval path should pass when queue is below cap."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolNoAcquire(fetchval_result=3)
+        await ensure_approval_capacity(pool, "agent-1", requested=2)
+        assert len(pool.calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fetchval_fallback_rejects(self, monkeypatch):
+        """Fallback fetchval path should reject when queue exceeds cap."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolNoAcquire(fetchval_result=10)
+        with pytest.raises(ValueError):
+            await ensure_approval_capacity(pool, "agent-1", requested=1)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fallback_ignores_missing_fetchval(self):
+        """Pool without fetchval should be a no-op."""
+
+        pool = _DummyPoolNoFetch()
+        await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fallback_handles_none_count(self, monkeypatch):
+        """Fallback fetchval path should no-op on None count."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolNoAcquire(fetchval_result=None)
+        await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fallback_handles_non_int_count(self, monkeypatch):
+        """Fallback fetchval path should no-op on non-int count."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolNoAcquire(fetchval_result="not-a-number")
+        await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fallback_requested_zero(self, monkeypatch):
+        """Fallback fetchval path should no-op when requested is zero."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolNoAcquire(fetchval_result=100)
+        await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=0)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_fallback_when_acquire_is_async(self, monkeypatch):
+        """Async acquire should route to fallback fetchval path."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        pool = _DummyPoolAsyncAcquire(fetchval_result=2)
+        await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
+        assert len(pool.calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_conn_branch_requested_zero(self, monkeypatch):
+        """Conn branch should no-op when requested is zero."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(fetchval_result=10)
+        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=0, conn=conn)
+        assert len(conn.executed) == 1  # advisory lock still acquired
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_conn_branch_rejects(self, monkeypatch):
+        """Conn branch should raise when queue exceeds cap."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(fetchval_result=10)
+        with pytest.raises(ValueError):
+            await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_conn_branch_handles_none_count(self, monkeypatch):
+        """Conn branch should no-op on None count."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(fetchval_result=None)
+        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
+
+    @pytest.mark.asyncio
+    async def test_ensure_approval_capacity_conn_branch_handles_non_int_count(self, monkeypatch):
+        """Conn branch should no-op on non-int count."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(fetchval_result="oops")
+        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
+
+    @pytest.mark.asyncio
+    async def test_create_approval_request_with_conn(self, monkeypatch):
+        """create_approval_request should use provided connection directly."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(
+            fetchval_result=0,
+            fetchrow_result={"id": "approval-1", "request_type": "create_entity"},
+        )
+        result = await create_approval_request(
+            pool=None,
+            agent_id="agent-1",
+            request_type="create_entity",
+            change_details={"name": "x"},
+            conn=conn,
+        )
+        assert result["id"] == "approval-1"
+        assert len(conn.fetchrow_calls) == 1
+        _, args = conn.fetchrow_calls[0]
+        assert args[2] == '{"name": "x"}'
+
+    @pytest.mark.asyncio
+    async def test_create_approval_request_with_pool_acquire(self, monkeypatch):
+        """create_approval_request should use acquire+transaction when conn omitted."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(
+            fetchval_result=0,
+            fetchrow_result={"id": "approval-2", "request_type": "create_entity"},
+        )
+        pool = _DummyPoolWithAcquire(conn)
+        result = await create_approval_request(
+            pool=pool,
+            agent_id="agent-2",
+            request_type="create_entity",
+            change_details={"name": "y"},
+            conn=None,
+        )
+        assert result["id"] == "approval-2"
+        assert len(conn.fetchrow_calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_create_approval_request_returns_empty_on_missing_row(self, monkeypatch):
+        """create_approval_request should return empty dict when row is missing."""
+
+        monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
+        conn = _DummyConn(fetchval_result=0, fetchrow_result=None)
+        result = await create_approval_request(
+            pool=None,
+            agent_id="agent-1",
+            request_type="create_entity",
+            change_details='{"name":"x"}',
+            conn=conn,
+        )
+        assert result == {}
+        _, args = conn.fetchrow_calls[0]
+        assert args[2] == '{"name":"x"}'
