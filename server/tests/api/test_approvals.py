@@ -6,6 +6,9 @@ import json
 # Third-Party
 import pytest
 
+# Local
+import nebula_api.routes.approvals as approvals_route
+
 
 @pytest.fixture
 async def untrusted_agent(db_pool, enums):
@@ -496,6 +499,76 @@ async def test_get_approval_not_found(api, auth_override, enums):
 
     r = await api.get("/api/approvals/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "path", "payload"),
+    [
+        ("get", "/api/approvals/not-a-uuid", None),
+        ("get", "/api/approvals/not-a-uuid/diff", None),
+        ("post", "/api/approvals/not-a-uuid/approve", None),
+        ("post", "/api/approvals/not-a-uuid/reject", {"review_notes": "x"}),
+    ],
+)
+async def test_approval_routes_validate_uuid_for_admin(
+    api, auth_override, enums, method, path, payload
+):
+    """Admin calls should still reject malformed approval UUIDs."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+    request_fn = getattr(api, method)
+    kwargs = {"json": payload} if payload is not None else {}
+    r = await request_fn(path, **kwargs)
+    assert r.status_code == 400
+    body = r.json()
+    assert body["detail"]["error"]["code"] == "INVALID_INPUT"
+
+
+@pytest.mark.asyncio
+async def test_approve_request_not_found(api, auth_override, enums):
+    """Approve should return 404 when approval row does not exist."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+    r = await api.post("/api/approvals/00000000-0000-0000-0000-000000000000/approve")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_approve_request_handles_executor_value_error(
+    api, pending_approval, auth_override, enums, monkeypatch
+):
+    """Executor validation errors should map to controlled 400 responses."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    async def _raise_value_error(*args, **kwargs):
+        raise ValueError("forced-value-error")
+
+    monkeypatch.setattr(approvals_route, "do_approve", _raise_value_error)
+    r = await api.post(f"/api/approvals/{pending_approval['id']}/approve")
+    assert r.status_code == 400
+    body = r.json()
+    assert body["detail"]["error"]["code"] == "EXECUTION_FAILED"
+    assert "forced-value-error" in body["detail"]["error"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_approve_request_handles_executor_runtime_error(
+    api, pending_approval, auth_override, enums, monkeypatch
+):
+    """Unexpected executor errors should map to controlled 409 responses."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    async def _raise_runtime_error(*args, **kwargs):
+        raise RuntimeError("forced-runtime-error")
+
+    monkeypatch.setattr(approvals_route, "do_approve", _raise_runtime_error)
+    r = await api.post(f"/api/approvals/{pending_approval['id']}/approve")
+    assert r.status_code == 409
+    body = r.json()
+    assert body["detail"]["error"]["code"] == "EXECUTION_FAILED"
 
 
 @pytest.mark.asyncio

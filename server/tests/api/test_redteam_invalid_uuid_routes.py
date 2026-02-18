@@ -69,3 +69,21 @@ async def test_api_update_agent_rejects_invalid_uuid(api):
         json={"description": "bad"},
     )
     assert resp.status_code in {400, 403, 404}
+
+
+@pytest.mark.asyncio
+async def test_api_approval_routes_reject_invalid_uuid(api):
+    """Approval detail and state-change routes should validate UUIDs."""
+
+    get_resp = await api.get("/api/approvals/not-a-uuid")
+    approve_resp = await api.post("/api/approvals/not-a-uuid/approve")
+    reject_resp = await api.post(
+        "/api/approvals/not-a-uuid/reject",
+        json={"review_notes": "bad"},
+    )
+    diff_resp = await api.get("/api/approvals/not-a-uuid/diff")
+
+    assert get_resp.status_code in {400, 403}
+    assert approve_resp.status_code in {400, 403}
+    assert reject_resp.status_code in {400, 403}
+    assert diff_resp.status_code in {400, 403}
