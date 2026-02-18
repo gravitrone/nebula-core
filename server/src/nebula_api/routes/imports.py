@@ -209,7 +209,8 @@ async def _run_import(
                         normalized["scopes"], allowed_scopes
                     )
                 if approval_action == "bulk_import_jobs" and not _is_admin(auth, enums):
-                    normalized["agent_id"] = auth.get("agent_id")
+                    agent_id = auth.get("agent_id")
+                    normalized["agent_id"] = str(agent_id) if agent_id else None
                 if approval_action == "bulk_import_relationships":
                     await _validate_relationship_node(
                         pool,
@@ -283,7 +284,8 @@ async def _run_import(
                     if approval_action == "bulk_import_jobs" and not _is_admin(
                         auth, enums
                     ):
-                        normalized["agent_id"] = auth.get("agent_id")
+                        agent_id = auth.get("agent_id")
+                        normalized["agent_id"] = str(agent_id) if agent_id else None
                     if approval_action == "bulk_import_relationships":
                         await _validate_relationship_node(
                             conn,

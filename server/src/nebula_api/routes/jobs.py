@@ -419,7 +419,9 @@ async def create_subtask(
         "description": payload.description,
         "job_type": None,
         "assigned_to": None,
-        "agent_id": parent_row.get("agent_id"),
+        "agent_id": (
+            str(parent_row.get("agent_id")) if parent_row.get("agent_id") else None
+        ),
         "priority": payload.priority,
         "scopes": parent_scope_names or ["public"],
         "parent_job_id": job_id,
