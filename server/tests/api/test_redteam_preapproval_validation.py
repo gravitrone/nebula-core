@@ -89,3 +89,70 @@ async def test_update_job_status_invalid_status_rejected_before_approval(
     )
     assert int(count or 0) == 0
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "payload", "request_type"),
+    [
+        (
+            "/api/entities/",
+            {
+                "name": "visibility-entity",
+                "type": "person",
+                "status": "active",
+                "scopes": ["public"],
+                "metadata": {"visibility": "private"},
+            },
+            "create_entity",
+        ),
+        (
+            "/api/context/",
+            {
+                "title": "visibility-context",
+                "source_type": "note",
+                "scopes": ["public"],
+                "metadata": {"visibility": "private"},
+            },
+            "create_context",
+        ),
+    ],
+)
+async def test_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row, path, payload, request_type
+):
+    """Visibility metadata key should be rejected pre-approval with 4xx."""
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(path, json=payload)
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    body = resp.json()
+    detail = body.get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await db_pool.fetchval(
+        """
+        SELECT COUNT(*)
+        FROM approval_requests
+        WHERE requested_by = $1::uuid
+          AND request_type = $2
+          AND status = 'pending'
+        """,
+        untrusted_agent_row["id"],
+        request_type,
+    )
+    assert int(count or 0) == 0

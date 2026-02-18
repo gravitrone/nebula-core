@@ -110,8 +110,8 @@ func TestDiffTableRendersMultilineValuesAndSanitizes(t *testing.T) {
 	out := DiffTable("Changes", []DiffRow{
 		{
 			Label: "Field\u202E\x1b]0;bad\x07",
-			From:  "from1\n\x1b[2Jfrom2",
-			To:    "to1\n\u202Eto2",
+			From:  "from1\n\x1b[2Jfrom2 and a very very long metadata value that should wrap safely in the diff area",
+			To:    "to1\n\u202Eto2 and another very very long metadata value that should also wrap safely",
 		},
 	}, 60)
 
@@ -125,6 +125,11 @@ func TestDiffTableRendersMultilineValuesAndSanitizes(t *testing.T) {
 	assert.Contains(t, clean, "from2")
 	assert.Contains(t, clean, "+ to1")
 	assert.Contains(t, clean, "to2")
+
+	maxWidth := lipgloss.Width(strings.Split(Box("x", 60), "\n")[0])
+	for _, line := range strings.Split(out, "\n") {
+		assert.LessOrEqual(t, lipgloss.Width(line), maxWidth)
+	}
 }
 
 func TestMetadataTableRendersNestedStructures(t *testing.T) {

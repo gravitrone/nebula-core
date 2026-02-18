@@ -57,3 +57,44 @@ func TestMetadataScopeHelpers(t *testing.T) {
 	merged := mergeMetadataScopes(stripped, []string{"private"})
 	assert.Equal(t, []string{"private"}, merged["scopes"])
 }
+
+func TestNormalizeStructuredMetadataValueParsesStringSlices(t *testing.T) {
+	raw := map[string]any{
+		"context_segments": []string{
+			`{"scopes":["private"],"text":"internal note"}`,
+		},
+	}
+
+	normalized := normalizeStructuredMetadataValue(raw).(map[string]any) //nolint:forcetypeassert
+	segments, ok := normalized["context_segments"].([]any)
+	assert.True(t, ok)
+	if assert.Len(t, segments, 1) {
+		segment, ok := segments[0].(map[string]any)
+		assert.True(t, ok)
+		assert.Equal(t, "internal note", segment["text"])
+	}
+}
+
+func TestMetadataLinesStyledRenderContextSegmentsCleanly(t *testing.T) {
+	data := map[string]any{
+		"context_segments": []string{
+			`{"scopes":["public"],"text":"Public profile block."}`,
+		},
+	}
+
+	lines := metadataLinesStyled(data, 0)
+	rendered := ""
+	if len(lines) > 0 {
+		rendered = lines[0]
+	}
+	assert.Contains(t, rendered, "context_segments")
+
+	joined := ""
+	for i, line := range lines {
+		if i > 0 {
+			joined += "\n"
+		}
+		joined += line
+	}
+	assert.Contains(t, joined, "[public] Public profile block.")
+}

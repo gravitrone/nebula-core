@@ -14,6 +14,7 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, require_status
 from nebula_mcp.executors import execute_create_file, execute_update_file
+from nebula_mcp.models import validate_metadata_payload
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -173,6 +174,10 @@ async def create_file(
     data = payload.model_dump()
     if data.get("metadata") is None:
         data["metadata"] = {}
+    try:
+        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if not data.get("uri") and not data.get("file_path"):
         api_error("INVALID_INPUT", "uri or file_path is required", 400)
     if not data.get("uri") and data.get("file_path"):
@@ -214,6 +219,13 @@ async def update_file(
 
     data = payload.model_dump()
     data["file_id"] = file_id
+    if data.get("metadata") is None:
+        data.pop("metadata", None)
+    else:
+        try:
+            data["metadata"] = validate_metadata_payload(data["metadata"])
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
     if data.get("uri") is None and data.get("file_path") is not None:
         data["uri"] = data["file_path"]
     if data.get("file_path") is None and data.get("uri") is not None:

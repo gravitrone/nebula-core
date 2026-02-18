@@ -23,7 +23,12 @@ from nebula_mcp.helpers import (
     filter_context_segments,
     scope_names_from_ids,
 )
-from nebula_mcp.models import MAX_PAGE_LIMIT, MAX_TAG_LENGTH, MAX_TAGS
+from nebula_mcp.models import (
+    MAX_PAGE_LIMIT,
+    MAX_TAG_LENGTH,
+    MAX_TAGS,
+    validate_metadata_payload,
+)
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -204,6 +209,10 @@ async def create_context(
     data.setdefault("metadata", {})
     if data["metadata"] is None:
         data["metadata"] = {}
+    try:
+        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:
@@ -394,6 +403,11 @@ async def update_context(
             raise HTTPException(status_code=400, detail=str(exc))
     if data.get("metadata") is None:
         data.pop("metadata", None)
+    else:
+        try:
+            data["metadata"] = validate_metadata_payload(data["metadata"])
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
     if auth["caller_type"] == "agent" and data.get("scopes") is not None:
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:

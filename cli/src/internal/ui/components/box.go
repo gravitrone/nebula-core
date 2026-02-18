@@ -397,6 +397,10 @@ func DiffTable(title string, rows []DiffRow, width int) string {
 
 	removeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff4d6d"))
 	addStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3f866b"))
+	valueWidth := BoxContentWidth(width) - 4
+	if valueWidth < 24 {
+		valueWidth = 24
+	}
 	renderValue := func(style lipgloss.Style, prefix string, value string) string {
 		value = SanitizeText(value)
 		trimmed := strings.TrimSpace(value)
@@ -408,13 +412,16 @@ func DiffTable(title string, rows []DiffRow, width int) string {
 		lines := strings.Split(value, "\n")
 		var out strings.Builder
 		for i, line := range lines {
-			if i == 0 {
-				out.WriteString(style.Render(prefix + line))
-			} else {
-				out.WriteString(style.Render(strings.Repeat(" ", len(prefix)) + line))
-			}
-			if i < len(lines)-1 {
-				out.WriteString("\n")
+			wrapped := wrapDiffLine(line, valueWidth-len(prefix))
+			for j, chunk := range wrapped {
+				if i == 0 && j == 0 {
+					out.WriteString(style.Render(prefix + chunk))
+				} else {
+					out.WriteString(style.Render(strings.Repeat(" ", len(prefix)) + chunk))
+				}
+				if i < len(lines)-1 || j < len(wrapped)-1 {
+					out.WriteString("\n")
+				}
 			}
 		}
 		return out.String()
@@ -434,6 +441,53 @@ func DiffTable(title string, rows []DiffRow, width int) string {
 	}
 
 	return TitledBox(title, b.String(), width)
+}
+
+func wrapDiffLine(line string, width int) []string {
+	line = strings.TrimSpace(SanitizeText(line))
+	if line == "" {
+		return []string{"None"}
+	}
+	if width <= 0 {
+		return []string{line}
+	}
+	if lipgloss.Width(line) <= width {
+		return []string{line}
+	}
+	words := strings.Fields(line)
+	if len(words) == 0 {
+		return []string{ClampTextWidthEllipsis(line, width)}
+	}
+	out := make([]string, 0, len(words))
+	current := ""
+	for _, word := range words {
+		if lipgloss.Width(word) > width {
+			if strings.TrimSpace(current) != "" {
+				out = append(out, strings.TrimSpace(current))
+				current = ""
+			}
+			out = append(out, ClampTextWidthEllipsis(word, width))
+			continue
+		}
+		if strings.TrimSpace(current) == "" {
+			current = word
+			continue
+		}
+		candidate := current + " " + word
+		if lipgloss.Width(candidate) <= width {
+			current = candidate
+			continue
+		}
+		out = append(out, strings.TrimSpace(current))
+		current = word
+	}
+	if strings.TrimSpace(current) != "" {
+		out = append(out, strings.TrimSpace(current))
+	}
+	if len(out) == 0 {
+		return []string{ClampTextWidthEllipsis(line, width)}
+	}
+	return out
 }
 
 // MetadataTable renders a nested metadata map as a bordered table.

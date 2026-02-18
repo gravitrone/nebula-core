@@ -33,7 +33,11 @@ from nebula_mcp.helpers import (
 from nebula_mcp.helpers import (
     revert_entity as do_revert_entity,
 )
-from nebula_mcp.models import MAX_TAG_LENGTH, MAX_TAGS
+from nebula_mcp.models import (
+    MAX_TAG_LENGTH,
+    MAX_TAGS,
+    validate_metadata_payload,
+)
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -232,6 +236,10 @@ async def create_entity(
     data.setdefault("metadata", {})
     if data["metadata"] is None:
         data["metadata"] = {}
+    try:
+        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:
@@ -545,6 +553,11 @@ async def update_entity(
     change["entity_id"] = entity_id
     if change.get("metadata") is None:
         change.pop("metadata", None)
+    else:
+        try:
+            change["metadata"] = validate_metadata_payload(change["metadata"])
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
     if auth["caller_type"] == "agent" and change.get("scopes") is not None:
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:

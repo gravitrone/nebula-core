@@ -630,9 +630,45 @@ func metadataListLinesPlain(items []any, indent int) []string {
 
 func normalizeStructuredMetadataValue(value any) any {
 	switch typed := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(typed))
+		for key, raw := range typed {
+			out[key] = normalizeStructuredMetadataValue(raw)
+		}
+		return out
+	case map[string]string:
+		out := make(map[string]any, len(typed))
+		for key, raw := range typed {
+			out[key] = normalizeStructuredMetadataValue(raw)
+		}
+		return out
+	case []map[string]any:
+		out := make([]any, 0, len(typed))
+		for _, raw := range typed {
+			out = append(out, normalizeStructuredMetadataValue(raw))
+		}
+		return out
+	case []map[string]string:
+		out := make([]any, 0, len(typed))
+		for _, raw := range typed {
+			out = append(out, normalizeStructuredMetadataValue(raw))
+		}
+		return out
+	case []string:
+		out := make([]any, 0, len(typed))
+		for _, raw := range typed {
+			out = append(out, normalizeStructuredMetadataValue(raw))
+		}
+		return out
+	case []any:
+		out := make([]any, 0, len(typed))
+		for _, raw := range typed {
+			out = append(out, normalizeStructuredMetadataValue(raw))
+		}
+		return out
 	case string:
 		if parsed, ok := parseJSONStructuredString(typed); ok {
-			return parsed
+			return normalizeStructuredMetadataValue(parsed)
 		}
 		return typed
 	default:

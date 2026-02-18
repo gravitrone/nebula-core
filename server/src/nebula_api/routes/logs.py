@@ -15,6 +15,7 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_log_type, require_status
 from nebula_mcp.executors import execute_create_log, execute_update_log
+from nebula_mcp.models import validate_metadata_payload
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -128,6 +129,10 @@ async def create_log(
         data["value"] = {}
     if data.get("metadata") is None:
         data["metadata"] = {}
+    try:
+        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
 
     # Validate taxonomy-backed fields before queuing approvals.
     try:
@@ -228,6 +233,13 @@ async def update_log(
 
     data = payload.model_dump()
     data["id"] = log_id
+    if data.get("metadata") is None:
+        data.pop("metadata", None)
+    else:
+        try:
+            data["metadata"] = validate_metadata_payload(data["metadata"])
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
 
     if auth["caller_type"] == "agent" and not await _log_visible(
         pool, enums, auth, log_id

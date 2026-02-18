@@ -2507,7 +2507,7 @@ func (m EntitiesModel) formatEntityScopes(ids []string) string {
 			names = append(names, shortID(id))
 		}
 	}
-	return strings.Join(names, ", ")
+	return strings.Join(names, " · ")
 }
 
 func (m EntitiesModel) scopeNamesFromIDs(ids []string) []string {

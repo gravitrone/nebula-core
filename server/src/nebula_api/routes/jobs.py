@@ -15,7 +15,7 @@ from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_scopes, require_status
 from nebula_mcp.executors import execute_create_job, execute_update_job
 from nebula_mcp.helpers import enforce_scope_subset, scope_names_from_ids
-from nebula_mcp.models import parse_optional_datetime
+from nebula_mcp.models import parse_optional_datetime, validate_metadata_payload
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -159,6 +159,10 @@ async def create_job(
     data = payload.model_dump()
     if data.get("metadata") is None:
         data["metadata"] = {}
+    try:
+        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
+    except ValueError as exc:
+        api_error("INVALID_INPUT", str(exc), 400)
     if not data.get("scopes"):
         data["scopes"] = ["public"]
     if data.get("priority") and data["priority"] not in JOB_PRIORITY_VALUES:
@@ -374,6 +378,11 @@ async def update_job(
             api_error("INVALID_INPUT", str(exc), 400)
     if data.get("metadata") is None:
         data.pop("metadata", None)
+    else:
+        try:
+            data["metadata"] = validate_metadata_payload(data["metadata"])
+        except ValueError as exc:
+            api_error("INVALID_INPUT", str(exc), 400)
     change = {"job_id": job_id, **data}
     if resp := await maybe_check_agent_approval(pool, auth, "update_job", change):
         return resp

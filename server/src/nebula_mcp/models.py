@@ -129,6 +129,22 @@ def _sanitize_metadata(value: dict | None) -> dict | None:
     return value
 
 
+def validate_metadata_payload(value: dict | None) -> dict | None:
+    """Validate and sanitize arbitrary metadata payloads.
+
+    Args:
+        value: Metadata object from REST or MCP payloads.
+
+    Returns:
+        Sanitized metadata payload or None.
+
+    Raises:
+        ValueError: If payload shape or keys are invalid.
+    """
+
+    return _sanitize_metadata(value)
+
+
 def _validate_taxonomy_kind(value: str | None) -> str:
     if value is None:
         raise ValueError("Taxonomy kind is required")

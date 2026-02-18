@@ -119,13 +119,62 @@ func fitGridColumns(columns []TableColumn, sep string, tableWidth int) []TableCo
 		expected += (len(fitted) - 1) * sepW
 	}
 	delta := contentWidth - expected
-	if len(fitted) > 0 && delta != 0 {
-		fitted[len(fitted)-1].Width += delta
-		if fitted[len(fitted)-1].Width < 1 {
-			fitted[len(fitted)-1].Width = 1
+	if len(fitted) > 0 && delta > 0 {
+		// Grow the widest column to absorb extra room.
+		widest := 0
+		for i := 1; i < len(fitted); i++ {
+			if fitted[i].Width > fitted[widest].Width {
+				widest = i
+			}
+		}
+		fitted[widest].Width += delta
+	} else if len(fitted) > 0 && delta < 0 {
+		// Shrink wide columns first to avoid clipping narrow/system columns
+		// like status/time that should remain readable.
+		deficit := -delta
+		minWidthLoose := make([]int, len(fitted))
+		minWidthStrict := make([]int, len(fitted))
+		for i := range fitted {
+			headerMin := lipgloss.Width(SanitizeOneLine(fitted[i].Header)) + 1
+			if headerMin < 2 {
+				headerMin = 2
+			}
+			minWidthLoose[i] = headerMin
+			minWidthStrict[i] = headerMin
+			// Preserve compact system columns (for example: status/time) whenever possible.
+			if fitted[i].Width <= 12 && fitted[i].Width > minWidthStrict[i] {
+				minWidthStrict[i] = fitted[i].Width
+			}
+		}
+		deficit = shrinkColumns(fitted, minWidthStrict, deficit)
+		if deficit > 0 {
+			shrinkColumns(fitted, minWidthLoose, deficit)
 		}
 	}
 	return fitted
+}
+
+func shrinkColumns(columns []TableColumn, mins []int, deficit int) int {
+	if deficit <= 0 || len(columns) == 0 {
+		return 0
+	}
+	for deficit > 0 {
+		best := -1
+		bestSpare := 0
+		for i := range columns {
+			spare := columns[i].Width - mins[i]
+			if spare > bestSpare {
+				bestSpare = spare
+				best = i
+			}
+		}
+		if best == -1 || bestSpare <= 0 {
+			break
+		}
+		columns[best].Width--
+		deficit--
+	}
+	return deficit
 }
 
 func renderGridRow(columns []TableColumn, cells []string, sep string, tableWidth int, header bool, active bool) string {
