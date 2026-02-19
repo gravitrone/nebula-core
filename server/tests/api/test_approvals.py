@@ -735,3 +735,53 @@ async def test_get_approval_diff_update_job_status(
     data = r.json()["data"]
     assert data["request_type"] == "update_job_status"
     assert data["changes"]["status"]["to"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_get_approval_diff_missing_approval_returns_clean_not_found(
+    api, auth_override, enums
+):
+    """Missing approval IDs should return controlled 404/400 responses."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+    r = await api.get("/api/approvals/00000000-0000-0000-0000-000000000001/diff")
+    assert r.status_code in {400, 404}
+    body = r.json()
+    assert body.get("detail", {}).get("error", {}).get("code") in {
+        "NOT_FOUND",
+        "INVALID_INPUT",
+    }
+
+
+@pytest.mark.asyncio
+async def test_get_approval_diff_missing_relationship_reference_returns_clean_error(
+    api, db_pool, untrusted_agent, auth_override, enums
+):
+    """Diff generation should fail safely when referenced relationship is missing."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2, $3::jsonb, $4)
+        RETURNING *
+        """,
+        "update_relationship",
+        untrusted_agent["id"],
+        json.dumps(
+            {
+                "relationship_id": "00000000-0000-0000-0000-000000000001",
+                "properties": {"note": "new"},
+            }
+        ),
+        "pending",
+    )
+
+    r = await api.get(f"/api/approvals/{row['id']}/diff")
+    assert r.status_code in {400, 404}
+    body = r.json()
+    assert body.get("detail", {}).get("error", {}).get("code") in {
+        "NOT_FOUND",
+        "INVALID_INPUT",
+    }

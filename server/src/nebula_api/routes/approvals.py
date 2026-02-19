@@ -252,5 +252,11 @@ async def get_diff(
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
     _require_uuid(approval_id, "approval")
-    result = await compute_approval_diff(pool, approval_id)
+    try:
+        result = await compute_approval_diff(pool, approval_id)
+    except ValueError as exc:
+        message = str(exc)
+        if "not found" in message.lower():
+            api_error("NOT_FOUND", message, 404)
+        api_error("INVALID_INPUT", message, 400)
     return success(result)

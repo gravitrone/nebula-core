@@ -53,7 +53,30 @@ def enforce_scope_subset(requested: list[str], allowed: list[str]) -> list[str]:
 # --- Privacy Filtering ---
 
 
-def filter_context_segments(metadata: dict | str, agent_scopes: list[str]) -> dict:
+def _decode_json_object(value: Any) -> dict:
+    """Best-effort decode for JSON object payloads.
+
+    Args:
+        value: Dict, JSON string, or arbitrary value.
+
+    Returns:
+        Decoded dict when possible, otherwise empty dict.
+    """
+
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
+
+
+def filter_context_segments(metadata: dict | str | None, agent_scopes: list[str]) -> dict | None:
     """Filter context segments by agent's privacy scopes.
 
     Args:
@@ -64,9 +87,10 @@ def filter_context_segments(metadata: dict | str, agent_scopes: list[str]) -> di
         Metadata dict with context_segments filtered to matching scopes.
     """
 
-    # Handle JSONB string from asyncpg
-    if isinstance(metadata, str):
-        metadata = json.loads(metadata)
+    if metadata is None:
+        return None
+
+    metadata = _decode_json_object(metadata)
 
     if not metadata or "context_segments" not in metadata:
         return metadata
@@ -75,12 +99,33 @@ def filter_context_segments(metadata: dict | str, agent_scopes: list[str]) -> di
     segments = []
 
     for seg in metadata["context_segments"]:
+        if not isinstance(seg, dict):
+            continue
         seg_scopes = seg.get("scopes", [])
         if any(scope in agent_scopes for scope in seg_scopes):
             segments.append(seg)
 
     filtered["context_segments"] = segments
     return filtered
+
+
+def sanitize_relationship_properties(
+    properties: Any, agent_scopes: list[str]
+) -> dict[str, Any]:
+    """Normalize and scope-filter relationship properties payloads.
+
+    Args:
+        properties: Relationship properties from DB/JSON.
+        agent_scopes: Caller-visible scope names.
+
+    Returns:
+        Relationship properties as a dict with scoped context segments.
+    """
+
+    parsed = _decode_json_object(properties)
+    if not parsed:
+        return {}
+    return filter_context_segments(parsed, agent_scopes)
 
 
 # --- Approval Workflow ---

@@ -214,3 +214,44 @@ async def test_update_relationship_rejects_unknown_status(api):
     assert r.status_code == 400
     body = r.json()
     assert body["detail"]["error"]["code"] == "INVALID_INPUT"
+
+
+@pytest.mark.asyncio
+async def test_update_relationship_accepts_archived_alias(api, db_pool):
+    """Archived alias should map to a valid archived-category relationship status."""
+
+    e1 = await _make_entity(api, "UpdArchivedAliasSrc")
+    e2 = await _make_entity(api, "UpdArchivedAliasTgt")
+    created = await api.post(
+        "/api/relationships",
+        json={
+            "source_type": "entity",
+            "source_id": str(e1["id"]),
+            "target_type": "entity",
+            "target_id": str(e2["id"]),
+            "relationship_type": "depends-on",
+        },
+    )
+    rel_id = created.json()["data"]["id"]
+
+    archived_names = {
+        row["name"]
+        for row in await db_pool.fetch("SELECT name FROM statuses WHERE category = 'archived'")
+    }
+
+    resp = await api.patch(
+        f"/api/relationships/{rel_id}",
+        json={"status": "archived"},
+    )
+    assert resp.status_code == 200
+    row = await db_pool.fetchrow(
+        """
+        SELECT s.name, s.category
+        FROM relationships r
+        JOIN statuses s ON s.id = r.status_id
+        WHERE r.id = $1::uuid
+        """,
+        rel_id,
+    )
+    assert row["category"] == "archived"
+    assert row["name"] in archived_names

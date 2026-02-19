@@ -86,8 +86,6 @@ async def _require_entity_write_access(
             UUID(entity_id)
         except ValueError:
             api_error("INVALID_INPUT", "Invalid entity id", 400)
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
         return
     rows = await pool.fetch(QUERIES["entities/scopes_by_ids"], entity_ids)

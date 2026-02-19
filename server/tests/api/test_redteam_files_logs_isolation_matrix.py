@@ -5,8 +5,8 @@ import json
 from datetime import UTC, datetime
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app
@@ -49,6 +49,28 @@ async def _make_job(db_pool, enums, title, agent_id, scopes):
         agent_id,
         scope_ids,
         json.dumps({"note": "owned"}),
+    )
+    return dict(row)
+
+
+async def _make_entity(db_pool, enums, name, scopes=None):
+    """Insert an entity row for user-auth fixture setup."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        RETURNING *
+        """,
+        name,
+        type_id,
+        status_id,
+        scope_ids,
+        ["test"],
+        json.dumps({"note": "entity"}),
     )
     return dict(row)
 
@@ -148,6 +170,32 @@ def _auth_override(agent_id, enums):
 
     async def mock_auth():
         """Mock auth for the viewer agent."""
+
+        return auth_dict
+
+    return mock_auth
+
+
+def _user_auth_override(entity_row, enums, scopes=None):
+    """Build an auth override for a user caller with explicit scopes."""
+
+    scope_ids = [
+        enums.scopes.name_to_id[s]
+        for s in (scopes or ["public"])
+        if s in enums.scopes.name_to_id
+    ]
+    auth_dict = {
+        "key_id": None,
+        "caller_type": "user",
+        "entity_id": entity_row["id"],
+        "entity": entity_row,
+        "agent_id": None,
+        "agent": None,
+        "scopes": scope_ids,
+    }
+
+    async def mock_auth():
+        """Mock auth for user caller."""
 
         return auth_dict
 
@@ -264,6 +312,76 @@ async def test_api_log_hidden_when_attached_to_out_of_scope_job(db_pool, enums):
         patch_resp = await client.patch(
             f"/api/logs/{log_row['id']}",
             json={"metadata": {"note": "hijack"}},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert get_resp.status_code == 403
+    assert list_resp.status_code == 200
+    ids = {row["id"] for row in list_resp.json()["data"]}
+    assert str(log_row["id"]) not in ids
+    assert patch_resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_file_hidden_for_public_user_when_attached_to_private_job(
+    db_pool, enums
+):
+    """Public-scoped user should not read/list/update file linked to private job."""
+
+    owner = await _make_agent(db_pool, enums, "file-user-owner", ["public"])
+    entity_user = await _make_entity(db_pool, enums, "file-user-viewer")
+    job = await _make_job(db_pool, enums, "Owner File Job", owner["id"], ["private"])
+    file_row = await _make_file(db_pool, enums)
+    await _attach_relationship(
+        db_pool, enums, "job", job["id"], "file", file_row["id"], "has-file"
+    )
+
+    app.dependency_overrides[require_auth] = _user_auth_override(entity_user, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        get_resp = await client.get(f"/api/files/{file_row['id']}")
+        list_resp = await client.get("/api/files/")
+        patch_resp = await client.patch(
+            f"/api/files/{file_row['id']}",
+            json={"metadata": {"note": "should-fail"}},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert get_resp.status_code == 403
+    assert list_resp.status_code == 200
+    ids = {row["id"] for row in list_resp.json()["data"]}
+    assert str(file_row["id"]) not in ids
+    assert patch_resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_log_hidden_for_public_user_when_attached_to_private_job(
+    db_pool, enums
+):
+    """Public-scoped user should not read/list/update log linked to private job."""
+
+    owner = await _make_agent(db_pool, enums, "log-user-owner", ["public"])
+    entity_user = await _make_entity(db_pool, enums, "log-user-viewer")
+    job = await _make_job(db_pool, enums, "Owner Log Job", owner["id"], ["private"])
+    log_row = await _make_log(db_pool, enums)
+    await _attach_relationship(
+        db_pool, enums, "log", log_row["id"], "job", job["id"], "related-to"
+    )
+
+    app.dependency_overrides[require_auth] = _user_auth_override(entity_user, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        get_resp = await client.get(f"/api/logs/{log_row['id']}")
+        list_resp = await client.get("/api/logs/")
+        patch_resp = await client.patch(
+            f"/api/logs/{log_row['id']}",
+            json={"metadata": {"note": "should-fail"}},
         )
     app.dependency_overrides.pop(require_auth, None)
 

@@ -99,16 +99,16 @@ async def query_protocols(
 
     pool = request.app.state.pool
     enums = request.app.state.enums
+    is_admin = _is_admin(auth, enums)
     rows = await pool.fetch(
         QUERIES["protocols/query"],
         status_category,
         protocol_type,
         search,
         limit,
+        is_admin,
     )
     items = [dict(r) for r in rows]
-    if not _is_admin(auth, enums):
-        items = [item for item in items if not item.get("trusted")]
     return paginated(items, len(items), limit, 0)
 
 

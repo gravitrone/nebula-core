@@ -4,8 +4,8 @@
 import json
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app
@@ -162,6 +162,32 @@ def _auth_override(agent_id, enums):
     return mock_auth
 
 
+def _user_auth_override(entity_row, enums, scopes=None):
+    """Build an auth override for public-scoped user requests."""
+
+    scope_ids = [
+        enums.scopes.name_to_id[s]
+        for s in (scopes or ["public"])
+        if s in enums.scopes.name_to_id
+    ]
+    auth_dict = {
+        "key_id": None,
+        "caller_type": "user",
+        "entity_id": entity_row["id"],
+        "entity": entity_row,
+        "agent_id": None,
+        "agent": None,
+        "scopes": scope_ids,
+    }
+
+    async def mock_auth():
+        """Mock auth for public-scoped user."""
+
+        return auth_dict
+
+    return mock_auth
+
+
 @pytest.mark.asyncio
 async def test_api_update_context_denies_private_scope(db_pool, enums):
     """Public agents should not update private context items."""
@@ -239,6 +265,135 @@ async def test_api_update_file_denies_private_attachment(db_pool, enums):
         resp = await client.patch(
             f"/api/files/{file_row['id']}",
             json={"metadata": {"note": "hijack"}},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_update_context_denies_private_scope_for_user(db_pool, enums):
+    """Public-scoped user should not update private context items."""
+
+    private_context = await _make_context(
+        db_pool, enums, "Private User Context", ["sensitive"]
+    )
+    user_entity = await _make_entity(db_pool, enums, "User Entity", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/context/{private_context['id']}",
+            json={"title": "user-hijack"},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_link_context_denies_private_scope_for_user(db_pool, enums):
+    """Public-scoped user should not link private context to entities."""
+
+    private_context = await _make_context(
+        db_pool, enums, "Private Link Context", ["sensitive"]
+    )
+    public_target = await _make_entity(db_pool, enums, "Public Target", ["public"])
+    user_entity = await _make_entity(db_pool, enums, "User Link Entity", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            f"/api/context/{private_context['id']}/link",
+            json={
+                "entity_id": str(public_target["id"]),
+                "relationship_type": "references",
+            },
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_update_entity_denies_private_scope_for_user(db_pool, enums):
+    """Public-scoped user should not update private entities."""
+
+    private_entity = await _make_entity(
+        db_pool, enums, "Private Target Entity", ["sensitive"]
+    )
+    user_entity = await _make_entity(db_pool, enums, "User Entity Editor", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/entities/{private_entity['id']}",
+            json={"status_reason": "user-write"},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_bulk_update_entity_tags_denies_private_scope_for_user(db_pool, enums):
+    """Public-scoped user should not bulk-update tags on private entities."""
+
+    private_entity = await _make_entity(
+        db_pool, enums, "Private Bulk Entity", ["sensitive"]
+    )
+    user_entity = await _make_entity(db_pool, enums, "User Bulk Entity", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/entities/bulk/tags",
+            json={
+                "entity_ids": [str(private_entity["id"])],
+                "tags": ["owned-by-user"],
+                "op": "add",
+            },
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_bulk_update_entity_scopes_denies_private_scope_for_user(
+    db_pool, enums
+):
+    """Public-scoped user should not bulk-update scopes on private entities."""
+
+    private_entity = await _make_entity(
+        db_pool, enums, "Private Scope Entity", ["sensitive"]
+    )
+    user_entity = await _make_entity(db_pool, enums, "User Scope Entity", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/entities/bulk/scopes",
+            json={
+                "entity_ids": [str(private_entity["id"])],
+                "scopes": ["public"],
+                "op": "set",
+            },
         )
     app.dependency_overrides.pop(require_auth, None)
 

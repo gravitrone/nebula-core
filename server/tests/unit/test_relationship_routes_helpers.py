@@ -191,10 +191,7 @@ async def test_validate_relationship_node_entity_and_context_guards(enums):
     }
     pool = _DummyPool(rows)
 
-    # Non-agent and admin callers bypass privacy checks.
-    await _validate_relationship_node(
-        pool, enums, _auth(caller_type="entity"), "entity", "entity-private"
-    )
+    # Admin callers bypass privacy checks.
     await _validate_relationship_node(
         pool, enums, _auth(scopes=["scope-admin"]), "entity", "entity-private"
     )
@@ -217,6 +214,16 @@ async def test_validate_relationship_node_entity_and_context_guards(enums):
             pool, enums, _auth(scopes=["scope-public"]), "entity", "entity-private"
         )
     assert forbidden_entity.value.status_code == 403
+
+    with pytest.raises(HTTPException) as forbidden_user_entity:
+        await _validate_relationship_node(
+            pool,
+            enums,
+            _auth(caller_type="user", scopes=["scope-public"]),
+            "entity",
+            "entity-private",
+        )
+    assert forbidden_user_entity.value.status_code == 403
 
     with pytest.raises(HTTPException) as missing_context:
         await _validate_relationship_node(
@@ -554,8 +561,8 @@ async def test_get_and_query_relationships_filter_hidden_jobs_for_agents(enums):
 
 
 @pytest.mark.asyncio
-async def test_query_relationships_bypasses_filter_for_non_agent(enums):
-    """Non-agent callers should receive rows without job visibility filtering."""
+async def test_query_relationships_filters_hidden_jobs_for_user(enums):
+    """User callers should also be filtered from out-of-scope job links."""
 
     row = {
         "id": "rel-admin",
@@ -567,7 +574,7 @@ async def test_query_relationships_bypasses_filter_for_non_agent(enums):
     pool = _RoutePool(fetch_rows=[[row]])
     req = _request(pool, enums)
     result = await query_relationships(req, auth=_auth(caller_type="user"))
-    assert [item["id"] for item in result["data"]] == ["rel-admin"]
+    assert result["data"] == []
 
 
 @pytest.mark.asyncio

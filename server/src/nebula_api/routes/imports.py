@@ -92,8 +92,6 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 async def _require_entity_write_access(
     pool: Any, enums: Any, auth: dict, entity_id: str
 ) -> None:
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
@@ -108,8 +106,6 @@ async def _require_entity_write_access(
 async def _require_context_write_access(
     pool: Any, enums: Any, auth: dict, context_id: str
 ) -> None:
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["context/get"], context_id, None)
@@ -122,12 +118,14 @@ async def _require_context_write_access(
 
 
 async def _require_job_owner(pool: Any, auth: dict, job_id: str) -> None:
-    if auth["caller_type"] != "agent":
-        return
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         raise ValueError("Job not found")
-    if row.get("agent_id") != auth.get("agent_id"):
+    job_scopes = row.get("privacy_scope_ids") or []
+    caller_scopes = auth.get("scopes", []) or []
+    if job_scopes and not any(scope in caller_scopes for scope in job_scopes):
+        raise ValueError("Access denied")
+    if auth.get("caller_type") == "agent" and row.get("agent_id") != auth.get("agent_id"):
         raise ValueError("Access denied")
 
 

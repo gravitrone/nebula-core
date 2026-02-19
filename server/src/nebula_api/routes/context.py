@@ -58,8 +58,6 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 async def _require_entity_write_access(
     pool: Any, enums: Any, auth: dict, entity_id: str
 ) -> None:
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
@@ -74,8 +72,6 @@ async def _require_entity_write_access(
 async def _require_context_write_access(
     pool: Any, enums: Any, auth: dict, context_id: str
 ) -> None:
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["context/get"], context_id, None)

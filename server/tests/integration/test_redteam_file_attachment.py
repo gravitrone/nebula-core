@@ -10,9 +10,9 @@ import pytest
 # Local
 from nebula_mcp.models import AttachFileInput
 from nebula_mcp.server import (
+    attach_file_to_context,
     attach_file_to_entity,
     attach_file_to_job,
-    attach_file_to_context,
 )
 
 
@@ -200,3 +200,42 @@ async def test_attach_file_to_private_context_denied(db_pool, enums):
 
     with pytest.raises(ValueError):
         await attach_file_to_context(payload, ctx)
+
+
+@pytest.mark.asyncio
+async def test_attach_file_to_entity_rejects_invalid_file_id_format(db_pool, enums):
+    """Entity attachment should reject malformed file IDs with a clean ValueError."""
+
+    owner = await _make_agent(db_pool, enums, "file-id-entity-owner", ["public"], False)
+    target = await _make_entity(db_pool, enums, "Public Entity", ["public"])
+    ctx = _make_context(db_pool, enums, owner)
+    payload = AttachFileInput(file_id="not-a-uuid", target_id=str(target["id"]))
+
+    with pytest.raises(ValueError, match="Invalid file id format"):
+        await attach_file_to_entity(payload, ctx)
+
+
+@pytest.mark.asyncio
+async def test_attach_file_to_context_rejects_invalid_file_id_format(db_pool, enums):
+    """Context attachment should reject malformed file IDs with a clean ValueError."""
+
+    owner = await _make_agent(db_pool, enums, "file-id-context-owner", ["public"], False)
+    target = await _make_context_item(db_pool, enums, "Public Context", ["public"])
+    ctx = _make_context(db_pool, enums, owner)
+    payload = AttachFileInput(file_id="not-a-uuid", target_id=str(target["id"]))
+
+    with pytest.raises(ValueError, match="Invalid file id format"):
+        await attach_file_to_context(payload, ctx)
+
+
+@pytest.mark.asyncio
+async def test_attach_file_to_job_rejects_invalid_file_id_format(db_pool, enums):
+    """Job attachment should reject malformed file IDs with a clean ValueError."""
+
+    owner = await _make_agent(db_pool, enums, "file-id-job-owner", ["public"], False)
+    target = await _make_job(db_pool, enums, owner["id"])
+    ctx = _make_context(db_pool, enums, owner)
+    payload = AttachFileInput(file_id="not-a-uuid", target_id=str(target["id"]))
+
+    with pytest.raises(ValueError, match="Invalid file id format"):
+        await attach_file_to_job(payload, ctx)

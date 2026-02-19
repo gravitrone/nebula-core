@@ -37,8 +37,6 @@ async def _file_visible(
     pool: Any, enums: EnumRegistry, auth: dict, file_id: str
 ) -> bool:
     file_id = str(file_id)
-    if auth["caller_type"] != "agent":
-        return True
     if _is_admin(auth, enums):
         return True
     scope_ids = auth.get("scopes", []) or []
@@ -125,7 +123,7 @@ async def list_files(
         limit,
         offset,
     )
-    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
+    if _is_admin(auth, enums):
         return success([dict(r) for r in rows])
     results = []
     for row in rows:
@@ -154,9 +152,7 @@ async def get_file(
     row = await pool.fetchrow(QUERIES["files/get"], file_id)
     if not row:
         api_error("NOT_FOUND", f"File '{file_id}' not found", 404)
-    if auth["caller_type"] == "agent" and not await _file_visible(
-        pool, enums, auth, file_id
-    ):
+    if not await _file_visible(pool, enums, auth, file_id):
         api_error("FORBIDDEN", "File not in your scopes", 403)
     return success(dict(row))
 
@@ -231,9 +227,7 @@ async def update_file(
     if data.get("file_path") is None and data.get("uri") is not None:
         data["file_path"] = data["uri"]
 
-    if auth["caller_type"] == "agent" and not await _file_visible(
-        pool, enums, auth, file_id
-    ):
+    if not await _file_visible(pool, enums, auth, file_id):
         api_error("FORBIDDEN", "Access denied", 403)
 
     # Validate taxonomy-backed fields before queuing approvals.

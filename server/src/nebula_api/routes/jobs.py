@@ -46,9 +46,15 @@ def _require_job_read(auth: dict, enums: Any, job: dict) -> None:
 
 def _require_job_write(auth: dict, enums: Any, job: dict) -> None:
     _require_job_read(auth, enums, job)
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
+        return
+    if auth["caller_type"] == "user":
+        if job.get("agent_id"):
+            api_error("FORBIDDEN", "Job not in your scope", 403)
+        assigned_to = str(job.get("assigned_to") or "")
+        caller_id = str(auth.get("entity_id") or "")
+        if assigned_to and assigned_to != caller_id:
+            api_error("FORBIDDEN", "Job not in your scope", 403)
         return
     if job.get("agent_id") != auth.get("agent_id"):
         api_error("FORBIDDEN", "Job not in your scope", 403)
@@ -171,6 +177,8 @@ async def create_job(
         parse_optional_datetime(data.get("due_at"), "due_at")
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
+    if auth["caller_type"] == "user" and data.get("agent_id"):
+        api_error("FORBIDDEN", "Users cannot set agent_id", 403)
     if auth["caller_type"] == "agent" and not _is_admin(auth, enums):
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:

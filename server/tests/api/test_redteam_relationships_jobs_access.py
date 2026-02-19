@@ -4,8 +4,8 @@
 import json
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app
@@ -141,6 +141,28 @@ def _auth_override(agent_id, enums, scopes=None):
 
     async def mock_auth():
         """Mock auth for public agent."""
+
+        return auth_dict
+
+    return mock_auth
+
+
+def _user_auth_override(entity_row, enums, scopes=None):
+    """Build an auth override for public user API requests."""
+
+    scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
+    auth_dict = {
+        "key_id": None,
+        "caller_type": "user",
+        "entity_id": entity_row["id"],
+        "entity": entity_row,
+        "agent_id": None,
+        "agent": None,
+        "scopes": scope_ids,
+    }
+
+    async def mock_auth():
+        """Mock auth for public user caller."""
 
         return auth_dict
 
@@ -303,3 +325,55 @@ async def test_query_relationships_hides_foreign_job_links(db_pool, enums):
     ids = {row["id"] for row in resp.json()["data"]}
     assert str(public_rel["id"]) in ids
     assert str(private_rel["id"]) not in ids
+
+
+@pytest.mark.asyncio
+async def test_get_relationships_hides_foreign_job_links_for_user(db_pool, enums):
+    """User callers should not see relationships to private jobs."""
+
+    owner = await _make_agent(db_pool, enums, "rel-owner-api-user-get")
+    entity = await _make_entity(db_pool, enums, "Public Node User Get")
+    private_job = await _make_job(
+        db_pool, enums, "Private Job User Get", owner["id"], ["private"]
+    )
+    rel = await _make_relationship(
+        db_pool, enums, "entity", str(entity["id"]), "job", private_job["id"]
+    )
+
+    app.dependency_overrides[require_auth] = _user_auth_override(entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get(f"/api/relationships/entity/{entity['id']}")
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 200
+    ids = {row["id"] for row in resp.json()["data"]}
+    assert str(rel["id"]) not in ids
+
+
+@pytest.mark.asyncio
+async def test_query_relationships_hides_foreign_job_links_for_user(db_pool, enums):
+    """User callers should not see query results linked to private jobs."""
+
+    owner = await _make_agent(db_pool, enums, "rel-owner-api-user-query")
+    entity = await _make_entity(db_pool, enums, "Public Node User Query")
+    private_job = await _make_job(
+        db_pool, enums, "Private Job User Query", owner["id"], ["private"]
+    )
+    rel = await _make_relationship(
+        db_pool, enums, "job", private_job["id"], "entity", str(entity["id"])
+    )
+
+    app.dependency_overrides[require_auth] = _user_auth_override(entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/relationships/")
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 200
+    ids = {row["id"] for row in resp.json()["data"]}
+    assert str(rel["id"]) not in ids

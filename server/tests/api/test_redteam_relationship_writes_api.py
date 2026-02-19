@@ -4,8 +4,8 @@
 import json
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app
@@ -98,6 +98,32 @@ def _auth_override(agent_id, enums):
     return mock_auth
 
 
+def _user_auth_override(entity_row, enums, scopes=None):
+    """Build an auth override for public-scoped user API requests."""
+
+    scope_ids = [
+        enums.scopes.name_to_id[s]
+        for s in (scopes or ["public"])
+        if s in enums.scopes.name_to_id
+    ]
+    auth_dict = {
+        "key_id": None,
+        "caller_type": "user",
+        "entity_id": entity_row["id"],
+        "entity": entity_row,
+        "agent_id": None,
+        "agent": None,
+        "scopes": scope_ids,
+    }
+
+    async def mock_auth():
+        """Mock auth for public-scoped user."""
+
+        return auth_dict
+
+    return mock_auth
+
+
 @pytest.mark.asyncio
 async def test_api_create_relationship_denies_private_target(db_pool, enums):
     """Public agents should not create relationships to private entities."""
@@ -176,3 +202,59 @@ async def test_api_update_relationship_requires_approval_for_untrusted_agent(
 
     assert resp.status_code == 202
     assert resp.json()["status"] == "approval_required"
+
+
+@pytest.mark.asyncio
+async def test_api_create_relationship_denies_private_target_for_user(db_pool, enums):
+    """Public-scoped user should not create relationships to private entities."""
+
+    public_entity = await _make_entity(db_pool, enums, "Public User Src", ["public"])
+    private_entity = await _make_entity(db_pool, enums, "Private User Dst", ["sensitive"])
+    user_entity = await _make_entity(db_pool, enums, "User Actor", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/relationships/",
+            json={
+                "source_type": "entity",
+                "source_id": str(public_entity["id"]),
+                "target_type": "entity",
+                "target_id": str(private_entity["id"]),
+                "relationship_type": "related-to",
+                "properties": {"note": "user-should-fail"},
+            },
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_update_relationship_denies_private_target_for_user(db_pool, enums):
+    """Public-scoped user should not update relationships touching private entities."""
+
+    public_entity = await _make_entity(db_pool, enums, "Public User Upd Src", ["public"])
+    private_entity = await _make_entity(
+        db_pool, enums, "Private User Upd Dst", ["sensitive"]
+    )
+    relationship = await _make_relationship(
+        db_pool, enums, public_entity["id"], private_entity["id"]
+    )
+    user_entity = await _make_entity(db_pool, enums, "User Updater", ["public"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/relationships/{relationship['id']}",
+            json={"properties": {"note": "user-hijack"}},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403

@@ -4,8 +4,8 @@
 import json
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app
@@ -52,6 +52,54 @@ async def _make_job(db_pool, enums, agent_id):
         scope_ids,
     )
     return dict(row)
+
+
+async def _make_entity(db_pool, enums, name, scopes=None):
+    """Insert a test entity for user-auth job scenarios."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        RETURNING *
+        """,
+        name,
+        type_id,
+        status_id,
+        scope_ids,
+        ["test"],
+        json.dumps({"note": "user"}),
+    )
+    return dict(row)
+
+
+def _user_auth_override(entity_row, enums, scopes=None):
+    """Build auth override for user scoped job requests."""
+
+    scope_ids = [
+        enums.scopes.name_to_id[s]
+        for s in (scopes or ["public"])
+        if s in enums.scopes.name_to_id
+    ]
+    auth_dict = {
+        "key_id": None,
+        "caller_type": "user",
+        "entity_id": entity_row["id"],
+        "entity": entity_row,
+        "agent_id": None,
+        "agent": None,
+        "scopes": scope_ids,
+    }
+
+    async def mock_auth():
+        """Mock auth for user caller."""
+
+        return auth_dict
+
+    return mock_auth
 
 
 @pytest.mark.asyncio
@@ -321,3 +369,93 @@ async def test_api_create_job_handles_uuid_agent_id(db_pool, enums):
 
     assert resp.status_code in (200, 202)
     assert resp.json()["data"]["agent_id"] == str(viewer["id"])
+
+
+@pytest.mark.asyncio
+async def test_api_update_job_status_denies_user_on_foreign_job(db_pool, enums):
+    """Public-scoped user should not update status on another actor's job."""
+
+    owner = await _make_agent(db_pool, enums, "api-owner-user-status", False)
+    job = await _make_job(db_pool, enums, owner["id"])
+    user_entity = await _make_entity(db_pool, enums, "jobs-user-status")
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/jobs/{job['id']}/status",
+            json={"status": "completed"},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_update_job_denies_user_on_foreign_job(db_pool, enums):
+    """Public-scoped user should not patch another actor's job."""
+
+    owner = await _make_agent(db_pool, enums, "api-owner-user-patch", False)
+    job = await _make_job(db_pool, enums, owner["id"])
+    user_entity = await _make_entity(db_pool, enums, "jobs-user-patch")
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/jobs/{job['id']}",
+            json={"title": "user-hijack"},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_create_subtask_denies_user_on_foreign_job(db_pool, enums):
+    """Public-scoped user should not create subtasks under another actor's job."""
+
+    owner = await _make_agent(db_pool, enums, "api-owner-user-subtask", False)
+    job = await _make_job(db_pool, enums, owner["id"])
+    user_entity = await _make_entity(db_pool, enums, "jobs-user-subtask")
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            f"/api/jobs/{job['id']}/subtasks",
+            json={"title": "user-subtask"},
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_api_create_job_denies_user_agent_spoofing(db_pool, enums):
+    """Public-scoped user should not be able to assign jobs to arbitrary agents."""
+
+    owner = await _make_agent(db_pool, enums, "api-owner-user-create", False)
+    user_entity = await _make_entity(db_pool, enums, "jobs-user-create")
+
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(
+            "/api/jobs/",
+            json={
+                "title": "user-spoofed-job",
+                "agent_id": str(owner["id"]),
+            },
+        )
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 403

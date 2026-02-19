@@ -36,8 +36,6 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 async def _log_visible(pool: Any, enums: Any, auth: dict, log_id: str) -> bool:
     log_id = str(log_id)
-    if auth["caller_type"] != "agent":
-        return True
     if _is_admin(auth, enums):
         return True
     scope_ids = auth.get("scopes", []) or []
@@ -169,9 +167,7 @@ async def get_log(
     row = await pool.fetchrow(QUERIES["logs/get"], log_id)
     if not row:
         api_error("NOT_FOUND", f"Log '{log_id}' not found", 404)
-    if auth["caller_type"] == "agent" and not await _log_visible(
-        pool, enums, auth, log_id
-    ):
+    if not await _log_visible(pool, enums, auth, log_id):
         api_error("FORBIDDEN", "Log not in your scopes", 403)
     return success(dict(row))
 
@@ -204,7 +200,7 @@ async def query_logs(
         limit,
         offset,
     )
-    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
+    if _is_admin(auth, enums):
         return success([dict(r) for r in rows])
     results = []
     for row in rows:
@@ -241,9 +237,7 @@ async def update_log(
         except ValueError as exc:
             api_error("INVALID_INPUT", str(exc), 400)
 
-    if auth["caller_type"] == "agent" and not await _log_visible(
-        pool, enums, auth, log_id
-    ):
+    if not await _log_visible(pool, enums, auth, log_id):
         api_error("FORBIDDEN", "Access denied", 403)
 
     # Validate taxonomy-backed fields before queuing approvals.

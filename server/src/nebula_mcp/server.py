@@ -68,6 +68,7 @@ from nebula_mcp.helpers import (
     filter_context_segments,
     normalize_bulk_operation,
     redeem_enrollment_key,
+    sanitize_relationship_properties,
     scope_names_from_ids,
     wait_for_enrollment_status,
 )
@@ -325,6 +326,27 @@ def _scope_filter_ids(agent: dict, enums: Any) -> list | None:
     if _is_admin(agent, enums):
         return None
     return agent.get("scopes", []) or []
+
+
+def _visible_scope_names(
+    agent: dict, enums: Any, scope_ids: list | None = None
+) -> list[str]:
+    """Resolve caller-visible scope names, with admin seeing all scopes."""
+
+    if _is_admin(agent, enums):
+        return sorted(enums.scopes.name_to_id.keys())
+    ids = scope_ids if scope_ids is not None else (agent.get("scopes", []) or [])
+    return scope_names_from_ids(ids, enums)
+
+
+def _normalize_relationship_row(row: Any, visible_scope_names: list[str]) -> dict[str, Any]:
+    """Normalize relationship payload shape and scope-filter properties."""
+
+    item = dict(row)
+    item["properties"] = sanitize_relationship_properties(
+        item.get("properties"), visible_scope_names
+    )
+    return item
 
 
 def _entity_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
@@ -876,6 +898,7 @@ async def export_data(payload: ExportDataInput, ctx: Context) -> dict:
         rel_types = params.get("relationship_types") or None
         status_category = str(params.get("status_category", "active"))
         scope_filter = _scope_filter_ids(agent, enums)
+        visible_scope_names = _visible_scope_names(agent, enums, scope_filter)
         rows = await pool.fetch(
             QUERIES["relationships/query"],
             source_type,
@@ -885,7 +908,16 @@ async def export_data(payload: ExportDataInput, ctx: Context) -> dict:
             limit,
             scope_filter,
         )
-        return _export_response_rows([dict(row) for row in rows], payload.format)
+        out_rows: list[dict[str, Any]] = []
+        for row in rows:
+            if row["source_type"] == "job":
+                if not await _node_allowed(pool, enums, agent, "job", row["source_id"]):
+                    continue
+            if row["target_type"] == "job":
+                if not await _node_allowed(pool, enums, agent, "job", row["target_id"]):
+                    continue
+            out_rows.append(_normalize_relationship_row(row, visible_scope_names))
+        return _export_response_rows(out_rows, payload.format)
 
     if payload.resource == "jobs":
         status_names = params.get("status_names") or None
@@ -1156,6 +1188,9 @@ async def create_api_key(payload: CreateAPIKeyInput, ctx: Context) -> dict:
     if payload.entity_id:
         _require_admin(agent, enums)
         _require_uuid(payload.entity_id, "entity")
+        owner = await pool.fetchrow(QUERIES["entities/get_by_id"], payload.entity_id)
+        if not owner:
+            raise ValueError("Entity not found")
         row = await pool.fetchrow(
             QUERIES["api_keys/create_with_returning"],
             payload.entity_id,
@@ -1985,6 +2020,7 @@ async def get_relationships(payload: GetRelationshipsInput, ctx: Context) -> lis
 
     pool, enums, agent = await require_context(ctx)
     scope_ids = _scope_filter_ids(agent, enums)
+    visible_scope_names = _visible_scope_names(agent, enums, scope_ids)
 
     _require_node_id(payload.source_type, payload.source_id, "source")
 
@@ -2004,7 +2040,7 @@ async def get_relationships(payload: GetRelationshipsInput, ctx: Context) -> lis
         if row["target_type"] == "job":
             if not await _node_allowed(pool, enums, agent, "job", row["target_id"]):
                 continue
-        results.append(dict(row))
+        results.append(_normalize_relationship_row(row, visible_scope_names))
     return results
 
 
@@ -2017,6 +2053,7 @@ async def query_relationships(
     pool, enums, agent = await require_context(ctx)
     limit = _clamp_limit(payload.limit)
     scope_ids = _scope_filter_ids(agent, enums)
+    visible_scope_names = _visible_scope_names(agent, enums, scope_ids)
 
     rows = await pool.fetch(
         QUERIES["relationships/query"],
@@ -2035,7 +2072,7 @@ async def query_relationships(
         if row["target_type"] == "job":
             if not await _node_allowed(pool, enums, agent, "job", row["target_id"]):
                 continue
-        results.append(dict(row))
+        results.append(_normalize_relationship_row(row, visible_scope_names))
     return results
 
 
@@ -2431,6 +2468,10 @@ async def _attach_file(
         Relationship record or approval response payload.
     """
     pool, enums, agent = await require_context(ctx)
+    try:
+        UUID(str(payload.file_id))
+    except (TypeError, ValueError):
+        raise ValueError("Invalid file id format")
 
     file_row = await pool.fetchrow(QUERIES["files/get"], payload.file_id)
     if not file_row:
@@ -2559,11 +2600,9 @@ async def query_protocols(payload: QueryProtocolsInput, ctx: Context) -> list[di
         payload.protocol_type,
         payload.search,
         _clamp_limit(payload.limit),
+        _is_admin(agent, enums),
     )
-    items = [dict(r) for r in rows]
-    if not _is_admin(agent, enums):
-        items = [item for item in items if not item.get("trusted")]
-    return items
+    return [dict(r) for r in rows]
 
 
 # --- Agent Tools ---
@@ -2614,6 +2653,10 @@ async def update_agent(payload: UpdateAgentInput, ctx: Context) -> dict:
     _require_uuid(payload.agent_id, "agent")
 
     is_self = str(agent.get("id")) == payload.agent_id
+    if is_self and (
+        payload.scopes is not None or payload.requires_approval is not None
+    ):
+        _require_admin(agent, enums)
     if not is_self:
         _require_admin(agent, enums)
 

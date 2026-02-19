@@ -17,6 +17,7 @@ from nebula_mcp.enums import require_entity_type, require_scopes
 from nebula_mcp.helpers import (
     enforce_scope_subset,
     filter_context_segments,
+    sanitize_relationship_properties,
     scope_names_from_ids,
 )
 from nebula_mcp.query_loader import QueryLoader
@@ -48,6 +49,22 @@ def _resolve_scope_ids(scopes: list[str], auth: dict, enums: Any) -> list:
         return require_scopes(allowed_scope_names, enums)
     except ValueError as exc:
         api_error("VALIDATION_ERROR", str(exc), 400)
+
+
+def _visible_scope_names(auth: dict, enums: Any, scope_ids: list | None) -> list[str]:
+    if _is_admin(auth, enums):
+        return sorted(enums.scopes.name_to_id.keys())
+    return scope_names_from_ids(scope_ids or [], enums)
+
+
+def _normalize_relationship_export_row(
+    row: Any, scope_names: list[str]
+) -> dict[str, Any]:
+    item = dict(row)
+    item["properties"] = sanitize_relationship_properties(
+        item.get("properties"), scope_names
+    )
+    return item
 
 
 async def _job_visible(pool: Any, auth: dict, enums: Any, job_id: str) -> bool:
@@ -274,7 +291,8 @@ async def export_relationships(
     """
     pool = request.app.state.pool
     enums = request.app.state.enums
-    scope_ids = auth.get("scopes", [])
+    scope_ids = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
+    scope_names = _visible_scope_names(auth, enums, scope_ids)
 
     rows = await pool.fetch(
         QUERIES["relationships/query"],
@@ -285,17 +303,16 @@ async def export_relationships(
         limit,
         scope_ids,
     )
-    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
-        return _export_response([dict(r) for r in rows], format)
     results = []
     for row in rows:
-        if row["source_type"] == "job":
-            if not await _job_visible(pool, auth, enums, row["source_id"]):
-                continue
-        if row["target_type"] == "job":
-            if not await _job_visible(pool, auth, enums, row["target_id"]):
-                continue
-        results.append(dict(row))
+        if not _is_admin(auth, enums):
+            if row["source_type"] == "job":
+                if not await _job_visible(pool, auth, enums, row["source_id"]):
+                    continue
+            if row["target_type"] == "job":
+                if not await _job_visible(pool, auth, enums, row["target_id"]):
+                    continue
+        results.append(_normalize_relationship_export_row(row, scope_names))
     return _export_response(results, format)
 
 
@@ -379,7 +396,8 @@ async def export_snapshot(
 
     pool = request.app.state.pool
     enums = request.app.state.enums
-    scope_ids = auth.get("scopes")
+    scope_ids = auth.get("scopes", []) or []
+    scope_filter = None if _is_admin(auth, enums) else scope_ids
 
     entities_rows = await pool.fetch(
         QUERIES["entities/query"],
@@ -407,7 +425,7 @@ async def export_snapshot(
         None,
         "active",
         limit,
-        scope_ids,
+        scope_filter,
     )
     job_agent_filter = None
     scope_filter = None if _is_admin(auth, enums) else (scope_ids or [])
@@ -425,7 +443,7 @@ async def export_snapshot(
         limit,
     )
 
-    scope_names = scope_names_from_ids(scope_ids or [], enums)
+    scope_names = _visible_scope_names(auth, enums, scope_ids)
     entities = []
     for row in entities_rows:
         item = dict(row)
@@ -439,17 +457,15 @@ async def export_snapshot(
             item["metadata"] = filter_context_segments(item["metadata"], scope_names)
         context.append(item)
     relationships = []
-    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
-        relationships = [dict(r) for r in relationships_rows]
-    else:
-        for row in relationships_rows:
+    for row in relationships_rows:
+        if not _is_admin(auth, enums):
             if row["source_type"] == "job":
                 if not await _job_visible(pool, auth, enums, row["source_id"]):
                     continue
             if row["target_type"] == "job":
                 if not await _job_visible(pool, auth, enums, row["target_id"]):
                     continue
-            relationships.append(dict(row))
+        relationships.append(_normalize_relationship_export_row(row, scope_names))
 
     return success(
         {

@@ -16,6 +16,7 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, require_relationship_type, require_status
 from nebula_mcp.executors import execute_create_relationship
+from nebula_mcp.helpers import sanitize_relationship_properties, scope_names_from_ids
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -60,8 +61,6 @@ async def _job_visible(pool: Any, auth: dict, enums: EnumRegistry, job_id: str) 
 async def _validate_relationship_node(
     pool: Any, enums: EnumRegistry, auth: dict, node_type: str, node_id: str
 ) -> None:
-    if auth["caller_type"] != "agent":
-        return
     if _is_admin(auth, enums):
         return
     if node_type == "entity":
@@ -87,6 +86,34 @@ async def _validate_relationship_node(
             api_error("FORBIDDEN", "Access denied", 403)
         return
     return
+
+
+def _normalize_relationship_row(row: Any, scope_names: list[str]) -> dict[str, Any]:
+    item = dict(row)
+    item["properties"] = sanitize_relationship_properties(
+        item.get("properties"), scope_names
+    )
+    return item
+
+
+def _visible_scope_names(auth: dict, enums: EnumRegistry) -> list[str]:
+    if _is_admin(auth, enums):
+        return sorted(getattr(enums.scopes, "name_to_id", {}).keys())
+
+    try:
+        return scope_names_from_ids(auth.get("scopes", []) or [], enums)
+    except AttributeError:
+        # Unit tests may use lightweight enum stubs without id_to_name mapping.
+        reverse = {
+            scope_id: name
+            for name, scope_id in getattr(enums.scopes, "name_to_id", {}).items()
+        }
+        names: list[str] = []
+        for scope_id in auth.get("scopes", []) or []:
+            name = reverse.get(scope_id)
+            if name:
+                names.append(name)
+        return names
 
 
 def _normalize_relationship_lookup(source_type: str, source_id: str) -> tuple[str, str]:
@@ -218,8 +245,9 @@ async def get_relationships(
         relationship_type,
         scope_ids,
     )
-    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
-        return success([dict(r) for r in rows])
+    scope_names = _visible_scope_names(auth, enums)
+    if _is_admin(auth, enums):
+        return success([_normalize_relationship_row(r, scope_names) for r in rows])
     results = []
     for row in rows:
         if row["source_type"] == "job":
@@ -228,7 +256,7 @@ async def get_relationships(
         if row["target_type"] == "job":
             if not await _job_visible(pool, auth, enums, row["target_id"]):
                 continue
-        results.append(dict(row))
+        results.append(_normalize_relationship_row(row, scope_names))
     return success(results)
 
 
@@ -271,8 +299,9 @@ async def query_relationships(
         limit,
         scope_ids,
     )
-    if auth["caller_type"] != "agent" or _is_admin(auth, enums):
-        return success([dict(r) for r in rows])
+    scope_names = _visible_scope_names(auth, enums)
+    if _is_admin(auth, enums):
+        return success([_normalize_relationship_row(r, scope_names) for r in rows])
     results = []
     for row in rows:
         if row["source_type"] == "job":
@@ -281,7 +310,7 @@ async def query_relationships(
         if row["target_type"] == "job":
             if not await _job_visible(pool, auth, enums, row["target_id"]):
                 continue
-        results.append(dict(row))
+        results.append(_normalize_relationship_row(row, scope_names))
     return success(results)
 
 

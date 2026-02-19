@@ -17,5 +17,6 @@ JOIN statuses s ON p.status_id = s.id
 WHERE ($1::text IS NULL OR s.category = $1)
   AND ($2::text IS NULL OR p.protocol_type = $2)
   AND ($3::text IS NULL OR p.name ILIKE '%' || $3 || '%' OR p.title ILIKE '%' || $3 || '%')
+  AND ($5::boolean OR p.trusted IS NOT TRUE)
 ORDER BY p.name
 LIMIT $4;

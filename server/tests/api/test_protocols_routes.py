@@ -59,6 +59,57 @@ async def test_query_protocols_filters_trusted_for_non_admin(api, db_pool, enums
 
 
 @pytest.mark.asyncio
+async def test_query_protocols_limit_does_not_starve_public_rows(api, db_pool, enums):
+    """Non-admin protocol list should still return public rows under tight limits."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    await db_pool.execute(
+        """
+        INSERT INTO protocols (
+            name, title, version, content, protocol_type, applies_to,
+            status_id, tags, trusted, metadata, source_path
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9::jsonb,$10)
+        """,
+        "a-trusted-protocol",
+        "Trusted First",
+        "1.0.0",
+        "internal-only",
+        "system",
+        ["agents"],
+        status_id,
+        ["internal"],
+        json.dumps({"kind": "trusted"}),
+        None,
+    )
+    await db_pool.execute(
+        """
+        INSERT INTO protocols (
+            name, title, version, content, protocol_type, applies_to,
+            status_id, tags, trusted, metadata, source_path
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9::jsonb,$10)
+        """,
+        "z-public-protocol",
+        "Public Later",
+        "1.0.0",
+        "public",
+        "system",
+        ["agents"],
+        status_id,
+        ["public"],
+        json.dumps({"kind": "public"}),
+        None,
+    )
+
+    resp = await api.get("/api/protocols/", params={"status_category": "active", "limit": 1})
+    assert resp.status_code == 200
+    names = [item["name"] for item in resp.json()["data"]]
+    assert names
+    assert "z-public-protocol" in names
+
+
+@pytest.mark.asyncio
 async def test_get_protocol_not_found(api):
     """Protocol get should return 404 when name does not exist."""
 
@@ -118,4 +169,3 @@ async def test_update_protocol_missing_row_returns_empty_payload(api):
     )
     assert resp.status_code == 200
     assert resp.json()["data"] == {}
-
