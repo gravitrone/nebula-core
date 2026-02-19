@@ -18,8 +18,7 @@ var (
 			BorderForeground(lipgloss.Color("#273540")).
 			Padding(0, 1).
 			MarginRight(1)
-	statusBarBorder = lipgloss.NewStyle().
-			PaddingLeft(2)
+	statusBarBorder = lipgloss.NewStyle()
 )
 
 // StatusBar renders the bottom hint bar separated from content by a border line.
@@ -32,23 +31,13 @@ func StatusBar(hints []string, width int) string {
 		content := lipgloss.JoinHorizontal(lipgloss.Top, segments...)
 		return statusBarBorder.Render(content)
 	}
-
-	rows := wrapSegments(segments, width)
-	if len(rows) == 0 {
-		return ""
+	available := width - statusBarBorder.GetHorizontalFrameSize()
+	if available <= 0 {
+		available = width
 	}
-	maxRowWidth := 0
-	for _, row := range rows {
-		if w := lipgloss.Width(row); w > maxRowWidth {
-			maxRowWidth = w
-		}
-	}
-	lines := make([]string, 0, len(rows))
-	for _, row := range rows {
-		lines = append(lines, lipgloss.NewStyle().Width(maxRowWidth).Align(lipgloss.Center).Render(row))
-	}
-	block := lipgloss.JoinVertical(lipgloss.Left, lines...)
-	return statusBarBorder.Width(width).Align(lipgloss.Center).Render(block)
+	clamped := clampStatusSegments(segments, available)
+	content := lipgloss.JoinHorizontal(lipgloss.Top, clamped...)
+	return statusBarBorder.Width(width).Align(lipgloss.Center).Render(content)
 }
 
 // Hint formats a single keybind hint like "↑/↓ Scroll".
@@ -79,4 +68,41 @@ func wrapSegments(segments []string, width int) []string {
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top, current...))
 	}
 	return rows
+}
+
+func clampStatusSegments(segments []string, width int) []string {
+	if len(segments) == 0 || width <= 0 {
+		return segments
+	}
+
+	used := 0
+	out := make([]string, 0, len(segments))
+	for i, seg := range segments {
+		segWidth := lipgloss.Width(seg)
+		if used+segWidth <= width {
+			out = append(out, seg)
+			used += segWidth
+			continue
+		}
+
+		// Keep status bar on one visual row under resize and show explicit overflow.
+		overflow := segmentStyle.Render(hintDescStyle.Render("More ") + keyCapStyle.Render("..."))
+		overflowWidth := lipgloss.Width(overflow)
+		for len(out) > 0 && used+overflowWidth > width {
+			last := out[len(out)-1]
+			used -= lipgloss.Width(last)
+			out = out[:len(out)-1]
+		}
+		if used+overflowWidth <= width {
+			out = append(out, overflow)
+		}
+
+		if i == 0 && len(out) == 0 {
+			// Degenerate tiny width: render at least one hint segment clipped.
+			return []string{lipgloss.NewStyle().MaxWidth(width).Render(seg)}
+		}
+		break
+	}
+
+	return out
 }

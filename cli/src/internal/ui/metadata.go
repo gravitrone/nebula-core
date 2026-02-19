@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -40,9 +41,25 @@ func parseMetadataInput(input string) (map[string]any, error) {
 		if strings.HasPrefix(content, "- ") {
 			return nil, fmt.Errorf("line %d: list items not supported, use key: [a, b]", lineNum)
 		}
+		if strings.Contains(content, "|") {
+			keyPath, valueRaw, err := parseMetadataPipeLine(content, lineNum)
+			if err != nil {
+				return nil, err
+			}
+			value, err := parseMetadataValue(valueRaw, lineNum)
+			if err != nil {
+				return nil, err
+			}
+			if err := setMetadataPath(root, keyPath, value, lineNum); err != nil {
+				return nil, err
+			}
+			// Pipe rows are absolute entries and don't use indentation stack.
+			stack = stack[:1]
+			continue
+		}
 		parts := strings.SplitN(content, ":", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("line %d: expected 'key: value'", lineNum)
+			return nil, fmt.Errorf("line %d: expected 'key: value' or 'group | field | value'", lineNum)
 		}
 		key := strings.TrimSpace(parts[0])
 		if key == "" {
@@ -86,6 +103,60 @@ func parseMetadataValue(raw string, lineNum int) (any, error) {
 		return nil, fmt.Errorf("line %d: inline objects not supported, use nested keys", lineNum)
 	}
 	return parseMetadataScalar(raw), nil
+}
+
+func parseMetadataPipeLine(content string, lineNum int) (string, string, error) {
+	parts := strings.Split(content, "|")
+	trimmed := make([]string, 0, len(parts))
+	for _, p := range parts {
+		s := strings.TrimSpace(p)
+		if s != "" {
+			trimmed = append(trimmed, s)
+		}
+	}
+	if len(trimmed) < 2 {
+		return "", "", fmt.Errorf("line %d: expected at least 'field | value'", lineNum)
+	}
+	value := trimmed[len(trimmed)-1]
+	pathParts := trimmed[:len(trimmed)-1]
+	for _, part := range pathParts {
+		if strings.TrimSpace(part) == "" {
+			return "", "", fmt.Errorf("line %d: empty key segment in pipe row", lineNum)
+		}
+	}
+	return strings.Join(pathParts, "."), value, nil
+}
+
+func setMetadataPath(root map[string]any, path string, value any, lineNum int) error {
+	segments := strings.Split(path, ".")
+	if len(segments) == 0 {
+		return fmt.Errorf("line %d: empty metadata path", lineNum)
+	}
+	current := root
+	for idx, raw := range segments {
+		segment := strings.TrimSpace(raw)
+		if segment == "" {
+			return fmt.Errorf("line %d: empty key segment in '%s'", lineNum, path)
+		}
+		isLast := idx == len(segments)-1
+		if isLast {
+			current[segment] = value
+			return nil
+		}
+		next, ok := current[segment]
+		if !ok {
+			child := map[string]any{}
+			current[segment] = child
+			current = child
+			continue
+		}
+		child, ok := next.(map[string]any)
+		if !ok {
+			return fmt.Errorf("line %d: key '%s' is already set as a value", lineNum, strings.Join(segments[:idx+1], "."))
+		}
+		current = child
+	}
+	return nil
 }
 
 func parseMetadataScalar(raw string) any {
@@ -208,6 +279,29 @@ func renderMetadataInput(input string) string {
 		spaces := leadingSpaces(line)
 		content := strings.TrimSpace(line)
 		pad := strings.Repeat(" ", spaces)
+
+		if strings.Contains(content, "|") {
+			parts := strings.Split(content, "|")
+			trimmed := make([]string, 0, len(parts))
+			for _, p := range parts {
+				s := components.SanitizeText(strings.TrimSpace(p))
+				if s != "" {
+					trimmed = append(trimmed, s)
+				}
+			}
+			if len(trimmed) >= 2 {
+				value := trimmed[len(trimmed)-1]
+				path := strings.Join(trimmed[:len(trimmed)-1], ".")
+				group, field := metadataGroupAndField(path)
+				row := MetaKeyStyle.Render(group) +
+					MetaPunctStyle.Render(" | ") +
+					MetaKeyStyle.Render(field) +
+					MetaPunctStyle.Render(" | ") +
+					MetaValueStyle.Render(value)
+				lines[i] = pad + row
+				continue
+			}
+		}
 
 		if strings.HasPrefix(content, "- ") {
 			value := strings.TrimSpace(strings.TrimPrefix(content, "- "))
@@ -414,28 +508,16 @@ func renderMetadataBlockWithTitle(title string, data map[string]any, width int, 
 			value: fmt.Sprintf("+%d more rows (press m to expand)", remaining),
 		})
 	}
-	fieldWidth := contentWidth * 34 / 100
-	if fieldWidth < 18 {
-		fieldWidth = 18
-	}
-	if fieldWidth > 42 {
-		fieldWidth = 42
-	}
-	valueWidth := contentWidth - fieldWidth - 1
-	if valueWidth < 14 {
-		valueWidth = 14
-		fieldWidth = contentWidth - valueWidth - 1
-		if fieldWidth < 12 {
-			fieldWidth = 12
-		}
-	}
+	groupWidth, fieldWidth, valueWidth := metadataColumnWidths(contentWidth)
 	columns := []components.TableColumn{
+		{Header: "Group", Width: groupWidth, Align: lipgloss.Left},
 		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
 		{Header: "Value", Width: valueWidth, Align: lipgloss.Left},
 	}
 	gridRows := make([][]string, 0, len(rows))
 	for _, row := range rows {
-		gridRows = append(gridRows, []string{row.field, row.value})
+		group, field := metadataGroupAndField(row.field)
+		gridRows = append(gridRows, []string{group, field, row.value})
 	}
 	rendered := components.TableGrid(columns, gridRows, contentWidth)
 	return components.TitledBox(title, colorizeScopeBadges(rendered), width)
@@ -529,24 +611,11 @@ func renderMetadataSelectableBlockWithTitle(
 		return components.TitledBox(title, MetaValueStyle.Render("None"), width)
 	}
 
-	fieldWidth := contentWidth * 35 / 100
-	if fieldWidth < 18 {
-		fieldWidth = 18
-	}
-	if fieldWidth > 44 {
-		fieldWidth = 44
-	}
-	valueWidth := contentWidth - fieldWidth - 6 // marker + separators
-	if valueWidth < 18 {
-		valueWidth = 18
-		fieldWidth = contentWidth - valueWidth - 6
-		if fieldWidth < 14 {
-			fieldWidth = 14
-		}
-	}
+	groupWidth, fieldWidth, valueWidth := metadataColumnWidths(contentWidth - 5)
 
 	columns := []components.TableColumn{
 		{Header: "Sel", Width: 4, Align: lipgloss.Left},
+		{Header: "Group", Width: groupWidth, Align: lipgloss.Left},
 		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
 		{Header: "Value", Width: valueWidth, Align: lipgloss.Left},
 	}
@@ -565,13 +634,12 @@ func renderMetadataSelectableBlockWithTitle(
 		}
 		if list.IsSelected(absIdx) {
 			activeVisible = len(gridRows)
-			mark = "›" + mark
-		} else {
-			mark = " " + mark
 		}
+		group, field := metadataGroupAndField(row.field)
 		gridRows = append(gridRows, []string{
 			mark,
-			row.field,
+			group,
+			field,
 			row.value,
 		})
 	}
@@ -604,6 +672,74 @@ func metadataDisplayRows(data map[string]any) []metadataDisplayRow {
 	rows := make([]metadataDisplayRow, 0, len(data)*2)
 	flattenMetadataMapRows("", data, &rows)
 	return rows
+}
+
+func metadataGroupAndField(path string) (string, string) {
+	trimmed := strings.TrimSpace(path)
+	if trimmed == "" {
+		return "-", "-"
+	}
+	if !strings.HasPrefix(trimmed, "context_segments[") {
+		parts := strings.Split(trimmed, ".")
+		if len(parts) == 1 {
+			return "-", parts[0]
+		}
+		return parts[0], strings.Join(parts[1:], ".")
+	}
+	open := strings.Index(trimmed, "[")
+	close := strings.Index(trimmed, "]")
+	if open < 0 || close <= open+1 {
+		return "context", trimmed
+	}
+	idxRaw := trimmed[open+1 : close]
+	idx, err := strconv.Atoi(idxRaw)
+	if err != nil {
+		return "context", trimmed
+	}
+	field := fmt.Sprintf("segment %d", idx+1)
+	if close+1 < len(trimmed) {
+		tail := strings.TrimPrefix(trimmed[close+1:], ".")
+		if strings.TrimSpace(tail) != "" {
+			field = field + "." + tail
+		}
+	}
+	return "context", field
+}
+
+func metadataColumnWidths(contentWidth int) (int, int, int) {
+	if contentWidth < 34 {
+		contentWidth = 34
+	}
+	usable := contentWidth - 2 // separators
+	if usable < 24 {
+		usable = 24
+	}
+
+	groupWidth := usable * 22 / 100
+	fieldWidth := usable * 30 / 100
+	valueWidth := usable - groupWidth - fieldWidth
+
+	if groupWidth < 10 {
+		groupWidth = 10
+	}
+	if fieldWidth < 14 {
+		fieldWidth = 14
+	}
+	if valueWidth < 14 {
+		valueWidth = 14
+	}
+	used := groupWidth + fieldWidth + valueWidth
+	if used < usable {
+		valueWidth += usable - used
+	} else if used > usable {
+		overflow := used - usable
+		if valueWidth-overflow >= 14 {
+			valueWidth -= overflow
+		} else if fieldWidth-overflow >= 14 {
+			fieldWidth -= overflow
+		}
+	}
+	return groupWidth, fieldWidth, valueWidth
 }
 
 func flattenMetadataMapRows(prefix string, data map[string]any, rows *[]metadataDisplayRow) {

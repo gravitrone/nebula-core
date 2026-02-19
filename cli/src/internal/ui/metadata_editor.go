@@ -112,7 +112,7 @@ func (m MetadataEditor) Render(width int) string {
 		contentStr = content.String()
 	}
 	contentStr += AccentStyle.Render("█")
-	hint := MutedStyle.Render("space scopes  |  tab indent  |  enter newline  |  esc back")
+	hint := MutedStyle.Render("example: profile | timezone | europe/warsaw\nspace scopes  |  tab indent  |  enter newline  |  esc back")
 	if _, err := parseMetadataInput(m.Buffer); err != nil {
 		hint = hint + "\n" + ErrorStyle.Render(err.Error())
 	}
