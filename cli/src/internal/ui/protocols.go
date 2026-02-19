@@ -210,6 +210,12 @@ func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 }
 
 func (m ProtocolsModel) View() string {
+	if m.addMeta.Active {
+		return m.addMeta.Render(m.width)
+	}
+	if m.editMeta.Active {
+		return m.editMeta.Render(m.width)
+	}
 	if m.filtering && m.view == protocolsViewList {
 		return components.Indent(components.InputDialog("Filter Protocols", m.searchBuf), 1)
 	}
@@ -654,6 +660,12 @@ func (m ProtocolsModel) handleAddKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) 
 	if m.addSaving {
 		return m, nil
 	}
+	if m.addMeta.Active {
+		if m.addMeta.HandleKey(msg) {
+			m.addMeta.Active = false
+		}
+		return m, nil
+	}
 	switch {
 	case isBack(msg):
 		m.view = protocolsViewList
@@ -672,8 +684,8 @@ func (m ProtocolsModel) handleAddKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) 
 		return m.handleApplyInput(msg, true)
 	}
 	if m.addFocus == protoFieldMetadata {
-		if m.addMeta.HandleKey(msg) {
-			m.view = protocolsViewList
+		if isEnter(msg) || isSpace(msg) {
+			m.addMeta.Active = true
 		}
 		return m, nil
 	}
@@ -707,7 +719,7 @@ func (m ProtocolsModel) renderAdd() string {
 	for i, f := range m.addFields {
 		selected := i == m.addFocus
 		if selected {
-			b.WriteString(SelectedStyle.Render("> " + f.label + ":"))
+			b.WriteString(SelectedStyle.Render("  " + f.label + ":"))
 		} else {
 			b.WriteString(MutedStyle.Render("  " + f.label + ":"))
 		}
@@ -720,7 +732,16 @@ func (m ProtocolsModel) renderAdd() string {
 		case protoFieldApplies:
 			b.WriteString(NormalStyle.Render("  " + m.renderApplies(m.addApplies, m.addApplyBuf)))
 		case protoFieldMetadata:
-			b.WriteString(m.addMeta.Render(m.width))
+			meta := renderMetadataInput(m.addMeta.Buffer)
+			if meta == "" {
+				meta = "-"
+			}
+			b.WriteString(NormalStyle.Render("  " + meta))
+			scopes := renderScopePills(m.addMeta.Scopes, true)
+			if strings.TrimSpace(scopes) != "" && strings.TrimSpace(scopes) != "-" {
+				b.WriteString("\n")
+				b.WriteString("  " + MetaKeyStyle.Render("Scopes: ") + scopes)
+			}
 		default:
 			b.WriteString(NormalStyle.Render("  " + f.value))
 		}
@@ -817,6 +838,12 @@ func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 	if m.editSaving {
 		return m, nil
 	}
+	if m.editMeta.Active {
+		if m.editMeta.HandleKey(msg) {
+			m.editMeta.Active = false
+		}
+		return m, nil
+	}
 	switch {
 	case isBack(msg):
 		m.view = protocolsViewDetail
@@ -835,8 +862,8 @@ func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 		return m.handleApplyInput(msg, false)
 	}
 	if m.editFocus == protoEditFieldMetadata {
-		if m.editMeta.HandleKey(msg) {
-			m.view = protocolsViewDetail
+		if isEnter(msg) || isSpace(msg) {
+			m.editMeta.Active = true
 		}
 		return m, nil
 	}
@@ -868,7 +895,7 @@ func (m ProtocolsModel) renderEdit() string {
 	for i, f := range m.editFields {
 		selected := i == m.editFocus
 		if selected {
-			b.WriteString(SelectedStyle.Render("> " + f.label + ":"))
+			b.WriteString(SelectedStyle.Render("  " + f.label + ":"))
 		} else {
 			b.WriteString(MutedStyle.Render("  " + f.label + ":"))
 		}
@@ -881,7 +908,16 @@ func (m ProtocolsModel) renderEdit() string {
 		case protoEditFieldApplies:
 			b.WriteString(NormalStyle.Render("  " + m.renderApplies(m.editApplies, m.editApplyBuf)))
 		case protoEditFieldMetadata:
-			b.WriteString(m.editMeta.Render(m.width))
+			meta := renderMetadataInput(m.editMeta.Buffer)
+			if meta == "" {
+				meta = "-"
+			}
+			b.WriteString(NormalStyle.Render("  " + meta))
+			scopes := renderScopePills(m.editMeta.Scopes, true)
+			if strings.TrimSpace(scopes) != "" && strings.TrimSpace(scopes) != "-" {
+				b.WriteString("\n")
+				b.WriteString("  " + MetaKeyStyle.Render("Scopes: ") + scopes)
+			}
 		default:
 			b.WriteString(NormalStyle.Render("  " + f.value))
 		}

@@ -490,6 +490,9 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a App) View() string {
+	components.SetTableGridActiveRowsEnabled(!a.tabNav)
+	defer components.SetTableGridActiveRowsEnabled(true)
+
 	banner := centerBlockUniform(RenderBanner(), a.width)
 	tabs := centerBlockUniform(a.renderTabs(), a.width)
 	startupPanel := ""
@@ -2113,10 +2116,16 @@ func (a App) canExitToTabNav() bool {
 		if a.profile.creating || a.profile.createdKey != "" || a.profile.agentDetail != nil {
 			return false
 		}
+		if a.profile.sectionFocus {
+			return true
+		}
 		if a.profile.section == 0 {
 			return a.profile.keyList == nil || a.profile.keyList.Selected() == 0
 		}
-		return a.profile.agentList == nil || a.profile.agentList.Selected() == 0
+		if a.profile.section == 1 {
+			return a.profile.agentList == nil || a.profile.agentList.Selected() == 0
+		}
+		return a.profile.taxList == nil || a.profile.taxList.Selected() == 0
 	}
 	return false
 }
@@ -2156,6 +2165,16 @@ func (a *App) focusModeLineForActiveTab() bool {
 	case tabProtocols:
 		if a.protocols.view == protocolsViewList || a.protocols.view == protocolsViewAdd || a.protocols.view == protocolsViewEdit {
 			a.protocols.modeFocus = true
+			return true
+		}
+	case tabProfile:
+		if a.profile.taxPromptMode == taxPromptNone &&
+			!a.profile.creating &&
+			!a.profile.editAPIKey &&
+			!a.profile.editPendingLimit &&
+			a.profile.createdKey == "" &&
+			a.profile.agentDetail == nil {
+			a.profile.sectionFocus = true
 			return true
 		}
 	}

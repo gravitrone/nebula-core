@@ -632,6 +632,12 @@ func (m FilesModel) handleAddKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if m.addMeta.Active {
+		if m.addMeta.HandleKey(msg) {
+			m.addMeta.Active = false
+		}
+		return m, nil
+	}
 	if m.modeFocus {
 		return m.handleModeKeys(msg)
 	}
@@ -713,11 +719,9 @@ func (m FilesModel) handleAddKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 func (m FilesModel) renderAdd() string {
 	var b strings.Builder
 	for i, f := range m.addFields {
-		label := MutedStyle.Render(f.label + ":")
+		label := "  " + MutedStyle.Render(f.label+":")
 		if i == m.addFocus {
-			label = SelectedStyle.Render("> " + f.label + ":")
-		} else {
-			label = "  " + label
+			label = "  " + SelectedStyle.Render(f.label+":")
 		}
 		b.WriteString(label + "\n")
 
@@ -906,6 +910,12 @@ func (m FilesModel) handleEditKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
+	if m.editMeta.Active {
+		if m.editMeta.HandleKey(msg) {
+			m.editMeta.Active = false
+		}
+		return m, nil
+	}
 	if m.editFocus == fileFieldStatus {
 		switch {
 		case isKey(msg, "left"):
@@ -981,11 +991,9 @@ func (m FilesModel) renderEdit() string {
 	fields := []string{"Filename", "File Path", "MIME Type", "Size (bytes)", "Checksum", "Status", "Tags", "Metadata"}
 	var b strings.Builder
 	for i, f := range fields {
-		label := MutedStyle.Render(f + ":")
+		label := "  " + MutedStyle.Render(f+":")
 		if i == m.editFocus {
-			label = SelectedStyle.Render("> " + f + ":")
-		} else {
-			label = "  " + label
+			label = "  " + SelectedStyle.Render(f+":")
 		}
 		b.WriteString(label + "\n")
 		switch i {

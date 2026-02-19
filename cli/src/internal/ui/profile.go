@@ -29,7 +29,8 @@ type ProfileModel struct {
 	client *api.Client
 	config *config.Config
 
-	section int // 0 = keys, 1 = agents
+	section      int // 0 = keys, 1 = agents, 2 = taxonomy
+	sectionFocus bool
 
 	keys        []api.APIKey
 	keyList     *components.List
@@ -160,6 +161,18 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			return m, nil
 		}
 
+		if m.sectionFocus {
+			switch {
+			case isKey(msg, "left"):
+				m.section = (m.section - 1 + 3) % 3
+			case isKey(msg, "right"):
+				m.section = (m.section + 1) % 3
+			case isDown(msg), isEnter(msg), isSpace(msg):
+				m.sectionFocus = false
+			}
+			return m, nil
+		}
+
 		switch {
 		case isKey(msg, "left"):
 			m.section = (m.section - 1 + 3) % 3
@@ -178,6 +191,7 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 				m.activeList().Up()
 			}
 		case isKey(msg, "n"):
+			m.sectionFocus = false
 			if m.section == 0 {
 				m.creating = true
 				m.createBuf = ""
@@ -185,9 +199,11 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 				m.openTaxPrompt(taxPromptCreateName, "")
 			}
 		case isKey(msg, "k"):
+			m.sectionFocus = false
 			m.editAPIKey = true
 			m.apiKeyBuf = m.config.APIKey
 		case isKey(msg, "p"):
+			m.sectionFocus = false
 			m.editPendingLimit = true
 			limit := 500
 			if m.config != nil && m.config.PendingLimit > 0 {
@@ -203,6 +219,7 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 				return m.toggleTrust()
 			}
 		case isEnter(msg):
+			m.sectionFocus = false
 			if m.section == 1 {
 				if idx := m.agentList.Selected(); idx < len(m.agents) {
 					agent := m.agents[idx]
@@ -309,17 +326,29 @@ func (m ProfileModel) View() string {
 	taxonomyLabel := "Taxonomy"
 	var tabs string
 	if m.section == 0 {
-		tabs = TabActiveStyle.Render(keysLabel) +
+		active := TabActiveStyle
+		if m.sectionFocus {
+			active = TabFocusStyle
+		}
+		tabs = active.Render(keysLabel) +
 			" " + TabInactiveStyle.Render(agentsLabel) +
 			" " + TabInactiveStyle.Render(taxonomyLabel)
 	} else if m.section == 1 {
+		active := TabActiveStyle
+		if m.sectionFocus {
+			active = TabFocusStyle
+		}
 		tabs = TabInactiveStyle.Render(keysLabel) +
-			" " + TabActiveStyle.Render(agentsLabel) +
+			" " + active.Render(agentsLabel) +
 			" " + TabInactiveStyle.Render(taxonomyLabel)
 	} else {
+		active := TabActiveStyle
+		if m.sectionFocus {
+			active = TabFocusStyle
+		}
 		tabs = TabInactiveStyle.Render(keysLabel) +
 			" " + TabInactiveStyle.Render(agentsLabel) +
-			" " + TabActiveStyle.Render(taxonomyLabel)
+			" " + active.Render(taxonomyLabel)
 	}
 	b.WriteString(components.CenterLine(tabs, m.width))
 	b.WriteString("\n\n")
@@ -596,6 +625,9 @@ func (m ProfileModel) renderKeys() string {
 			at,
 		})
 	}
+	if m.sectionFocus {
+		activeRowRel = -1
+	}
 
 	title := "API Keys"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d keys", len(m.keys)))
@@ -745,6 +777,9 @@ func (m ProfileModel) renderAgents() string {
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(scopes), scopesWidth),
 		})
+	}
+	if m.sectionFocus {
+		activeRowRel = -1
 	}
 
 	title := "Agents"

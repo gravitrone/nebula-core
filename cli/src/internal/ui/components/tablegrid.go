@@ -37,6 +37,15 @@ var gridSelectedMarkStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#d1606b")).
 	Bold(true)
 
+var tableGridActiveRowsEnabled = true
+
+// SetTableGridActiveRowsEnabled toggles active-row highlighting globally.
+// App view rendering uses this to hide row focus while top tab navigation
+// is focused, so only one focus target is visible at a time.
+func SetTableGridActiveRowsEnabled(enabled bool) {
+	tableGridActiveRowsEnabled = enabled
+}
+
 // TableGrid renders a table-like layout using the same rounded border glyphs
 // used by Nebula's box components.
 //
@@ -50,6 +59,9 @@ func TableGrid(columns []TableColumn, rows [][]string, tableWidth int) string {
 // TableGridWithActiveRow is like TableGrid but highlights one data row by index.
 // activeRow is a 0-based index into rows; pass -1 to disable highlighting.
 func TableGridWithActiveRow(columns []TableColumn, rows [][]string, tableWidth int, activeRow int) string {
+	if !tableGridActiveRowsEnabled {
+		activeRow = -1
+	}
 	if tableWidth <= 0 {
 		return ""
 	}

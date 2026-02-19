@@ -373,6 +373,9 @@ func (m ProfileModel) renderTaxonomy() string {
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(desc), descWidth),
 		})
 	}
+	if m.sectionFocus {
+		activeRowRel = -1
+	}
 
 	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
 	preview := ""
