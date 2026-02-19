@@ -124,6 +124,16 @@ func TestPaletteModeSwitchesBetweenCommandAndSearch(t *testing.T) {
 	assert.False(t, updated.paletteSearchLoading)
 }
 
+func TestUnifiedPaletteRemovesDedicatedSearchTabActions(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+
+	assert.NotContains(t, tabNames, "Search")
+	for _, action := range app.paletteActions {
+		assert.NotEqual(t, "tab:search", action.ID)
+		assert.NotEqual(t, "search:semantic", action.ID)
+	}
+}
+
 func TestHelpToggle(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
@@ -211,6 +221,21 @@ func TestClampBodyForViewportSupportsScrollMarkers(t *testing.T) {
 	endScroll, _ := clampBodyForViewport(body, 18, 3, 4, 99)
 	assert.Contains(t, endScroll, "... ↑ more")
 	assert.NotContains(t, endScroll, "... ↓ more")
+}
+
+func TestClampBodyForViewportRespectsAvailableViewportLines(t *testing.T) {
+	lines := make([]string, 0, 40)
+	for i := 1; i <= 40; i++ {
+		lines = append(lines, "line "+strconv.Itoa(i))
+	}
+	body := strings.Join(lines, "\n")
+
+	// Tight viewport to exercise clipping without invading tab/footer space.
+	clamped, _ := clampBodyForViewport(body, 14, 3, 4, 0)
+	got := strings.Split(clamped, "\n")
+	available := 14 - 3 - 4
+
+	assert.LessOrEqual(t, len(got), available)
 }
 
 func TestAppBodyScrollHotkeys(t *testing.T) {

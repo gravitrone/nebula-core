@@ -327,6 +327,57 @@ func TestInboxApproveAllFiltered(t *testing.T) {
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
 }
 
+func TestInboxApproveAllConfirmAcceptsEnter(t *testing.T) {
+	var approved []string
+	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/approvals/") && strings.HasSuffix(r.URL.Path, "/approve"):
+			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/approvals/"), "/approve")
+			approved = append(approved, id)
+			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": id}})
+			return
+		case r.URL.Path == "/api/approvals/pending":
+			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	model := NewInboxModel(client)
+	model.confirmBulk = true
+	model.items = []api.Approval{
+		{ID: "ap-1", Status: "pending"},
+		{ID: "ap-2", Status: "pending"},
+	}
+	model.applyFilter(true)
+
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	require.True(t, model.confirming)
+
+	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	cmd()
+
+	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
+}
+
+func TestInboxApproveAllConfirmCancelsOnEsc(t *testing.T) {
+	model := NewInboxModel(nil)
+	model.confirmBulk = true
+	model.items = []api.Approval{
+		{ID: "ap-1", Status: "pending"},
+		{ID: "ap-2", Status: "pending"},
+	}
+	model.applyFilter(true)
+
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	require.True(t, model.confirming)
+
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	require.False(t, updated.confirming)
+	assert.Nil(t, cmd)
+}
+
 func TestInboxFilterByAgentAndType(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{
@@ -392,6 +443,70 @@ func TestInboxBatchApproveSelected(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
+}
+
+func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
+	var approved []string
+	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/approvals/pending":
+			resp := map[string]any{
+				"data": []map[string]any{
+					{
+						"id":           "ap-bulk",
+						"status":       "pending",
+						"request_type": "bulk_update_entity_scopes",
+						"agent_name":   "test",
+						"requested_by": "user",
+						"change_details": map[string]any{
+							"entity_ids": []string{"ent-1"},
+							"scopes":     []string{"admin"},
+							"op":         "add",
+						},
+						"created_at": time.Now(),
+					},
+					{
+						"id":           "ap-update",
+						"status":       "pending",
+						"request_type": "update_entity",
+						"agent_name":   "test",
+						"requested_by": "user",
+						"change_details": map[string]any{
+							"entity_id": "ent-1",
+							"status":    "active",
+						},
+						"created_at": time.Now(),
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(resp)
+		case strings.HasSuffix(r.URL.Path, "/approve"):
+			parts := strings.Split(r.URL.Path, "/")
+			approved = append(approved, parts[len(parts)-2])
+			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	model := NewInboxModel(client)
+	cmd := model.Init()
+	msg := cmd()
+	model, _ = model.Update(msg)
+
+	// Multi-select two mixed request types.
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	require.Nil(t, cmd)
+
+	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	require.NotNil(t, cmd)
+	msg = cmd()
+	model, _ = model.Update(msg)
+
+	assert.ElementsMatch(t, []string{"ap-bulk", "ap-update"}, approved)
 }
 
 func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
@@ -557,4 +672,16 @@ func TestParseApprovalFilterTokens(t *testing.T) {
 	assert.Equal(t, "create", filter.req)
 	assert.NotNil(t, filter.since)
 	assert.Equal(t, []string{"custom"}, filter.terms)
+}
+
+func TestInboxRenderGrantEditorShowsCurrentInputs(t *testing.T) {
+	model := NewInboxModel(nil)
+	model.width = 90
+	model.grantScopes = "public,private"
+	model.grantTrusted = false
+
+	out := stripANSI(model.renderGrantEditor())
+	assert.Contains(t, out, "Approve Agent Enrollment")
+	assert.Contains(t, out, "public,private")
+	assert.Contains(t, out, "requires_approval: false")
 }

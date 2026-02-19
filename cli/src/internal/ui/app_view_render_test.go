@@ -107,7 +107,8 @@ func TestAppTabWantsArrowsAndCanExitToTabNav(t *testing.T) {
 	app.entities.list.Down()
 	assert.False(t, app.canExitToTabNav())
 
-	app.tab = tabSearch
-	app.search.query = ""
+	app.tab = tabHistory
+	app.history.view = historyViewList
+	app.history.filtering = false
 	assert.True(t, app.canExitToTabNav())
 }

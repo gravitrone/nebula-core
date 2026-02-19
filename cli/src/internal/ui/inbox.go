@@ -203,7 +203,7 @@ func (m InboxModel) View() string {
 		return components.Indent(components.EmptyStateBox(
 			"Inbox",
 			"No pending approvals.",
-			[]string{"Switch tabs with 1-9/0/-", "Open command palette with /"},
+			[]string{"Switch tabs with 1-9/0", "Open command palette with /"},
 			m.width,
 		), 1)
 	}

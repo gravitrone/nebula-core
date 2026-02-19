@@ -25,12 +25,11 @@ const (
 	tabFiles     = 6
 	tabProtocols = 7
 	tabHistory   = 8
-	tabSearch    = 9
-	tabProfile   = 10
-	tabCount     = 11
+	tabProfile   = 9
+	tabCount     = 10
 )
 
-var tabNames = []string{"Inbox", "Entities", "Relationships", "Context", "Jobs", "Logs", "Files", "Protocols", "History", "Search", "Settings"}
+var tabNames = []string{"Inbox", "Entities", "Relationships", "Context", "Jobs", "Logs", "Files", "Protocols", "History", "Settings"}
 
 // --- Messages ---
 
@@ -130,7 +129,6 @@ type App struct {
 	files     FilesModel
 	protocols ProtocolsModel
 	history   HistoryModel
-	search    SearchModel
 	profile   ProfileModel
 	impex     ImportExportModel
 }
@@ -169,7 +167,6 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 		files:          NewFilesModel(client),
 		protocols:      NewProtocolsModel(client),
 		history:        NewHistoryModel(client),
-		search:         NewSearchModel(client),
 		profile:        NewProfileModel(client, cfg),
 		impex:          NewImportExportModel(client),
 	}
@@ -209,8 +206,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.protocols.height = msg.Height
 		a.history.width = msg.Width
 		a.history.height = msg.Height
-		a.search.width = msg.Width
-		a.search.height = msg.Height
 		a.profile.width = msg.Width
 		a.profile.height = msg.Height
 		a.impex.width = msg.Width
@@ -479,8 +474,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.protocols, cmd = a.protocols.Update(msg)
 	case tabHistory:
 		a.history, cmd = a.history.Update(msg)
-	case tabSearch:
-		a.search, cmd = a.search.Update(msg)
 	case tabProfile:
 		a.profile, cmd = a.profile.Update(msg)
 	}
@@ -522,8 +515,6 @@ func (a App) View() string {
 		content = a.protocols.View()
 	case tabHistory:
 		content = a.history.View()
-	case tabSearch:
-		content = a.search.View()
 	case tabProfile:
 		content = a.profile.View()
 	}
@@ -611,8 +602,6 @@ func (a App) tabWantsArrows() bool {
 		return a.logs.view != logsViewList
 	case tabFiles:
 		return a.files.view != filesViewList
-	case tabSearch:
-		return false
 	case tabProfile:
 		return a.profile.creating ||
 			a.profile.createdKey != "" ||
@@ -660,8 +649,6 @@ func (a App) initTab(tab int) tea.Cmd {
 		return a.protocols.Init()
 	case tabHistory:
 		return a.history.Init()
-	case tabSearch:
-		return a.search.Init()
 	case tabProfile:
 		return a.profile.Init()
 	}
@@ -714,7 +701,7 @@ func (a App) statusHints() []string {
 
 func (a App) statusHintsForTab() []string {
 	base := []string{
-		components.Hint("1-9/0/-", "Tabs"),
+		components.Hint("1-9/0", "Tabs"),
 		components.Hint("/", "Command"),
 		components.Hint("?", "Help"),
 		components.Hint("q", "Quit"),
@@ -1113,13 +1100,6 @@ func (a App) statusHintsForTab() []string {
 			components.Hint("f", "Filter"),
 			components.Hint("s", "Scopes"),
 			components.Hint("a", "Actors"),
-		)
-	case tabSearch:
-		return append(base,
-			components.Hint("↑/↓", "Scroll"),
-			components.Hint("enter", "Open"),
-			components.Hint("tab", "Mode"),
-			components.Hint("esc", "Clear"),
 		)
 	case tabProfile:
 		if a.profile.agentDetail != nil {
@@ -1893,12 +1873,6 @@ func (a *App) runPaletteAction(action paletteAction) (tea.Model, tea.Cmd) {
 		return a.switchTab(tabJobs)
 	case "tab:history":
 		return a.switchTab(tabHistory)
-	case "tab:search":
-		return a.switchTab(tabSearch)
-	case "search:semantic":
-		a.tab = tabSearch
-		a.search.mode = searchModeSemantic
-		return *a, nil
 	case "tab:settings", "tab:profile":
 		return a.switchTab(tabProfile)
 	case "profile:keys":
@@ -2012,8 +1986,6 @@ func defaultPaletteActions() []paletteAction {
 		{ID: "tab:context", Label: "Context", Desc: "Add context"},
 		{ID: "tab:jobs", Label: "Jobs", Desc: "View jobs"},
 		{ID: "tab:history", Label: "History", Desc: "Audit log"},
-		{ID: "tab:search", Label: "Search", Desc: "Global search"},
-		{ID: "search:semantic", Label: "Semantic search", Desc: "Global semantic search"},
 		{ID: "tab:settings", Label: "Settings", Desc: "Config, keys, and agents"},
 		{ID: "ops:import", Label: "Import", Desc: "Bulk import from file"},
 		{ID: "ops:export", Label: "Export", Desc: "Export data to file"},
@@ -2122,11 +2094,6 @@ func (a App) canExitToTabNav() bool {
 			return false
 		}
 		return a.history.list == nil || a.history.list.Selected() == 0
-	case tabSearch:
-		if strings.TrimSpace(a.search.query) == "" {
-			return true
-		}
-		return a.search.list == nil || a.search.list.Selected() == 0
 	case tabProfile:
 		if a.profile.creating || a.profile.createdKey != "" || a.profile.agentDetail != nil {
 			return false
@@ -2149,10 +2116,6 @@ func tabIndexForKey(key string) (int, bool) {
 	case "0":
 		if tabCount > 9 {
 			return 9, true
-		}
-	case "-":
-		if tabCount > 10 {
-			return 10, true
 		}
 	}
 	return 0, false
