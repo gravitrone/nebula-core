@@ -304,3 +304,13 @@ func TestProfileSectionFocusArrowNavigation(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	assert.False(t, model.sectionFocus)
 }
+
+func TestProfileUpFromTopListReturnsToSectionFocus(t *testing.T) {
+	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
+	model.section = 0
+	model.sectionFocus = false
+	model.keyList.SetItems([]string{"one", "two"})
+
+	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	assert.True(t, model.sectionFocus)
+}

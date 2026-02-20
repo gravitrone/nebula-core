@@ -17,11 +17,17 @@ func TestEntitiesDetailMetadataPanelShowsSelectionColumns(t *testing.T) {
 	model.view = entitiesViewDetail
 	model.metaExpanded = true
 	model.detail = &api.Entity{
-		ID:       "ent-1",
-		Name:     "Alpha",
-		Type:     "person",
-		Status:   "active",
-		Metadata: api.JSONMap{"note": "hello", "owner": "alxx"},
+		ID:     "ent-1",
+		Name:   "Alpha",
+		Type:   "person",
+		Status: "active",
+		Metadata: api.JSONMap{
+			"note": "hello",
+			"owner": "alxx",
+			"context_segments": []any{
+				map[string]any{"text": "first"},
+			},
+		},
 	}
 	model.syncDetailMetadataRows()
 
@@ -29,8 +35,11 @@ func TestEntitiesDetailMetadataPanelShowsSelectionColumns(t *testing.T) {
 	clean := components.SanitizeText(out)
 	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "Sel")
+	assert.Contains(t, clean, "Group")
 	assert.Contains(t, clean, "Field")
 	assert.Contains(t, clean, "Value")
+	assert.Contains(t, strings.ToLower(clean), "segment 1")
+	assert.NotContains(t, clean, ">[")
 	assert.Contains(t, clean, "enter inspect")
 }
 

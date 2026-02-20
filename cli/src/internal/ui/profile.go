@@ -186,9 +186,18 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			}
 		case isUp(msg):
 			if m.section == 2 {
-				m.taxList.Up()
+				if m.taxList == nil || m.taxList.Selected() <= 0 {
+					m.sectionFocus = true
+				} else {
+					m.taxList.Up()
+				}
 			} else {
-				m.activeList().Up()
+				list := m.activeList()
+				if list == nil || list.Selected() <= 0 {
+					m.sectionFocus = true
+				} else {
+					list.Up()
+				}
 			}
 		case isKey(msg, "n"):
 			m.sectionFocus = false

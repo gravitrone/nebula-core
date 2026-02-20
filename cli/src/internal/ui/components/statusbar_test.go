@@ -57,6 +57,34 @@ func TestStatusBarKeepsSingleRowAndAddsOverflowHint(t *testing.T) {
 	lines := strings.Split(out, "\n")
 	assert.Len(t, lines, 3, "status bar should stay a single boxed row")
 	assert.True(t, strings.Contains(out, "More") || strings.Contains(out, "..."))
+	for _, line := range lines {
+		assert.LessOrEqual(t, lipgloss.Width(stripANSI(line)), 140)
+	}
+}
+
+func TestStatusBarClampNeverWrapsToSecondContentRow(t *testing.T) {
+	hints := []string{
+		Hint("1-9/0", "Tabs"),
+		Hint("/", "Command"),
+		Hint("?", "Help"),
+		Hint("q", "Quit"),
+		Hint("ctrl+u/d", "View"),
+		Hint("↑/↓", "Scroll"),
+		Hint("space", "Select"),
+		Hint("b", "Select All"),
+		Hint("A", "Approve All"),
+		Hint("a", "Approve"),
+		Hint("r", "Reject"),
+		Hint("enter", "Details"),
+		Hint("f", "Filter"),
+	}
+
+	out := StatusBar(hints, 120)
+	lines := strings.Split(out, "\n")
+	assert.Len(t, lines, 3, "status bar should always stay one bordered content row")
+	for _, line := range lines {
+		assert.LessOrEqual(t, lipgloss.Width(stripANSI(line)), 120)
+	}
 }
 
 func TestStatusBarCentersHintsWhenWidthProvided(t *testing.T) {

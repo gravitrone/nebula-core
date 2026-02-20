@@ -226,23 +226,23 @@ func (m ProtocolsModel) View() string {
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		return body
+		return components.Indent(body, 1)
 	case protocolsViewDetail:
-		return m.renderDetail()
+		return components.Indent(m.renderDetail(), 1)
 	case protocolsViewEdit:
 		body := m.renderEdit()
 		mode := m.renderModeLine()
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		return body
+		return components.Indent(body, 1)
 	default:
 		body := m.renderList()
 		mode := m.renderModeLine()
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		return body
+		return components.Indent(body, 1)
 	}
 }
 

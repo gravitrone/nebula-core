@@ -75,34 +75,39 @@ func clampStatusSegments(segments []string, width int) []string {
 		return segments
 	}
 
-	used := 0
 	out := make([]string, 0, len(segments))
-	for i, seg := range segments {
-		segWidth := lipgloss.Width(seg)
-		if used+segWidth <= width {
-			out = append(out, seg)
-			used += segWidth
-			continue
+	fitAll := true
+	for _, seg := range segments {
+		candidate := append(append([]string{}, out...), seg)
+		if statusSegmentsWidth(candidate) > width {
+			fitAll = false
+			break
 		}
-
-		// Keep status bar on one visual row under resize and show explicit overflow.
-		overflow := segmentStyle.Render(hintDescStyle.Render("More ") + keyCapStyle.Render("..."))
-		overflowWidth := lipgloss.Width(overflow)
-		for len(out) > 0 && used+overflowWidth > width {
-			last := out[len(out)-1]
-			used -= lipgloss.Width(last)
-			out = out[:len(out)-1]
-		}
-		if used+overflowWidth <= width {
-			out = append(out, overflow)
-		}
-
-		if i == 0 && len(out) == 0 {
-			// Degenerate tiny width: render at least one hint segment clipped.
-			return []string{lipgloss.NewStyle().MaxWidth(width).Render(seg)}
-		}
-		break
+		out = append(out, seg)
+	}
+	if fitAll {
+		return out
 	}
 
-	return out
+	// Keep status bar on one visual row under resize and show explicit overflow.
+	overflow := segmentStyle.Render(hintDescStyle.Render("More ") + keyCapStyle.Render("..."))
+	for len(out) > 0 && statusSegmentsWidth(append(append([]string{}, out...), overflow)) > width {
+		out = out[:len(out)-1]
+	}
+	if statusSegmentsWidth([]string{overflow}) <= width {
+		out = append(out, overflow)
+	}
+	if len(out) > 0 {
+		return out
+	}
+
+	// Degenerate tiny width: render at least one hint segment clipped.
+	return []string{lipgloss.NewStyle().MaxWidth(width).Render(segments[0])}
+}
+
+func statusSegmentsWidth(segments []string) int {
+	if len(segments) == 0 {
+		return 0
+	}
+	return lipgloss.Width(lipgloss.JoinHorizontal(lipgloss.Top, segments...))
 }
