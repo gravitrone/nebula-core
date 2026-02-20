@@ -434,13 +434,8 @@ func TestLogsFormsRenderMetadataPreviewTable(t *testing.T) {
 	model.addValue.Buffer = "ops | board | nebula-core"
 
 	addView := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addView, "Group")
-	assert.Contains(t, addView, "Field")
-	assert.Contains(t, addView, "Value")
-	assert.Contains(t, addView, "profile")
-	assert.Contains(t, addView, "timezone")
-	assert.Contains(t, addView, "ops")
-	assert.Contains(t, addView, "board")
+	assert.Contains(t, addView, "profile | timezone | Europe/Warsaw")
+	assert.Contains(t, addView, "ops | board | nebula-core")
 
 	model.view = logsViewEdit
 	model.detail = &api.Log{ID: "log-1", LogType: "event"}
@@ -449,9 +444,6 @@ func TestLogsFormsRenderMetadataPreviewTable(t *testing.T) {
 	model.editValue.Buffer = "state | build | local"
 
 	editView := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editView, "Group")
-	assert.Contains(t, editView, "Field")
-	assert.Contains(t, editView, "Value")
-	assert.Contains(t, editView, "state")
-	assert.Contains(t, editView, "env")
+	assert.Contains(t, editView, "state | env | dev")
+	assert.Contains(t, editView, "state | build | local")
 }

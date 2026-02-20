@@ -176,8 +176,10 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 		switch {
 		case isKey(msg, "left"):
 			m.section = (m.section - 1 + 3) % 3
+			m.sectionFocus = true
 		case isKey(msg, "right"):
 			m.section = (m.section + 1) % 3
+			m.sectionFocus = true
 		case isDown(msg):
 			if m.section == 2 {
 				m.taxList.Down()

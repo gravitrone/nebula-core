@@ -650,9 +650,23 @@ func (a *App) switchTab(newTab int) (App, tea.Cmd) {
 	a.bodyScroll = 0
 	a.bodyViewKey = a.viewStateKey()
 	if oldTab != newTab {
+		a.clearContentFocus()
+		// Enter new tabs at top-nav focus so row highlights do not leak across tabs.
+		a.tabNav = true
 		return *a, a.initTab(newTab)
 	}
 	return *a, nil
+}
+
+func (a *App) clearContentFocus() {
+	a.entities.modeFocus = false
+	a.rels.modeFocus = false
+	a.know.modeFocus = false
+	a.jobs.modeFocus = false
+	a.logs.modeFocus = false
+	a.files.modeFocus = false
+	a.protocols.modeFocus = false
+	a.profile.sectionFocus = false
 }
 
 func (a *App) resetBodyScrollOnViewChange(prevViewKey string) {

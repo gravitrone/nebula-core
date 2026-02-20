@@ -350,28 +350,29 @@ func renderMetadataEditorPreview(buffer string, scopes []string, width int, maxR
 		rows = rows[:maxRows]
 	}
 
-	contentWidth := components.BoxContentWidth(width) - 8
-	if contentWidth < 36 {
-		contentWidth = 36
+	lineWidth := components.BoxContentWidth(width) - 8
+	if lineWidth < 32 {
+		lineWidth = 32
 	}
-	groupWidth, fieldWidth, valueWidth := metadataColumnWidths(contentWidth)
-	columns := []components.TableColumn{
-		{Header: "Group", Width: groupWidth, Align: lipgloss.Left},
-		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
-		{Header: "Value", Width: valueWidth, Align: lipgloss.Left},
+	if lineWidth > 110 {
+		lineWidth = 110
 	}
-
-	gridRows := make([][]string, 0, len(rows))
+	lines := make([]string, 0, len(rows)+1)
 	for _, row := range rows {
 		group, field := metadataGroupAndField(row.field)
-		gridRows = append(gridRows, []string{group, field, row.value})
+		if group == "-" {
+			group = "root"
+		}
+		value := strings.TrimSpace(components.SanitizeText(humanizeGoMapString(row.value)))
+		if value == "" {
+			value = "None"
+		}
+		lines = append(lines, truncateString(fmt.Sprintf("%s | %s | %s", group, field, value), lineWidth))
 	}
-
-	rendered := components.TableGrid(columns, gridRows, contentWidth)
 	if remaining > 0 {
-		rendered += "\n" + MutedStyle.Render(fmt.Sprintf("+%d more rows", remaining))
+		lines = append(lines, MutedStyle.Render(fmt.Sprintf("+%d more rows", remaining)))
 	}
-	return colorizeScopeBadges(rendered)
+	return colorizeScopeBadges(strings.Join(lines, "\n"))
 }
 
 func leadingSpaces(s string) int {

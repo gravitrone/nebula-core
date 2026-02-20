@@ -291,12 +291,7 @@ func TestRelationshipsEditPropertiesUsesMetadataPreviewTable(t *testing.T) {
 	model.editMeta.Buffer = "profile | timezone | Europe/Warsaw"
 
 	out := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Group")
-	assert.Contains(t, out, "Field")
-	assert.Contains(t, out, "Value")
-	assert.Contains(t, out, "profile")
-	assert.Contains(t, out, "timezone")
-	assert.Contains(t, out, "Europe/Warsaw")
+	assert.Contains(t, out, "profile | timezone | Europe/Warsaw")
 }
 
 func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {

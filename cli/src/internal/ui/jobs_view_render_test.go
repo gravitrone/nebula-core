@@ -225,11 +225,7 @@ func TestJobsFormsRenderMetadataPreviewTable(t *testing.T) {
 	model.addMeta.Buffer = "profile | timezone | Europe/Warsaw"
 
 	addView := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addView, "Group")
-	assert.Contains(t, addView, "Field")
-	assert.Contains(t, addView, "Value")
-	assert.Contains(t, addView, "profile")
-	assert.Contains(t, addView, "timezone")
+	assert.Contains(t, addView, "profile | timezone | Europe/Warsaw")
 
 	model.view = jobsViewEdit
 	model.detail = &api.Job{ID: "job-1", Title: "Alpha Job"}
@@ -237,9 +233,5 @@ func TestJobsFormsRenderMetadataPreviewTable(t *testing.T) {
 	model.editMeta.Buffer = "ops | board | nebula-core"
 
 	editView := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editView, "Group")
-	assert.Contains(t, editView, "Field")
-	assert.Contains(t, editView, "Value")
-	assert.Contains(t, editView, "ops")
-	assert.Contains(t, editView, "board")
+	assert.Contains(t, editView, "ops | board | nebula-core")
 }
