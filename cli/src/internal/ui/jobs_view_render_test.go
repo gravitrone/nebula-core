@@ -216,3 +216,30 @@ func TestJobsDetailRendersRelationshipsSummary(t *testing.T) {
 	assert.Contains(t, out, "assigned-to")
 	assert.Contains(t, out, "Owner")
 }
+
+func TestJobsFormsRenderMetadataPreviewTable(t *testing.T) {
+	model := NewJobsModel(nil)
+	model.width = 100
+	model.view = jobsViewAdd
+	model.addFocus = jobFieldMetadata
+	model.addMeta.Buffer = "profile | timezone | Europe/Warsaw"
+
+	addView := components.SanitizeText(model.renderAdd())
+	assert.Contains(t, addView, "Group")
+	assert.Contains(t, addView, "Field")
+	assert.Contains(t, addView, "Value")
+	assert.Contains(t, addView, "profile")
+	assert.Contains(t, addView, "timezone")
+
+	model.view = jobsViewEdit
+	model.detail = &api.Job{ID: "job-1", Title: "Alpha Job"}
+	model.editFocus = jobEditFieldMetadata
+	model.editMeta.Buffer = "ops | board | nebula-core"
+
+	editView := components.SanitizeText(model.renderEdit())
+	assert.Contains(t, editView, "Group")
+	assert.Contains(t, editView, "Field")
+	assert.Contains(t, editView, "Value")
+	assert.Contains(t, editView, "ops")
+	assert.Contains(t, editView, "board")
+}

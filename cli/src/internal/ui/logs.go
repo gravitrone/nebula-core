@@ -760,14 +760,14 @@ func (m LogsModel) renderAdd() string {
 				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(false)))
 			}
 		case logFieldValue:
-			value := renderMetadataInput(m.addValue.Buffer)
-			if value == "" {
+			value := renderMetadataEditorPreview(m.addValue.Buffer, m.addValue.Scopes, m.width, 6)
+			if strings.TrimSpace(value) == "" {
 				value = "-"
 			}
 			b.WriteString(NormalStyle.Render("  " + value))
 		case logFieldMeta:
-			meta := renderMetadataInput(m.addMeta.Buffer)
-			if meta == "" {
+			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
+			if strings.TrimSpace(meta) == "" {
 				meta = "-"
 			}
 			b.WriteString(NormalStyle.Render("  " + meta))
@@ -988,14 +988,14 @@ func (m LogsModel) renderEdit() string {
 				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(false)))
 			}
 		case logEditFieldValue:
-			value := renderMetadataInput(m.editValue.Buffer)
-			if value == "" {
+			value := renderMetadataEditorPreview(m.editValue.Buffer, m.editValue.Scopes, m.width, 6)
+			if strings.TrimSpace(value) == "" {
 				value = "-"
 			}
 			b.WriteString(NormalStyle.Render("  " + value))
 		case logEditFieldMeta:
-			meta := renderMetadataInput(m.editMeta.Buffer)
-			if meta == "" {
+			meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
+			if strings.TrimSpace(meta) == "" {
 				meta = "-"
 			}
 			b.WriteString(NormalStyle.Render("  " + meta))

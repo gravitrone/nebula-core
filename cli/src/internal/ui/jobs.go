@@ -686,7 +686,10 @@ func (m JobsModel) renderAdd() string {
 				b.WriteString(MutedStyle.Render("  " + label + ":"))
 			}
 			b.WriteString("\n")
-			meta := renderMetadataInput(m.addMeta.Buffer)
+			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
+			if strings.TrimSpace(meta) == "" {
+				meta = "-"
+			}
 			b.WriteString(NormalStyle.Render("  " + meta))
 		default:
 			if i == m.addFocus {
@@ -888,7 +891,10 @@ func (m JobsModel) renderEdit() string {
 		b.WriteString(MutedStyle.Render("  Metadata:"))
 	}
 	b.WriteString("\n")
-	meta := renderMetadataInput(m.editMeta.Buffer)
+	meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
+	if strings.TrimSpace(meta) == "" {
+		meta = "-"
+	}
 	b.WriteString(NormalStyle.Render("  " + meta))
 
 	if m.editSaving {

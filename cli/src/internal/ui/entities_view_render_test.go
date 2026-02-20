@@ -173,3 +173,30 @@ func TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet(t *testing.T) {
 	assert.Contains(t, out, "Preview")
 	assert.NotContains(t, out, "map[")
 }
+
+func TestEntitiesFormMetadataUsesStructuredPreviewTable(t *testing.T) {
+	model := NewEntitiesModel(nil)
+	model.width = 100
+	model.addFocus = addFieldMetadata
+	model.addMeta.Buffer = "profile | timezone | Europe/Warsaw"
+
+	addView := components.SanitizeText(model.renderAdd())
+	assert.Contains(t, addView, "Group")
+	assert.Contains(t, addView, "Field")
+	assert.Contains(t, addView, "Value")
+	assert.Contains(t, addView, "profile")
+	assert.Contains(t, addView, "timezone")
+	assert.Contains(t, addView, "Europe/Warsaw")
+
+	model.detail = &api.Entity{ID: "ent-1", Name: "Alpha"}
+	model.editFocus = editFieldMetadata
+	model.editMeta.Buffer = "ops | board | nebula-core"
+
+	editView := components.SanitizeText(model.renderEdit())
+	assert.Contains(t, editView, "Group")
+	assert.Contains(t, editView, "Field")
+	assert.Contains(t, editView, "Value")
+	assert.Contains(t, editView, "ops")
+	assert.Contains(t, editView, "board")
+	assert.Contains(t, editView, "nebula-core")
+}

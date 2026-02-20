@@ -274,6 +274,31 @@ func TestRelationshipsModeFocusTogglesToAddFlow(t *testing.T) {
 	assert.Equal(t, relsViewCreateSourceSearch, model.view)
 }
 
+func TestRelationshipsEditPropertiesUsesMetadataPreviewTable(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+	model.width = 100
+	model.view = relsViewEdit
+	model.detail = &api.Relationship{
+		ID:         "rel-1",
+		SourceType: "entity",
+		SourceID:   "ent-1",
+		TargetType: "entity",
+		TargetID:   "ent-2",
+		Type:       "owns",
+		Status:     "active",
+	}
+	model.editFocus = relsEditFieldProperties
+	model.editMeta.Buffer = "profile | timezone | Europe/Warsaw"
+
+	out := components.SanitizeText(model.renderEdit())
+	assert.Contains(t, out, "Group")
+	assert.Contains(t, out, "Field")
+	assert.Contains(t, out, "Value")
+	assert.Contains(t, out, "profile")
+	assert.Contains(t, out, "timezone")
+	assert.Contains(t, out, "Europe/Warsaw")
+}
+
 func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	now := time.Now()
 	var createdType string

@@ -621,7 +621,10 @@ func (m RelationshipsModel) renderEdit() string {
 		b.WriteString(MutedStyle.Render("  Properties:"))
 	}
 	b.WriteString("\n")
-	props := renderMetadataInput(m.editMeta.Buffer)
+	props := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
+	if strings.TrimSpace(props) == "" {
+		props = "-"
+	}
 	b.WriteString(NormalStyle.Render("  " + props))
 
 	if m.editSaving {

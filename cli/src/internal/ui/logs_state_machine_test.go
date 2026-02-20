@@ -424,3 +424,34 @@ func TestLogsRenderAddEditAndTagHelpers(t *testing.T) {
 	assert.Contains(t, editView, "Status")
 	assert.Contains(t, editView, "Tags")
 }
+
+func TestLogsFormsRenderMetadataPreviewTable(t *testing.T) {
+	model := NewLogsModel(nil)
+	model.width = 100
+	model.view = logsViewAdd
+	model.addFocus = logFieldMeta
+	model.addMeta.Buffer = "profile | timezone | Europe/Warsaw"
+	model.addValue.Buffer = "ops | board | nebula-core"
+
+	addView := components.SanitizeText(model.renderAdd())
+	assert.Contains(t, addView, "Group")
+	assert.Contains(t, addView, "Field")
+	assert.Contains(t, addView, "Value")
+	assert.Contains(t, addView, "profile")
+	assert.Contains(t, addView, "timezone")
+	assert.Contains(t, addView, "ops")
+	assert.Contains(t, addView, "board")
+
+	model.view = logsViewEdit
+	model.detail = &api.Log{ID: "log-1", LogType: "event"}
+	model.editFocus = logEditFieldMeta
+	model.editMeta.Buffer = "state | env | dev"
+	model.editValue.Buffer = "state | build | local"
+
+	editView := components.SanitizeText(model.renderEdit())
+	assert.Contains(t, editView, "Group")
+	assert.Contains(t, editView, "Field")
+	assert.Contains(t, editView, "Value")
+	assert.Contains(t, editView, "state")
+	assert.Contains(t, editView, "env")
+}
