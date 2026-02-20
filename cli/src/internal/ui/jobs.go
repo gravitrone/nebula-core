@@ -657,7 +657,7 @@ func (m JobsModel) renderAdd() string {
 		case jobFieldStatus:
 			status := jobStatusOptions[m.addStatusIdx]
 			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + status))
 			} else {
@@ -671,7 +671,7 @@ func (m JobsModel) renderAdd() string {
 				priority = "-"
 			}
 			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + priority))
 			} else {
@@ -681,7 +681,7 @@ func (m JobsModel) renderAdd() string {
 			}
 		case jobFieldMetadata:
 			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 			} else {
 				b.WriteString(MutedStyle.Render("  " + label + ":"))
 			}
@@ -690,7 +690,7 @@ func (m JobsModel) renderAdd() string {
 			b.WriteString(NormalStyle.Render("  " + meta))
 		default:
 			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + f.value))
 				b.WriteString(AccentStyle.Render("█"))
@@ -835,7 +835,7 @@ func (m JobsModel) renderEdit() string {
 	// Status
 	status := jobStatusOptions[m.editStatusIdx]
 	if m.editFocus == jobEditFieldStatus {
-		b.WriteString(SelectedStyle.Render("> Status:"))
+		b.WriteString(SelectedStyle.Render("  Status:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + status))
 	} else {
@@ -848,7 +848,7 @@ func (m JobsModel) renderEdit() string {
 
 	// Description
 	if m.editFocus == jobEditFieldDescription {
-		b.WriteString(SelectedStyle.Render("> Description:"))
+		b.WriteString(SelectedStyle.Render("  Description:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + m.editDesc))
 		b.WriteString(AccentStyle.Render("█"))
@@ -870,7 +870,7 @@ func (m JobsModel) renderEdit() string {
 		priority = "-"
 	}
 	if m.editFocus == jobEditFieldPriority {
-		b.WriteString(SelectedStyle.Render("> Priority:"))
+		b.WriteString(SelectedStyle.Render("  Priority:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + priority))
 	} else {
@@ -883,7 +883,7 @@ func (m JobsModel) renderEdit() string {
 
 	// Metadata
 	if m.editFocus == jobEditFieldMetadata {
-		b.WriteString(SelectedStyle.Render("> Metadata:"))
+		b.WriteString(SelectedStyle.Render("  Metadata:"))
 	} else {
 		b.WriteString(MutedStyle.Render("  Metadata:"))
 	}

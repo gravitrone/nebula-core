@@ -376,3 +376,33 @@ func TestAppBodyScrollHotkeys(t *testing.T) {
 	app = model.(App)
 	assert.Equal(t, 0, app.bodyScroll)
 }
+
+func TestRowHighlightEnabledRequiresListFocus(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.tab = tabEntities
+	app.tabNav = false
+	app.entities.view = entitiesViewList
+
+	assert.True(t, app.rowHighlightEnabled())
+
+	app.entities.modeFocus = true
+	assert.False(t, app.rowHighlightEnabled())
+}
+
+func TestRowHighlightEnabledDisabledInTabNav(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.tab = tabEntities
+	app.tabNav = true
+	app.entities.view = entitiesViewList
+
+	assert.False(t, app.rowHighlightEnabled())
+}
+
+func TestRowHighlightEnabledDisabledWhenSettingsSectionFocused(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.tab = tabProfile
+	app.tabNav = false
+	app.profile.sectionFocus = true
+
+	assert.False(t, app.rowHighlightEnabled())
+}

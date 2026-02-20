@@ -727,7 +727,7 @@ func (m LogsModel) renderAdd() string {
 	for i, f := range m.addFields {
 		label := MutedStyle.Render(f.label + ":")
 		if i == m.addFocus {
-			label = SelectedStyle.Render("> " + f.label + ":")
+			label = SelectedStyle.Render("  " + f.label + ":")
 		} else {
 			label = "  " + label
 		}
@@ -973,7 +973,7 @@ func (m LogsModel) renderEdit() string {
 	for i, f := range []string{"Status", "Tags", "Value", "Metadata"} {
 		label := MutedStyle.Render(f + ":")
 		if i == m.editFocus {
-			label = SelectedStyle.Render("> " + f + ":")
+			label = SelectedStyle.Render("  " + f + ":")
 		} else {
 			label = "  " + label
 		}

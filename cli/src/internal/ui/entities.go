@@ -753,7 +753,7 @@ func (m EntitiesModel) renderAdd() string {
 		case addFieldStatus:
 			status := entityStatusOptions[m.addStatusIdx]
 			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + status))
 			} else {
@@ -763,7 +763,7 @@ func (m EntitiesModel) renderAdd() string {
 			}
 		case addFieldTags:
 			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(true)))
 			} else {
@@ -773,11 +773,11 @@ func (m EntitiesModel) renderAdd() string {
 			}
 		case addFieldScopes:
 			if m.addFocus == i && m.addScopeSelecting {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + renderScopeOptions(m.addScopes, m.scopeOptions, m.addScopeIdx)))
 			} else if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderAddScopes(true)))
 			} else {
@@ -787,7 +787,7 @@ func (m EntitiesModel) renderAdd() string {
 			}
 		case addFieldMetadata:
 			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 			} else {
 				b.WriteString(MutedStyle.Render("  " + label + ":"))
 			}
@@ -796,7 +796,7 @@ func (m EntitiesModel) renderAdd() string {
 			b.WriteString(NormalStyle.Render("  " + meta))
 		default:
 			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("> " + label + ":"))
+				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + f.value))
 				b.WriteString(AccentStyle.Render("█"))
@@ -1776,7 +1776,7 @@ func (m EntitiesModel) renderEdit() string {
 
 	// Tags
 	if m.editFocus == editFieldTags {
-		b.WriteString(SelectedStyle.Render("> Tags:"))
+		b.WriteString(SelectedStyle.Render("  Tags:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + m.renderEditTags(true)))
 	} else {
@@ -1790,7 +1790,7 @@ func (m EntitiesModel) renderEdit() string {
 	// Status
 	status := entityStatusOptions[m.editStatusIdx]
 	if m.editFocus == editFieldStatus {
-		b.WriteString(SelectedStyle.Render("> Status:"))
+		b.WriteString(SelectedStyle.Render("  Status:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + status))
 	} else {
@@ -1803,11 +1803,11 @@ func (m EntitiesModel) renderEdit() string {
 
 	// Scopes
 	if m.editFocus == editFieldScopes && m.editScopeSelecting {
-		b.WriteString(SelectedStyle.Render("> Scopes:"))
+		b.WriteString(SelectedStyle.Render("  Scopes:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + renderScopeOptions(m.editScopes, m.scopeOptions, m.editScopeIdx)))
 	} else if m.editFocus == editFieldScopes {
-		b.WriteString(SelectedStyle.Render("> Scopes:"))
+		b.WriteString(SelectedStyle.Render("  Scopes:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + m.renderEditScopes(true)))
 	} else {
@@ -1820,7 +1820,7 @@ func (m EntitiesModel) renderEdit() string {
 
 	// Metadata
 	if m.editFocus == editFieldMetadata {
-		b.WriteString(SelectedStyle.Render("> Metadata:"))
+		b.WriteString(SelectedStyle.Render("  Metadata:"))
 	} else {
 		b.WriteString(MutedStyle.Render("  Metadata:"))
 	}
@@ -2471,7 +2471,7 @@ func (m EntitiesModel) renderRelEdit() string {
 	var b strings.Builder
 
 	if m.relEditFocus == relEditFieldStatus {
-		b.WriteString(SelectedStyle.Render("> Status:"))
+		b.WriteString(SelectedStyle.Render("  Status:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + status))
 	} else {
@@ -2483,7 +2483,7 @@ func (m EntitiesModel) renderRelEdit() string {
 	b.WriteString("\n\n")
 
 	if m.relEditFocus == relEditFieldProperties {
-		b.WriteString(SelectedStyle.Render("> Properties (JSON):"))
+		b.WriteString(SelectedStyle.Render("  Properties (JSON):"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + m.relEditBuf))
 		b.WriteString(AccentStyle.Render("█"))

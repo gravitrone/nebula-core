@@ -507,7 +507,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (a App) View() string {
-	components.SetTableGridActiveRowsEnabled(!a.tabNav)
+	components.SetTableGridActiveRowsEnabled(a.rowHighlightEnabled())
 	defer components.SetTableGridActiveRowsEnabled(true)
 
 	banner := centerBlockUniform(RenderBanner(), a.width)
@@ -595,6 +595,39 @@ func (a App) View() string {
 	}
 
 	return fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints)
+}
+
+func (a App) rowHighlightEnabled() bool {
+	if a.tabNav {
+		return false
+	}
+	switch a.tab {
+	case tabInbox:
+		return !a.inbox.filtering && !a.inbox.rejecting && !a.inbox.confirming && !a.inbox.rejectPreview && a.inbox.detail == nil
+	case tabEntities:
+		return !a.entities.modeFocus && !a.entities.filtering &&
+			(a.entities.view == entitiesViewList || a.entities.view == entitiesViewHistory || a.entities.view == entitiesViewRelationships)
+	case tabRelations:
+		return !a.rels.modeFocus && !a.rels.filtering && a.rels.view == relsViewList
+	case tabKnow:
+		return !a.know.modeFocus && !a.know.filtering && a.know.view == contextViewList
+	case tabJobs:
+		return !a.jobs.modeFocus && !a.jobs.filtering && a.jobs.view == jobsViewList && a.jobs.detail == nil && !a.jobs.changingSt
+	case tabLogs:
+		return !a.logs.modeFocus && !a.logs.filtering && a.logs.view == logsViewList
+	case tabFiles:
+		return !a.files.modeFocus && !a.files.filtering && a.files.view == filesViewList
+	case tabProtocols:
+		return !a.protocols.modeFocus && !a.protocols.filtering && a.protocols.view == protocolsViewList
+	case tabHistory:
+		return !a.history.filtering && a.history.view == historyViewList
+	case tabProfile:
+		if a.profile.sectionFocus || a.profile.creating || a.profile.editAPIKey || a.profile.editPendingLimit || a.profile.createdKey != "" || a.profile.agentDetail != nil {
+			return false
+		}
+		return true
+	}
+	return false
 }
 
 func (a *App) switchTab(newTab int) (App, tea.Cmd) {

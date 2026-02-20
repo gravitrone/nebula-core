@@ -727,44 +727,70 @@ func metadataGroupAndField(path string) (string, string) {
 	if trimmed == "" {
 		return "-", "-"
 	}
-	if strings.HasPrefix(trimmed, "context_segments.") {
-		rest := strings.TrimPrefix(trimmed, "context_segments.")
-		parts := strings.SplitN(rest, ".", 2)
-		if len(parts) > 0 {
-			if idx, err := strconv.Atoi(parts[0]); err == nil {
-				field := fmt.Sprintf("segment %d", idx+1)
-				if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
-					field += "." + strings.TrimSpace(parts[1])
-				}
-				return "context", field
+	parts := splitMetadataPath(trimmed)
+	if len(parts) == 0 {
+		return "-", trimmed
+	}
+	if len(parts) == 1 {
+		return "-", parts[0]
+	}
+
+	group := parts[0]
+	fieldParts := append([]string{}, parts[1:]...)
+
+	for i := 0; i < len(fieldParts); i++ {
+		if fieldParts[i] != "context_segments" {
+			continue
+		}
+		if i+1 >= len(fieldParts) {
+			fieldParts[i] = "context"
+			continue
+		}
+		if idx, err := strconv.Atoi(fieldParts[i+1]); err == nil {
+			segment := fmt.Sprintf("context segment %d", idx+1)
+			fieldParts = append(fieldParts[:i], append([]string{segment}, fieldParts[i+2:]...)...)
+		} else {
+			fieldParts[i] = "context"
+		}
+	}
+
+	if group == "context_segments" {
+		group = "context"
+		if len(fieldParts) > 0 {
+			if idx, err := strconv.Atoi(fieldParts[0]); err == nil {
+				fieldParts[0] = fmt.Sprintf("segment %d", idx+1)
 			}
 		}
 	}
-	if !strings.HasPrefix(trimmed, "context_segments[") {
-		parts := strings.Split(trimmed, ".")
-		if len(parts) == 1 {
-			return "-", parts[0]
+	if idx, err := strconv.Atoi(group); err == nil {
+		group = fmt.Sprintf("segment %d", idx+1)
+	}
+
+	field := strings.Join(fieldParts, ".")
+	field = strings.TrimSpace(field)
+	if field == "" {
+		field = "-"
+	}
+	return group, field
+}
+
+func splitMetadataPath(path string) []string {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return nil
+	}
+	normalized := strings.ReplaceAll(path, "]", "")
+	normalized = strings.ReplaceAll(normalized, "[", ".")
+	raw := strings.Split(normalized, ".")
+	out := make([]string, 0, len(raw))
+	for _, part := range raw {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
 		}
-		return parts[0], strings.Join(parts[1:], ".")
+		out = append(out, part)
 	}
-	open := strings.Index(trimmed, "[")
-	close := strings.Index(trimmed, "]")
-	if open < 0 || close <= open+1 {
-		return "context", trimmed
-	}
-	idxRaw := trimmed[open+1 : close]
-	idx, err := strconv.Atoi(idxRaw)
-	if err != nil {
-		return "context", trimmed
-	}
-	field := fmt.Sprintf("segment %d", idx+1)
-	if close+1 < len(trimmed) {
-		tail := strings.TrimPrefix(trimmed[close+1:], ".")
-		if strings.TrimSpace(tail) != "" {
-			field = field + "." + tail
-		}
-	}
-	return "context", field
+	return out
 }
 
 func metadataColumnWidths(contentWidth int) (int, int, int) {

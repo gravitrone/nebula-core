@@ -578,7 +578,7 @@ func (m RelationshipsModel) renderEdit() string {
 	var b strings.Builder
 
 	if m.editFocus == relsEditFieldStatus {
-		b.WriteString(SelectedStyle.Render("> Status:"))
+		b.WriteString(SelectedStyle.Render("  Status:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + status))
 	} else {
@@ -590,7 +590,7 @@ func (m RelationshipsModel) renderEdit() string {
 	b.WriteString("\n\n")
 
 	if m.editFocus == relsEditFieldProperties {
-		b.WriteString(SelectedStyle.Render("> Properties:"))
+		b.WriteString(SelectedStyle.Render("  Properties:"))
 	} else {
 		b.WriteString(MutedStyle.Render("  Properties:"))
 	}
