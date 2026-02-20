@@ -231,6 +231,18 @@ func TestTabNavDownMovesIntoModeLineFocus(t *testing.T) {
 	assert.True(t, updated.entities.modeFocus)
 }
 
+func TestTabNavDownMovesIntoSettingsSectionFocus(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.tab = tabProfile
+	app.tabNav = true
+
+	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated := model.(App)
+
+	assert.False(t, updated.tabNav)
+	assert.True(t, updated.profile.sectionFocus)
+}
+
 func TestPaletteModeSwitchesBetweenCommandAndSearch(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.openPaletteCommand()

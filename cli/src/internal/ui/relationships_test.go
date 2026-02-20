@@ -86,8 +86,8 @@ func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 
 	model := NewRelationshipsModel(client)
 	model.view = relsViewCreateType
-	model.createSource = &api.Entity{ID: "ent-1", Type: "tool"}
-	model.createTarget = &api.Entity{ID: "ent-2", Type: "project"}
+	model.createSource = &relationshipCreateCandidate{ID: "ent-1", NodeType: "entity", Kind: "entity/tool"}
+	model.createTarget = &relationshipCreateCandidate{ID: "job-2", NodeType: "job", Kind: "job/high"}
 	model.createType = "uses"
 
 	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -96,23 +96,36 @@ func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	assert.Equal(t, "ent-1", captured.SourceID)
-	assert.Equal(t, "ent-2", captured.TargetID)
+	assert.Equal(t, "job-2", captured.TargetID)
 	assert.Equal(t, "uses", captured.Type)
 	assert.Equal(t, "entity", captured.SourceType)
-	assert.Equal(t, "entity", captured.TargetType)
+	assert.Equal(t, "job", captured.TargetType)
 }
 
 func TestRelationshipsCreateLiveSearch(t *testing.T) {
-	var capturedQuery string
+	capturedQueries := map[string]string{}
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/entities" {
-			capturedQuery = r.URL.Query().Get("search_text")
+		switch r.URL.Path {
+		case "/api/entities":
+			capturedQueries["entities"] = r.URL.Query().Get("search_text")
 			resp := map[string]any{
 				"data": []map[string]any{
 					{"id": "ent-1", "name": "alxx", "type": "person"},
 				},
 			}
 			json.NewEncoder(w).Encode(resp)
+			return
+		case "/api/context":
+			capturedQueries["context"] = r.URL.Query().Get("search_text")
+			json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{{"id": "ctx-1", "title": "alpha note", "source_type": "note", "status": "active"}},
+			})
+			return
+		case "/api/jobs":
+			capturedQueries["jobs"] = r.URL.Query().Get("search_text")
+			json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{{"id": "job-1", "title": "alpha job", "status": "planning", "priority": "high"}},
+			})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -126,8 +139,10 @@ func TestRelationshipsCreateLiveSearch(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	assert.Equal(t, "a", capturedQuery)
-	require.Len(t, model.createResults, 1)
+	assert.Equal(t, "a", capturedQueries["entities"])
+	assert.Equal(t, "a", capturedQueries["context"])
+	assert.Equal(t, "a", capturedQueries["jobs"])
+	require.Len(t, model.createResults, 3)
 	assert.Equal(t, "ent-1", model.createResults[0].ID)
 }
 
@@ -305,7 +320,7 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	// Start create flow.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	assert.Equal(t, relsViewCreateSourceSearch, model.view)
-	assert.Contains(t, model.View(), "Source Entity")
+	assert.Contains(t, model.View(), "Source Node")
 
 	// Type query to filter from cache.
 	for _, r := range []rune("al") {
@@ -423,8 +438,15 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 	require.NotNil(t, patched.Status)
 
 	entityPreview := components.SanitizeText(
-		model.renderCreateEntityPreview(
-			api.Entity{ID: "ent-1", Name: "Alpha", Type: "entity", Tags: []string{"core"}},
+		model.renderCreateNodePreview(
+			relationshipCreateCandidate{
+				ID:       "ent-1",
+				NodeType: "entity",
+				Name:     "Alpha",
+				Kind:     "entity/entity",
+				Status:   "active",
+				Tags:     []string{"core"},
+			},
 			48,
 		),
 	)

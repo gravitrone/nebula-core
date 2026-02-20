@@ -18,10 +18,12 @@ type relTabNamesLoadedMsg struct{ names map[string]string }
 type relTabSavedMsg struct{}
 type relTabScopesLoadedMsg struct{ options []string }
 type relTabEntityCacheLoadedMsg struct{ items []api.Entity }
+type relTabContextCacheLoadedMsg struct{ items []api.Context }
+type relTabJobCacheLoadedMsg struct{ items []api.Job }
 
 type relTabResultsMsg struct {
 	query string
-	items []api.Entity
+	items []relationshipCreateCandidate
 }
 
 // --- View States ---
@@ -48,6 +50,16 @@ const (
 
 var relsStatusOptions = []string{"active", "inactive"}
 
+type relationshipCreateCandidate struct {
+	ID       string
+	NodeType string
+	Name     string
+	Kind     string
+	Status   string
+	Tags     []string
+	Metadata map[string]any
+}
+
 // --- Relationships Model ---
 
 type RelationshipsModel struct {
@@ -66,6 +78,8 @@ type RelationshipsModel struct {
 	names        map[string]string
 	scopeOptions []string
 	entityCache  []api.Entity
+	contextCache []api.Context
+	jobCache     []api.Job
 
 	detail        *api.Relationship
 	metaExpanded  bool
@@ -78,10 +92,10 @@ type RelationshipsModel struct {
 
 	// create flow
 	createQuery       string
-	createResults     []api.Entity
+	createResults     []relationshipCreateCandidate
 	createList        *components.List
-	createSource      *api.Entity
-	createTarget      *api.Entity
+	createSource      *relationshipCreateCandidate
+	createTarget      *relationshipCreateCandidate
 	createType        string
 	createTypeResults []string
 	createTypeList    *components.List
@@ -111,7 +125,13 @@ func (m RelationshipsModel) Init() tea.Cmd {
 	m.filterBuf = ""
 	m.metaExpanded = false
 	m.editMeta.Reset()
-	return tea.Batch(m.loadRelationships(), m.loadScopeOptions(), m.loadEntityCache())
+	return tea.Batch(
+		m.loadRelationships(),
+		m.loadScopeOptions(),
+		m.loadEntityCache(),
+		m.loadContextCache(),
+		m.loadJobCache(),
+	)
 }
 
 func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
@@ -139,6 +159,12 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 	case relTabEntityCacheLoadedMsg:
 		m.entityCache = msg.items
 		return m, nil
+	case relTabContextCacheLoadedMsg:
+		m.contextCache = msg.items
+		return m, nil
+	case relTabJobCacheLoadedMsg:
+		m.jobCache = msg.items
+		return m, nil
 
 	case relTabResultsMsg:
 		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.createQuery) {
@@ -147,8 +173,8 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 		m.createLoading = false
 		m.createResults = msg.items
 		labels := make([]string, len(msg.items))
-		for i, e := range msg.items {
-			labels[i] = formatEntityLine(e)
+		for i, candidate := range msg.items {
+			labels[i] = formatCreateCandidateLine(candidate)
 		}
 		m.createList.SetItems(labels)
 		return m, nil
@@ -880,9 +906,9 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel
 func (m RelationshipsModel) renderCreate() string {
 	switch m.view {
 	case relsViewCreateSourceSearch, relsViewCreateSourceSelect:
-		return m.renderCreateSearch("Source Entity")
+		return m.renderCreateSearch("Source Node")
 	case relsViewCreateTargetSearch, relsViewCreateTargetSelect:
-		return m.renderCreateSearch("Target Entity")
+		return m.renderCreateSearch("Target Node")
 	case relsViewCreateType:
 		return m.renderCreateType()
 	}
@@ -929,26 +955,26 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 			availableCols = 30
 		}
 
-		typeWidth := 14
+		kindWidth := 18
 		statusWidth := 11
-		nameWidth := availableCols - (typeWidth + statusWidth)
+		nameWidth := availableCols - (kindWidth + statusWidth)
 		if nameWidth < 16 {
 			nameWidth = 16
-			typeWidth = availableCols - (nameWidth + statusWidth)
-			if typeWidth < 12 {
-				typeWidth = 12
+			kindWidth = availableCols - (nameWidth + statusWidth)
+			if kindWidth < 12 {
+				kindWidth = 12
 			}
 		}
 
 		cols := []components.TableColumn{
 			{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-			{Header: "Type", Width: typeWidth, Align: lipgloss.Left},
+			{Header: "Kind", Width: kindWidth, Align: lipgloss.Left},
 			{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
 		}
 
 		tableRows := make([][]string, 0, len(visible))
 		activeRowRel := -1
-		var previewItem *api.Entity
+		var previewItem *relationshipCreateCandidate
 		if idx := m.createList.Selected(); idx >= 0 && idx < len(m.createResults) {
 			previewItem = &m.createResults[idx]
 		}
@@ -958,17 +984,20 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 			if absIdx < 0 || absIdx >= len(m.createResults) {
 				continue
 			}
-			e := m.createResults[absIdx]
+			candidate := m.createResults[absIdx]
 
-			name := strings.TrimSpace(components.SanitizeOneLine(e.Name))
+			name := strings.TrimSpace(components.SanitizeOneLine(candidate.Name))
 			if name == "" {
-				name = "entity"
+				name = "node"
 			}
-			typ := strings.TrimSpace(components.SanitizeOneLine(e.Type))
-			if typ == "" {
-				typ = "entity"
+			kind := strings.TrimSpace(components.SanitizeOneLine(candidate.Kind))
+			if kind == "" {
+				kind = strings.TrimSpace(components.SanitizeOneLine(candidate.NodeType))
 			}
-			status := strings.TrimSpace(components.SanitizeOneLine(e.Status))
+			if kind == "" {
+				kind = "node"
+			}
+			status := strings.TrimSpace(components.SanitizeOneLine(candidate.Status))
 			if status == "" {
 				status = "-"
 			}
@@ -979,7 +1008,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 
 			tableRows = append(tableRows, []string{
 				components.ClampTextWidthEllipsis(name, nameWidth),
-				components.ClampTextWidthEllipsis(typ, typeWidth),
+				components.ClampTextWidthEllipsis(kind, kindWidth),
 				components.ClampTextWidthEllipsis(status, statusWidth),
 			})
 		}
@@ -988,7 +1017,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 		table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
 		preview := ""
 		if previewItem != nil {
-			content := m.renderCreateEntityPreview(*previewItem, previewBoxContentWidth(previewWidth))
+			content := m.renderCreateNodePreview(*previewItem, previewBoxContentWidth(previewWidth))
 			preview = renderPreviewBox(content, previewWidth)
 		}
 
@@ -1087,20 +1116,23 @@ func (m RelationshipsModel) renderCreateType() string {
 	return components.TitledBox("Relationship Type", b.String(), m.width)
 }
 
-func (m RelationshipsModel) renderCreateEntityPreview(e api.Entity, width int) string {
+func (m RelationshipsModel) renderCreateNodePreview(candidate relationshipCreateCandidate, width int) string {
 	if width <= 0 {
 		return ""
 	}
 
-	name := strings.TrimSpace(components.SanitizeOneLine(e.Name))
+	name := strings.TrimSpace(components.SanitizeOneLine(candidate.Name))
 	if name == "" {
-		name = "entity"
+		name = "node"
 	}
-	typ := strings.TrimSpace(components.SanitizeOneLine(e.Type))
-	if typ == "" {
-		typ = "entity"
+	kind := strings.TrimSpace(components.SanitizeOneLine(candidate.Kind))
+	if kind == "" {
+		kind = strings.TrimSpace(components.SanitizeOneLine(candidate.NodeType))
 	}
-	status := strings.TrimSpace(components.SanitizeOneLine(e.Status))
+	if kind == "" {
+		kind = "node"
+	}
+	status := strings.TrimSpace(components.SanitizeOneLine(candidate.Status))
 	if status == "" {
 		status = "-"
 	}
@@ -1112,12 +1144,13 @@ func (m RelationshipsModel) renderCreateEntityPreview(e api.Entity, width int) s
 	}
 	lines = append(lines, "")
 
-	lines = append(lines, renderPreviewRow("Type", typ, width))
+	lines = append(lines, renderPreviewRow("Kind", kind, width))
+	lines = append(lines, renderPreviewRow("Node", candidate.NodeType, width))
 	lines = append(lines, renderPreviewRow("Status", status, width))
-	if len(e.Tags) > 0 {
-		lines = append(lines, renderPreviewRow("Tags", strings.Join(e.Tags, ", "), width))
+	if len(candidate.Tags) > 0 {
+		lines = append(lines, renderPreviewRow("Tags", strings.Join(candidate.Tags, ", "), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(e.Metadata), 80); metaPreview != "" {
+	if metaPreview := metadataPreview(candidate.Metadata, 80); metaPreview != "" {
 		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
 	}
 
@@ -1286,22 +1319,31 @@ func (m RelationshipsModel) selectedRelationship() *api.Relationship {
 	return &m.items[idx]
 }
 
-func (m RelationshipsModel) searchEntities(query string) tea.Cmd {
+func (m RelationshipsModel) searchCreateNodes(query string) tea.Cmd {
 	return func() tea.Msg {
-		items, err := m.client.QueryEntities(api.QueryParams{"search_text": query})
+		entities, err := m.client.QueryEntities(api.QueryParams{"search_text": query})
 		if err != nil {
 			return errMsg{err}
 		}
-		return relTabResultsMsg{query: query, items: items}
+		contextItems, err := m.client.QueryContext(api.QueryParams{"search_text": query})
+		if err != nil {
+			return errMsg{err}
+		}
+		jobs, err := m.client.QueryJobs(api.QueryParams{"search_text": query})
+		if err != nil {
+			return errMsg{err}
+		}
+		candidates := combineCreateCandidates(entities, contextItems, jobs)
+		return relTabResultsMsg{query: query, items: filterCreateCandidatesByQuery(candidates, query)}
 	}
 }
 
-func (m RelationshipsModel) createRelationship(source api.Entity, target api.Entity, relType string) tea.Cmd {
+func (m RelationshipsModel) createRelationship(source relationshipCreateCandidate, target relationshipCreateCandidate, relType string) tea.Cmd {
 	return func() tea.Msg {
 		input := api.CreateRelationshipInput{
-			SourceType: "entity",
+			SourceType: source.NodeType,
 			SourceID:   source.ID,
-			TargetType: "entity",
+			TargetType: target.NodeType,
 			TargetID:   target.ID,
 			Type:       relType,
 		}
@@ -1321,18 +1363,19 @@ func (m *RelationshipsModel) updateCreateSearch() tea.Cmd {
 		m.createList.SetItems(nil)
 		return nil
 	}
-	if len(m.entityCache) > 0 {
+	if len(m.entityCache) > 0 || len(m.contextCache) > 0 || len(m.jobCache) > 0 {
 		m.createLoading = false
-		m.createResults = filterEntitiesByQuery(m.entityCache, query)
+		candidates := combineCreateCandidates(m.entityCache, m.contextCache, m.jobCache)
+		m.createResults = filterCreateCandidatesByQuery(candidates, query)
 		labels := make([]string, len(m.createResults))
-		for i, e := range m.createResults {
-			labels[i] = formatEntityLine(e)
+		for i, candidate := range m.createResults {
+			labels[i] = formatCreateCandidateLine(candidate)
 		}
 		m.createList.SetItems(labels)
 		return nil
 	}
 	m.createLoading = true
-	return m.searchEntities(query)
+	return m.searchCreateNodes(query)
 }
 
 func (m *RelationshipsModel) resetTypeSuggestions() {
@@ -1376,6 +1419,32 @@ func (m RelationshipsModel) loadEntityCache() tea.Cmd {
 	}
 }
 
+func (m RelationshipsModel) loadContextCache() tea.Cmd {
+	if m.client == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		items, err := m.client.QueryContext(api.QueryParams{})
+		if err != nil {
+			return errMsg{err}
+		}
+		return relTabContextCacheLoadedMsg{items: items}
+	}
+}
+
+func (m RelationshipsModel) loadJobCache() tea.Cmd {
+	if m.client == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		items, err := m.client.QueryJobs(api.QueryParams{})
+		if err != nil {
+			return errMsg{err}
+		}
+		return relTabJobCacheLoadedMsg{items: items}
+	}
+}
+
 func uniqueRelationshipTypes(items []api.Relationship) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(items))
@@ -1409,4 +1478,120 @@ func filterRelationshipTypes(options []string, query string) []string {
 		}
 	}
 	return out
+}
+
+func combineCreateCandidates(entities []api.Entity, contextItems []api.Context, jobs []api.Job) []relationshipCreateCandidate {
+	candidates := make([]relationshipCreateCandidate, 0, len(entities)+len(contextItems)+len(jobs))
+	for _, entity := range entities {
+		name := strings.TrimSpace(entity.Name)
+		if name == "" {
+			name = "entity"
+		}
+		kind := strings.TrimSpace(entity.Type)
+		if kind == "" {
+			kind = "entity"
+		}
+		status := strings.TrimSpace(entity.Status)
+		if status == "" {
+			status = "-"
+		}
+		candidates = append(candidates, relationshipCreateCandidate{
+			ID:       entity.ID,
+			NodeType: "entity",
+			Name:     name,
+			Kind:     "entity/" + kind,
+			Status:   status,
+			Tags:     append([]string{}, entity.Tags...),
+			Metadata: map[string]any(entity.Metadata),
+		})
+	}
+	for _, contextItem := range contextItems {
+		name := strings.TrimSpace(contextItem.Title)
+		if name == "" {
+			name = strings.TrimSpace(contextItem.Name)
+		}
+		if name == "" {
+			name = "context"
+		}
+		kind := strings.TrimSpace(contextItem.SourceType)
+		if kind == "" {
+			kind = "note"
+		}
+		status := strings.TrimSpace(contextItem.Status)
+		if status == "" {
+			status = "-"
+		}
+		candidates = append(candidates, relationshipCreateCandidate{
+			ID:       contextItem.ID,
+			NodeType: "context",
+			Name:     name,
+			Kind:     "context/" + kind,
+			Status:   status,
+			Tags:     append([]string{}, contextItem.Tags...),
+			Metadata: map[string]any(contextItem.Metadata),
+		})
+	}
+	for _, job := range jobs {
+		name := strings.TrimSpace(job.Title)
+		if name == "" {
+			name = "job"
+		}
+		kind := "job"
+		if job.Priority != nil && strings.TrimSpace(*job.Priority) != "" {
+			kind = "job/" + strings.TrimSpace(*job.Priority)
+		}
+		status := strings.TrimSpace(job.Status)
+		if status == "" {
+			status = "-"
+		}
+		candidates = append(candidates, relationshipCreateCandidate{
+			ID:       job.ID,
+			NodeType: "job",
+			Name:     name,
+			Kind:     kind,
+			Status:   status,
+			Metadata: map[string]any(job.Metadata),
+		})
+	}
+	return candidates
+}
+
+func filterCreateCandidatesByQuery(candidates []relationshipCreateCandidate, query string) []relationshipCreateCandidate {
+	query = strings.TrimSpace(strings.ToLower(query))
+	if query == "" {
+		return append([]relationshipCreateCandidate{}, candidates...)
+	}
+	out := make([]relationshipCreateCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		haystack := strings.ToLower(strings.Join([]string{
+			candidate.Name,
+			candidate.Kind,
+			candidate.Status,
+			candidate.NodeType,
+			strings.Join(candidate.Tags, " "),
+		}, " "))
+		if strings.Contains(haystack, query) {
+			out = append(out, candidate)
+		}
+	}
+	return out
+}
+
+func formatCreateCandidateLine(candidate relationshipCreateCandidate) string {
+	name := strings.TrimSpace(candidate.Name)
+	if name == "" {
+		name = "node"
+	}
+	kind := strings.TrimSpace(candidate.Kind)
+	if kind == "" {
+		kind = strings.TrimSpace(candidate.NodeType)
+	}
+	if kind == "" {
+		kind = "node"
+	}
+	status := strings.TrimSpace(candidate.Status)
+	if status == "" {
+		status = "-"
+	}
+	return fmt.Sprintf("%s · %s · %s", name, kind, status)
 }
