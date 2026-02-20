@@ -33,16 +33,16 @@ func TestMetadataEditorHandleKeyTypingScopesAndExit(t *testing.T) {
 
 	var ed MetadataEditor
 	ed.Open(map[string]any{})
-	ed.SetScopeOptions([]string{"public", "work"})
+	ed.SetScopeOptions([]string{"public", "private"})
 
 	// Scope selector opens with s.
 	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	assert.True(t, ed.scopeSelecting)
 
-	// Move to "work" and toggle it on.
+	// Move to "private" and toggle it on.
 	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRight})
 	ed.HandleKey(tea.KeyMsg{Type: tea.KeySpace})
-	assert.Contains(t, ed.Scopes, "work")
+	assert.Contains(t, ed.Scopes, "private")
 
 	// Exit scope selection.
 	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})

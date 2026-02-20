@@ -92,7 +92,7 @@ func TestNormalizeTag(t *testing.T) {
 
 func TestNormalizeScope(t *testing.T) {
 	assert.Equal(t, "private", normalizeScope(" Private "))
-	assert.Equal(t, "vault-only", normalizeScope("#Vault Only"))
+	assert.Equal(t, "team-scope", normalizeScope("#Team Scope"))
 }
 
 func TestCommitTagDedupes(t *testing.T) {
@@ -191,9 +191,7 @@ func TestContextRenderEditShowsTagsAndScopes(t *testing.T) {
 	assert.Contains(t, out, "Edit Context")
 	assert.Contains(t, out, "alpha")
 	assert.Contains(t, out, "public")
-	assert.Contains(t, out, "Group")
-	assert.Contains(t, out, "Field")
-	assert.Contains(t, out, "Value")
+	assert.Contains(t, out, "profile | timezone | Europe/Warsaw")
 	assert.Contains(t, out, "profile")
 	assert.Contains(t, out, "timezone")
 }

@@ -8,6 +8,8 @@ import pytest
 from nebula_api.app import app
 from nebula_api.auth import require_auth
 
+LEGACY_SCOPE_NAMES = ("work", "code", "vault-only", "blacklisted")
+
 
 def _agent_auth_override(agent_row: dict, scope_ids: list[int]) -> callable:
     """Build a dependency override for agent auth."""
@@ -106,8 +108,12 @@ async def test_create_entity_invalid_status_returns_400(api):
 
 
 @pytest.mark.asyncio
-async def test_create_entity_invalid_scope_returns_400(api):
-    """Entity create should reject unknown scope names."""
+@pytest.mark.parametrize(
+    "invalid_scope",
+    ("does-not-exist", *LEGACY_SCOPE_NAMES),
+)
+async def test_create_entity_invalid_scope_returns_400(api, invalid_scope):
+    """Entity create should reject inactive or unknown scope names."""
 
     r = await api.post(
         "/api/entities",
@@ -115,7 +121,7 @@ async def test_create_entity_invalid_scope_returns_400(api):
             "name": "Bad Scope Entity",
             "type": "person",
             "status": "active",
-            "scopes": ["does-not-exist"],
+            "scopes": [invalid_scope],
         },
     )
     assert r.status_code == 400

@@ -33,7 +33,7 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 			json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":          "scope-new",
-					"name":        "work",
+					"name":        "team-scope",
 					"description": "desc",
 					"is_builtin":  false,
 					"is_active":   true,
@@ -49,7 +49,7 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 				"data": []map[string]any{
 					{
 						"id":          "scope-new",
-						"name":        "work",
+						"name":        "team-scope",
 						"description": "desc",
 						"is_builtin":  false,
 						"is_active":   true,
@@ -73,8 +73,8 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	assert.Equal(t, taxPromptCreateName, model.taxPromptMode)
 
-	// Type name "work" then submit.
-	for _, ch := range []rune("work") {
+	// Type name "team-scope" then submit.
+	for _, ch := range []rune("team-scope") {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})

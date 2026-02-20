@@ -48,7 +48,6 @@ def mock_enums():
                 "private",
                 "sensitive",
                 "admin",
-                "blacklisted",
             ]
         ),
         relationship_types=_make_section(

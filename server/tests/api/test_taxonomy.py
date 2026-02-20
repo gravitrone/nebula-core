@@ -11,6 +11,7 @@ from nebula_api.app import app
 from nebula_api.auth import require_auth
 
 pytestmark = pytest.mark.api
+LEGACY_SCOPE_NAMES = ("work", "code", "vault-only", "blacklisted")
 
 
 @pytest.fixture
@@ -311,3 +312,55 @@ async def test_taxonomy_log_type_archive_conflict_when_referenced(api_admin, db_
 
     resp = await api_admin.post(f"/api/taxonomy/log-types/{log_type['id']}/archive")
     assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy_scope", LEGACY_SCOPE_NAMES)
+async def test_legacy_scope_rejected_until_activated_via_taxonomy(
+    api, api_admin, db_pool, legacy_scope
+):
+    """Legacy scopes stay invalid until explicitly activated in taxonomy."""
+
+    denied = await api.post(
+        "/api/entities",
+        json={
+            "name": f"legacy-denied-{legacy_scope}",
+            "type": "person",
+            "status": "active",
+            "scopes": [legacy_scope],
+        },
+    )
+    assert denied.status_code == 400
+    assert denied.json()["detail"]["error"]["code"] == "INVALID_INPUT"
+
+    listing = await api_admin.get(
+        "/api/taxonomy/scopes",
+        params={"include_inactive": True, "search": legacy_scope},
+    )
+    assert listing.status_code == 200, listing.text
+    rows = listing.json()["data"]
+    scope = next((row for row in rows if row["name"] == legacy_scope), None)
+    assert scope is not None, f"missing scope row for {legacy_scope}"
+    assert scope["is_active"] is False
+
+    activate = await api_admin.post(f"/api/taxonomy/scopes/{scope['id']}/activate")
+    assert activate.status_code == 200, activate.text
+    assert activate.json()["data"]["is_active"] is True
+
+    allowed = await api.post(
+        "/api/entities",
+        json={
+            "name": f"legacy-allowed-{legacy_scope}",
+            "type": "person",
+            "status": "active",
+            "scopes": [legacy_scope],
+        },
+    )
+    assert allowed.status_code == 200, allowed.text
+    created = allowed.json()["data"]
+
+    await db_pool.execute("DELETE FROM entities WHERE id = $1::uuid", created["id"])
+
+    archive = await api_admin.post(f"/api/taxonomy/scopes/{scope['id']}/archive")
+    assert archive.status_code == 200, archive.text
+    assert archive.json()["data"]["is_active"] is False

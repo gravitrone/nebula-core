@@ -40,7 +40,9 @@ func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
 	assert.Equal(t, entitiesViewAdd, model.view)
 
 	// Populate scope options via the same message path the model uses.
-	model, _ = model.Update(entityScopesLoadedMsg{names: map[string]string{"s1": "public", "s2": "work"}})
+	model, _ = model.Update(
+		entityScopesLoadedMsg{names: map[string]string{"s1": "public", "s2": "private"}},
+	)
 
 	// Name field (focus 0).
 	for _, r := range []rune("Alpha") {
@@ -75,7 +77,7 @@ func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace}) // toggle selected
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // exit selecting
 	assert.False(t, model.addScopeSelecting)
-	assert.Contains(t, model.addScopes, "public")
+	assert.Contains(t, model.addScopes, "private")
 
 	// Save.
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
@@ -87,7 +89,7 @@ func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
 	assert.Equal(t, "Alpha", captured.Name)
 	assert.Equal(t, "person", captured.Type)
 	assert.Equal(t, []string{"alpha"}, captured.Tags)
-	assert.Equal(t, []string{"public"}, captured.Scopes)
+	assert.Equal(t, []string{"private"}, captured.Scopes)
 }
 
 func TestEntitiesBulkUpdateTagsCallsEndpoint(t *testing.T) {

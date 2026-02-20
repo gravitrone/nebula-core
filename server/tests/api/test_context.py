@@ -9,6 +9,8 @@ from nebula_api.app import app
 from nebula_api.auth import require_auth
 from nebula_mcp.models import MAX_TAGS
 
+LEGACY_SCOPE_NAMES = ("work", "code", "vault-only", "blacklisted")
+
 
 def _agent_auth_override(agent_row: dict, scope_ids: list[int]) -> callable:
     """Build an auth override that simulates an agent caller."""
@@ -138,11 +140,12 @@ async def test_create_context_validation_errors(api):
     )
     assert too_many_tags.status_code == 422
 
-    bad_scope = await api.post(
-        "/api/context",
-        json={"title": "BadScope", "scopes": ["not-a-scope"]},
-    )
-    assert bad_scope.status_code == 400
+    for scope in ("not-a-scope", *LEGACY_SCOPE_NAMES):
+        bad_scope = await api.post(
+            "/api/context",
+            json={"title": f"BadScope-{scope}", "scopes": [scope]},
+        )
+        assert bad_scope.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -209,6 +212,28 @@ async def test_update_context_validation_errors(api):
     bad_scope = await api.patch(
         f"/api/context/{context['id']}",
         json={"scopes": ["invalid-scope"]},
+    )
+    assert bad_scope.status_code == 400
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "invalid_scope",
+    ("invalid-scope", *LEGACY_SCOPE_NAMES),
+)
+async def test_update_context_rejects_legacy_scope_names(api, invalid_scope):
+    """Update route should reject inactive legacy scopes by default."""
+
+    context = (
+        await api.post(
+            "/api/context",
+            json={"title": "CtxLegacyScope", "url": "https://ok", "scopes": ["public"]},
+        )
+    ).json()["data"]
+
+    bad_scope = await api.patch(
+        f"/api/context/{context['id']}",
+        json={"scopes": [invalid_scope]},
     )
     assert bad_scope.status_code == 400
 

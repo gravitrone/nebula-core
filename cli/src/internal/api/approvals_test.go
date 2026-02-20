@@ -138,12 +138,12 @@ func TestApproveRequestWithInput(t *testing.T) {
 
 	trust := false
 	input := &ApproveRequestInput{
-		GrantScopes:           []string{"public", "code"},
+		GrantScopes:           []string{"public", "private"},
 		GrantRequiresApproval: &trust,
 	}
 	approval, err := client.ApproveRequestWithInput("ap-1", input)
 	require.NoError(t, err)
 	assert.Equal(t, "approved", approval.Status)
-	assert.Equal(t, []any{"public", "code"}, body["grant_scopes"])
+	assert.Equal(t, []any{"public", "private"}, body["grant_scopes"])
 	assert.Equal(t, false, body["grant_requires_approval"])
 }

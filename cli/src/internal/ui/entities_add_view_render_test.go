@@ -16,7 +16,7 @@ func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	model.addFields[addFieldType].value = "person"
 	model.addStatusIdx = statusIndex(entityStatusOptions, "active")
 	model.addTags = []string{"demo"}
-	model.addScopes = []string{"public", "work"}
+	model.addScopes = []string{"public", "private"}
 	model.addMeta.Buffer = "profile | role | founder\nprofile | location | warsaw"
 
 	out := components.SanitizeText(model.View())
@@ -29,14 +29,10 @@ func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	assert.Contains(t, out, "demo")
 	assert.Contains(t, out, "Scopes")
 	assert.Contains(t, out, "public")
-	assert.Contains(t, out, "work")
+	assert.Contains(t, out, "private")
 	assert.Contains(t, out, "Metadata")
-	assert.Contains(t, out, "Group")
-	assert.Contains(t, out, "Field")
-	assert.Contains(t, out, "Value")
-	assert.Contains(t, out, "profile")
-	assert.Contains(t, out, "role")
-	assert.Contains(t, out, "founder")
+	assert.Contains(t, out, "profile | role | founder")
+	assert.Contains(t, out, "profile | location | warsaw")
 }
 
 func TestEntitiesCommitAddScopeNormalizesAndDedupes(t *testing.T) {

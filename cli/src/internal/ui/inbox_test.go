@@ -520,7 +520,7 @@ func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 					"agent_name":   "bootstrap-agent",
 					"requested_by": "agent-id",
 					"change_details": map[string]any{
-						"requested_scopes":            []string{"public", "code"},
+						"requested_scopes":            []string{"public", "private"},
 						"requested_requires_approval": false,
 					},
 					"created_at": time.Now(),
@@ -537,7 +537,7 @@ func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	assert.True(t, model.grantEditing)
 	assert.Equal(t, "ap-register", model.grantApproval)
-	assert.Equal(t, "public,code", model.grantScopes)
+	assert.Equal(t, "public,private", model.grantScopes)
 	assert.False(t, model.grantTrusted)
 }
 

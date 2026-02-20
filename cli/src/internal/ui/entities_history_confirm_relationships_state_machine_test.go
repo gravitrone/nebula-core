@@ -187,10 +187,10 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 	model.width = 60
 	model.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Type: "entity", Status: "active", Tags: []string{}}
 	model.scopeNames = map[string]string{"s1": "public"}
-	model.scopeOptions = []string{"public", "work"}
+	model.scopeOptions = []string{"public", "private"}
 
 	model.startEdit()
-	model.editScopeBuf = "work"
+	model.editScopeBuf = "private"
 	model.commitEditScope()
 
 	_, cmd := model.saveEdit()

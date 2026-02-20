@@ -63,11 +63,11 @@ func TestMetadataToInput(t *testing.T) {
 
 func TestMetadataScopeHelpers(t *testing.T) {
 	input := map[string]any{
-		"scopes": []any{"Public", "work"},
+		"scopes": []any{"Public", "private"},
 		"name":   "alex",
 	}
 	scopes := extractMetadataScopes(input)
-	assert.Equal(t, []string{"public", "work"}, scopes)
+	assert.Equal(t, []string{"public", "private"}, scopes)
 
 	stripped := stripMetadataScopes(input)
 	_, ok := stripped["scopes"]
