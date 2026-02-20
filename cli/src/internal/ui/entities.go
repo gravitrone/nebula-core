@@ -1465,7 +1465,7 @@ func (m EntitiesModel) renderDetail() string {
 		}
 	}
 	if len(m.detailRels) > 0 {
-		sections = append(sections, components.Table("Relationships", relationshipSummaryRows("entity", e.ID, m.detailRels, 8), m.width))
+		sections = append(sections, renderRelationshipSummaryTable("entity", e.ID, m.detailRels, 8, m.width))
 	}
 
 	return strings.Join(sections, "\n\n")

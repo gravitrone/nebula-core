@@ -615,7 +615,7 @@ func (m LogsModel) renderDetail() string {
 		sections = append(sections, renderMetadataBlockWithTitle("Metadata", map[string]any(l.Metadata), m.width, m.metaExpanded))
 	}
 	if len(m.detailRels) > 0 {
-		sections = append(sections, components.Table("Relationships", relationshipSummaryRows("log", l.ID, m.detailRels, 6), m.width))
+		sections = append(sections, renderRelationshipSummaryTable("log", l.ID, m.detailRels, 6, m.width))
 	}
 	return strings.Join(sections, "\n\n")
 }

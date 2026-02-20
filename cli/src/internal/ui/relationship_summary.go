@@ -4,15 +4,78 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
+type relationshipSummaryEntry struct {
+	Rel  string
+	Dir  string
+	Node string
+}
+
+func renderRelationshipSummaryTable(nodeType, nodeID string, rels []api.Relationship, maxRows, width int) string {
+	rows, extra := relationshipSummaryEntries(nodeType, nodeID, rels, maxRows)
+	if len(rows) == 0 && extra == 0 {
+		return components.TitledBox("Relationships", "No relationships yet.", width)
+	}
+
+	contentWidth := components.BoxContentWidth(width) - 2
+	if contentWidth < 32 {
+		contentWidth = 32
+	}
+	relWidth, dirWidth, nodeWidth := relationshipSummaryColumnWidths(contentWidth)
+	columns := []components.TableColumn{
+		{Header: "Rel", Width: relWidth, Align: lipgloss.Left},
+		{Header: "Direction", Width: dirWidth, Align: lipgloss.Left},
+		{Header: "Node", Width: nodeWidth, Align: lipgloss.Left},
+	}
+
+	gridRows := make([][]string, 0, len(rows)+1)
+	for _, row := range rows {
+		gridRows = append(gridRows, []string{
+			row.Rel,
+			row.Dir,
+			row.Node,
+		})
+	}
+	if extra > 0 {
+		gridRows = append(gridRows, []string{
+			"More",
+			"+",
+			fmt.Sprintf("%d more relationships", extra),
+		})
+	}
+
+	content := components.TableGrid(columns, gridRows, contentWidth)
+	return components.TitledBox("Relationships", content, width)
+}
+
 func relationshipSummaryRows(nodeType, nodeID string, rels []api.Relationship, maxRows int) []components.TableRow {
+	entries, extra := relationshipSummaryEntries(nodeType, nodeID, rels, maxRows)
+	rows := make([]components.TableRow, 0, len(entries)+1)
+	for i, entry := range entries {
+		rows = append(rows, components.TableRow{
+			Label: fmt.Sprintf("%s %d", entry.Rel, i+1),
+			Value: fmt.Sprintf("%s %s", entry.Dir, entry.Node),
+		})
+	}
+	if extra > 0 {
+		rows = append(rows, components.TableRow{
+			Label: "More",
+			Value: fmt.Sprintf("+%d relationships", extra),
+		})
+	}
+	return rows
+}
+
+func relationshipSummaryEntries(nodeType, nodeID string, rels []api.Relationship, maxRows int) ([]relationshipSummaryEntry, int) {
 	if maxRows <= 0 {
 		maxRows = 5
 	}
-	rows := make([]components.TableRow, 0, maxRows+1)
+	entries := make([]relationshipSummaryEntry, 0, maxRows)
 	for i, rel := range rels {
 		if i >= maxRows {
 			break
@@ -22,18 +85,52 @@ func relationshipSummaryRows(nodeType, nodeID string, rels []api.Relationship, m
 			relType = "-"
 		}
 		direction, endpoint := relationshipDirectionAndEndpoint(nodeType, nodeID, rel)
-		rows = append(rows, components.TableRow{
-			Label: fmt.Sprintf("%s %d", relType, i+1),
-			Value: fmt.Sprintf("%s %s", direction, endpoint),
+		entries = append(entries, relationshipSummaryEntry{
+			Rel:  relType,
+			Dir:  direction,
+			Node: endpoint,
 		})
 	}
-	if extra := len(rels) - maxRows; extra > 0 {
-		rows = append(rows, components.TableRow{
-			Label: "More",
-			Value: fmt.Sprintf("+%d relationships", extra),
-		})
+	extra := len(rels) - maxRows
+	if extra < 0 {
+		extra = 0
 	}
-	return rows
+	return entries, extra
+}
+
+func relationshipSummaryColumnWidths(contentWidth int) (int, int, int) {
+	if contentWidth < 32 {
+		contentWidth = 32
+	}
+	usable := contentWidth - 2 // separators
+	if usable < 24 {
+		usable = 24
+	}
+
+	rel := usable * 28 / 100
+	dir := usable * 18 / 100
+	node := usable - rel - dir
+
+	if rel < 8 {
+		rel = 8
+	}
+	if dir < 9 {
+		dir = 9
+	}
+	if node < 10 {
+		node = 10
+	}
+
+	used := rel + dir + node
+	if used < usable {
+		node += usable - used
+	} else if used > usable {
+		overflow := used - usable
+		if node-overflow >= 10 {
+			node -= overflow
+		}
+	}
+	return rel, dir, node
 }
 
 func relationshipDirectionAndEndpoint(nodeType, nodeID string, rel api.Relationship) (string, string) {

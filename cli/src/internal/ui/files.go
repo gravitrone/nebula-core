@@ -605,7 +605,7 @@ func (m FilesModel) renderDetail() string {
 		sections = append(sections, renderMetadataBlock(map[string]any(f.Metadata), m.width, m.metaExpanded))
 	}
 	if len(m.detailRels) > 0 {
-		sections = append(sections, components.Table("Relationships", relationshipSummaryRows("file", f.ID, m.detailRels, 6), m.width))
+		sections = append(sections, renderRelationshipSummaryTable("file", f.ID, m.detailRels, 6, m.width))
 	}
 	return strings.Join(sections, "\n\n")
 }

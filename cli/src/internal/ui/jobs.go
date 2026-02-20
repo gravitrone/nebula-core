@@ -1215,7 +1215,7 @@ func (m JobsModel) renderDetail() string {
 		}
 	}
 	if len(m.detailRels) > 0 {
-		sections = append(sections, components.Table("Relationships", relationshipSummaryRows("job", j.ID, m.detailRels, 6), m.width))
+		sections = append(sections, renderRelationshipSummaryTable("job", j.ID, m.detailRels, 6, m.width))
 	}
 
 	return strings.Join(sections, "\n\n")

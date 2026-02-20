@@ -1110,29 +1110,7 @@ func (m ContextModel) renderDetail() string {
 		sections = append(sections, metaTable)
 	}
 	if len(m.detailRelationships) > 0 {
-		relRows := make([]components.TableRow, 0, 7)
-		maxRows := 6
-		for i, rel := range m.detailRelationships {
-			if i >= maxRows {
-				break
-			}
-			relType := strings.TrimSpace(components.SanitizeOneLine(rel.Type))
-			if relType == "" {
-				relType = "-"
-			}
-			direction, endpoint := contextRelationshipDirectionAndEndpoint(k.ID, rel)
-			relRows = append(relRows, components.TableRow{
-				Label: fmt.Sprintf("%s %d", relType, i+1),
-				Value: fmt.Sprintf("%s %s", direction, endpoint),
-			})
-		}
-		if extra := len(m.detailRelationships) - maxRows; extra > 0 {
-			relRows = append(relRows, components.TableRow{
-				Label: "More",
-				Value: fmt.Sprintf("+%d relationships", extra),
-			})
-		}
-		sections = append(sections, components.Table("Relationships", relRows, m.width))
+		sections = append(sections, renderRelationshipSummaryTable("context", k.ID, m.detailRelationships, 6, m.width))
 	}
 
 	return strings.Join(sections, "\n\n")
@@ -1197,39 +1175,6 @@ func (m ContextModel) renderContextPreview(k api.Context, width int) string {
 	}
 
 	return padPreviewLines(lines, width)
-}
-
-func contextRelationshipDirectionAndEndpoint(contextID string, rel api.Relationship) (string, string) {
-	sourceID := strings.TrimSpace(rel.SourceID)
-	targetID := strings.TrimSpace(rel.TargetID)
-	sourceType := strings.TrimSpace(strings.ToLower(rel.SourceType))
-	targetType := strings.TrimSpace(strings.ToLower(rel.TargetType))
-
-	sourceLabel := displayContextRelationshipNode(rel.SourceName, sourceType, sourceID)
-	targetLabel := displayContextRelationshipNode(rel.TargetName, targetType, targetID)
-
-	if sourceType == "context" && sourceID == contextID {
-		return "->", targetLabel
-	}
-	if targetType == "context" && targetID == contextID {
-		return "<-", sourceLabel
-	}
-	return "<>", fmt.Sprintf("%s <-> %s", sourceLabel, targetLabel)
-}
-
-func displayContextRelationshipNode(name, nodeType, nodeID string) string {
-	label := strings.TrimSpace(components.SanitizeOneLine(name))
-	if label != "" {
-		return label
-	}
-	if id := strings.TrimSpace(nodeID); id != "" {
-		return shortID(id)
-	}
-	nodeType = strings.TrimSpace(nodeType)
-	if nodeType != "" {
-		return nodeType
-	}
-	return "-"
 }
 
 func (m *ContextModel) startEdit() {

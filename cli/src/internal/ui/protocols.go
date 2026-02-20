@@ -639,7 +639,7 @@ func (m ProtocolsModel) renderDetail() string {
 		sections = append(sections, renderMetadataBlock(map[string]any(p.Metadata), m.width, true))
 	}
 	if len(m.detailRels) > 0 {
-		sections = append(sections, components.Table("Relationships", relationshipSummaryRows("protocol", p.ID, m.detailRels, 6), m.width))
+		sections = append(sections, renderRelationshipSummaryTable("protocol", p.ID, m.detailRels, 6, m.width))
 	}
 	return strings.Join(sections, "\n\n")
 }

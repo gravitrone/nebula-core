@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -46,5 +47,28 @@ func TestRelationshipSummaryRowsShowsMore(t *testing.T) {
 	}
 	if rows[2].Value != "+1 relationships" {
 		t.Fatalf("unexpected more value: %q", rows[2].Value)
+	}
+}
+
+func TestRenderRelationshipSummaryTableUsesGridLayout(t *testing.T) {
+	rels := []api.Relationship{
+		{
+			Type:       "owns",
+			SourceType: "entity",
+			SourceID:   "ent-1",
+			SourceName: "Owner",
+			TargetType: "entity",
+			TargetID:   "ent-2",
+			TargetName: "Target",
+		},
+	}
+
+	view := renderRelationshipSummaryTable("entity", "ent-1", rels, 5, 120)
+	clean := stripANSI(view)
+
+	for _, token := range []string{"Relationships", "Rel", "Direction", "Node", "owns", "->", "Target"} {
+		if !strings.Contains(clean, token) {
+			t.Fatalf("expected %q in rendered table:\n%s", token, clean)
+		}
 	}
 }
