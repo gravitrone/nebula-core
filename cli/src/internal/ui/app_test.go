@@ -14,7 +14,12 @@ import (
 
 func TestBuildEntityPaletteActions(t *testing.T) {
 	actions, selections := buildSearchPaletteActions(
+		"alpha",
 		[]api.Entity{{ID: "ent-123456789", Name: "Alpha", Type: "tool"}},
+		nil,
+		nil,
+		nil,
+		nil,
 		nil,
 		nil,
 	)

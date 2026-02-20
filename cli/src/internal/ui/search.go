@@ -25,6 +25,10 @@ type searchSelectionMsg struct {
 	entity  *api.Entity
 	context *api.Context
 	job     *api.Job
+	rel     *api.Relationship
+	log     *api.Log
+	file    *api.File
+	proto   *api.Protocol
 }
 
 type searchEntry struct {
@@ -35,6 +39,10 @@ type searchEntry struct {
 	entity  *api.Entity
 	context *api.Context
 	job     *api.Job
+	rel     *api.Relationship
+	log     *api.Log
+	file    *api.File
+	proto   *api.Protocol
 }
 
 type SearchModel struct {
@@ -431,12 +439,43 @@ func (m SearchModel) emitSelection(entry searchEntry) tea.Cmd {
 				}
 				return searchSelectionMsg{kind: entry.kind, job: item}
 			}
+		case "relationship":
+			// Relationships are loaded from query results in search mode.
+			// Keep this branch non-fetching to avoid depending on a single-item API.
+		case "log":
+			if entry.log == nil {
+				item, err := m.client.GetLog(entry.id)
+				if err != nil {
+					return errMsg{err}
+				}
+				return searchSelectionMsg{kind: entry.kind, log: item}
+			}
+		case "file":
+			if entry.file == nil {
+				item, err := m.client.GetFile(entry.id)
+				if err != nil {
+					return errMsg{err}
+				}
+				return searchSelectionMsg{kind: entry.kind, file: item}
+			}
+		case "protocol":
+			if entry.proto == nil {
+				item, err := m.client.GetProtocol(entry.id)
+				if err != nil {
+					return errMsg{err}
+				}
+				return searchSelectionMsg{kind: entry.kind, proto: item}
+			}
 		}
 		return searchSelectionMsg{
 			kind:    entry.kind,
 			entity:  entry.entity,
 			context: entry.context,
 			job:     entry.job,
+			rel:     entry.rel,
+			log:     entry.log,
+			file:    entry.file,
+			proto:   entry.proto,
 		}
 	}
 }
@@ -468,8 +507,12 @@ func buildSemanticEntries(items []api.SemanticSearchResult) []searchEntry {
 }
 
 func buildSearchEntries(query string, entities []api.Entity, context []api.Context, jobs []api.Job) []searchEntry {
-	items := make([]searchEntry, 0, len(entities)+len(context)+len(jobs))
-	for _, e := range entities {
+	filteredEntities := filterEntitiesByQuery(entities, query)
+	filteredContext := filterContextByQuery(context, query)
+	filteredJobs := filterJobsByQuery(jobs, query)
+
+	items := make([]searchEntry, 0, len(filteredEntities)+len(filteredContext)+len(filteredJobs))
+	for _, e := range filteredEntities {
 		kind := "entity"
 		descType := e.Type
 		if descType == "" {
@@ -484,7 +527,7 @@ func buildSearchEntries(query string, entities []api.Entity, context []api.Conte
 			entity: &entity,
 		})
 	}
-	for _, k := range context {
+	for _, k := range filteredContext {
 		kind := "context"
 		descType := k.SourceType
 		if descType == "" {
@@ -499,7 +542,7 @@ func buildSearchEntries(query string, entities []api.Entity, context []api.Conte
 			context: &contextItem,
 		})
 	}
-	for _, j := range jobs {
+	for _, j := range filteredJobs {
 		kind := "job"
 		desc := j.Status
 		if desc == "" {
@@ -514,6 +557,104 @@ func buildSearchEntries(query string, entities []api.Entity, context []api.Conte
 			job:   &job,
 		})
 	}
+	return items
+}
+
+func buildPaletteSearchEntries(
+	query string,
+	entities []api.Entity,
+	context []api.Context,
+	jobs []api.Job,
+	rels []api.Relationship,
+	logs []api.Log,
+	files []api.File,
+	protos []api.Protocol,
+) []searchEntry {
+	items := buildSearchEntries(query, entities, context, jobs)
+
+	for _, r := range filterRelationshipsByQuery(rels, query) {
+		rel := r
+		edge := strings.TrimSpace(components.SanitizeText(fmt.Sprintf("%s -> %s", r.SourceName, r.TargetName)))
+		if edge == "->" {
+			edge = components.SanitizeText(fmt.Sprintf("%s -> %s", shortID(r.SourceID), shortID(r.TargetID)))
+		}
+		label := components.SanitizeText(strings.TrimSpace(fmt.Sprintf("%s (%s)", r.Type, edge)))
+		if strings.TrimSpace(label) == "" || strings.HasPrefix(label, " (") {
+			label = components.SanitizeText(edge)
+		}
+		desc := r.Status
+		if desc == "" {
+			desc = "relationship"
+		}
+		items = append(items, searchEntry{
+			kind:  "relationship",
+			id:    r.ID,
+			label: label,
+			desc:  components.SanitizeText(fmt.Sprintf("%s · %s", desc, shortID(r.ID))),
+			rel:   &rel,
+		})
+	}
+
+	for _, l := range filterLogsByQuery(logs, query) {
+		log := l
+		label := strings.TrimSpace(components.SanitizeText("log: " + l.LogType))
+		if label == "" || label == "log:" {
+			label = "log"
+		}
+		desc := l.Status
+		if desc == "" {
+			desc = "log"
+		}
+		items = append(items, searchEntry{
+			kind:  "log",
+			id:    l.ID,
+			label: label,
+			desc:  components.SanitizeText(fmt.Sprintf("%s · %s", desc, shortID(l.ID))),
+			log:   &log,
+		})
+	}
+
+	for _, f := range filterFilesByQuery(files, query) {
+		file := f
+		label := strings.TrimSpace(components.SanitizeText(f.Filename))
+		if label == "" {
+			label = shortID(f.ID)
+		}
+		desc := "file"
+		if mime := fileMimeType(f); mime != "" {
+			desc = mime
+		}
+		items = append(items, searchEntry{
+			kind:  "file",
+			id:    f.ID,
+			label: label,
+			desc:  components.SanitizeText(fmt.Sprintf("%s · %s", desc, shortID(f.ID))),
+			file:  &file,
+		})
+	}
+
+	for _, p := range filterProtocolsByQuery(protos, query) {
+		protocol := p
+		label := strings.TrimSpace(components.SanitizeText(p.Title))
+		if label == "" {
+			label = strings.TrimSpace(components.SanitizeText(p.Name))
+		}
+		if label == "" {
+			label = shortID(p.ID)
+		}
+		desc := "protocol"
+		if kind := protocolType(p); kind != "" {
+			desc = kind
+		}
+		items = append(items, searchEntry{
+			kind:  "protocol",
+			id:    p.ID,
+			label: label,
+			desc:  components.SanitizeText(fmt.Sprintf("%s · %s", desc, shortID(p.ID))),
+			proto: &protocol,
+		})
+	}
+
 	return items
 }
 
@@ -559,4 +700,88 @@ func filterJobsByQuery(items []api.Job, query string) []api.Job {
 		}
 	}
 	return out
+}
+
+func filterRelationshipsByQuery(items []api.Relationship, query string) []api.Relationship {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return items
+	}
+	out := make([]api.Relationship, 0, len(items))
+	for _, r := range items {
+		haystack := strings.ToLower(strings.Join([]string{
+			r.Type, r.Status, r.SourceName, r.TargetName, r.SourceID, r.TargetID, r.ID,
+		}, " "))
+		if strings.Contains(haystack, q) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+func filterLogsByQuery(items []api.Log, query string) []api.Log {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return items
+	}
+	out := make([]api.Log, 0, len(items))
+	for _, l := range items {
+		haystack := strings.ToLower(strings.Join([]string{
+			l.ID, l.LogType, l.Status, fmt.Sprintf("%v", l.Value),
+		}, " "))
+		if strings.Contains(haystack, q) {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+func filterFilesByQuery(items []api.File, query string) []api.File {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return items
+	}
+	out := make([]api.File, 0, len(items))
+	for _, f := range items {
+		mime := fileMimeType(f)
+		haystack := strings.ToLower(strings.Join([]string{
+			f.ID, f.Filename, f.URI, f.FilePath, mime, f.Status,
+		}, " "))
+		if strings.Contains(haystack, q) {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+func filterProtocolsByQuery(items []api.Protocol, query string) []api.Protocol {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return items
+	}
+	out := make([]api.Protocol, 0, len(items))
+	for _, p := range items {
+		kind := protocolType(p)
+		haystack := strings.ToLower(strings.Join([]string{
+			p.ID, p.Name, p.Title, kind, p.Status,
+		}, " "))
+		if strings.Contains(haystack, q) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func fileMimeType(file api.File) string {
+	if file.MimeType == nil {
+		return ""
+	}
+	return strings.TrimSpace(*file.MimeType)
+}
+
+func protocolType(protocol api.Protocol) string {
+	if protocol.ProtocolType == nil {
+		return ""
+	}
+	return strings.TrimSpace(*protocol.ProtocolType)
 }

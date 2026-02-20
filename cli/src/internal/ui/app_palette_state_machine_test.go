@@ -69,7 +69,12 @@ func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 			})
 			return
 		}
-		if r.URL.Path == "/api/context" || r.URL.Path == "/api/jobs" {
+		if r.URL.Path == "/api/context" ||
+			r.URL.Path == "/api/jobs" ||
+			r.URL.Path == "/api/relationships" ||
+			r.URL.Path == "/api/logs" ||
+			r.URL.Path == "/api/files" ||
+			r.URL.Path == "/api/protocols" {
 			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
 			return
 		}

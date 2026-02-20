@@ -53,6 +53,10 @@ type paletteSearchLoadedMsg struct {
 	entities []api.Entity
 	context  []api.Context
 	jobs     []api.Job
+	rels     []api.Relationship
+	logs     []api.Log
+	files    []api.File
+	protos   []api.Protocol
 }
 
 type paletteAction struct {
@@ -65,6 +69,10 @@ type paletteSelection struct {
 	entity  *api.Entity
 	context *api.Context
 	job     *api.Job
+	rel     *api.Relationship
+	log     *api.Log
+	file    *api.File
+	proto   *api.Protocol
 }
 
 type startupSummary struct {
@@ -331,7 +339,16 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 		a.paletteSearchLoading = false
-		a.paletteFiltered, a.paletteSelections = buildSearchPaletteActions(msg.entities, msg.context, msg.jobs)
+		a.paletteFiltered, a.paletteSelections = buildSearchPaletteActions(
+			msg.query,
+			msg.entities,
+			msg.context,
+			msg.jobs,
+			msg.rels,
+			msg.logs,
+			msg.files,
+			msg.protos,
+		)
 		a.paletteIndex = 0
 		return a, nil
 	case searchSelectionMsg:
@@ -1763,22 +1780,55 @@ func (a App) loadPaletteSearch(query string) tea.Cmd {
 		if err != nil {
 			return errMsg{err}
 		}
+		rels, err := a.client.QueryRelationships(api.QueryParams{
+			"limit": "100",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		logs, err := a.client.QueryLogs(api.QueryParams{
+			"limit": "100",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		files, err := a.client.QueryFiles(api.QueryParams{
+			"limit": "100",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		protocols, err := a.client.QueryProtocols(api.QueryParams{
+			"limit": "100",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
 
 		return paletteSearchLoadedMsg{
 			query:    query,
 			entities: entities,
 			context:  contextItems,
 			jobs:     jobs,
+			rels:     rels,
+			logs:     logs,
+			files:    files,
+			protos:   protocols,
 		}
 	}
 }
 
 func buildSearchPaletteActions(
+	query string,
 	entities []api.Entity,
 	context []api.Context,
 	jobs []api.Job,
+	rels []api.Relationship,
+	logs []api.Log,
+	files []api.File,
+	protos []api.Protocol,
 ) ([]paletteAction, map[string]paletteSelection) {
-	entries := buildSearchEntries("", entities, context, jobs)
+	entries := buildPaletteSearchEntries(query, entities, context, jobs, rels, logs, files, protos)
 	actions := make([]paletteAction, 0, len(entries))
 	selections := make(map[string]paletteSelection, len(entries))
 	for _, entry := range entries {
@@ -1800,6 +1850,10 @@ func buildSearchPaletteActions(
 			entity:  entry.entity,
 			context: entry.context,
 			job:     entry.job,
+			rel:     entry.rel,
+			log:     entry.log,
+			file:    entry.file,
+			proto:   entry.proto,
 		}
 	}
 	return actions, selections
@@ -1860,6 +1914,26 @@ func (a *App) runPaletteAction(action paletteAction) (tea.Model, tea.Cmd) {
 			job := *selection.job
 			a.tab = tabJobs
 			a.jobs.detail = &job
+		case selection.rel != nil:
+			rel := *selection.rel
+			a.tab = tabRelations
+			a.rels.view = relsViewDetail
+			a.rels.detail = &rel
+		case selection.log != nil:
+			log := *selection.log
+			a.tab = tabLogs
+			a.logs.view = logsViewDetail
+			a.logs.detail = &log
+		case selection.file != nil:
+			file := *selection.file
+			a.tab = tabFiles
+			a.files.view = filesViewDetail
+			a.files.detail = &file
+		case selection.proto != nil:
+			protocol := *selection.proto
+			a.tab = tabProtocols
+			a.protocols.view = protocolsViewDetail
+			a.protocols.detail = &protocol
 		}
 		return *a, nil
 	}
@@ -1933,6 +2007,34 @@ func (a *App) applySearchSelection(msg searchSelectionMsg) (tea.Model, tea.Cmd) 
 			job := *msg.job
 			a.tab = tabJobs
 			a.jobs.detail = &job
+		}
+	case "relationship":
+		if msg.rel != nil {
+			rel := *msg.rel
+			a.tab = tabRelations
+			a.rels.view = relsViewDetail
+			a.rels.detail = &rel
+		}
+	case "log":
+		if msg.log != nil {
+			log := *msg.log
+			a.tab = tabLogs
+			a.logs.view = logsViewDetail
+			a.logs.detail = &log
+		}
+	case "file":
+		if msg.file != nil {
+			file := *msg.file
+			a.tab = tabFiles
+			a.files.view = filesViewDetail
+			a.files.detail = &file
+		}
+	case "protocol":
+		if msg.proto != nil {
+			protocol := *msg.proto
+			a.tab = tabProtocols
+			a.protocols.view = protocolsViewDetail
+			a.protocols.detail = &protocol
 		}
 	}
 	return *a, nil
