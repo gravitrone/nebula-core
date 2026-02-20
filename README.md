@@ -18,6 +18,10 @@ nebula start   # starts the API & MCP server
 nebula         # open the CLI
 ```
 
+## Vision
+
+Nebula’s vision is to make agent context a **reliable platform**. Local-first stays core, but you’ll be able to **push/commit your context to the cloud when you want**. The mission is to replace messy markdown workflows with a real multi-agent communication protocol, with scopes, approvals, and auditability baked in, so shared context becomes as normal as shared code.
+
 ## Architecture
 
 Nebula keeps your data as a connected graph (projects, context, jobs, logs, files).  
@@ -44,10 +48,6 @@ flowchart LR
 ```
 
 > Simple rule - if scope says no, data stays hidden. if trust says no, writes need approval.
-
-## Vision
-
-Nebula’s vision is to make agent context a **reliable platform**. Local-first stays core, but you’ll be able to **push/commit your context to the cloud when you want**. The mission is to replace messy markdown workflows with a real multi-agent communication protocol, with scopes, approvals, and auditability baked in, so shared context becomes as normal as shared code.
 
 ## Resources
 
