@@ -15,6 +15,14 @@ import (
 )
 
 func main() {
+	root := newRootCommand()
+	if err := root.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "nebula",
 		Short: "Nebula - agent context layer",
@@ -32,11 +40,9 @@ func main() {
 	root.AddCommand(cmd.StartCmd())
 	root.AddCommand(cmd.StopCmd())
 	root.AddCommand(cmd.LogsCmd())
+	cmd.ApplyNebulaHelp(root)
 
-	if err := root.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
+	return root
 }
 
 func init() {
