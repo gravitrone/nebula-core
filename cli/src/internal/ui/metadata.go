@@ -692,7 +692,7 @@ func renderMetadataSelectableBlockWithTitle(
 			continue
 		}
 		row := rows[absIdx]
-		if list.IsSelected(absIdx) {
+		if showSelectors && list.IsSelected(absIdx) {
 			activeVisible = len(gridRows)
 		}
 		group, field := metadataGroupAndField(row.field)
@@ -777,8 +777,13 @@ func metadataGroupAndField(path string) (string, string) {
 			}
 		}
 	}
+	for i := 0; i < len(fieldParts); i++ {
+		if idx, err := strconv.Atoi(fieldParts[i]); err == nil {
+			fieldParts[i] = fmt.Sprintf("item %d", idx+1)
+		}
+	}
 	if idx, err := strconv.Atoi(group); err == nil {
-		group = fmt.Sprintf("segment %d", idx+1)
+		group = fmt.Sprintf("item %d", idx+1)
 	}
 
 	field := strings.Join(fieldParts, ".")

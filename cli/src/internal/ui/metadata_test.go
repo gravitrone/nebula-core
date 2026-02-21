@@ -249,3 +249,18 @@ func TestRenderMetadataSelectableBlockHumanizesContextSegmentField(t *testing.T)
 	assert.Contains(t, clean, "segment 1")
 	assert.NotContains(t, clean, "context_segments[0]")
 }
+
+func TestRenderMetadataSelectableBlockHumanizesNumericPathSegments(t *testing.T) {
+	rows := []metadataDisplayRow{
+		{field: "profile.aliases[0]", value: "Bro"},
+	}
+	list := components.NewList(metadataPanelPageSize(false))
+	syncMetadataList(list, rows, metadataPanelPageSize(false))
+
+	out := renderMetadataSelectableBlockWithTitle("Metadata", rows, 80, list, map[int]bool{}, false)
+	clean := components.SanitizeText(out)
+
+	assert.Contains(t, clean, "profile")
+	assert.Contains(t, clean, "aliases.item 1")
+	assert.NotContains(t, clean, "aliases[0]")
+}

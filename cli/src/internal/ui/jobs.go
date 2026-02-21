@@ -17,6 +17,7 @@ type jobsLoadedMsg struct{ items []api.Job }
 type jobStatusUpdatedMsg struct{}
 type subtaskCreatedMsg struct{}
 type jobCreatedMsg struct{}
+type jobRelationshipChangedMsg struct{}
 type jobsScopesLoadedMsg struct{ options []string }
 type jobRelationshipsLoadedMsg struct {
 	id            string
@@ -73,6 +74,10 @@ type JobsModel struct {
 	statusTargets   []string
 	creatingSubtask bool
 	subtaskBuf      string
+	linkingRel      bool
+	linkBuf         string
+	unlinkingRel    bool
+	unlinkBuf       string
 	metaExpanded    bool
 	width           int
 	height          int
@@ -152,6 +157,11 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 			m.detailRels = msg.relationships
 		}
 		return m, nil
+	case jobRelationshipChangedMsg:
+		if m.detail == nil {
+			return m, nil
+		}
+		return m, m.loadDetailRelationships(m.detail.ID)
 
 	case jobStatusUpdatedMsg:
 		m.detail = nil
@@ -176,6 +186,8 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.changingSt = false
 		m.statusTargets = nil
 		m.creatingSubtask = false
+		m.linkingRel = false
+		m.unlinkingRel = false
 		m.addErr = msg.err.Error()
 		return m, nil
 
@@ -190,6 +202,12 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		}
 		if m.creatingSubtask {
 			return m.handleSubtaskInput(msg)
+		}
+		if m.linkingRel {
+			return m.handleLinkInput(msg)
+		}
+		if m.unlinkingRel {
+			return m.handleUnlinkInput(msg)
 		}
 		if m.changingSt {
 			return m.handleStatusInput(msg)
@@ -220,6 +238,18 @@ func (m JobsModel) View() string {
 	}
 	if m.creatingSubtask && m.detail != nil {
 		return components.Indent(components.InputDialog("New Subtask Title", m.subtaskBuf), 1)
+	}
+	if m.linkingRel && m.detail != nil {
+		return components.Indent(
+			components.InputDialog("Link Job (target_type target_id relationship_type)", m.linkBuf),
+			1,
+		)
+	}
+	if m.unlinkingRel && m.detail != nil {
+		return components.Indent(
+			components.InputDialog("Unlink Job (relationship id or row #)", m.unlinkBuf),
+			1,
+		)
 	}
 
 	if m.changingSt {
@@ -1093,6 +1123,12 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	case isKey(msg, "n"):
 		m.creatingSubtask = true
 		m.subtaskBuf = ""
+	case isKey(msg, "l"):
+		m.linkingRel = true
+		m.linkBuf = ""
+	case isKey(msg, "u"):
+		m.unlinkingRel = true
+		m.unlinkBuf = ""
 	case isKey(msg, "e"):
 		m.startEdit()
 		m.view = jobsViewEdit
@@ -1174,6 +1210,120 @@ func (m JobsModel) handleSubtaskInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m JobsModel) handleLinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.linkingRel = false
+		m.linkBuf = ""
+	case isEnter(msg):
+		if m.detail == nil {
+			m.linkingRel = false
+			m.linkBuf = ""
+			return m, nil
+		}
+		parts := strings.Fields(strings.TrimSpace(m.linkBuf))
+		if len(parts) < 3 {
+			m.linkingRel = false
+			m.linkBuf = ""
+			return m, func() tea.Msg {
+				return errMsg{err: fmt.Errorf("link format: target_type target_id relationship_type")}
+			}
+		}
+		targetType := strings.TrimSpace(parts[0])
+		targetID := strings.TrimSpace(parts[1])
+		relType := strings.TrimSpace(strings.Join(parts[2:], " "))
+		if targetType == "" || targetID == "" || relType == "" {
+			m.linkingRel = false
+			m.linkBuf = ""
+			return m, func() tea.Msg {
+				return errMsg{err: fmt.Errorf("link format: target_type target_id relationship_type")}
+			}
+		}
+		jobID := m.detail.ID
+		m.linkingRel = false
+		m.linkBuf = ""
+		return m, func() tea.Msg {
+			_, err := m.client.CreateRelationship(api.CreateRelationshipInput{
+				SourceType: "job",
+				SourceID:   jobID,
+				TargetType: targetType,
+				TargetID:   targetID,
+				Type:       relType,
+			})
+			if err != nil {
+				return errMsg{err}
+			}
+			return jobRelationshipChangedMsg{}
+		}
+	case isKey(msg, "backspace"):
+		if len(m.linkBuf) > 0 {
+			m.linkBuf = m.linkBuf[:len(m.linkBuf)-1]
+		}
+	default:
+		if len(msg.String()) == 1 || msg.String() == " " {
+			m.linkBuf += msg.String()
+		}
+	}
+	return m, nil
+}
+
+func (m JobsModel) handleUnlinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.unlinkingRel = false
+		m.unlinkBuf = ""
+	case isEnter(msg):
+		if m.detail == nil {
+			m.unlinkingRel = false
+			m.unlinkBuf = ""
+			return m, nil
+		}
+		value := strings.TrimSpace(m.unlinkBuf)
+		if value == "" {
+			m.unlinkingRel = false
+			m.unlinkBuf = ""
+			return m, nil
+		}
+		relID := value
+		if idx := parsePositiveListIndex(value); idx > 0 && idx <= len(m.detailRels) {
+			relID = m.detailRels[idx-1].ID
+		}
+		status := "archived"
+		m.unlinkingRel = false
+		m.unlinkBuf = ""
+		return m, func() tea.Msg {
+			_, err := m.client.UpdateRelationship(relID, api.UpdateRelationshipInput{Status: &status})
+			if err != nil {
+				return errMsg{err}
+			}
+			return jobRelationshipChangedMsg{}
+		}
+	case isKey(msg, "backspace"):
+		if len(m.unlinkBuf) > 0 {
+			m.unlinkBuf = m.unlinkBuf[:len(m.unlinkBuf)-1]
+		}
+	default:
+		if len(msg.String()) == 1 || msg.String() == " " {
+			m.unlinkBuf += msg.String()
+		}
+	}
+	return m, nil
+}
+
+func parsePositiveListIndex(value string) int {
+	if value == "" {
+		return 0
+	}
+	total := 0
+	for _, ch := range value {
+		if ch < '0' || ch > '9' {
+			return 0
+		}
+		total = total*10 + int(ch-'0')
+	}
+	return total
 }
 
 func (m JobsModel) renderDetail() string {

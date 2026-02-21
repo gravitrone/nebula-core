@@ -1134,6 +1134,8 @@ func (a App) statusHintsForTab() []string {
 			return append(base,
 				components.Hint("s", "Status"),
 				components.Hint("n", "Subtask"),
+				components.Hint("l", "Link"),
+				components.Hint("u", "Unlink"),
 				components.Hint("esc", "Back"),
 			)
 		}

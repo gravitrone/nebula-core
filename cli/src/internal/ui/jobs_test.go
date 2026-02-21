@@ -287,6 +287,84 @@ func TestJobsSearchFiltersList(t *testing.T) {
 	assert.Equal(t, "job-1", model.items[0].ID)
 }
 
+func TestJobsLinkInputCreatesRelationship(t *testing.T) {
+	var received api.CreateRelationshipInput
+	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/relationships" || r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&received))
+		json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]any{
+				"id":          "rel-1",
+				"source_type": "job",
+				"source_id":   "job-1",
+				"target_type": "entity",
+				"target_id":   "ent-1",
+				"type":        "about",
+				"status":      "active",
+			},
+		})
+	})
+
+	model := NewJobsModel(client)
+	model.detail = &api.Job{ID: "job-1", Title: "Job"}
+	model.linkingRel = true
+	model.linkBuf = "entity ent-1 about"
+
+	model, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	msg := cmd()
+	_, ok := msg.(jobRelationshipChangedMsg)
+	require.True(t, ok)
+	assert.False(t, model.linkingRel)
+	assert.Equal(t, api.CreateRelationshipInput{
+		SourceType: "job",
+		SourceID:   "job-1",
+		TargetType: "entity",
+		TargetID:   "ent-1",
+		Type:       "about",
+	}, received)
+}
+
+func TestJobsUnlinkInputSupportsRowIndex(t *testing.T) {
+	var updatedID string
+	var updatedPayload api.UpdateRelationshipInput
+	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		updatedID = strings.TrimPrefix(r.URL.Path, "/api/relationships/")
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&updatedPayload))
+		json.NewEncoder(w).Encode(map[string]any{
+			"data": map[string]any{
+				"id":     updatedID,
+				"status": "archived",
+			},
+		})
+	})
+
+	model := NewJobsModel(client)
+	model.detail = &api.Job{ID: "job-1", Title: "Job"}
+	model.detailRels = []api.Relationship{
+		{ID: "rel-1", SourceType: "job", SourceID: "job-1", TargetType: "entity", TargetID: "ent-1", Type: "about"},
+	}
+	model.unlinkingRel = true
+	model.unlinkBuf = "1"
+
+	model, cmd := model.handleUnlinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	msg := cmd()
+	_, ok := msg.(jobRelationshipChangedMsg)
+	require.True(t, ok)
+	require.NotNil(t, updatedPayload.Status)
+	assert.False(t, model.unlinkingRel)
+	assert.Equal(t, "rel-1", updatedID)
+	assert.Equal(t, "archived", *updatedPayload.Status)
+}
+
 func TestJobsRenderEditShowsFields(t *testing.T) {
 	now := time.Now()
 	model := NewJobsModel(nil)
