@@ -32,8 +32,28 @@ def rate_limit(
     def decorator(
         func: Callable[..., Coroutine[Any, Any, Any]],
     ) -> Callable[..., Coroutine[Any, Any, Any]]:
+        """Handle decorator.
+
+        Args:
+            func: Input parameter for decorator.
+
+        Returns:
+            Result value from the operation.
+        """
+
         @wraps(func)
         async def wrapper(*args: Any, request: Request, **kwargs: Any) -> Any:
+            """Handle wrapper.
+
+            Args:
+                request: Input parameter for wrapper.
+                *args: Input parameter for wrapper.
+                **kwargs: Input parameter for wrapper.
+
+            Returns:
+                Result value from the operation.
+            """
+
             key = request.headers.get("Authorization", request.client.host)
             now = time.time()
             _buckets[key] = [t for t in _buckets[key] if now - t < window]

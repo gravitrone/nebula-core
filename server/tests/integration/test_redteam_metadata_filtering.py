@@ -83,9 +83,7 @@ async def test_search_entities_by_metadata_filters_context_segments(db_pool, enu
         ],
         "signal": "needle",
     }
-    await _make_entity(
-        db_pool, enums, "Metadata Leak", ["public", "private"], metadata
-    )
+    await _make_entity(db_pool, enums, "Metadata Leak", ["public", "private"], metadata)
 
     public_agent = {
         "id": "public-agent",

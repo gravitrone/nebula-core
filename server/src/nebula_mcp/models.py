@@ -60,6 +60,15 @@ BANNED_METADATA_KEYS = {
 
 
 def _strip_control(text: str) -> str:
+    """Handle strip control.
+
+    Args:
+        text: Input parameter for _strip_control.
+
+    Returns:
+        Result value from the operation.
+    """
+
     cleaned: list[str] = []
     for ch in text:
         if ch in BIDI_CONTROLS:
@@ -71,12 +80,30 @@ def _strip_control(text: str) -> str:
 
 
 def _sanitize_text(value: str | None) -> str | None:
+    """Handle sanitize text.
+
+    Args:
+        value: Input parameter for _sanitize_text.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value is None:
         return None
     return _strip_control(value)
 
 
 def _sanitize_tags(tags: list[str] | None) -> list[str] | None:
+    """Handle sanitize tags.
+
+    Args:
+        tags: Input parameter for _sanitize_tags.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if tags is None:
         return None
     cleaned = [_strip_control(t) for t in tags]
@@ -90,6 +117,15 @@ def _sanitize_tags(tags: list[str] | None) -> list[str] | None:
 
 
 def _validate_node_type(value: str | None) -> str | None:
+    """Handle validate node type.
+
+    Args:
+        value: Input parameter for _validate_node_type.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value is None:
         return None
     cleaned = _strip_control(value)
@@ -99,6 +135,12 @@ def _validate_node_type(value: str | None) -> str | None:
 
 
 def _reject_metadata_keys(value: object) -> None:
+    """Handle reject metadata keys.
+
+    Args:
+        value: Input parameter for _reject_metadata_keys.
+    """
+
     if isinstance(value, dict):
         for key, item in value.items():
             if isinstance(key, str) and key == "visibility":
@@ -116,6 +158,15 @@ def _reject_metadata_keys(value: object) -> None:
 
 
 def _sanitize_metadata(value: dict | None) -> dict | None:
+    """Handle sanitize metadata.
+
+    Args:
+        value: Input parameter for _sanitize_metadata.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value is None:
         return None
     if not isinstance(value, dict):
@@ -146,6 +197,15 @@ def validate_metadata_payload(value: dict | None) -> dict | None:
 
 
 def _validate_taxonomy_kind(value: str | None) -> str:
+    """Handle validate taxonomy kind.
+
+    Args:
+        value: Input parameter for _validate_taxonomy_kind.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value is None:
         raise ValueError("Taxonomy kind is required")
     cleaned = _strip_control(value)
@@ -155,6 +215,15 @@ def _validate_taxonomy_kind(value: str | None) -> str:
 
 
 def _sanitize_source_path(value: str | None) -> str | None:
+    """Handle sanitize source path.
+
+    Args:
+        value: Input parameter for _sanitize_source_path.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value is None:
         return None
     cleaned = _strip_control(value)
@@ -217,21 +286,57 @@ class CreateEntityInput(BaseModel):
     @field_validator("name", "type", mode="before")
     @classmethod
     def _clean_text_fields(cls, v: str | None) -> str | None:
+        """Handle clean text fields.
+
+        Args:
+            v: Input parameter for _clean_text_fields.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean metadata.
+
+        Args:
+            v: Input parameter for _clean_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @field_validator("source_path", mode="before")
     @classmethod
     def _clean_source_path(cls, v: str | None) -> str | None:
+        """Handle clean source path.
+
+        Args:
+            v: Input parameter for _clean_source_path.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_source_path(v)
 
 
@@ -448,9 +553,7 @@ class RejectRequestInput(BaseModel):
     reviewed_by: str | None = Field(
         default=None, description="Optional reviewer entity UUID"
     )
-    review_notes: str = Field(
-        ..., min_length=1, description="Reason for rejection"
-    )
+    review_notes: str = Field(..., min_length=1, description="Reason for rejection")
 
 
 class GetApprovalInput(BaseModel):
@@ -506,11 +609,29 @@ class QueryEntitiesInput(BaseModel):
     @field_validator("type", "search_text", mode="before")
     @classmethod
     def _clean_query_text(cls, v: str | None) -> str | None:
+        """Handle clean query text.
+
+        Args:
+            v: Input parameter for _clean_query_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_query_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean query tags.
+
+        Args:
+            v: Input parameter for _clean_query_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
 
@@ -532,11 +653,29 @@ class SemanticSearchInput(BaseModel):
     @field_validator("query", mode="before")
     @classmethod
     def _clean_semantic_query(cls, v: str | None) -> str | None:
+        """Handle clean semantic query.
+
+        Args:
+            v: Input parameter for _clean_semantic_query.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("kinds", mode="before")
     @classmethod
     def _clean_semantic_kinds(cls, v: list[str] | None) -> list[str]:
+        """Handle clean semantic kinds.
+
+        Args:
+            v: Input parameter for _clean_semantic_kinds.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not v:
             return ["entity", "context"]
         out: list[str] = []
@@ -561,11 +700,29 @@ class UpdateEntityInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_update_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean update tags.
+
+        Args:
+            v: Input parameter for _clean_update_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_update_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean update metadata.
+
+        Args:
+            v: Input parameter for _clean_update_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -579,6 +736,15 @@ class BulkUpdateEntityTagsInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_bulk_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean bulk tags.
+
+        Args:
+            v: Input parameter for _clean_bulk_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
 
@@ -654,11 +820,29 @@ class CreateContextInput(BaseModel):
     @field_validator("title", "source_type", mode="before")
     @classmethod
     def _clean_context_text(cls, v: str | None) -> str | None:
+        """Handle clean context text.
+
+        Args:
+            v: Input parameter for _clean_context_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("url", mode="before")
     @classmethod
     def _validate_context_url(cls, v: str | None) -> str | None:
+        """Handle validate context url.
+
+        Args:
+            v: Input parameter for _validate_context_url.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not v:
             return v
         v = v.strip()
@@ -669,11 +853,29 @@ class CreateContextInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_context_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean context tags.
+
+        Args:
+            v: Input parameter for _clean_context_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_context_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean context metadata.
+
+        Args:
+            v: Input parameter for _clean_context_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -693,11 +895,29 @@ class UpdateContextInput(BaseModel):
     @field_validator("title", "source_type", mode="before")
     @classmethod
     def _clean_update_context_text(cls, v: str | None) -> str | None:
+        """Handle clean update context text.
+
+        Args:
+            v: Input parameter for _clean_update_context_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("url", mode="before")
     @classmethod
     def _validate_update_context_url(cls, v: str | None) -> str | None:
+        """Handle validate update context url.
+
+        Args:
+            v: Input parameter for _validate_update_context_url.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not v:
             return v
         v = v.strip()
@@ -708,11 +928,29 @@ class UpdateContextInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_update_context_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean update context tags.
+
+        Args:
+            v: Input parameter for _clean_update_context_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_update_context_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean update context metadata.
+
+        Args:
+            v: Input parameter for _clean_update_context_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -731,6 +969,15 @@ class QueryContextInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_context_query_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean context query tags.
+
+        Args:
+            v: Input parameter for _clean_context_query_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
 
@@ -764,16 +1011,43 @@ class CreateLogInput(BaseModel):
     @field_validator("log_type", mode="before")
     @classmethod
     def _clean_log_type(cls, v: str | None) -> str | None:
+        """Handle clean log type.
+
+        Args:
+            v: Input parameter for _clean_log_type.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_log_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean log tags.
+
+        Args:
+            v: Input parameter for _clean_log_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_log_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean log metadata.
+
+        Args:
+            v: Input parameter for _clean_log_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -797,6 +1071,15 @@ class QueryLogsInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_log_query_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean log query tags.
+
+        Args:
+            v: Input parameter for _clean_log_query_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
 
@@ -814,11 +1097,29 @@ class UpdateLogInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_update_log_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean update log tags.
+
+        Args:
+            v: Input parameter for _clean_update_log_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_update_log_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean update log metadata.
+
+        Args:
+            v: Input parameter for _clean_update_log_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -842,16 +1143,43 @@ class CreateRelationshipInput(BaseModel):
     @field_validator("source_type", "target_type", mode="before")
     @classmethod
     def _clean_rel_types(cls, v: str | None) -> str | None:
+        """Handle clean rel types.
+
+        Args:
+            v: Input parameter for _clean_rel_types.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_node_type(v)
 
     @field_validator("relationship_type", mode="before")
     @classmethod
     def _clean_rel_name(cls, v: str | None) -> str | None:
+        """Handle clean rel name.
+
+        Args:
+            v: Input parameter for _clean_rel_name.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("properties", mode="before")
     @classmethod
     def _clean_rel_properties(cls, v: dict | None) -> dict | None:
+        """Handle clean rel properties.
+
+        Args:
+            v: Input parameter for _clean_rel_properties.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -870,6 +1198,15 @@ class GetRelationshipsInput(BaseModel):
     @field_validator("source_type", mode="before")
     @classmethod
     def _clean_get_rel_type(cls, v: str | None) -> str | None:
+        """Handle clean get rel type.
+
+        Args:
+            v: Input parameter for _clean_get_rel_type.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_node_type(v)
 
 
@@ -889,6 +1226,15 @@ class QueryRelationshipsInput(BaseModel):
     @field_validator("source_type", "target_type", mode="before")
     @classmethod
     def _clean_query_rel_types(cls, v: str | None) -> str | None:
+        """Handle clean query rel types.
+
+        Args:
+            v: Input parameter for _clean_query_rel_types.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_node_type(v)
 
 
@@ -914,6 +1260,15 @@ class GraphNeighborsInput(BaseModel):
     @field_validator("source_type", mode="before")
     @classmethod
     def _clean_graph_source_type(cls, v: str | None) -> str | None:
+        """Handle clean graph source type.
+
+        Args:
+            v: Input parameter for _clean_graph_source_type.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_node_type(v)
 
     limit: int = Field(
@@ -939,6 +1294,15 @@ class GraphShortestPathInput(BaseModel):
     @field_validator("source_type", "target_type", mode="before")
     @classmethod
     def _clean_graph_types(cls, v: str | None) -> str | None:
+        """Handle clean graph types.
+
+        Args:
+            v: Input parameter for _clean_graph_types.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_node_type(v)
 
 
@@ -969,6 +1333,15 @@ class CreateJobInput(BaseModel):
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_job_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean job metadata.
+
+        Args:
+            v: Input parameter for _clean_job_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -1030,6 +1403,15 @@ class UpdateJobInput(BaseModel):
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_update_job_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean update job metadata.
+
+        Args:
+            v: Input parameter for _clean_update_job_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
 
@@ -1062,25 +1444,67 @@ class CreateFileInput(BaseModel):
     @field_validator("filename", mode="before")
     @classmethod
     def _clean_filename(cls, v: str | None) -> str | None:
+        """Handle clean filename.
+
+        Args:
+            v: Input parameter for _clean_filename.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("uri", "file_path", mode="before")
     @classmethod
     def _clean_file_location(cls, v: str | None) -> str | None:
+        """Handle clean file location.
+
+        Args:
+            v: Input parameter for _clean_file_location.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_file_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean file tags.
+
+        Args:
+            v: Input parameter for _clean_file_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_file_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean file metadata.
+
+        Args:
+            v: Input parameter for _clean_file_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _ensure_file_location(self) -> Self:
+        """Handle ensure file location.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not self.uri and not self.file_path:
             raise ValueError("uri or file_path is required")
         if not self.uri and self.file_path:
@@ -1110,6 +1534,15 @@ class QueryFilesInput(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_file_query_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean file query tags.
+
+        Args:
+            v: Input parameter for _clean_file_query_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
 
@@ -1133,25 +1566,67 @@ class UpdateFileInput(BaseModel):
     @field_validator("filename", mode="before")
     @classmethod
     def _clean_update_filename(cls, v: str | None) -> str | None:
+        """Handle clean update filename.
+
+        Args:
+            v: Input parameter for _clean_update_filename.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("uri", "file_path", mode="before")
     @classmethod
     def _clean_update_file_location(cls, v: str | None) -> str | None:
+        """Handle clean update file location.
+
+        Args:
+            v: Input parameter for _clean_update_file_location.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_update_file_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean update file tags.
+
+        Args:
+            v: Input parameter for _clean_update_file_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_update_file_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean update file metadata.
+
+        Args:
+            v: Input parameter for _clean_update_file_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _sync_update_file_location(self) -> Self:
+        """Handle sync update file location.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if self.uri is None and self.file_path is not None:
             self.uri = self.file_path
         if self.file_path is None and self.uri is not None:
@@ -1207,21 +1682,57 @@ class CreateProtocolInput(BaseModel):
     @field_validator("name", "title", "protocol_type", mode="before")
     @classmethod
     def _clean_protocol_text(cls, v: str | None) -> str | None:
+        """Handle clean protocol text.
+
+        Args:
+            v: Input parameter for _clean_protocol_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_protocol_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean protocol tags.
+
+        Args:
+            v: Input parameter for _clean_protocol_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_protocol_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean protocol metadata.
+
+        Args:
+            v: Input parameter for _clean_protocol_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @field_validator("source_path", mode="before")
     @classmethod
     def _clean_protocol_source_path(cls, v: str | None) -> str | None:
+        """Handle clean protocol source path.
+
+        Args:
+            v: Input parameter for _clean_protocol_source_path.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_source_path(v)
 
 
@@ -1243,21 +1754,57 @@ class UpdateProtocolInput(BaseModel):
     @field_validator("name", "title", "protocol_type", mode="before")
     @classmethod
     def _clean_update_protocol_text(cls, v: str | None) -> str | None:
+        """Handle clean update protocol text.
+
+        Args:
+            v: Input parameter for _clean_update_protocol_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_update_protocol_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean update protocol tags.
+
+        Args:
+            v: Input parameter for _clean_update_protocol_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("metadata", mode="before")
     @classmethod
     def _clean_update_protocol_metadata(cls, v: dict | None) -> dict | None:
+        """Handle clean update protocol metadata.
+
+        Args:
+            v: Input parameter for _clean_update_protocol_metadata.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @field_validator("source_path", mode="before")
     @classmethod
     def _clean_update_protocol_source_path(cls, v: str | None) -> str | None:
+        """Handle clean update protocol source path.
+
+        Args:
+            v: Input parameter for _clean_update_protocol_source_path.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_source_path(v)
 
 
@@ -1295,6 +1842,15 @@ class UpdateAgentInput(BaseModel):
     @field_validator("description", mode="before")
     @classmethod
     def _clean_update_agent_description(cls, v: str | None) -> str | None:
+        """Handle clean update agent description.
+
+        Args:
+            v: Input parameter for _clean_update_agent_description.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1316,16 +1872,43 @@ class AgentEnrollStartInput(BaseModel):
     @field_validator("name", "description", mode="before")
     @classmethod
     def _clean_enroll_text(cls, v: str | None) -> str | None:
+        """Handle clean enroll text.
+
+        Args:
+            v: Input parameter for _clean_enroll_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("requested_scopes", mode="before")
     @classmethod
     def _clean_enroll_scopes(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean enroll scopes.
+
+        Args:
+            v: Input parameter for _clean_enroll_scopes.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
     @field_validator("capabilities", mode="before")
     @classmethod
     def _clean_enroll_capabilities(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean enroll capabilities.
+
+        Args:
+            v: Input parameter for _clean_enroll_capabilities.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_tags(v)
 
 
@@ -1339,6 +1922,15 @@ class AgentEnrollWaitInput(BaseModel):
     @field_validator("registration_id", "enrollment_token", mode="before")
     @classmethod
     def _clean_wait_text(cls, v: str | None) -> str | None:
+        """Handle clean wait text.
+
+        Args:
+            v: Input parameter for _clean_wait_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1351,6 +1943,15 @@ class AgentEnrollRedeemInput(BaseModel):
     @field_validator("registration_id", "enrollment_token", mode="before")
     @classmethod
     def _clean_redeem_text(cls, v: str | None) -> str | None:
+        """Handle clean redeem text.
+
+        Args:
+            v: Input parameter for _clean_redeem_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1362,6 +1963,15 @@ class AgentAuthAttachInput(BaseModel):
     @field_validator("api_key", mode="before")
     @classmethod
     def _clean_api_key(cls, v: str | None) -> str | None:
+        """Handle clean api key.
+
+        Args:
+            v: Input parameter for _clean_api_key.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1373,6 +1983,15 @@ class LoginInput(BaseModel):
     @field_validator("username", mode="before")
     @classmethod
     def _clean_login_username(cls, v: str | None) -> str | None:
+        """Handle clean login username.
+
+        Args:
+            v: Input parameter for _clean_login_username.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1387,6 +2006,15 @@ class CreateAPIKeyInput(BaseModel):
     @field_validator("name", mode="before")
     @classmethod
     def _clean_key_name(cls, v: str | None) -> str | None:
+        """Handle clean key name.
+
+        Args:
+            v: Input parameter for _clean_key_name.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1427,6 +2055,15 @@ class ExportDataInput(BaseModel):
     @field_validator("resource", mode="before")
     @classmethod
     def _clean_export_resource(cls, v: str | None) -> str:
+        """Handle clean export resource.
+
+        Args:
+            v: Input parameter for _clean_export_resource.
+
+        Returns:
+            Result value from the operation.
+        """
+
         value = _sanitize_text(v)
         if value not in {"entities", "context", "relationships", "jobs", "snapshot"}:
             raise ValueError("Invalid export resource")
@@ -1435,6 +2072,15 @@ class ExportDataInput(BaseModel):
     @field_validator("format", mode="before")
     @classmethod
     def _clean_export_format(cls, v: str | None) -> str:
+        """Handle clean export format.
+
+        Args:
+            v: Input parameter for _clean_export_format.
+
+        Returns:
+            Result value from the operation.
+        """
+
         value = _sanitize_text(v) or "json"
         lowered = value.lower()
         if lowered not in {"json", "csv"}:
@@ -1444,6 +2090,15 @@ class ExportDataInput(BaseModel):
     @field_validator("params", mode="before")
     @classmethod
     def _clean_export_params(cls, v: dict | None) -> dict:
+        """Handle clean export params.
+
+        Args:
+            v: Input parameter for _clean_export_params.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v) or {}
 
 
@@ -1464,11 +2119,29 @@ class ListTaxonomyInput(BaseModel):
     @field_validator("kind", mode="before")
     @classmethod
     def _clean_kind(cls, v: str | None) -> str:
+        """Handle clean kind.
+
+        Args:
+            v: Input parameter for _clean_kind.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_taxonomy_kind(v)
 
     @field_validator("search", mode="before")
     @classmethod
     def _clean_search(cls, v: str | None) -> str | None:
+        """Handle clean search.
+
+        Args:
+            v: Input parameter for _clean_search.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
 
@@ -1487,20 +2160,53 @@ class CreateTaxonomyInput(BaseModel):
     @field_validator("kind", mode="before")
     @classmethod
     def _clean_kind(cls, v: str | None) -> str:
+        """Handle clean kind.
+
+        Args:
+            v: Input parameter for _clean_kind.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_taxonomy_kind(v)
 
     @field_validator("name", "description", mode="before")
     @classmethod
     def _clean_text(cls, v: str | None) -> str | None:
+        """Handle clean text.
+
+        Args:
+            v: Input parameter for _clean_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("metadata", "value_schema", mode="before")
     @classmethod
     def _clean_json_objects(cls, v: dict | None) -> dict | None:
+        """Handle clean json objects.
+
+        Args:
+            v: Input parameter for _clean_json_objects.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _validate_kind_fields(self) -> Self:
+        """Handle validate kind fields.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if self.kind != "relationship-types" and self.is_symmetric is not None:
             raise ValueError("is_symmetric is only valid for relationship-types")
         if self.kind != "log-types" and self.value_schema is not None:
@@ -1524,20 +2230,53 @@ class UpdateTaxonomyInput(BaseModel):
     @field_validator("kind", mode="before")
     @classmethod
     def _clean_kind(cls, v: str | None) -> str:
+        """Handle clean kind.
+
+        Args:
+            v: Input parameter for _clean_kind.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_taxonomy_kind(v)
 
     @field_validator("name", "description", "item_id", mode="before")
     @classmethod
     def _clean_text(cls, v: str | None) -> str | None:
+        """Handle clean text.
+
+        Args:
+            v: Input parameter for _clean_text.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)
 
     @field_validator("metadata", "value_schema", mode="before")
     @classmethod
     def _clean_json_objects(cls, v: dict | None) -> dict | None:
+        """Handle clean json objects.
+
+        Args:
+            v: Input parameter for _clean_json_objects.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _validate_kind_fields(self) -> Self:
+        """Handle validate kind fields.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if self.kind != "relationship-types" and self.is_symmetric is not None:
             raise ValueError("is_symmetric is only valid for relationship-types")
         if self.kind != "log-types" and self.value_schema is not None:
@@ -1554,9 +2293,27 @@ class ToggleTaxonomyInput(BaseModel):
     @field_validator("kind", mode="before")
     @classmethod
     def _clean_kind(cls, v: str | None) -> str:
+        """Handle clean kind.
+
+        Args:
+            v: Input parameter for _clean_kind.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_taxonomy_kind(v)
 
     @field_validator("item_id", mode="before")
     @classmethod
     def _clean_item_id(cls, v: str | None) -> str | None:
+        """Handle clean item id.
+
+        Args:
+            v: Input parameter for _clean_item_id.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _sanitize_text(v)

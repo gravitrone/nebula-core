@@ -8,6 +8,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
+// renderFormGrid renders render form grid.
 func renderFormGrid(title string, rows [][2]string, activeRow int, width int) string {
 	contentWidth := components.BoxContentWidth(width) - 2
 	if contentWidth < 48 {

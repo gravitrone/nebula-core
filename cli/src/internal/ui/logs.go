@@ -117,6 +117,7 @@ func NewLogsModel(client *api.Client) LogsModel {
 	}
 }
 
+// Init handles init.
 func (m LogsModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = logsViewList
@@ -151,6 +152,7 @@ func (m LogsModel) Init() tea.Cmd {
 	return m.loadLogs()
 }
 
+// Update updates update.
 func (m LogsModel) Update(msg tea.Msg) (LogsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case logsLoadedMsg:
@@ -219,6 +221,7 @@ func (m LogsModel) Update(msg tea.Msg) (LogsModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m LogsModel) View() string {
 	if m.addValue.Active {
 		return m.addValue.Render(m.width)
@@ -273,6 +276,7 @@ func (m LogsModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m LogsModel) handleModeKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -287,6 +291,7 @@ func (m LogsModel) handleModeKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m LogsModel) toggleMode() (LogsModel, tea.Cmd) {
 	m.modeFocus = false
 	if m.view == logsViewAdd {
@@ -434,6 +439,7 @@ func (m LogsModel) renderList() string {
 	return components.TitledBox("Logs", content, m.width)
 }
 
+// renderLogPreview renders render log preview.
 func (m LogsModel) renderLogPreview(l api.Log, width int) string {
 	if width <= 0 {
 		return ""
@@ -477,6 +483,7 @@ func (m LogsModel) renderLogPreview(l api.Log, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// handleListKeys handles handle list keys.
 func (m LogsModel) handleListKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
@@ -536,6 +543,7 @@ func (m LogsModel) handleListKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m LogsModel) handleFilterInput(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -586,6 +594,7 @@ func (m LogsModel) handleDetailKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderDetail renders render detail.
 func (m LogsModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -620,6 +629,7 @@ func (m LogsModel) renderDetail() string {
 	return strings.Join(sections, "\n\n")
 }
 
+// loadDetailRelationships loads load detail relationships.
 func (m LogsModel) loadDetailRelationships(logID string) tea.Cmd {
 	return func() tea.Msg {
 		rels, err := m.client.GetRelationships("log", logID)
@@ -722,6 +732,7 @@ func (m LogsModel) handleAddKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderAdd renders render add.
 func (m LogsModel) renderAdd() string {
 	var b strings.Builder
 	for i, f := range m.addFields {
@@ -786,6 +797,7 @@ func (m LogsModel) renderAdd() string {
 	return components.Indent(b.String(), 1)
 }
 
+// saveAdd handles save add.
 func (m LogsModel) saveAdd() (LogsModel, tea.Cmd) {
 	logType := strings.TrimSpace(m.addType)
 	if logType == "" {
@@ -828,6 +840,7 @@ func (m LogsModel) saveAdd() (LogsModel, tea.Cmd) {
 	}
 }
 
+// resetAddForm handles reset add form.
 func (m *LogsModel) resetAddForm() {
 	m.addSaved = false
 	m.addSaving = false
@@ -842,6 +855,7 @@ func (m *LogsModel) resetAddForm() {
 	m.addMeta.Reset()
 }
 
+// commitAddTag handles commit add tag.
 func (m *LogsModel) commitAddTag() {
 	raw := strings.TrimSpace(m.addTagBuf)
 	if raw == "" {
@@ -863,6 +877,7 @@ func (m *LogsModel) commitAddTag() {
 	m.addTagBuf = ""
 }
 
+// renderAddTags renders render add tags.
 func (m LogsModel) renderAddTags(focused bool) string {
 	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
 		return "-"
@@ -909,6 +924,7 @@ func (m LogsModel) startEdit() {
 	m.editSaving = false
 }
 
+// handleEditKeys handles handle edit keys.
 func (m LogsModel) handleEditKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -968,6 +984,7 @@ func (m LogsModel) handleEditKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderEdit renders render edit.
 func (m LogsModel) renderEdit() string {
 	var b strings.Builder
 	for i, f := range []string{"Status", "Tags", "Value", "Metadata"} {
@@ -1007,6 +1024,7 @@ func (m LogsModel) renderEdit() string {
 	return components.Indent(b.String(), 1)
 }
 
+// saveEdit handles save edit.
 func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
 	status := logStatusOptions[m.editStatusIdx]
 	value, err := parseMetadataInput(m.editValue.Buffer)
@@ -1037,6 +1055,7 @@ func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
 	}
 }
 
+// commitEditTag handles commit edit tag.
 func (m *LogsModel) commitEditTag() {
 	raw := strings.TrimSpace(m.editTagBuf)
 	if raw == "" {
@@ -1058,6 +1077,7 @@ func (m *LogsModel) commitEditTag() {
 	m.editTagBuf = ""
 }
 
+// renderEditTags renders render edit tags.
 func (m LogsModel) renderEditTags(focused bool) string {
 	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
 		return "-"
@@ -1098,6 +1118,7 @@ func (m LogsModel) loadLogs() tea.Cmd {
 	}
 }
 
+// loadScopeOptions loads load scope options.
 func (m LogsModel) loadScopeOptions() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1115,6 +1136,7 @@ func (m LogsModel) loadScopeOptions() tea.Cmd {
 	}
 }
 
+// applyLogSearch handles apply log search.
 func (m *LogsModel) applyLogSearch() {
 	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
 	if query == "" {
@@ -1137,6 +1159,7 @@ func (m *LogsModel) applyLogSearch() {
 	m.updateSearchSuggest()
 }
 
+// updateSearchSuggest updates update search suggest.
 func (m *LogsModel) updateSearchSuggest() {
 	m.searchSuggest = ""
 	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
@@ -1151,6 +1174,7 @@ func (m *LogsModel) updateSearchSuggest() {
 	}
 }
 
+// formatLogLine handles format log line.
 func formatLogLine(l api.Log) string {
 	label := components.SanitizeText(l.LogType)
 	if label == "" {
@@ -1167,6 +1191,7 @@ func formatLogLine(l api.Log) string {
 	return strings.Join(segments, " · ")
 }
 
+// parseLogTimestamp parses parse log timestamp.
 func parseLogTimestamp(input string) (*time.Time, error) {
 	value := strings.TrimSpace(input)
 	if value == "" {

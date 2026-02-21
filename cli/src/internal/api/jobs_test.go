@@ -9,16 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestGetJob handles test get job.
 func TestGetJob(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/jobs/")
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":     "2026Q1-0001",
 			"title":  "Test job",
 			"status": "pending",
 		}))
+		require.NoError(t, err)
 	})
 
 	job, err := client.GetJob("2026Q1-0001")
@@ -27,19 +29,21 @@ func TestGetJob(t *testing.T) {
 	assert.Equal(t, "pending", job.Status)
 }
 
+// TestCreateJob handles test create job.
 func TestCreateJob(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 
 		var body CreateJobInput
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "New task", body.Title)
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":     "2026Q1-0002",
 			"title":  body.Title,
 			"status": "pending",
 		}))
+		require.NoError(t, err)
 	})
 
 	job, err := client.CreateJob(CreateJobInput{
@@ -49,20 +53,22 @@ func TestCreateJob(t *testing.T) {
 	assert.Equal(t, "2026Q1-0002", job.ID)
 }
 
+// TestUpdateJobStatus handles test update job status.
 func TestUpdateJobStatus(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		assert.Contains(t, r.URL.Path, "/status")
 
 		var body map[string]string
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "in-progress", body["status"])
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":     "2026Q1-0001",
 			"title":  "Test",
 			"status": "in-progress",
 		}))
+		require.NoError(t, err)
 	})
 
 	job, err := client.UpdateJobStatus("2026Q1-0001", "in-progress")
@@ -70,16 +76,18 @@ func TestUpdateJobStatus(t *testing.T) {
 	assert.Equal(t, "in-progress", job.Status)
 }
 
+// TestCreateSubtask handles test create subtask.
 func TestCreateSubtask(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/subtasks")
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":     "2026Q1-0001-01",
 			"title":  "Subtask",
 			"status": "pending",
 		}))
+		require.NoError(t, err)
 	})
 
 	job, err := client.CreateSubtask("2026Q1-0001", map[string]string{
@@ -89,15 +97,17 @@ func TestCreateSubtask(t *testing.T) {
 	assert.Equal(t, "2026Q1-0001-01", job.ID)
 }
 
+// TestQueryJobsWithFilters handles test query jobs with filters.
 func TestQueryJobsWithFilters(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "pending", r.URL.Query().Get("status"))
 		assert.Equal(t, "high", r.URL.Query().Get("priority"))
 
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "j1", "title": "Task 1", "status": "pending"},
 			{"id": "j2", "title": "Task 2", "status": "pending"},
 		}))
+		require.NoError(t, err)
 	})
 
 	jobs, err := client.QueryJobs(QueryParams{
@@ -108,6 +118,7 @@ func TestQueryJobsWithFilters(t *testing.T) {
 	assert.Len(t, jobs, 2)
 }
 
+// TestUpdateJobStatusInvalid handles test update job status invalid.
 func TestUpdateJobStatusInvalid(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
@@ -117,7 +128,8 @@ func TestUpdateJobStatusInvalid(t *testing.T) {
 				"message": "invalid status transition",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.UpdateJobStatus("2026Q1-0001", "invalid")

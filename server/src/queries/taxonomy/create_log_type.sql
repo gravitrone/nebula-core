@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy create_log_type
 INSERT INTO log_types (
     name,
     description,

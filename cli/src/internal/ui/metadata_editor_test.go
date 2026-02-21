@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestMetadataEditorOpenLoadsInitialAndActivates handles test metadata editor open loads initial and activates.
 func TestMetadataEditorOpenLoadsInitialAndActivates(t *testing.T) {
 	var ed MetadataEditor
 	ed.Open(map[string]any{
@@ -21,6 +22,7 @@ func TestMetadataEditorOpenLoadsInitialAndActivates(t *testing.T) {
 	assert.Contains(t, ed.Buffer, "name: alex")
 }
 
+// TestMetadataEditorHandleKeyTypingScopesAndExit handles test metadata editor handle key typing scopes and exit.
 func TestMetadataEditorHandleKeyTypingScopesAndExit(t *testing.T) {
 	prevCopy := copyMetadataEditorClipboard
 	defer func() { copyMetadataEditorClipboard = prevCopy }()
@@ -51,7 +53,7 @@ func TestMetadataEditorHandleKeyTypingScopesAndExit(t *testing.T) {
 	// Add row via entry mode.
 	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	require.True(t, ed.entryMode)
-	for _, ch := range []rune("profile | timezone | europe/warsaw") {
+	for _, ch := range "profile | timezone | europe/warsaw" {
 		ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
 	}
 	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
@@ -74,6 +76,7 @@ func TestMetadataEditorHandleKeyTypingScopesAndExit(t *testing.T) {
 	assert.False(t, ed.Active)
 }
 
+// TestMetadataEditorRenderIsStable handles test metadata editor render is stable.
 func TestMetadataEditorRenderIsStable(t *testing.T) {
 	var ed MetadataEditor
 	ed.Open(map[string]any{"name": "alex"})
@@ -96,6 +99,7 @@ func TestMetadataEditorRenderIsStable(t *testing.T) {
 	assert.Contains(t, clean, "enter copy value")
 }
 
+// TestMetadataEditorRenderShowsSelectionColumnOnlyAfterSelectingRows handles test metadata editor render shows selection column only after selecting rows.
 func TestMetadataEditorRenderShowsSelectionColumnOnlyAfterSelectingRows(t *testing.T) {
 	var ed MetadataEditor
 	ed.Open(map[string]any{
@@ -113,6 +117,7 @@ func TestMetadataEditorRenderShowsSelectionColumnOnlyAfterSelectingRows(t *testi
 	assert.Contains(t, clean, "[X]")
 }
 
+// TestDropLastRuneHandlesMultibyteRunes handles test drop last rune handles multibyte runes.
 func TestDropLastRuneHandlesMultibyteRunes(t *testing.T) {
 	assert.Equal(t, "", dropLastRune(""))
 	assert.Equal(t, "a", dropLastRune("ab"))

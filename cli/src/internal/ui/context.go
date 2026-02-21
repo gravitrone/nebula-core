@@ -161,6 +161,7 @@ func NewContextModel(client *api.Client) ContextModel {
 	}
 }
 
+// Init handles init.
 func (m ContextModel) Init() tea.Cmd {
 	m.saved = false
 	m.errText = ""
@@ -215,6 +216,7 @@ func (m ContextModel) Init() tea.Cmd {
 	return m.loadScopeNames()
 }
 
+// Update updates update.
 func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case contextSavedMsg:
@@ -417,6 +419,7 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m ContextModel) View() string {
 	if m.saving {
 		return "  " + MutedStyle.Render("Saving...")
@@ -459,12 +462,14 @@ func (m ContextModel) View() string {
 	return components.Indent(body, 1)
 }
 
+// renderAdd renders render add.
 func (m ContextModel) renderAdd() string {
 	var b strings.Builder
 	for i, f := range m.fields {
 		label := f.label
 
-		if i == fieldType {
+		switch i {
+		case fieldType:
 			// Type selector
 			if i == m.focus && m.typeSelecting {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
@@ -488,7 +493,7 @@ func (m ContextModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + contextTypes[m.typeIdx]))
 			}
-		} else if i == fieldTags {
+		case fieldTags:
 			if i == m.focus {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
@@ -498,7 +503,7 @@ func (m ContextModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderTags(false)))
 			}
-		} else if i == fieldScopes {
+		case fieldScopes:
 			if i == m.focus && m.scopeSelecting {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
@@ -512,7 +517,7 @@ func (m ContextModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderScopes(false)))
 			}
-		} else if i == fieldEntities {
+		case fieldEntities:
 			if i == m.focus {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 				b.WriteString("\n")
@@ -522,7 +527,7 @@ func (m ContextModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderLinkedEntities(false)))
 			}
-		} else if i == fieldMeta {
+		case fieldMeta:
 			if i == m.focus {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
 			} else {
@@ -531,12 +536,12 @@ func (m ContextModel) renderAdd() string {
 			b.WriteString("\n")
 			meta := renderMetadataEditorPreview(m.metaEditor.Buffer, m.metaEditor.Scopes, m.width, 6)
 			b.WriteString(NormalStyle.Render("  " + meta))
-		} else if i == m.focus {
+		case m.focus:
 			b.WriteString(SelectedStyle.Render("  " + label + ":"))
 			b.WriteString("\n")
 			b.WriteString(NormalStyle.Render("  " + f.value))
 			b.WriteString(AccentStyle.Render("█"))
-		} else {
+		default:
 			b.WriteString(MutedStyle.Render("  " + label + ":"))
 			b.WriteString("\n")
 			val := f.value
@@ -559,6 +564,7 @@ func (m ContextModel) renderAdd() string {
 	return components.TitledBox("Add Context", b.String(), m.width)
 }
 
+// renderEdit renders render edit.
 func (m ContextModel) renderEdit() string {
 	var b strings.Builder
 	for i, f := range m.contextEditFields {
@@ -663,6 +669,7 @@ func (m ContextModel) renderEdit() string {
 	return components.TitledBox("Edit Context", b.String(), m.width)
 }
 
+// renderModeLine renders render mode line.
 func (m ContextModel) renderModeLine() string {
 	add := TabInactiveStyle.Render("Add")
 	list := TabInactiveStyle.Render("Library")
@@ -681,6 +688,7 @@ func (m ContextModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m ContextModel) handleModeKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -705,6 +713,7 @@ func (m ContextModel) handleModeKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m ContextModel) toggleMode() (ContextModel, tea.Cmd) {
 	m.modeFocus = false
 	m.detail = nil
@@ -724,6 +733,7 @@ func (m ContextModel) toggleMode() (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleListKeys handles handle list keys.
 func (m ContextModel) handleListKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
@@ -759,6 +769,7 @@ func (m ContextModel) handleListKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m ContextModel) handleFilterInput(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -785,6 +796,7 @@ func (m ContextModel) handleFilterInput(msg tea.KeyMsg) (ContextModel, tea.Cmd) 
 	return m, nil
 }
 
+// handleDetailKeys handles handle detail keys.
 func (m ContextModel) handleDetailKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isUp(msg):
@@ -809,6 +821,7 @@ func (m ContextModel) handleDetailKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleEditKeys handles handle edit keys.
 func (m ContextModel) handleEditKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -938,6 +951,7 @@ func (m ContextModel) handleEditKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderList renders render list.
 func (m ContextModel) renderList() string {
 	if m.loadingList {
 		return components.Box(MutedStyle.Render("Loading context..."), m.width)
@@ -1060,6 +1074,7 @@ func (m ContextModel) renderList() string {
 	return components.TitledBox("Context", content, m.width)
 }
 
+// renderDetail renders render detail.
 func (m ContextModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -1116,6 +1131,7 @@ func (m ContextModel) renderDetail() string {
 	return strings.Join(sections, "\n\n")
 }
 
+// renderContextPreview renders render context preview.
 func (m ContextModel) renderContextPreview(k api.Context, width int) string {
 	if width <= 0 {
 		return ""
@@ -1177,6 +1193,7 @@ func (m ContextModel) renderContextPreview(k api.Context, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// startEdit handles start edit.
 func (m *ContextModel) startEdit() {
 	if m.detail == nil {
 		return
@@ -1206,6 +1223,7 @@ func (m *ContextModel) startEdit() {
 	m.editFocus = 0
 }
 
+// saveEdit handles save edit.
 func (m ContextModel) saveEdit() (ContextModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
@@ -1258,6 +1276,7 @@ func (m ContextModel) loadContextList() tea.Cmd {
 	}
 }
 
+// applyContextFilter handles apply context filter.
 func (m *ContextModel) applyContextFilter() {
 	query := strings.ToLower(strings.TrimSpace(m.filterBuf))
 	if query == "" {
@@ -1289,6 +1308,7 @@ func (m *ContextModel) applyContextFilter() {
 	}
 }
 
+// loadContextDetail loads load context detail.
 func (m ContextModel) loadContextDetail(id string) tea.Cmd {
 	return func() tea.Msg {
 		if strings.TrimSpace(id) == "" {
@@ -1306,6 +1326,7 @@ func (m ContextModel) loadContextDetail(id string) tea.Cmd {
 	}
 }
 
+// formatContextLine handles format context line.
 func formatContextLine(k api.Context) string {
 	t := components.SanitizeText(k.SourceType)
 	if t == "" {
@@ -1330,6 +1351,7 @@ func formatContextLine(k api.Context) string {
 	return line
 }
 
+// contextTitle handles context title.
 func contextTitle(k api.Context) string {
 	title := strings.TrimSpace(k.Title)
 	if title != "" {
@@ -1344,6 +1366,7 @@ func contextTitle(k api.Context) string {
 
 const maxContextNameLen = 80
 
+// truncateContextName handles truncate context name.
 func truncateContextName(s string, max int) string {
 	if max <= 0 {
 		return ""
@@ -1355,6 +1378,7 @@ func truncateContextName(s string, max int) string {
 	return string(runes[:max]) + "..."
 }
 
+// loadScopeNames loads load scope names.
 func (m ContextModel) loadScopeNames() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1372,6 +1396,7 @@ func (m ContextModel) loadScopeNames() tea.Cmd {
 	}
 }
 
+// formatContextScopes handles format context scopes.
 func (m ContextModel) formatContextScopes(ids []string) string {
 	if len(ids) == 0 {
 		return "-"
@@ -1387,6 +1412,7 @@ func (m ContextModel) formatContextScopes(ids []string) string {
 	return formatScopePreview(names)
 }
 
+// scopeNamesFromIDs handles scope names from ids.
 func (m ContextModel) scopeNamesFromIDs(ids []string) []string {
 	if len(ids) == 0 {
 		return nil
@@ -1402,6 +1428,7 @@ func (m ContextModel) scopeNamesFromIDs(ids []string) []string {
 	return names
 }
 
+// resetForm handles reset form.
 func (m *ContextModel) resetForm() {
 	m.saved = false
 	m.errText = ""
@@ -1429,6 +1456,7 @@ func (m *ContextModel) resetForm() {
 	}
 }
 
+// save handles save.
 func (m ContextModel) save() (ContextModel, tea.Cmd) {
 	title := strings.TrimSpace(m.fields[fieldTitle].value)
 	if title == "" {
@@ -1484,6 +1512,7 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 	}
 }
 
+// renderTags renders render tags.
 func (m *ContextModel) renderTags(focused bool) string {
 	if len(m.tags) == 0 && m.tagBuf == "" && !focused {
 		return "-"
@@ -1513,6 +1542,7 @@ func (m *ContextModel) renderTags(focused bool) string {
 	return b.String()
 }
 
+// renderEditTags renders render edit tags.
 func (m *ContextModel) renderEditTags(focused bool) string {
 	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
 		return "-"
@@ -1542,14 +1572,17 @@ func (m *ContextModel) renderEditTags(focused bool) string {
 	return b.String()
 }
 
+// renderScopes renders render scopes.
 func (m *ContextModel) renderScopes(focused bool) string {
 	return renderScopePills(m.scopes, focused)
 }
 
+// renderEditScopes renders render edit scopes.
 func (m *ContextModel) renderEditScopes(focused bool) string {
 	return renderScopePills(m.editScopes, focused)
 }
 
+// renderLinkedEntities renders render linked entities.
 func (m *ContextModel) renderLinkedEntities(focused bool) string {
 	if len(m.linkEntities) == 0 && !focused {
 		return "-"
@@ -1568,6 +1601,7 @@ func (m *ContextModel) renderLinkedEntities(focused bool) string {
 	return b.String()
 }
 
+// startLinkSearch handles start link search.
 func (m *ContextModel) startLinkSearch() {
 	m.linkSearching = true
 	m.linkLoading = false
@@ -1578,6 +1612,7 @@ func (m *ContextModel) startLinkSearch() {
 	}
 }
 
+// handleLinkSearch handles handle link search.
 func (m ContextModel) handleLinkSearch(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1638,6 +1673,7 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderLinkSearch renders render link search.
 func (m ContextModel) renderLinkSearch() string {
 	var b strings.Builder
 	b.WriteString(MetaKeyStyle.Render("Search") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(components.SanitizeText(m.linkQuery)))
@@ -1753,6 +1789,7 @@ func (m ContextModel) renderLinkSearch() string {
 	return components.Indent(components.TitledBox("Link Entity", b.String(), m.width), 1)
 }
 
+// renderLinkEntityPreview renders render link entity preview.
 func (m ContextModel) renderLinkEntityPreview(e api.Entity, width int) string {
 	if width <= 0 {
 		return ""
@@ -1790,6 +1827,7 @@ func (m ContextModel) renderLinkEntityPreview(e api.Entity, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// searchLinkEntities handles search link entities.
 func (m ContextModel) searchLinkEntities(query string) tea.Cmd {
 	return func() tea.Msg {
 		items, err := m.client.QueryEntities(api.QueryParams{"search_text": query})
@@ -1800,6 +1838,7 @@ func (m ContextModel) searchLinkEntities(query string) tea.Cmd {
 	}
 }
 
+// updateLinkSearch updates update link search.
 func (m *ContextModel) updateLinkSearch() tea.Cmd {
 	query := strings.TrimSpace(m.linkQuery)
 	if query == "" {
@@ -1814,6 +1853,7 @@ func (m *ContextModel) updateLinkSearch() tea.Cmd {
 	return m.searchLinkEntities(query)
 }
 
+// addLinkedEntity handles add linked entity.
 func (m *ContextModel) addLinkedEntity(entity api.Entity) {
 	for _, e := range m.linkEntities {
 		if e.ID == entity.ID {
@@ -1823,6 +1863,7 @@ func (m *ContextModel) addLinkedEntity(entity api.Entity) {
 	m.linkEntities = append(m.linkEntities, entity)
 }
 
+// commitTag handles commit tag.
 func (m *ContextModel) commitTag() {
 	raw := strings.TrimSpace(m.tagBuf)
 	if raw == "" {
@@ -1846,6 +1887,7 @@ func (m *ContextModel) commitTag() {
 	m.tagBuf = ""
 }
 
+// commitScope handles commit scope.
 func (m *ContextModel) commitScope() {
 	raw := strings.TrimSpace(m.scopeBuf)
 	if raw == "" {
@@ -1869,6 +1911,7 @@ func (m *ContextModel) commitScope() {
 	m.scopeBuf = ""
 }
 
+// commitEditTag handles commit edit tag.
 func (m *ContextModel) commitEditTag() {
 	raw := strings.TrimSpace(m.editTagBuf)
 	if raw == "" {
@@ -1892,6 +1935,7 @@ func (m *ContextModel) commitEditTag() {
 	m.editTagBuf = ""
 }
 
+// commitEditScope handles commit edit scope.
 func (m *ContextModel) commitEditScope() {
 	raw := strings.TrimSpace(m.editScopeBuf)
 	if raw == "" {
@@ -1915,6 +1959,7 @@ func (m *ContextModel) commitEditScope() {
 	m.editScopeBuf = ""
 }
 
+// normalizeTag handles normalize tag.
 func normalizeTag(s string) string {
 	s = strings.TrimSpace(s)
 	s = strings.TrimPrefix(s, "#")
@@ -1924,6 +1969,7 @@ func normalizeTag(s string) string {
 	return s
 }
 
+// normalizeScope handles normalize scope.
 func normalizeScope(s string) string {
 	s = strings.TrimSpace(s)
 	s = strings.TrimPrefix(s, "#")

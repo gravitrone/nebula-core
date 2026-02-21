@@ -73,11 +73,13 @@ func NewHistoryModel(client *api.Client) HistoryModel {
 	}
 }
 
+// Init handles init.
 func (m HistoryModel) Init() tea.Cmd {
 	m.loading = true
 	return m.loadHistory()
 }
 
+// Update updates update.
 func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case historyLoadedMsg:
@@ -158,15 +160,17 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m HistoryModel) View() string {
 	if m.filtering {
 		return components.Indent(components.InputDialog("Filter Audit Log", m.filterBuf), 1)
 	}
 	if m.loading {
 		label := "Loading history..."
-		if m.view == historyViewScopes {
+		switch m.view {
+		case historyViewScopes:
 			label = "Loading scopes..."
-		} else if m.view == historyViewActors {
+		case historyViewActors:
 			label = "Loading actors..."
 		}
 		return "  " + MutedStyle.Render(label)
@@ -189,6 +193,7 @@ func (m HistoryModel) View() string {
 	return m.renderList()
 }
 
+// canRevertAuditEntry handles can revert audit entry.
 func canRevertAuditEntry(entry *api.AuditEntry) bool {
 	if entry == nil {
 		return false
@@ -199,6 +204,7 @@ func canRevertAuditEntry(entry *api.AuditEntry) bool {
 	return strings.EqualFold(strings.TrimSpace(entry.TableName), "entities")
 }
 
+// renderRevertConfirm renders render revert confirm.
 func (m HistoryModel) renderRevertConfirm(entry api.AuditEntry) string {
 	summary := []components.TableRow{
 		{Label: "Action", Value: "Revert entity to selected audit entry"},
@@ -213,6 +219,7 @@ func (m HistoryModel) renderRevertConfirm(entry api.AuditEntry) string {
 	)
 }
 
+// confirmRevert handles confirm revert.
 func (m HistoryModel) confirmRevert() (HistoryModel, tea.Cmd) {
 	if m.detail == nil {
 		m.reverting = false
@@ -233,6 +240,7 @@ func (m HistoryModel) confirmRevert() (HistoryModel, tea.Cmd) {
 	}
 }
 
+// handleListKeys handles handle list keys.
 func (m HistoryModel) handleListKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -259,6 +267,7 @@ func (m HistoryModel) handleListKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleFilterKeys handles handle filter keys.
 func (m HistoryModel) handleFilterKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -282,6 +291,7 @@ func (m HistoryModel) handleFilterKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleScopeKeys handles handle scope keys.
 func (m HistoryModel) handleScopeKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -302,6 +312,7 @@ func (m HistoryModel) handleScopeKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleActorKeys handles handle actor keys.
 func (m HistoryModel) handleActorKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -323,6 +334,7 @@ func (m HistoryModel) handleActorKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 	return m, nil
 }
 
+// loadHistory loads load history.
 func (m HistoryModel) loadHistory() tea.Cmd {
 	filter := m.filter
 	return func() tea.Msg {
@@ -343,6 +355,7 @@ func (m HistoryModel) loadHistory() tea.Cmd {
 	}
 }
 
+// loadScopes loads load scopes.
 func (m HistoryModel) loadScopes() tea.Cmd {
 	return func() tea.Msg {
 		items, err := m.client.ListAuditScopes()
@@ -353,6 +366,7 @@ func (m HistoryModel) loadScopes() tea.Cmd {
 	}
 }
 
+// loadActors loads load actors.
 func (m HistoryModel) loadActors() tea.Cmd {
 	return func() tea.Msg {
 		items, err := m.client.ListAuditActors("")
@@ -363,6 +377,7 @@ func (m HistoryModel) loadActors() tea.Cmd {
 	}
 }
 
+// renderList renders render list.
 func (m HistoryModel) renderList() string {
 	if len(m.items) == 0 {
 		content := MutedStyle.Render("No audit entries yet.")
@@ -484,6 +499,7 @@ func (m HistoryModel) renderList() string {
 	return components.Indent(components.TitledBox("History", content, m.width), 1)
 }
 
+// renderAuditPreview renders render audit preview.
 func (m HistoryModel) renderAuditPreview(entry api.AuditEntry, width int) string {
 	if width <= 0 {
 		return ""
@@ -528,6 +544,7 @@ func (m HistoryModel) renderAuditPreview(entry api.AuditEntry, width int) string
 	return padPreviewLines(lines, width)
 }
 
+// renderScopes renders render scopes.
 func (m HistoryModel) renderScopes() string {
 	if len(m.scopes) == 0 {
 		content := MutedStyle.Render("No scopes found.")
@@ -620,6 +637,7 @@ func (m HistoryModel) renderScopes() string {
 	return components.Indent(components.TitledBox("Scopes", content, m.width), 1)
 }
 
+// renderScopePreview renders render scope preview.
 func (m HistoryModel) renderScopePreview(scope api.AuditScope, width int) string {
 	if width <= 0 {
 		return ""
@@ -647,6 +665,7 @@ func (m HistoryModel) renderScopePreview(scope api.AuditScope, width int) string
 	return padPreviewLines(lines, width)
 }
 
+// renderActors renders render actors.
 func (m HistoryModel) renderActors() string {
 	if len(m.actors) == 0 {
 		content := MutedStyle.Render("No actors found.")
@@ -739,6 +758,7 @@ func (m HistoryModel) renderActors() string {
 	return components.Indent(components.TitledBox("Actors", content, m.width), 1)
 }
 
+// renderActorPreview renders render actor preview.
 func (m HistoryModel) renderActorPreview(actor api.AuditActor, width int) string {
 	if width <= 0 {
 		return ""
@@ -761,6 +781,7 @@ func (m HistoryModel) renderActorPreview(actor api.AuditActor, width int) string
 	return padPreviewLines(lines, width)
 }
 
+// renderDetail renders render detail.
 func (m HistoryModel) renderDetail(entry api.AuditEntry) string {
 	when := formatLocalTimeFull(entry.ChangedAt)
 	actor := formatAuditActor(entry)
@@ -791,6 +812,7 @@ func (m HistoryModel) renderDetail(entry api.AuditEntry) string {
 	return components.Indent(section, 1)
 }
 
+// parseAuditFilter parses parse audit filter.
 func parseAuditFilter(input string) auditFilter {
 	filter := auditFilter{}
 	input = strings.TrimSpace(input)
@@ -824,6 +846,7 @@ func parseAuditFilter(input string) auditFilter {
 	return filter
 }
 
+// applyLocalFilters handles apply local filters.
 func (m HistoryModel) applyLocalFilters(items []api.AuditEntry) []api.AuditEntry {
 	filter := m.filter
 	if filter.actor == "" && len(filter.terms) == 0 {
@@ -855,6 +878,7 @@ func (m HistoryModel) applyLocalFilters(items []api.AuditEntry) []api.AuditEntry
 	return filtered
 }
 
+// formatAuditActor handles format audit actor.
 func formatAuditActor(entry api.AuditEntry) string {
 	if entry.ActorName != nil && *entry.ActorName != "" {
 		return *entry.ActorName
@@ -872,6 +896,7 @@ func formatAuditActor(entry api.AuditEntry) string {
 	return "system"
 }
 
+// formatAuditLine handles format audit line.
 func formatAuditLine(entry api.AuditEntry) string {
 	when := formatLocalTimeCompact(entry.ChangedAt)
 	actor := formatAuditActor(entry)
@@ -882,6 +907,7 @@ func formatAuditLine(entry api.AuditEntry) string {
 	return fmt.Sprintf("%s  %s  %s  %s", when, strings.ToUpper(action), entry.TableName, actor)
 }
 
+// formatScopeLine handles format scope line.
 func formatScopeLine(scope api.AuditScope) string {
 	desc := ""
 	if scope.Description != nil && *scope.Description != "" {
@@ -897,6 +923,7 @@ func formatScopeLine(scope api.AuditScope) string {
 	)
 }
 
+// formatActorLine handles format actor line.
 func formatActorLine(actor api.AuditActor) string {
 	name := actorDisplayName(actor)
 	when := formatLocalTimeCompact(actor.LastSeen)
@@ -909,6 +936,7 @@ func formatActorLine(actor api.AuditActor) string {
 	)
 }
 
+// actorDisplayName handles actor display name.
 func actorDisplayName(actor api.AuditActor) string {
 	if actor.ActorName != nil {
 		if name := strings.TrimSpace(*actor.ActorName); name != "" && !isUnknownLabel(name) {
@@ -927,6 +955,7 @@ func actorDisplayName(actor api.AuditActor) string {
 	return actorType
 }
 
+// isUnknownLabel handles is unknown label.
 func isUnknownLabel(value string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(strings.TrimSuffix(value, ":")))
 	switch normalized {
@@ -937,6 +966,7 @@ func isUnknownLabel(value string) bool {
 	}
 }
 
+// formatActorRef handles format actor ref.
 func formatActorRef(actor api.AuditActor) string {
 	actorType := normalizeActorType(actor.ActorType)
 	if actorType == "" {
@@ -960,6 +990,7 @@ func formatActorRef(actor api.AuditActor) string {
 	return actorType + ":" + shortID(actorID)
 }
 
+// inferActorTypeFromID handles infer actor type from id.
 func inferActorTypeFromID(actorID string) string {
 	id := strings.TrimSpace(strings.TrimSuffix(actorID, ":"))
 	if id == "" {
@@ -975,6 +1006,7 @@ func inferActorTypeFromID(actorID string) string {
 	return normalizeActorType(prefix)
 }
 
+// normalizeActorType handles normalize actor type.
 func normalizeActorType(raw string) string {
 	actorType := strings.TrimSpace(strings.TrimSuffix(raw, ":"))
 	lower := strings.ToLower(actorType)
@@ -985,6 +1017,7 @@ func normalizeActorType(raw string) string {
 	return actorType
 }
 
+// formatActorDisplay handles format actor display.
 func formatActorDisplay(actor api.AuditActor, name string) string {
 	ref := formatActorRef(actor)
 	if strings.EqualFold(strings.TrimSpace(name), strings.TrimSpace(ref)) {
@@ -993,6 +1026,7 @@ func formatActorDisplay(actor api.AuditActor, name string) string {
 	return fmt.Sprintf("%s  %s", name, ref)
 }
 
+// formatAuditFilters handles format audit filters.
 func formatAuditFilters(filter auditFilter) string {
 	parts := []string{}
 	if filter.tableName != "" {
@@ -1026,6 +1060,7 @@ func formatAuditFilters(filter auditFilter) string {
 	return "Filters:\n  " + strings.Join(parts, "\n  ")
 }
 
+// buildAuditDiffRows builds build audit diff rows.
 func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
 	keys := make([]string, 0)
 	seen := map[string]bool{}
@@ -1070,6 +1105,7 @@ func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
 	return rows
 }
 
+// formatAuditValue handles format audit value.
 func formatAuditValue(value any) string {
 	if value == nil {
 		return "None"
@@ -1112,6 +1148,7 @@ func formatAuditValue(value any) string {
 	}
 }
 
+// humanizeAuditField handles humanize audit field.
 func humanizeAuditField(raw string) string {
 	key := strings.TrimSpace(raw)
 	if key == "" {

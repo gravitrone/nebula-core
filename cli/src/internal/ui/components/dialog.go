@@ -69,6 +69,7 @@ func ConfirmPreviewDialog(title string, summary []TableRow, diffs []DiffRow, wid
 	return TitledBox(title, strings.Join(sections, "\n\n"), width)
 }
 
+// renderSummaryRows renders render summary rows.
 func renderSummaryRows(rows []TableRow, width int) string {
 	if len(rows) == 0 {
 		return ""
@@ -124,6 +125,7 @@ func renderSummaryRows(rows []TableRow, width int) string {
 	return b.String()
 }
 
+// renderDiffRows renders render diff rows.
 func renderDiffRows(rows []DiffRow, width int) string {
 	if len(rows) == 0 {
 		return ""
@@ -155,6 +157,7 @@ func renderDiffRows(rows []DiffRow, width int) string {
 	return b.String()
 }
 
+// renderDiffValue renders render diff value.
 func renderDiffValue(style lipgloss.Style, prefix, value string, valueWidth int) string {
 	safe := SanitizeText(value)
 	trimmed := strings.TrimSpace(safe)

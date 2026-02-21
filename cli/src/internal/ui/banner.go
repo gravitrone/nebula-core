@@ -59,6 +59,7 @@ func RenderBanner() string {
 	return "\n" + rendered + "\n" + subtitle + "\n" + underline + "\n"
 }
 
+// splitLines handles split lines.
 func splitLines(s string) []string {
 	var lines []string
 	start := 0

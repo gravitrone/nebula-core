@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy create_relationship_type
 INSERT INTO relationship_types (
     name,
     description,

@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy create_scope
 INSERT INTO privacy_scopes (
     name,
     description,

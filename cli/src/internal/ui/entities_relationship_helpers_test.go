@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEntitiesHandleEditScopesAndMetaSelectionHelpers handles test entities handle edit scopes and meta selection helpers.
 func TestEntitiesHandleEditScopesAndMetaSelectionHelpers(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.scopeOptions = []string{"public", "private"}
@@ -48,6 +49,7 @@ func TestEntitiesHandleEditScopesAndMetaSelectionHelpers(t *testing.T) {
 	assert.Empty(t, updated.metaSelected)
 }
 
+// TestEntitiesRelationshipRenderAndEditHelpers handles test entities relationship render and edit helpers.
 func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	now := time.Now()
 	model := NewEntitiesModel(nil)
@@ -100,6 +102,7 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	assert.Contains(t, edit, "Properties")
 }
 
+// TestEntitiesSaveRelEditSendsPatchPayload handles test entities save rel edit sends patch payload.
 func TestEntitiesSaveRelEditSendsPatchPayload(t *testing.T) {
 	now := time.Now()
 	var captured api.UpdateRelationshipInput

@@ -61,11 +61,13 @@ func NewInboxModel(client *api.Client) InboxModel {
 	}
 }
 
+// Init handles init.
 func (m InboxModel) Init() tea.Cmd {
 	m.loading = true
 	return m.loadApprovals
 }
 
+// Update updates update.
 func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case approvalsLoadedMsg:
@@ -160,6 +162,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m InboxModel) View() string {
 	if m.loading {
 		return "  " + MutedStyle.Render("Loading approvals...")
@@ -335,6 +338,7 @@ func (m InboxModel) loadApprovals() tea.Msg {
 	return approvalsLoadedMsg{items}
 }
 
+// SetPendingLimit sets set pending limit.
 func (m *InboxModel) SetPendingLimit(limit int) {
 	if limit <= 0 {
 		limit = 500
@@ -345,6 +349,7 @@ func (m *InboxModel) SetPendingLimit(limit int) {
 	m.pendingLimit = limit
 }
 
+// loadApprovalDiff loads load approval diff.
 func (m InboxModel) loadApprovalDiff(id string) tea.Cmd {
 	return func() tea.Msg {
 		diff, err := m.client.GetApprovalDiff(id)
@@ -355,6 +360,7 @@ func (m InboxModel) loadApprovalDiff(id string) tea.Cmd {
 	}
 }
 
+// approveSelected handles approve selected.
 func (m InboxModel) approveSelected() (InboxModel, tea.Cmd) {
 	ids := m.selectedIDs()
 	if len(ids) == 0 && m.detail != nil {
@@ -380,6 +386,7 @@ func (m InboxModel) approveSelected() (InboxModel, tea.Cmd) {
 	}
 }
 
+// beginApproveFlow handles begin approve flow.
 func (m InboxModel) beginApproveFlow() (InboxModel, tea.Cmd) {
 	ids := m.selectedIDs()
 	if len(ids) == 0 && m.detail != nil {
@@ -403,6 +410,7 @@ func (m InboxModel) beginApproveFlow() (InboxModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleDetailKeys handles handle detail keys.
 func (m InboxModel) handleDetailKeys(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -416,6 +424,7 @@ func (m InboxModel) handleDetailKeys(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleGrantInput handles handle grant input.
 func (m InboxModel) handleGrantInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -466,6 +475,7 @@ func (m InboxModel) handleGrantInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderGrantEditor renders render grant editor.
 func (m InboxModel) renderGrantEditor() string {
 	mode := "true"
 	if !m.grantTrusted {
@@ -485,6 +495,7 @@ func (m InboxModel) renderGrantEditor() string {
 	)
 }
 
+// handleRejectInput handles handle reject input.
 func (m InboxModel) handleRejectInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	if m.detail == nil {
 		m.rejecting = false
@@ -521,6 +532,7 @@ func (m InboxModel) handleRejectInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderDetail renders render detail.
 func (m InboxModel) renderDetail() string {
 	a := m.detail
 	var sections []string
@@ -685,6 +697,7 @@ func (m InboxModel) renderDetail() string {
 	return components.Indent(strings.Join(sections, "\n\n"), 1)
 }
 
+// formatAny handles format any.
 func formatAny(v any) string {
 	switch val := v.(type) {
 	case map[string]any:
@@ -725,6 +738,7 @@ func formatAny(v any) string {
 	}
 }
 
+// formatAnyInline handles format any inline.
 func formatAnyInline(v any) string {
 	switch val := v.(type) {
 	case nil:
@@ -750,6 +764,7 @@ func formatAnyInline(v any) string {
 	}
 }
 
+// detailLabel handles detail label.
 func detailLabel(raw string) string {
 	key := strings.TrimSpace(raw)
 	if key == "" {
@@ -783,6 +798,7 @@ func detailLabel(raw string) string {
 	return components.SanitizeOneLine(strings.Join(out, " "))
 }
 
+// formatApprovalLine handles format approval line.
 func formatApprovalLine(a api.Approval) string {
 	name := ""
 	if n, ok := a.ChangeDetails["name"]; ok {
@@ -796,6 +812,7 @@ func formatApprovalLine(a api.Approval) string {
 	)
 }
 
+// approvalTitle handles approval title.
 func approvalTitle(a api.Approval) string {
 	if v, ok := a.ChangeDetails["name"]; ok {
 		s := strings.TrimSpace(fmt.Sprintf("%v", v))
@@ -867,6 +884,7 @@ func approvalTitle(a api.Approval) string {
 	return ""
 }
 
+// humanizeApprovalType handles humanize approval type.
 func humanizeApprovalType(t string) string {
 	t = strings.TrimSpace(components.SanitizeText(t))
 	if t == "" {
@@ -882,6 +900,7 @@ func humanizeApprovalType(t string) string {
 	return strings.Join(parts, " ")
 }
 
+// renderApprovalPreview renders render approval preview.
 func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 	if width <= 0 {
 		return ""
@@ -951,6 +970,7 @@ func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// applyFilter handles apply filter.
 func (m *InboxModel) applyFilter(resetSelection bool) {
 	if resetSelection {
 		m.selected = make(map[string]bool)
@@ -967,11 +987,13 @@ func (m *InboxModel) applyFilter(resetSelection bool) {
 	m.list.SetItems(labels)
 }
 
+// selectedItem handles selected item.
 func (m *InboxModel) selectedItem() (api.Approval, bool) {
 	idx := m.list.Selected()
 	return m.itemAtFilteredIndex(idx)
 }
 
+// selectAllFiltered handles select all filtered.
 func (m *InboxModel) selectAllFiltered() {
 	for _, itemIdx := range m.filtered {
 		if itemIdx < 0 || itemIdx >= len(m.items) {
@@ -981,6 +1003,7 @@ func (m *InboxModel) selectAllFiltered() {
 	}
 }
 
+// toggleSelectAll handles toggle select all.
 func (m *InboxModel) toggleSelectAll() {
 	if len(m.filtered) == 0 {
 		return
@@ -1002,6 +1025,7 @@ func (m *InboxModel) toggleSelectAll() {
 	m.selectAllFiltered()
 }
 
+// itemAtFilteredIndex handles item at filtered index.
 func (m *InboxModel) itemAtFilteredIndex(filteredIdx int) (api.Approval, bool) {
 	if filteredIdx < 0 || filteredIdx >= len(m.filtered) {
 		return api.Approval{}, false
@@ -1013,6 +1037,7 @@ func (m *InboxModel) itemAtFilteredIndex(filteredIdx int) (api.Approval, bool) {
 	return m.items[itemIdx], true
 }
 
+// toggleSelected handles toggle selected.
 func (m *InboxModel) toggleSelected() {
 	item, ok := m.selectedItem()
 	if !ok {
@@ -1025,6 +1050,7 @@ func (m *InboxModel) toggleSelected() {
 	m.selected[item.ID] = true
 }
 
+// selectedIDs handles selected ids.
 func (m *InboxModel) selectedIDs() []string {
 	if len(m.selected) == 0 {
 		return nil
@@ -1038,10 +1064,12 @@ func (m *InboxModel) selectedIDs() []string {
 	return ids
 }
 
+// selectedCount handles selected count.
 func (m *InboxModel) selectedCount() int {
 	return len(m.selectedIDs())
 }
 
+// startReject handles start reject.
 func (m *InboxModel) startReject() (InboxModel, tea.Cmd) {
 	ids := m.selectedIDs()
 	if len(ids) > 0 {
@@ -1062,6 +1090,7 @@ func (m *InboxModel) startReject() (InboxModel, tea.Cmd) {
 	return *m, nil
 }
 
+// handleRejectPreview handles handle reject preview.
 func (m InboxModel) handleRejectPreview(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
@@ -1088,6 +1117,7 @@ func (m InboxModel) handleRejectPreview(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	return m, nil
 }
 
+// approveSummaryRows handles approve summary rows.
 func (m InboxModel) approveSummaryRows() []components.TableRow {
 	ids := m.selectedIDs()
 	if len(ids) == 0 && m.detail != nil {
@@ -1109,6 +1139,7 @@ func (m InboxModel) approveSummaryRows() []components.TableRow {
 	return rows
 }
 
+// findApprovalByID handles find approval by id.
 func (m InboxModel) findApprovalByID(id string) (api.Approval, bool) {
 	for _, item := range m.items {
 		if item.ID == id {
@@ -1118,6 +1149,7 @@ func (m InboxModel) findApprovalByID(id string) (api.Approval, bool) {
 	return api.Approval{}, false
 }
 
+// requestedScopesFromApproval handles requested scopes from approval.
 func requestedScopesFromApproval(a api.Approval) []string {
 	raw := a.ChangeDetails["requested_scopes"]
 	scopes := parseStringList(raw)
@@ -1127,6 +1159,7 @@ func requestedScopesFromApproval(a api.Approval) []string {
 	return scopes
 }
 
+// requestedRequiresApprovalFromApproval handles requested requires approval from approval.
 func requestedRequiresApprovalFromApproval(a api.Approval) bool {
 	raw, ok := a.ChangeDetails["requested_requires_approval"]
 	if !ok {
@@ -1138,6 +1171,7 @@ func requestedRequiresApprovalFromApproval(a api.Approval) bool {
 	return true
 }
 
+// parseStringList parses parse string list.
 func parseStringList(raw any) []string {
 	switch value := raw.(type) {
 	case []string:
@@ -1158,6 +1192,7 @@ func parseStringList(raw any) []string {
 	}
 }
 
+// approvalRequestedBy handles approval requested by.
 func approvalRequestedBy(a api.Approval) string {
 	requested := strings.TrimSpace(a.RequestedBy)
 	requestedByName := strings.TrimSpace(components.SanitizeOneLine(a.RequestedByName))
@@ -1177,6 +1212,7 @@ func approvalRequestedBy(a api.Approval) string {
 	return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", requestedByName, shortID(requested)))
 }
 
+// approvalWhoLabel handles approval who label.
 func approvalWhoLabel(a api.Approval) string {
 	label := strings.TrimSpace(components.SanitizeOneLine(a.RequestedByName))
 	if label != "" {
@@ -1192,6 +1228,7 @@ func approvalWhoLabel(a api.Approval) string {
 	return "system"
 }
 
+// approvalEndpointLabel handles approval endpoint label.
 func approvalEndpointLabel(details api.JSONMap, prefix string) string {
 	nameKeys := []string{
 		prefix + "_name",
@@ -1214,6 +1251,7 @@ func approvalEndpointLabel(details api.JSONMap, prefix string) string {
 	return ""
 }
 
+// parseScopesCSV parses parse scopes csv.
 func parseScopesCSV(raw string) []string {
 	parts := strings.Split(raw, ",")
 	out := make([]string, 0, len(parts))
@@ -1226,6 +1264,7 @@ func parseScopesCSV(raw string) []string {
 	return out
 }
 
+// approveDiffRows handles approve diff rows.
 func (m InboxModel) approveDiffRows() []components.DiffRow {
 	if m.detail == nil {
 		return nil
@@ -1259,6 +1298,7 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 	return rows
 }
 
+// approvalDiffValue handles approval diff value.
 func approvalDiffValue(details api.JSONMap, field string, raw any) string {
 	base := formatAny(raw)
 	if base == "None" {
@@ -1285,6 +1325,7 @@ func approvalDiffValue(details api.JSONMap, field string, raw any) string {
 	return base
 }
 
+// handleFilterInput handles handle filter input.
 func (m InboxModel) handleFilterInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1315,6 +1356,7 @@ type approvalFilter struct {
 	terms []string
 }
 
+// parseApprovalFilter parses parse approval filter.
 func parseApprovalFilter(raw string) approvalFilter {
 	filter := approvalFilter{}
 	raw = strings.TrimSpace(raw)
@@ -1339,6 +1381,7 @@ func parseApprovalFilter(raw string) approvalFilter {
 	return filter
 }
 
+// parseFilterTime parses parse filter time.
 func parseFilterTime(value string) *time.Time {
 	value = strings.TrimSpace(strings.ToLower(value))
 	now := time.Now()
@@ -1369,6 +1412,7 @@ func parseFilterTime(value string) *time.Time {
 	return nil
 }
 
+// matchesApprovalFilter handles matches approval filter.
 func matchesApprovalFilter(a api.Approval, filter approvalFilter) bool {
 	if filter.agent != "" && !strings.Contains(strings.ToLower(a.AgentName), filter.agent) {
 		return false

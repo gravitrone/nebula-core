@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEntitiesViewListRendersModeLineCountAndBulkSelection handles test entities view list renders mode line count and bulk selection.
 func TestEntitiesViewListRendersModeLineCountAndBulkSelection(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 80
@@ -36,17 +37,18 @@ func TestEntitiesViewListRendersModeLineCountAndBulkSelection(t *testing.T) {
 	assert.Contains(t, clean, "[X]")
 }
 
+// TestEntitiesViewAddSavedResetsOnEsc handles test entities view add saved resets on esc.
 func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" && r.Method == http.MethodPost {
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":   "ent-1",
 					"name": "Alpha",
 					"type": "person",
 					"tags": []string{},
 				},
-			})
+			}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -61,12 +63,12 @@ func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	assert.Equal(t, entitiesViewAdd, model.view)
 
 	// Name.
-	for _, r := range []rune("Alpha") {
+	for _, r := range "Alpha" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	// Type.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	for _, r := range []rune("person") {
+	for _, r := range "person" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -86,14 +88,15 @@ func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	assert.Empty(t, model.addFields[addFieldType].value)
 }
 
+// TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer handles test entities search input enter triggers query and resets buffer.
 func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	var searchText string
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" {
 			searchText = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{},
-			})
+			}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -117,6 +120,7 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	assert.Empty(t, model.searchBuf)
 }
 
+// TestEntitiesDetailViewRendersMetadataWhenExpanded handles test entities detail view renders metadata when expanded.
 func TestEntitiesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 80
@@ -142,6 +146,7 @@ func TestEntitiesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	assert.Contains(t, clean, "hello")
 }
 
+// TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet handles test entities selected preview formats scopes and metadata snippet.
 func TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100
@@ -174,6 +179,7 @@ func TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet(t *testing.T) {
 	assert.NotContains(t, out, "map[")
 }
 
+// TestEntitiesFormMetadataUsesStructuredPreviewTable handles test entities form metadata uses structured preview table.
 func TestEntitiesFormMetadataUsesStructuredPreviewTable(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100

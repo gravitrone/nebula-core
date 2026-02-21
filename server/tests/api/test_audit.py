@@ -7,6 +7,7 @@ import pytest
 @pytest.mark.asyncio
 async def test_list_audit_scopes(api, auth_override, enums):
     """List audit scopes."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.get("/api/audit/scopes")
@@ -18,6 +19,7 @@ async def test_list_audit_scopes(api, auth_override, enums):
 @pytest.mark.asyncio
 async def test_list_audit_actors(api, test_entity, auth_override, enums):
     """List audit actors."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.get("/api/audit/actors")
@@ -28,12 +30,18 @@ async def test_list_audit_actors(api, test_entity, auth_override, enums):
         assert row.get("changed_by_type") not in {"", "unknown", "none", "null"}
         actor_name = row.get("actor_name")
         if actor_name is not None:
-            assert str(actor_name).strip().lower() not in {"", "unknown", "none", "null"}
+            assert str(actor_name).strip().lower() not in {
+                "",
+                "unknown",
+                "none",
+                "null",
+            }
 
 
 @pytest.mark.asyncio
 async def test_list_audit_scope_filter(api, enums, test_entity, auth_override):
     """Filter audit log by scope."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     scope_id = enums.scopes.name_to_id["public"]

@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy set_scope_active
 UPDATE privacy_scopes
 SET is_active = $2
 WHERE id = $1

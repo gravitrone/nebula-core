@@ -74,6 +74,7 @@ func NewProfileModel(client *api.Client, cfg *config.Config) ProfileModel {
 	}
 }
 
+// Init handles init.
 func (m ProfileModel) Init() tea.Cmd {
 	m.loading = true
 	m.taxLoading = true
@@ -81,6 +82,7 @@ func (m ProfileModel) Init() tea.Cmd {
 	return tea.Batch(m.loadKeys, m.loadAgents, m.loadTaxonomy)
 }
 
+// Update updates update.
 func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case keysLoadedMsg:
@@ -203,10 +205,11 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			}
 		case isKey(msg, "n"):
 			m.sectionFocus = false
-			if m.section == 0 {
+			switch m.section {
+			case 0:
 				m.creating = true
 				m.createBuf = ""
-			} else if m.section == 2 {
+			case 2:
 				m.openTaxPrompt(taxPromptCreateName, "")
 			}
 		case isKey(msg, "k"):
@@ -231,12 +234,13 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			}
 		case isEnter(msg):
 			m.sectionFocus = false
-			if m.section == 1 {
+			switch m.section {
+			case 1:
 				if idx := m.agentList.Selected(); idx < len(m.agents) {
 					agent := m.agents[idx]
 					m.agentDetail = &agent
 				}
-			} else if m.section == 2 {
+			case 2:
 				item := m.selectedTaxonomy()
 				if item != nil {
 					desc := ""
@@ -296,6 +300,7 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m ProfileModel) View() string {
 	if m.loading {
 		return "  " + MutedStyle.Render("Loading profile...")
@@ -336,7 +341,8 @@ func (m ProfileModel) View() string {
 	agentsLabel := "Agents"
 	taxonomyLabel := "Taxonomy"
 	var tabs string
-	if m.section == 0 {
+	switch m.section {
+	case 0:
 		active := TabActiveStyle
 		if m.sectionFocus {
 			active = TabFocusStyle
@@ -344,7 +350,7 @@ func (m ProfileModel) View() string {
 		tabs = active.Render(keysLabel) +
 			" " + TabInactiveStyle.Render(agentsLabel) +
 			" " + TabInactiveStyle.Render(taxonomyLabel)
-	} else if m.section == 1 {
+	case 1:
 		active := TabActiveStyle
 		if m.sectionFocus {
 			active = TabFocusStyle
@@ -352,7 +358,7 @@ func (m ProfileModel) View() string {
 		tabs = TabInactiveStyle.Render(keysLabel) +
 			" " + active.Render(agentsLabel) +
 			" " + TabInactiveStyle.Render(taxonomyLabel)
-	} else {
+	default:
 		active := TabActiveStyle
 		if m.sectionFocus {
 			active = TabFocusStyle
@@ -364,11 +370,12 @@ func (m ProfileModel) View() string {
 	b.WriteString(components.CenterLine(tabs, m.width))
 	b.WriteString("\n\n")
 
-	if m.section == 0 {
+	switch m.section {
+	case 0:
 		b.WriteString(m.renderKeys())
-	} else if m.section == 1 {
+	case 1:
 		b.WriteString(m.renderAgents())
-	} else {
+	default:
 		b.WriteString(m.renderTaxonomy())
 	}
 
@@ -384,6 +391,7 @@ func (m *ProfileModel) activeList() *components.List {
 	return m.agentList
 }
 
+// loadKeys loads load keys.
 func (m ProfileModel) loadKeys() tea.Msg {
 	items, err := m.client.ListAllKeys()
 	if err != nil {
@@ -392,6 +400,7 @@ func (m ProfileModel) loadKeys() tea.Msg {
 	return keysLoadedMsg{items}
 }
 
+// loadAgents loads load agents.
 func (m ProfileModel) loadAgents() tea.Msg {
 	items, err := m.client.ListAgents("")
 	if err != nil {
@@ -400,6 +409,7 @@ func (m ProfileModel) loadAgents() tea.Msg {
 	return agentsLoadedMsg{items}
 }
 
+// handleCreateInput handles handle create input.
 func (m ProfileModel) handleCreateInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -428,6 +438,7 @@ func (m ProfileModel) handleCreateInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) 
 	return m, nil
 }
 
+// handleAPIKeyInput handles handle apikey input.
 func (m ProfileModel) handleAPIKeyInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -464,6 +475,7 @@ func (m ProfileModel) handleAPIKeyInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) 
 	return m, nil
 }
 
+// handlePendingLimitInput handles handle pending limit input.
 func (m ProfileModel) handlePendingLimitInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -502,6 +514,7 @@ func (m ProfileModel) handlePendingLimitInput(msg tea.KeyMsg) (ProfileModel, tea
 	return m, nil
 }
 
+// parsePositiveInt parses parse positive int.
 func parsePositiveInt(raw string) (int, error) {
 	n, err := strconv.Atoi(raw)
 	if err != nil {
@@ -513,6 +526,7 @@ func parsePositiveInt(raw string) (int, error) {
 	return n, nil
 }
 
+// revokeSelected handles revoke selected.
 func (m ProfileModel) revokeSelected() (ProfileModel, tea.Cmd) {
 	if idx := m.keyList.Selected(); idx < len(m.keys) {
 		id := m.keys[idx].ID
@@ -527,6 +541,7 @@ func (m ProfileModel) revokeSelected() (ProfileModel, tea.Cmd) {
 	return m, nil
 }
 
+// toggleTrust handles toggle trust.
 func (m ProfileModel) toggleTrust() (ProfileModel, tea.Cmd) {
 	if idx := m.agentList.Selected(); idx < len(m.agents) {
 		agent := m.agents[idx]
@@ -544,6 +559,7 @@ func (m ProfileModel) toggleTrust() (ProfileModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderKeys renders render keys.
 func (m ProfileModel) renderKeys() string {
 	if len(m.keys) == 0 {
 		return components.Indent(components.Box(MutedStyle.Render("No API keys."), m.width), 1)
@@ -660,6 +676,7 @@ func (m ProfileModel) renderKeys() string {
 	return components.Indent(components.TitledBox(title, content, m.width), 1)
 }
 
+// renderKeyPreview renders render key preview.
 func (m ProfileModel) renderKeyPreview(k api.APIKey, width int) string {
 	if width <= 0 {
 		return ""
@@ -697,6 +714,7 @@ func (m ProfileModel) renderKeyPreview(k api.APIKey, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// renderAgents renders render agents.
 func (m ProfileModel) renderAgents() string {
 	if len(m.agents) == 0 {
 		return components.Indent(components.Box(MutedStyle.Render("No agents registered."), m.width), 1)
@@ -813,6 +831,7 @@ func (m ProfileModel) renderAgents() string {
 	return components.Indent(components.TitledBox(title, content, m.width), 1)
 }
 
+// renderAgentPreview renders render agent preview.
 func (m ProfileModel) renderAgentPreview(a api.Agent, width int) string {
 	if width <= 0 {
 		return ""
@@ -853,6 +872,7 @@ func (m ProfileModel) renderAgentPreview(a api.Agent, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// renderAgentDetail renders render agent detail.
 func (m ProfileModel) renderAgentDetail() string {
 	if m.agentDetail == nil {
 		return ""
@@ -886,6 +906,7 @@ func (m ProfileModel) renderAgentDetail() string {
 	return components.Indent(components.Table("Agent Details", rows, m.width), 1)
 }
 
+// handleAgentDetailKeys handles handle agent detail keys.
 func (m ProfileModel) handleAgentDetailKeys(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
 	if isBack(msg) || isEnter(msg) {
 		m.agentDetail = nil
@@ -893,6 +914,7 @@ func (m ProfileModel) handleAgentDetailKeys(msg tea.KeyMsg) (ProfileModel, tea.C
 	return m, nil
 }
 
+// formatKeyLine handles format key line.
 func formatKeyLine(k api.APIKey) string {
 	prefix := components.SanitizeOneLine(k.KeyPrefix + "...")
 	owner := "-"
@@ -906,6 +928,7 @@ func formatKeyLine(k api.APIKey) string {
 	return fmt.Sprintf("%-12s  %-20s  %-5s  %s", prefix, name, k.CreatedAt.Format("01/02"), owner)
 }
 
+// formatAgentLine handles format agent line.
 func formatAgentLine(a api.Agent) string {
 	trust := "untrusted"
 	if !a.RequiresApproval {
@@ -916,6 +939,7 @@ func formatAgentLine(a api.Agent) string {
 	return fmt.Sprintf("[%s] %s (%s)", status, name, trust)
 }
 
+// maskedAPIKey handles masked apikey.
 func maskedAPIKey(key string) string {
 	key = strings.TrimSpace(key)
 	if key == "" {

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEntitiesHistoryRevertConfirmCallsAPI handles test entities history revert confirm calls api.
 func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 	now := time.Now()
 	var gotAuditID string
@@ -20,7 +21,7 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/entities/ent-1/history" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":             "audit-1",
@@ -34,13 +35,13 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 						"changed_at":     now,
 					},
 				},
-			})
+			}))
 			return
 		case r.URL.Path == "/api/entities/ent-1/revert" && r.Method == http.MethodPost:
 			var body map[string]string
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			gotAuditID = body["audit_id"]
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":     "ent-1",
 					"name":   "Reverted",
@@ -48,7 +49,7 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 					"status": "active",
 					"tags":   []string{},
 				},
-			})
+			}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -93,6 +94,7 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 	assert.Equal(t, "Reverted", model.detail.Name)
 }
 
+// TestEntitiesArchiveConfirmCallsUpdateEntity handles test entities archive confirm calls update entity.
 func TestEntitiesArchiveConfirmCallsUpdateEntity(t *testing.T) {
 	var gotStatus string
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -102,13 +104,13 @@ func TestEntitiesArchiveConfirmCallsUpdateEntity(t *testing.T) {
 			if input.Status != nil {
 				gotStatus = *input.Status
 			}
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":     "ent-1",
 				"name":   "Alpha",
 				"type":   "entity",
 				"status": gotStatus,
 				"tags":   []string{},
-			}})
+			}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -140,6 +142,7 @@ func TestEntitiesArchiveConfirmCallsUpdateEntity(t *testing.T) {
 	assert.Equal(t, "inactive", model.detail.Status)
 }
 
+// TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh handles test entities edit scopes dirty triggers bulk scopes and refresh.
 func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 	now := time.Now()
 	var bulkCalled bool
@@ -147,7 +150,7 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/entities/ent-1" && r.Method == http.MethodPatch:
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":                "ent-1",
 				"name":              "Alpha",
 				"type":              "entity",
@@ -157,16 +160,16 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 				"metadata":          map[string]any{},
 				"created_at":        now,
 				"updated_at":        now,
-			}})
+			}}))
 			return
 		case r.URL.Path == "/api/entities/bulk/scopes" && r.Method == http.MethodPost:
 			bulkCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{"updated": 1, "entity_ids": []string{"ent-1"}},
-			})
+			}))
 			return
 		case r.URL.Path == "/api/entities/ent-1" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":                "ent-1",
 				"name":              "Alpha",
 				"type":              "entity",
@@ -176,7 +179,7 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 				"metadata":          map[string]any{},
 				"created_at":        now,
 				"updated_at":        now,
-			}})
+			}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -202,6 +205,7 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 	assert.Equal(t, entitiesViewDetail, model.view)
 }
 
+// TestEntitiesRelationshipsRelateArchiveAndRelEditValidation handles test entities relationships relate archive and rel edit validation.
 func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	now := time.Now()
 	var gotCreateType string
@@ -226,18 +230,18 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/relationships/") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": relationshipList})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": relationshipList}))
 			return
 		case r.URL.Path == "/api/entities" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{"id": "ent-2", "name": "Beta", "type": "entity", "tags": []string{}},
-			}})
+			}}))
 			return
 		case r.URL.Path == "/api/relationships" && r.Method == http.MethodPost:
 			var body api.CreateRelationshipInput
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			gotCreateType = body.Type
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "rel-2"}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "rel-2"}}))
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/relationships/") && r.Method == http.MethodPatch:
 			var body api.UpdateRelationshipInput
@@ -246,7 +250,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 				gotPatchStatus = *body.Status
 			}
 			relID := strings.TrimPrefix(r.URL.Path, "/api/relationships/")
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":                relID,
 				"source_id":         "ent-1",
 				"target_id":         "ent-2",
@@ -254,7 +258,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 				"status":            gotPatchStatus,
 				"properties":        map[string]any{"note": "ok"},
 				"created_at":        now,
-			}})
+			}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -281,7 +285,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	assert.Equal(t, entitiesViewRelateSearch, model.view)
 
-	for _, r := range []rune("be") {
+	for _, r := range "be" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -293,7 +297,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, entitiesViewRelateType, model.view)
 
-	for _, r := range []rune("knows") {
+	for _, r := range "knows" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})

@@ -30,6 +30,16 @@ pytestmark = pytest.mark.integration
 
 
 async def _get_enrollment_row(db_pool, registration_id: str) -> dict:
+    """Handle get enrollment row.
+
+    Args:
+        db_pool: Input parameter for _get_enrollment_row.
+        registration_id: Input parameter for _get_enrollment_row.
+
+    Returns:
+        Result value from the operation.
+    """
+
     row = await db_pool.fetchrow(
         "SELECT * FROM agent_enrollment_sessions WHERE id = $1::uuid",
         registration_id,
@@ -346,7 +356,9 @@ async def test_enroll_approve_with_grants_applies_final_scope_and_trust(
     }
 
 
-async def test_enroll_reject_returns_reason(bootstrap_mcp_context, db_pool, test_entity):
+async def test_enroll_reject_returns_reason(
+    bootstrap_mcp_context, db_pool, test_entity
+):
     """Rejected enrollment should return reviewer reason via wait."""
 
     name = f"mcp-enroll-{uuid4().hex[:8]}"

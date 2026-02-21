@@ -21,6 +21,13 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _require_admin_scope(auth: dict, enums: EnumRegistry) -> None:
+    """Handle require admin scope.
+
+    Args:
+        auth: Input parameter for _require_admin_scope.
+        enums: Input parameter for _require_admin_scope.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -32,6 +39,13 @@ def _require_admin_scope(auth: dict, enums: EnumRegistry) -> None:
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except ValueError:
@@ -68,6 +82,7 @@ async def list_audit_log(
     Returns:
         Paginated audit log response.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
@@ -105,6 +120,7 @@ async def list_scopes(
     Returns:
         List of scopes with counts.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
@@ -128,6 +144,7 @@ async def list_actors(
     Returns:
         List of audit actors.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)

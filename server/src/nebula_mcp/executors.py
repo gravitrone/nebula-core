@@ -35,6 +35,16 @@ CYCLE_SENSITIVE_REL_TYPES = {
 
 
 def _scope_name_from_id(enums: EnumRegistry, scope_id: object) -> str:
+    """Handle scope name from id.
+
+    Args:
+        enums: Input parameter for _scope_name_from_id.
+        scope_id: Input parameter for _scope_name_from_id.
+
+    Returns:
+        Result value from the operation.
+    """
+
     try:
         resolved = UUID(str(scope_id))
     except (TypeError, ValueError):
@@ -43,6 +53,15 @@ def _scope_name_from_id(enums: EnumRegistry, scope_id: object) -> str:
 
 
 def _advisory_lock_key(*parts: str) -> int:
+    """Handle advisory lock key.
+
+    Args:
+        *parts: Input parameter for _advisory_lock_key.
+
+    Returns:
+        Result value from the operation.
+    """
+
     token = "|".join(str(part) for part in parts)
     digest = hashlib.sha256(token.encode("utf-8")).digest()
     return int.from_bytes(digest[:8], "big", signed=True)
@@ -75,6 +94,15 @@ async def execute_create_entity(
 
     async def _run(conn) -> dict:
         # Validate enums first (fail fast)
+        """Handle run.
+
+        Args:
+            conn: Input parameter for _run.
+
+        Returns:
+            Result value from the operation.
+        """
+
         status_id = require_status(payload.status, enums)
         type_id = require_entity_type(payload.type, enums)
         scope_ids = require_scopes(payload.scopes, enums)

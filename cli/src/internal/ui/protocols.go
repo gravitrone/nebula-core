@@ -132,6 +132,7 @@ func NewProtocolsModel(client *api.Client) ProtocolsModel {
 	}
 }
 
+// Init handles init.
 func (m ProtocolsModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = protocolsViewList
@@ -160,6 +161,7 @@ func (m ProtocolsModel) Init() tea.Cmd {
 	return m.loadProtocols
 }
 
+// Update updates update.
 func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case protocolsLoadedMsg:
@@ -209,6 +211,7 @@ func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m ProtocolsModel) View() string {
 	if m.addMeta.Active {
 		return m.addMeta.Render(m.width)
@@ -256,6 +259,7 @@ func (m ProtocolsModel) loadProtocols() tea.Msg {
 	return protocolsLoadedMsg{items: items}
 }
 
+// applySearch handles apply search.
 func (m *ProtocolsModel) applySearch() {
 	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
 	if query == "" {
@@ -306,6 +310,7 @@ func (m ProtocolsModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m ProtocolsModel) handleModeKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -320,6 +325,7 @@ func (m ProtocolsModel) handleModeKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m ProtocolsModel) toggleMode() (ProtocolsModel, tea.Cmd) {
 	m.modeFocus = false
 	if m.view == protocolsViewAdd {
@@ -375,6 +381,7 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m ProtocolsModel) handleFilterInput(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -397,6 +404,7 @@ func (m ProtocolsModel) handleFilterInput(msg tea.KeyMsg) (ProtocolsModel, tea.C
 	return m, nil
 }
 
+// renderList renders render list.
 func (m ProtocolsModel) renderList() string {
 	if m.loading {
 		return components.CenterLine("Loading protocols...", m.width)
@@ -526,6 +534,7 @@ func (m ProtocolsModel) renderList() string {
 	return components.TitledBox(title, content, m.width)
 }
 
+// renderProtocolPreview renders render protocol preview.
 func (m ProtocolsModel) renderProtocolPreview(p api.Protocol, width int) string {
 	if width <= 0 {
 		return ""
@@ -596,6 +605,7 @@ func (m ProtocolsModel) handleDetailKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cm
 	return m, nil
 }
 
+// renderDetail renders render detail.
 func (m ProtocolsModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -644,6 +654,7 @@ func (m ProtocolsModel) renderDetail() string {
 	return strings.Join(sections, "\n\n")
 }
 
+// loadDetailRelationships loads load detail relationships.
 func (m ProtocolsModel) loadDetailRelationships(protocolID string) tea.Cmd {
 	return func() tea.Msg {
 		rels, err := m.client.GetRelationships("protocol", protocolID)
@@ -714,10 +725,11 @@ func (m ProtocolsModel) handleAddKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) 
 	return m, nil
 }
 
+// renderAdd renders render add.
 func (m ProtocolsModel) renderAdd() string {
 	rows := make([][2]string, 0, len(m.addFields))
 	for i, f := range m.addFields {
-		value := "-"
+		var value string
 		switch i {
 		case protoFieldStatus:
 			value = protocolStatusOptions[m.addStatusIdx]
@@ -739,6 +751,7 @@ func (m ProtocolsModel) renderAdd() string {
 	return body
 }
 
+// saveAdd handles save add.
 func (m ProtocolsModel) saveAdd() (ProtocolsModel, tea.Cmd) {
 	name := strings.TrimSpace(m.addFields[protoFieldName].value)
 	if name == "" {
@@ -819,6 +832,7 @@ func (m ProtocolsModel) startEdit() {
 	m.editSaving = false
 }
 
+// handleEditKeys handles handle edit keys.
 func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -875,10 +889,11 @@ func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 	return m, nil
 }
 
+// renderEdit renders render edit.
 func (m ProtocolsModel) renderEdit() string {
 	rows := make([][2]string, 0, len(m.editFields))
 	for i, f := range m.editFields {
-		value := "-"
+		var value string
 		switch i {
 		case protoEditFieldStatus:
 			value = protocolStatusOptions[m.editStatusIdx]
@@ -896,6 +911,7 @@ func (m ProtocolsModel) renderEdit() string {
 	return renderFormGrid("Edit Protocol", rows, m.editFocus, m.width)
 }
 
+// saveEdit handles save edit.
 func (m ProtocolsModel) saveEdit() (ProtocolsModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
@@ -941,6 +957,7 @@ func (m ProtocolsModel) renderTags(tags []string, buf string) string {
 	return strings.Join(out, ", ")
 }
 
+// renderApplies renders render applies.
 func (m ProtocolsModel) renderApplies(items []string, buf string) string {
 	out := append([]string{}, items...)
 	if strings.TrimSpace(buf) != "" {
@@ -949,6 +966,7 @@ func (m ProtocolsModel) renderApplies(items []string, buf string) string {
 	return strings.Join(out, ", ")
 }
 
+// commitTag handles commit tag.
 func (m *ProtocolsModel) commitTag(addMode bool) {
 	buf := strings.TrimSpace(m.addTagBuf)
 	if !addMode {
@@ -975,6 +993,7 @@ func (m *ProtocolsModel) commitTag(addMode bool) {
 	}
 }
 
+// commitApply handles commit apply.
 func (m *ProtocolsModel) commitApply(addMode bool) {
 	buf := strings.TrimSpace(m.addApplyBuf)
 	if !addMode {
@@ -993,6 +1012,7 @@ func (m *ProtocolsModel) commitApply(addMode bool) {
 	}
 }
 
+// handleTagInput handles handle tag input.
 func (m ProtocolsModel) handleTagInput(msg tea.KeyMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
 	if isKey(msg, "backspace", "delete") {
 		if addMode {
@@ -1020,6 +1040,7 @@ func (m ProtocolsModel) handleTagInput(msg tea.KeyMsg, addMode bool) (ProtocolsM
 	return m, nil
 }
 
+// handleApplyInput handles handle apply input.
 func (m ProtocolsModel) handleApplyInput(msg tea.KeyMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
 	if isKey(msg, "backspace", "delete") {
 		if addMode {
@@ -1047,6 +1068,7 @@ func (m ProtocolsModel) handleApplyInput(msg tea.KeyMsg, addMode bool) (Protocol
 	return m, nil
 }
 
+// stringPtr handles string ptr.
 func stringPtr(s string) *string {
 	if strings.TrimSpace(s) == "" {
 		return nil
@@ -1054,6 +1076,7 @@ func stringPtr(s string) *string {
 	return &s
 }
 
+// slicePtr handles slice ptr.
 func slicePtr(items []string) *[]string {
 	if len(items) == 0 {
 		return nil

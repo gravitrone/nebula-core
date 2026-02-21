@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNewDefaultClientUsesDefaultBaseURL handles test new default client uses default base url.
 func TestNewDefaultClientUsesDefaultBaseURL(t *testing.T) {
 	var gotURL string
 	client := NewDefaultClient("nbl_testkey")

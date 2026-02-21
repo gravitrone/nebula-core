@@ -345,7 +345,9 @@ async def test_api_update_entity_denies_private_scope_for_user(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_api_bulk_update_entity_tags_denies_private_scope_for_user(db_pool, enums):
+async def test_api_bulk_update_entity_tags_denies_private_scope_for_user(
+    db_pool, enums
+):
     """Public-scoped user should not bulk-update tags on private entities."""
 
     private_entity = await _make_entity(

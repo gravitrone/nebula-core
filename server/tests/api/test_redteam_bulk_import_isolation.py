@@ -268,9 +268,7 @@ async def test_bulk_import_relationships_private_target(db_pool, enums):
 async def test_bulk_import_context_scope_escalation(db_pool, enums):
     """Agents should not bulk import context with private scopes."""
 
-    agent = await _make_agent(
-        db_pool, enums, "bulk-context-viewer", ["public"], False
-    )
+    agent = await _make_agent(db_pool, enums, "bulk-context-viewer", ["public"], False)
     app.dependency_overrides[require_auth] = _auth_override(
         agent["id"], ["public"], enums
     )
@@ -327,7 +325,9 @@ async def test_bulk_import_relationships_private_context_denied_for_agent(
     private_context = await _make_context(
         db_pool, enums, "Private Agent Context", ["sensitive"]
     )
-    public_entity = await _make_entity(db_pool, enums, "Public Agent Entity", ["public"])
+    public_entity = await _make_entity(
+        db_pool, enums, "Public Agent Entity", ["public"]
+    )
     viewer = await _make_agent(db_pool, enums, "bulk-context-linker", ["public"], False)
 
     app.dependency_overrides[require_auth] = _auth_override(
@@ -372,7 +372,9 @@ async def test_bulk_import_relationships_private_context_denied_for_agent(
 async def test_bulk_import_relationships_private_target_denied_for_user(db_pool, enums):
     """Public-scoped users should not import relationships to private entities."""
 
-    private_entity = await _make_entity(db_pool, enums, "Private User Target", ["sensitive"])
+    private_entity = await _make_entity(
+        db_pool, enums, "Private User Target", ["sensitive"]
+    )
     public_entity = await _make_entity(db_pool, enums, "Public User Source", ["public"])
     user_entity = await _make_entity(db_pool, enums, "Import User", ["public"])
 
@@ -410,11 +412,15 @@ async def test_bulk_import_relationships_private_target_denied_for_user(db_pool,
 async def test_bulk_import_relationships_private_job_denied_for_user(db_pool, enums):
     """Public-scoped users should not import relationships from private jobs."""
 
-    owner = await _make_agent(db_pool, enums, "bulk-import-job-owner", ["public"], False)
+    owner = await _make_agent(
+        db_pool, enums, "bulk-import-job-owner", ["public"], False
+    )
     private_job = await _make_job(
         db_pool, enums, "Private User Job", owner["id"], ["private"]
     )
-    public_entity = await _make_entity(db_pool, enums, "Public User Target 2", ["public"])
+    public_entity = await _make_entity(
+        db_pool, enums, "Public User Target 2", ["public"]
+    )
     user_entity = await _make_entity(db_pool, enums, "Import User 2", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(
@@ -456,7 +462,9 @@ async def test_bulk_import_relationships_private_source_context_denied_for_user(
     private_context = await _make_context(
         db_pool, enums, "Private User Source Context", ["sensitive"]
     )
-    public_entity = await _make_entity(db_pool, enums, "Public User Target 3", ["public"])
+    public_entity = await _make_entity(
+        db_pool, enums, "Public User Target 3", ["public"]
+    )
     user_entity = await _make_entity(db_pool, enums, "Import User 3", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(
@@ -495,7 +503,9 @@ async def test_bulk_import_relationships_private_target_context_denied_for_user(
 ):
     """Public users should not import relationships to private context nodes."""
 
-    public_entity = await _make_entity(db_pool, enums, "Public User Source 4", ["public"])
+    public_entity = await _make_entity(
+        db_pool, enums, "Public User Source 4", ["public"]
+    )
     private_context = await _make_context(
         db_pool, enums, "Private User Target Context", ["private"]
     )

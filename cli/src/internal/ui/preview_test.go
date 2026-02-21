@@ -7,6 +7,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
+// TestFormatScopePreview handles test format scope preview.
 func TestFormatScopePreview(t *testing.T) {
 	got := formatScopePreview([]string{"public", "admin"})
 	want := "[public] [admin]"
@@ -19,6 +20,7 @@ func TestFormatScopePreview(t *testing.T) {
 	}
 }
 
+// TestRenderPreviewRowScopesSupportsCommaAndBracketFormats handles test render preview row scopes supports comma and bracket formats.
 func TestRenderPreviewRowScopesSupportsCommaAndBracketFormats(t *testing.T) {
 	row := renderPreviewRow("Scopes", "public, admin", 80)
 	clean := components.SanitizeText(row)

@@ -11,15 +11,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestClientConcurrentMutations handles test client concurrent mutations.
 func TestClientConcurrentMutations(t *testing.T) {
 	var count atomic.Int32
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/api/entities" {
 			var body CreateEntityInput
-			json.NewDecoder(r.Body).Decode(&body)
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			assert.Equal(t, "stress-entity", body.Name)
 			count.Add(1)
-			w.Write(jsonResponse(map[string]any{"id": "ent-1", "name": body.Name}))
+			_, err := w.Write(jsonResponse(map[string]any{"id": "ent-1", "name": body.Name}))
+			require.NoError(t, err)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -49,21 +51,25 @@ func TestClientConcurrentMutations(t *testing.T) {
 	assert.Equal(t, int32(workers), count.Load())
 }
 
+// TestClientHandlesMalformedJSON handles test client handles malformed json.
 func TestClientHandlesMalformedJSON(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("not-json"))
+		_, err := w.Write([]byte("not-json"))
+		require.NoError(t, err)
 	})
 
 	_, err := client.GetEntity("ent-1")
 	require.Error(t, err)
 }
 
+// TestClientUnicodePayload handles test client unicode payload.
 func TestClientUnicodePayload(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		var body CreateContextInput
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "🚀", body.Metadata["emoji"])
-		w.Write(jsonResponse(map[string]any{"id": "k-1", "name": body.Title}))
+		_, err := w.Write(jsonResponse(map[string]any{"id": "k-1", "name": body.Title}))
+		require.NoError(t, err)
 	})
 
 	_, err := client.CreateContext(CreateContextInput{

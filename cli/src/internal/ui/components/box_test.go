@@ -8,12 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestBoxWidthBounds handles test box width bounds.
 func TestBoxWidthBounds(t *testing.T) {
 	assert.Equal(t, 40, boxWidth(10))
 	assert.Equal(t, 194, boxWidth(200))
 	assert.Equal(t, 94, boxWidth(100))
 }
 
+// TestBoxNarrowTerminalClampsWidth handles test box narrow terminal clamps width.
 func TestBoxNarrowTerminalClampsWidth(t *testing.T) {
 	out := TitledBox("Inbox", "line", 20)
 	overflow := false
@@ -26,21 +28,25 @@ func TestBoxNarrowTerminalClampsWidth(t *testing.T) {
 	assert.False(t, overflow)
 }
 
+// TestTitledBoxIncludesTitle handles test titled box includes title.
 func TestTitledBoxIncludesTitle(t *testing.T) {
 	out := TitledBox("My Title", "Content", 80)
 	assert.True(t, strings.Contains(out, "My Title"))
 }
 
+// TestTitledBoxEmptyTitleFallsBack handles test titled box empty title falls back.
 func TestTitledBoxEmptyTitleFallsBack(t *testing.T) {
 	out := TitledBox("", "Content", 80)
 	assert.True(t, strings.Contains(out, "Content"))
 }
 
+// TestErrorBoxIncludesMessage handles test error box includes message.
 func TestErrorBoxIncludesMessage(t *testing.T) {
 	out := ErrorBox("Error", "Something broke", 80)
 	assert.True(t, strings.Contains(out, "Something broke"))
 }
 
+// TestEmptyStateBoxIncludesActions handles test empty state box includes actions.
 func TestEmptyStateBoxIncludesActions(t *testing.T) {
 	out := EmptyStateBox("Entities", "No entities found.", []string{"Press n to create", "Press / to search"}, 80)
 	clean := SanitizeText(out)
@@ -52,6 +58,7 @@ func TestEmptyStateBoxIncludesActions(t *testing.T) {
 	assert.Contains(t, clean, "Press / to search")
 }
 
+// TestTruncateRunes handles test truncate runes.
 func TestTruncateRunes(t *testing.T) {
 	assert.Equal(t, "", truncateRunes("hello", 0))
 	assert.Equal(t, "he", truncateRunes("hello", 2))
@@ -73,6 +80,7 @@ func TestTableClampsLongValues(t *testing.T) {
 	}
 }
 
+// TestActiveBoxClampsWidth handles test active box clamps width.
 func TestActiveBoxClampsWidth(t *testing.T) {
 	out := ActiveBox("hello\nworld", 40)
 	for _, line := range strings.Split(out, "\n") {
@@ -80,6 +88,7 @@ func TestActiveBoxClampsWidth(t *testing.T) {
 	}
 }
 
+// TestInfoRowSanitizesLabelAndValue handles test info row sanitizes label and value.
 func TestInfoRowSanitizesLabelAndValue(t *testing.T) {
 	out := InfoRow("na\u202Eme\x1b]0;evil\x07", "va\x1b[2Jlu\u202Ee")
 	assert.NotContains(t, out, "\u202E")
@@ -90,6 +99,7 @@ func TestInfoRowSanitizesLabelAndValue(t *testing.T) {
 	assert.Contains(t, clean, "name: value")
 }
 
+// TestIndentPreservesLineCountAndAddsPadding handles test indent preserves line count and adds padding.
 func TestIndentPreservesLineCountAndAddsPadding(t *testing.T) {
 	src := "a\nb\nc"
 	out := Indent(src, 2)
@@ -100,12 +110,14 @@ func TestIndentPreservesLineCountAndAddsPadding(t *testing.T) {
 	}
 }
 
+// TestCenterLineAddsLeftPadding handles test center line adds left padding.
 func TestCenterLineAddsLeftPadding(t *testing.T) {
 	out := CenterLine("hi", 80)
 	pad := (safeBoxWidth(80) - lipgloss.Width("hi")) / 2
 	assert.True(t, strings.HasPrefix(out, strings.Repeat(" ", pad)))
 }
 
+// TestDiffTableRendersMultilineValuesAndSanitizes handles test diff table renders multiline values and sanitizes.
 func TestDiffTableRendersMultilineValuesAndSanitizes(t *testing.T) {
 	out := DiffTable("Changes", []DiffRow{
 		{
@@ -132,6 +144,7 @@ func TestDiffTableRendersMultilineValuesAndSanitizes(t *testing.T) {
 	}
 }
 
+// TestMetadataTableRendersNestedStructures handles test metadata table renders nested structures.
 func TestMetadataTableRendersNestedStructures(t *testing.T) {
 	out := MetadataTable(map[string]any{
 		"b": "two",
@@ -146,12 +159,14 @@ func TestMetadataTableRendersNestedStructures(t *testing.T) {
 	assert.Contains(t, clean, "nested:")
 }
 
+// TestRenderMetadataLinesSortsKeys handles test render metadata lines sorts keys.
 func TestRenderMetadataLinesSortsKeys(t *testing.T) {
 	lines := renderMetadataLines(map[string]any{"b": 1, "a": 2}, 0)
 	assert.GreaterOrEqual(t, len(lines), 2)
 	assert.True(t, strings.HasPrefix(lines[0], "a:"))
 }
 
+// TestFormatMetadataValueEncodesMapsInArrays handles test format metadata value encodes maps in arrays.
 func TestFormatMetadataValueEncodesMapsInArrays(t *testing.T) {
 	val := formatMetadataValue([]any{
 		map[string]any{"a": 1},
@@ -161,17 +176,20 @@ func TestFormatMetadataValueEncodesMapsInArrays(t *testing.T) {
 	assert.Contains(t, val, "x")
 }
 
+// TestMaxIntReturnsLarger handles test max int returns larger.
 func TestMaxIntReturnsLarger(t *testing.T) {
 	assert.Equal(t, 2, maxInt(1, 2))
 	assert.Equal(t, 2, maxInt(2, 1))
 }
 
+// TestClampTextWidthEllipsisHandlesTightWidths handles test clamp text width ellipsis handles tight widths.
 func TestClampTextWidthEllipsisHandlesTightWidths(t *testing.T) {
 	assert.Equal(t, "", ClampTextWidthEllipsis("hello", 0))
 	assert.Equal(t, "he", ClampTextWidthEllipsis("hello", 2))
 	assert.Equal(t, "hel...", ClampTextWidthEllipsis("hello world", 6))
 }
 
+// TestTitledBoxWithHeaderStyleRendersCustomTitle handles test titled box with header style renders custom title.
 func TestTitledBoxWithHeaderStyleRendersCustomTitle(t *testing.T) {
 	header := lipgloss.NewStyle().Bold(true)
 	out := TitledBoxWithHeaderStyle("Custom Header", "body", 70, header)
@@ -180,6 +198,7 @@ func TestTitledBoxWithHeaderStyleRendersCustomTitle(t *testing.T) {
 	assert.Contains(t, clean, "body")
 }
 
+// TestParseMetadataScopesInlineHandlesSupportedShapes handles test parse metadata scopes inline handles supported shapes.
 func TestParseMetadataScopesInlineHandlesSupportedShapes(t *testing.T) {
 	assert.Equal(t, "public, private", parseMetadataScopesInline([]string{"public", "private"}))
 	assert.Equal(t, "public, admin", parseMetadataScopesInline([]any{"public", "admin"}))

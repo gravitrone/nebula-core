@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestFormatEntityLineTruncatesLongNames handles test format entity line truncates long names.
 func TestFormatEntityLineTruncatesLongNames(t *testing.T) {
 	longName := strings.Repeat("a", maxEntityNameLen+10)
 
@@ -30,22 +31,27 @@ func TestFormatEntityLineTruncatesLongNames(t *testing.T) {
 
 var ansiRegexp = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
+// stripANSI handles strip ansi.
 func stripANSI(s string) string {
 	return ansiRegexp.ReplaceAllString(s, "")
 }
 
+// testEntitiesClient handles test entities client.
 func testEntitiesClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestEntitiesSaveEditCallsUpdate handles test entities save edit calls update.
 func TestEntitiesSaveEditCallsUpdate(t *testing.T) {
 	var captured api.UpdateEntityInput
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/entities/") && r.Method == http.MethodPatch {
-			json.NewDecoder(r.Body).Decode(&captured)
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-1", "name": "Test", "tags": []string{"alpha"}}})
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&captured))
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{"id": "ent-1", "name": "Test", "tags": []string{"alpha"}},
+			}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -68,6 +74,7 @@ func TestEntitiesSaveEditCallsUpdate(t *testing.T) {
 	}
 }
 
+// TestEntitiesEditHeaderSanitized handles test entities edit header sanitized.
 func TestEntitiesEditHeaderSanitized(t *testing.T) {
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -83,12 +90,13 @@ func TestEntitiesEditHeaderSanitized(t *testing.T) {
 	assert.NotContains(t, rendered, "\u202E")
 }
 
+// TestEntitiesCreateRelationshipCommand handles test entities create relationship command.
 func TestEntitiesCreateRelationshipCommand(t *testing.T) {
 	var captured api.CreateRelationshipInput
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/relationships" && r.Method == http.MethodPost {
-			json.NewDecoder(r.Body).Decode(&captured)
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "rel-1"}})
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&captured))
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "rel-1"}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -108,6 +116,7 @@ func TestEntitiesCreateRelationshipCommand(t *testing.T) {
 	assert.Equal(t, "knows", captured.Type)
 }
 
+// TestTruncateStringEdges handles test truncate string edges.
 func TestTruncateStringEdges(t *testing.T) {
 	assert.Equal(t, "", truncateString("hello", 0))
 	assert.Equal(t, "", truncateString("hello", -1))
@@ -116,12 +125,13 @@ func TestTruncateStringEdges(t *testing.T) {
 	assert.Equal(t, "你...", truncateString("你好世界", 1))
 }
 
+// TestEntitiesLiveSearchTriggersQuery handles test entities live search triggers query.
 func TestEntitiesLiveSearchTriggersQuery(t *testing.T) {
 	var searchText string
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" {
 			searchText = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "ent-1", "name": "alpha", "tags": []string{}}}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "ent-1", "name": "alpha", "tags": []string{}}}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -140,6 +150,7 @@ func TestEntitiesLiveSearchTriggersQuery(t *testing.T) {
 	assert.Equal(t, "a", model.searchBuf)
 }
 
+// TestNormalizeEntityNameType handles test normalize entity name type.
 func TestNormalizeEntityNameType(t *testing.T) {
 	name, typ := normalizeEntityNameType("[organization] OpenAI", "")
 	assert.Equal(t, "OpenAI", name)
@@ -154,14 +165,15 @@ func TestNormalizeEntityNameType(t *testing.T) {
 	assert.Equal(t, "person", typ)
 }
 
+// TestEntitiesSearchSuggest handles test entities search suggest.
 func TestEntitiesSearchSuggest(t *testing.T) {
 	var searchText string
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" {
 			searchText = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{"id": "ent-1", "name": "alxx", "type": "person", "tags": []string{}},
-			}})
+			}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -180,12 +192,13 @@ func TestEntitiesSearchSuggest(t *testing.T) {
 	assert.Equal(t, "alxx", model.searchSuggest)
 }
 
+// TestEntitiesSearchSuggestTabAccepts handles test entities search suggest tab accepts.
 func TestEntitiesSearchSuggestTabAccepts(t *testing.T) {
 	var searchText string
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" {
 			searchText = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -205,6 +218,7 @@ func TestEntitiesSearchSuggestTabAccepts(t *testing.T) {
 	assert.Equal(t, "alxx", searchText)
 }
 
+// TestEntityHistoryRevertFlow handles test entity history revert flow.
 func TestEntityHistoryRevertFlow(t *testing.T) {
 	historyCalled := false
 	revertCalled := false
@@ -212,7 +226,7 @@ func TestEntityHistoryRevertFlow(t *testing.T) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/entities/ent-1/history"):
 			historyCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":             "audit-1",
@@ -223,17 +237,17 @@ func TestEntityHistoryRevertFlow(t *testing.T) {
 						"changed_at":     "2026-02-09T00:00:00Z",
 					},
 				},
-			})
+			}))
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/entities/ent-1/revert"):
 			revertCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":   "ent-1",
 					"name": "Restored",
 					"tags": []string{},
 				},
-			})
+			}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -267,6 +281,7 @@ func TestEntityHistoryRevertFlow(t *testing.T) {
 	assert.Equal(t, "Restored", model.detail.Name)
 }
 
+// TestParseBulkInput handles test parse bulk input.
 func TestParseBulkInput(t *testing.T) {
 	spec, err := parseBulkInput("add:alpha, beta")
 	require.NoError(t, err)
@@ -284,6 +299,7 @@ func TestParseBulkInput(t *testing.T) {
 	assert.Empty(t, spec.values)
 }
 
+// TestNormalizeBulkTags handles test normalize bulk tags.
 func TestNormalizeBulkTags(t *testing.T) {
 	out := normalizeBulkTags([]string{" Foo", "foo", "Bar-Baz", "bar_baz"})
 	assert.Equal(t, []string{"foo", "bar-baz"}, out)

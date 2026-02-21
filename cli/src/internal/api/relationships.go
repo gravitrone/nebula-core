@@ -12,6 +12,7 @@ func (c *Client) CreateRelationship(input CreateRelationshipInput) (*Relationshi
 	return decodeOne[Relationship](data)
 }
 
+// GetRelationships gets get relationships.
 func (c *Client) GetRelationships(sourceType, sourceID string) ([]Relationship, error) {
 	data, err := c.get(fmt.Sprintf("/api/relationships/%s/%s", sourceType, sourceID))
 	if err != nil {
@@ -20,6 +21,7 @@ func (c *Client) GetRelationships(sourceType, sourceID string) ([]Relationship, 
 	return decodeList[Relationship](data)
 }
 
+// QueryRelationships handles query relationships.
 func (c *Client) QueryRelationships(params QueryParams) ([]Relationship, error) {
 	data, err := c.get(buildQuery("/api/relationships", params))
 	if err != nil {
@@ -28,6 +30,7 @@ func (c *Client) QueryRelationships(params QueryParams) ([]Relationship, error) 
 	return decodeList[Relationship](data)
 }
 
+// UpdateRelationship updates update relationship.
 func (c *Client) UpdateRelationship(id string, input UpdateRelationshipInput) (*Relationship, error) {
 	data, err := c.patch(fmt.Sprintf("/api/relationships/%s", id), input)
 	if err != nil {

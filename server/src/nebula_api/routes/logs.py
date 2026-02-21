@@ -25,6 +25,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -35,6 +45,18 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 
 async def _log_visible(pool: Any, enums: Any, auth: dict, log_id: str) -> bool:
+    """Handle log visible.
+
+    Args:
+        pool: Input parameter for _log_visible.
+        enums: Input parameter for _log_visible.
+        auth: Input parameter for _log_visible.
+        log_id: Input parameter for _log_visible.
+
+    Returns:
+        Result value from the operation.
+    """
+
     log_id = str(log_id)
     if _is_admin(auth, enums):
         return True

@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy list_relationship_types
 SELECT
     id,
     name,

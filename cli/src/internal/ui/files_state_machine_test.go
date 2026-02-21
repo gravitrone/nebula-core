@@ -14,18 +14,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testFilesClient handles test files client.
 func testFilesClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestFilesInitLoadsFilesAndScopes handles test files init loads files and scopes.
 func TestFilesInitLoadsFilesAndScopes(t *testing.T) {
 	now := time.Now()
 	_, client := testFilesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/files") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "file-1",
@@ -38,10 +40,10 @@ func TestFilesInitLoadsFilesAndScopes(t *testing.T) {
 						"updated_at": now,
 					},
 				},
-			})
+			}))
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":            "scope-1",
@@ -52,7 +54,7 @@ func TestFilesInitLoadsFilesAndScopes(t *testing.T) {
 						"context_count": 0,
 					},
 				},
-			})
+			}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -75,6 +77,7 @@ func TestFilesInitLoadsFilesAndScopes(t *testing.T) {
 	assert.Contains(t, model.scopeOptions, "public")
 }
 
+// TestFilesAddValidationErrorOnEmpty handles test files add validation error on empty.
 func TestFilesAddValidationErrorOnEmpty(t *testing.T) {
 	_, client := testFilesClient(t, func(w http.ResponseWriter, r *http.Request) {})
 	model := NewFilesModel(client)
@@ -84,12 +87,13 @@ func TestFilesAddValidationErrorOnEmpty(t *testing.T) {
 	assert.Equal(t, "Filename is required", model.addErr)
 }
 
+// TestFilesUpdateHandlesAPIError handles test files update handles apierror.
 func TestFilesUpdateHandlesAPIError(t *testing.T) {
 	now := time.Now()
 	_, client := testFilesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/files") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "file-1",
@@ -102,16 +106,16 @@ func TestFilesUpdateHandlesAPIError(t *testing.T) {
 						"updated_at": now,
 					},
 				},
-			})
+			}))
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/files/") && r.Method == http.MethodPatch:
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"error": map[string]any{"code": "FAIL", "message": "nope"},
-			})
+			}))
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)

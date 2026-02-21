@@ -14,6 +14,19 @@ pytestmark = pytest.mark.integration
 
 
 async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str], summary: str):
+    """Handle insert entity.
+
+    Args:
+        db_pool: Input parameter for _insert_entity.
+        enums: Input parameter for _insert_entity.
+        name: Input parameter for _insert_entity.
+        scopes: Input parameter for _insert_entity.
+        summary: Input parameter for _insert_entity.
+
+    Returns:
+        Result value from the operation.
+    """
+
     status_id = enums.statuses.name_to_id["active"]
     type_id = enums.entity_types.name_to_id["project"]
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
@@ -36,6 +49,19 @@ async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str], summar
 async def _insert_context(
     db_pool, enums, *, title: str, scopes: list[str], content: str
 ):
+    """Handle insert context.
+
+    Args:
+        db_pool: Input parameter for _insert_context.
+        enums: Input parameter for _insert_context.
+        title: Input parameter for _insert_context.
+        scopes: Input parameter for _insert_context.
+        content: Input parameter for _insert_context.
+
+    Returns:
+        Result value from the operation.
+    """
+
     status_id = enums.statuses.name_to_id["active"]
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
@@ -82,7 +108,9 @@ async def test_semantic_search_tool_happy_path(mock_mcp_context, db_pool, enums)
     assert context_id in ids
 
 
-async def test_semantic_search_tool_scope_enforced(untrusted_mcp_context, db_pool, enums):
+async def test_semantic_search_tool_scope_enforced(
+    untrusted_mcp_context, db_pool, enums
+):
     """MCP semantic search should not return nodes outside agent scopes."""
 
     public_id = await _insert_entity(
@@ -113,4 +141,3 @@ def test_semantic_search_tool_rejects_invalid_query():
 
     with pytest.raises(ValidationError):
         SemanticSearchInput(query=" ")
-

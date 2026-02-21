@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestInboxDetailViewRendersSummaryDiffAndNestedObjects handles test inbox detail view renders summary diff and nested objects.
 func TestInboxDetailViewRendersSummaryDiffAndNestedObjects(t *testing.T) {
 	now := time.Now()
 	jobID := "job-1"
@@ -70,6 +71,7 @@ func TestInboxDetailViewRendersSummaryDiffAndNestedObjects(t *testing.T) {
 	assert.Contains(t, out, "founder")
 }
 
+// TestInboxFilterInputAppliesAndClears handles test inbox filter input applies and clears.
 func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 	now := time.Now()
 	model := NewInboxModel(nil)
@@ -104,7 +106,7 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 
 	// Start filtering and type a filter.
 	model.filtering = true
-	for _, r := range []rune("agent:openai") {
+	for _, r := range "agent:openai" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	assert.Equal(t, "agent:openai", model.filterBuf)
@@ -123,6 +125,7 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 	assert.Len(t, model.filtered, 2)
 }
 
+// TestInboxDetailUsesRelationshipEndpointNames handles test inbox detail uses relationship endpoint names.
 func TestInboxDetailUsesRelationshipEndpointNames(t *testing.T) {
 	now := time.Now()
 	sourceID := "11111111-1111-1111-1111-111111111111"
@@ -166,6 +169,7 @@ func TestInboxDetailUsesRelationshipEndpointNames(t *testing.T) {
 	assert.NotContains(t, out, shortID(targetID))
 }
 
+// TestInboxBulkScopePreviewUsesEntityNames handles test inbox bulk scope preview uses entity names.
 func TestInboxBulkScopePreviewUsesEntityNames(t *testing.T) {
 	now := time.Now()
 	entityID := "33333333-3333-3333-3333-333333333333"

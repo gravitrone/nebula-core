@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestUpdateJobEncodesBodyAndDecodesResponse handles test update job encodes body and decodes response.
 func TestUpdateJobEncodesBodyAndDecodesResponse(t *testing.T) {
 	now := time.Now()
 	title := "Updated Title"
@@ -22,7 +23,7 @@ func TestUpdateJobEncodesBodyAndDecodesResponse(t *testing.T) {
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, title, body["title"])
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":          "job-1",
 			"title":       title,
 			"description": nil,
@@ -32,6 +33,7 @@ func TestUpdateJobEncodesBodyAndDecodesResponse(t *testing.T) {
 			"created_at":  now,
 			"updated_at":  now,
 		}))
+		require.NoError(t, err)
 	})
 
 	out, err := client.UpdateJob("job-1", UpdateJobInput{Title: &title})
@@ -41,6 +43,7 @@ func TestUpdateJobEncodesBodyAndDecodesResponse(t *testing.T) {
 	assert.Equal(t, title, out.Title)
 }
 
+// TestGetContextDecodesResponse handles test get context decodes response.
 func TestGetContextDecodesResponse(t *testing.T) {
 	now := time.Now()
 
@@ -48,7 +51,7 @@ func TestGetContextDecodesResponse(t *testing.T) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/api/context/kn-1", r.URL.Path)
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":          "kn-1",
 			"name":        "Doc",
 			"source_type": "note",
@@ -58,6 +61,7 @@ func TestGetContextDecodesResponse(t *testing.T) {
 			"created_at":  now,
 			"updated_at":  now,
 		}))
+		require.NoError(t, err)
 	})
 
 	out, err := client.GetContext("kn-1")
@@ -67,6 +71,7 @@ func TestGetContextDecodesResponse(t *testing.T) {
 	assert.Equal(t, "Doc", out.Name)
 }
 
+// TestUpdateContextEncodesBodyAndDecodesResponse handles test update context encodes body and decodes response.
 func TestUpdateContextEncodesBodyAndDecodesResponse(t *testing.T) {
 	now := time.Now()
 	title := "New Title"
@@ -79,7 +84,7 @@ func TestUpdateContextEncodesBodyAndDecodesResponse(t *testing.T) {
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, title, body["title"])
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":          "kn-1",
 			"name":        "New Title",
 			"source_type": "note",
@@ -89,6 +94,7 @@ func TestUpdateContextEncodesBodyAndDecodesResponse(t *testing.T) {
 			"created_at":  now,
 			"updated_at":  now,
 		}))
+		require.NoError(t, err)
 	})
 
 	out, err := client.UpdateContext("kn-1", UpdateContextInput{

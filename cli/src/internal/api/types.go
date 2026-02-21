@@ -20,6 +20,7 @@ type apiErr struct {
 // JSONMap handles JSONB fields that asyncpg may return as strings.
 type JSONMap map[string]any
 
+// UnmarshalJSON handles unmarshal json.
 func (j *JSONMap) UnmarshalJSON(data []byte) error {
 	// Try as object first
 	var m map[string]any
@@ -355,17 +356,17 @@ type UpdateJobInput struct {
 
 // Approval represents a request requiring human intervention.
 type Approval struct {
-	ID            string    `json:"id"`
-	JobID         *string   `json:"job_id"`
-	RequestType   string    `json:"request_type"`
-	RequestedBy   string    `json:"requested_by"`
-	RequestedByName string  `json:"requested_by_name"`
-	AgentName     string    `json:"agent_name"`
-	ChangeDetails JSONMap   `json:"change_details"`
-	ReviewDetails JSONMap   `json:"review_details"`
-	Status        string    `json:"status"`
-	Notes         *string   `json:"review_notes"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID              string    `json:"id"`
+	JobID           *string   `json:"job_id"`
+	RequestType     string    `json:"request_type"`
+	RequestedBy     string    `json:"requested_by"`
+	RequestedByName string    `json:"requested_by_name"`
+	AgentName       string    `json:"agent_name"`
+	ChangeDetails   JSONMap   `json:"change_details"`
+	ReviewDetails   JSONMap   `json:"review_details"`
+	Status          string    `json:"status"`
+	Notes           *string   `json:"review_notes"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 // ApproveRequestInput defines optional reviewer grants for approval execution.

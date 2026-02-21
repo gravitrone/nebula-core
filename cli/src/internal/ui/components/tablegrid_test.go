@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestFitGridColumnsPrefersShrinkingWideColumns handles test fit grid columns prefers shrinking wide columns.
 func TestFitGridColumnsPrefersShrinkingWideColumns(t *testing.T) {
 	columns := []TableColumn{
 		{Header: "Rel", Width: 12, Align: lipgloss.Left},
@@ -25,6 +26,7 @@ func TestFitGridColumnsPrefersShrinkingWideColumns(t *testing.T) {
 	assert.Equal(t, 11, fitted[3].Width, "time column should remain readable")
 }
 
+// TestFitGridColumnsPinsWideTimestampColumnsBeforeTitle handles test fit grid columns pins wide timestamp columns before title.
 func TestFitGridColumnsPinsWideTimestampColumnsBeforeTitle(t *testing.T) {
 	columns := []TableColumn{
 		{Header: "Title", Width: 48, Align: lipgloss.Left},
@@ -40,6 +42,7 @@ func TestFitGridColumnsPinsWideTimestampColumnsBeforeTitle(t *testing.T) {
 	assert.Equal(t, 15, fitted[3].Width, "timestamp column should remain fully readable")
 }
 
+// TestShrinkColumnsStopsAtMinimums handles test shrink columns stops at minimums.
 func TestShrinkColumnsStopsAtMinimums(t *testing.T) {
 	columns := []TableColumn{
 		{Header: "A", Width: 4},
@@ -51,6 +54,7 @@ func TestShrinkColumnsStopsAtMinimums(t *testing.T) {
 	assert.Equal(t, 4, columns[1].Width)
 }
 
+// TestTableGridWithActiveRowClampsWidthAndRendersRows handles test table grid with active row clamps width and renders rows.
 func TestTableGridWithActiveRowClampsWidthAndRendersRows(t *testing.T) {
 	columns := []TableColumn{
 		{Header: "Name", Width: 16, Align: lipgloss.Left},
@@ -69,6 +73,7 @@ func TestTableGridWithActiveRowClampsWidthAndRendersRows(t *testing.T) {
 	}
 }
 
+// TestRenderGridCellAlignModes handles test render grid cell align modes.
 func TestRenderGridCellAlignModes(t *testing.T) {
 	left := renderGridCell("x", 6, lipgloss.Left)
 	right := renderGridCell("x", 6, lipgloss.Right)
@@ -82,6 +87,7 @@ func TestRenderGridCellAlignModes(t *testing.T) {
 	assert.True(t, strings.HasPrefix(center, " "))
 }
 
+// TestHighlightSelectionMarkersStylesKnownTokens handles test highlight selection markers styles known tokens.
 func TestHighlightSelectionMarkersStylesKnownTokens(t *testing.T) {
 	out := highlightSelectionMarkers(" [X] row [x] ")
 	clean := SanitizeText(out)
@@ -89,6 +95,7 @@ func TestHighlightSelectionMarkersStylesKnownTokens(t *testing.T) {
 	assert.Contains(t, clean, "[x]")
 }
 
+// TestTableGridWrapperRendersSameContract handles test table grid wrapper renders same contract.
 func TestTableGridWrapperRendersSameContract(t *testing.T) {
 	columns := []TableColumn{
 		{Header: "Name", Width: 12, Align: lipgloss.Left},
@@ -102,6 +109,7 @@ func TestTableGridWrapperRendersSameContract(t *testing.T) {
 	}
 }
 
+// TestTableGridWithActiveRowCanDisableHighlighting handles test table grid with active row can disable highlighting.
 func TestTableGridWithActiveRowCanDisableHighlighting(t *testing.T) {
 	columns := []TableColumn{
 		{Header: "Name", Width: 12, Align: lipgloss.Left},

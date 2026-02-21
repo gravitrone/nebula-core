@@ -109,7 +109,13 @@ async def _make_relationship_with_segments(
 
 
 async def _make_job_relationship(
-    db_pool, enums, *, source_type: str, source_id: str, target_type: str, target_id: str
+    db_pool,
+    enums,
+    *,
+    source_type: str,
+    source_id: str,
+    target_type: str,
+    target_id: str,
 ) -> dict:
     """Create relationship row linking job and non-job nodes."""
 
@@ -203,7 +209,9 @@ async def test_mcp_export_relationships_properties_payload_is_object(db_pool, en
         ),
         _ctx(db_pool, enums, viewer),
     )
-    row = next((item for item in result["items"] if str(item["id"]) == str(rel["id"])), None)
+    row = next(
+        (item for item in result["items"] if str(item["id"]) == str(rel["id"])), None
+    )
     assert row is not None
     assert isinstance(row.get("properties"), dict)
 
@@ -277,7 +285,9 @@ async def test_mcp_export_snapshot_relationship_properties_payload_is_object(
 async def test_mcp_export_relationships_hides_out_of_scope_job_links(db_pool, enums):
     """Relationships export should not include links to private jobs."""
 
-    owner = await _make_agent(db_pool, enums, name="mcp-export-job-owner", scopes=["public"])
+    owner = await _make_agent(
+        db_pool, enums, name="mcp-export-job-owner", scopes=["public"]
+    )
     viewer = await _make_agent(
         db_pool, enums, name="mcp-export-job-viewer", scopes=["public"]
     )

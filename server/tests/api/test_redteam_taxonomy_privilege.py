@@ -24,6 +24,12 @@ async def test_taxonomy_sensitive_scope_cannot_create(api, db_pool, test_entity,
     }
 
     async def mock_auth() -> dict:
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     app.dependency_overrides[require_auth] = mock_auth
@@ -71,6 +77,12 @@ async def test_taxonomy_sensitive_scope_cannot_list(api, test_entity, enums):
     }
 
     async def mock_auth() -> dict:
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     app.dependency_overrides[require_auth] = mock_auth

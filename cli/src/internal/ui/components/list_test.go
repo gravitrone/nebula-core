@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestListNewList handles test list new list.
 func TestListNewList(t *testing.T) {
 	list := NewList(10)
 	assert.Equal(t, 10, list.PageSize)
@@ -14,6 +15,7 @@ func TestListNewList(t *testing.T) {
 	assert.Nil(t, list.Items)
 }
 
+// TestListSetItems handles test list set items.
 func TestListSetItems(t *testing.T) {
 	list := NewList(5)
 	items := []string{"a", "b", "c"}
@@ -25,6 +27,7 @@ func TestListSetItems(t *testing.T) {
 	assert.Equal(t, 0, list.Offset)
 }
 
+// TestListDownMovement handles test list down movement.
 func TestListDownMovement(t *testing.T) {
 	list := NewList(3)
 	list.SetItems([]string{"a", "b", "c", "d", "e"})
@@ -58,6 +61,7 @@ func TestListDownMovement(t *testing.T) {
 	assert.Equal(t, 2, list.Offset)
 }
 
+// TestListUpMovement handles test list up movement.
 func TestListUpMovement(t *testing.T) {
 	list := NewList(3)
 	list.SetItems([]string{"a", "b", "c", "d", "e"})
@@ -92,6 +96,7 @@ func TestListUpMovement(t *testing.T) {
 	assert.Equal(t, 0, list.Offset)
 }
 
+// TestListVisible handles test list visible.
 func TestListVisible(t *testing.T) {
 	list := NewList(3)
 	list.SetItems([]string{"a", "b", "c", "d", "e"})
@@ -111,6 +116,7 @@ func TestListVisible(t *testing.T) {
 	assert.Equal(t, []string{"d", "e"}, visible)
 }
 
+// TestListVisibleEmpty handles test list visible empty.
 func TestListVisibleEmpty(t *testing.T) {
 	list := NewList(5)
 	list.SetItems([]string{})
@@ -119,6 +125,7 @@ func TestListVisibleEmpty(t *testing.T) {
 	assert.Nil(t, visible)
 }
 
+// TestListVisibleSmallerThanPage handles test list visible smaller than page.
 func TestListVisibleSmallerThanPage(t *testing.T) {
 	list := NewList(10)
 	list.SetItems([]string{"a", "b", "c"})
@@ -127,6 +134,7 @@ func TestListVisibleSmallerThanPage(t *testing.T) {
 	assert.Equal(t, []string{"a", "b", "c"}, visible)
 }
 
+// TestListSelected handles test list selected.
 func TestListSelected(t *testing.T) {
 	list := NewList(5)
 	list.SetItems([]string{"a", "b", "c"})
@@ -137,6 +145,7 @@ func TestListSelected(t *testing.T) {
 	assert.Equal(t, 1, list.Selected())
 }
 
+// TestListIsSelected handles test list is selected.
 func TestListIsSelected(t *testing.T) {
 	list := NewList(5)
 	list.SetItems([]string{"a", "b", "c"})
@@ -147,6 +156,7 @@ func TestListIsSelected(t *testing.T) {
 	assert.False(t, list.IsSelected(2))
 }
 
+// TestListRelToAbs handles test list rel to abs.
 func TestListRelToAbs(t *testing.T) {
 	list := NewList(3)
 	list.SetItems([]string{"a", "b", "c", "d", "e"})
@@ -159,6 +169,7 @@ func TestListRelToAbs(t *testing.T) {
 	assert.Equal(t, 4, list.RelToAbs(2))
 }
 
+// TestListScrollingLargeList handles test list scrolling large list.
 func TestListScrollingLargeList(t *testing.T) {
 	list := NewList(5)
 	items := make([]string, 20)

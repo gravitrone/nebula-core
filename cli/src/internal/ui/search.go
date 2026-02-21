@@ -53,7 +53,6 @@ type SearchModel struct {
 	list    *components.List
 	items   []searchEntry
 	width   int
-	height  int
 }
 
 const (
@@ -70,10 +69,12 @@ func NewSearchModel(client *api.Client) SearchModel {
 	}
 }
 
+// Init handles init.
 func (m SearchModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update updates update.
 func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case searchResultsMsg:
@@ -158,6 +159,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m SearchModel) View() string {
 	var b strings.Builder
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Mode: %s (tab to toggle)", m.mode)))
@@ -284,6 +286,7 @@ func (m SearchModel) View() string {
 	return components.Indent(components.TitledBox("Search", b.String(), m.width), 1)
 }
 
+// renderSearchPreview renders render search preview.
 func (m SearchModel) renderSearchPreview(entry searchEntry, width int) string {
 	if width <= 0 {
 		return ""
@@ -359,6 +362,7 @@ func (m SearchModel) renderSearchPreview(entry searchEntry, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// search handles search.
 func (m *SearchModel) search(query string) tea.Cmd {
 	q := strings.TrimSpace(query)
 	if q == "" {
@@ -412,6 +416,7 @@ func (m *SearchModel) search(query string) tea.Cmd {
 	}
 }
 
+// emitSelection handles emit selection.
 func (m SearchModel) emitSelection(entry searchEntry) tea.Cmd {
 	return func() tea.Msg {
 		switch entry.kind {
@@ -480,6 +485,7 @@ func (m SearchModel) emitSelection(entry searchEntry) tea.Cmd {
 	}
 }
 
+// buildSemanticEntries builds build semantic entries.
 func buildSemanticEntries(items []api.SemanticSearchResult) []searchEntry {
 	out := make([]searchEntry, 0, len(items))
 	for _, item := range items {
@@ -506,6 +512,7 @@ func buildSemanticEntries(items []api.SemanticSearchResult) []searchEntry {
 	return out
 }
 
+// buildSearchEntries builds build search entries.
 func buildSearchEntries(query string, entities []api.Entity, context []api.Context, jobs []api.Job) []searchEntry {
 	filteredEntities := filterEntitiesByQuery(entities, query)
 	filteredContext := filterContextByQuery(context, query)
@@ -560,6 +567,7 @@ func buildSearchEntries(query string, entities []api.Entity, context []api.Conte
 	return items
 }
 
+// buildPaletteSearchEntries builds build palette search entries.
 func buildPaletteSearchEntries(
 	query string,
 	entities []api.Entity,
@@ -658,6 +666,7 @@ func buildPaletteSearchEntries(
 	return items
 }
 
+// filterEntitiesByQuery handles filter entities by query.
 func filterEntitiesByQuery(items []api.Entity, query string) []api.Entity {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -674,6 +683,7 @@ func filterEntitiesByQuery(items []api.Entity, query string) []api.Entity {
 	return out
 }
 
+// filterContextByQuery handles filter context by query.
 func filterContextByQuery(items []api.Context, query string) []api.Context {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -688,6 +698,7 @@ func filterContextByQuery(items []api.Context, query string) []api.Context {
 	return out
 }
 
+// filterJobsByQuery handles filter jobs by query.
 func filterJobsByQuery(items []api.Job, query string) []api.Job {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -702,6 +713,7 @@ func filterJobsByQuery(items []api.Job, query string) []api.Job {
 	return out
 }
 
+// filterRelationshipsByQuery handles filter relationships by query.
 func filterRelationshipsByQuery(items []api.Relationship, query string) []api.Relationship {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -719,6 +731,7 @@ func filterRelationshipsByQuery(items []api.Relationship, query string) []api.Re
 	return out
 }
 
+// filterLogsByQuery handles filter logs by query.
 func filterLogsByQuery(items []api.Log, query string) []api.Log {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -736,6 +749,7 @@ func filterLogsByQuery(items []api.Log, query string) []api.Log {
 	return out
 }
 
+// filterFilesByQuery handles filter files by query.
 func filterFilesByQuery(items []api.File, query string) []api.File {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -754,6 +768,7 @@ func filterFilesByQuery(items []api.File, query string) []api.File {
 	return out
 }
 
+// filterProtocolsByQuery handles filter protocols by query.
 func filterProtocolsByQuery(items []api.Protocol, query string) []api.Protocol {
 	q := strings.ToLower(strings.TrimSpace(query))
 	if q == "" {
@@ -772,6 +787,7 @@ func filterProtocolsByQuery(items []api.Protocol, query string) []api.Protocol {
 	return out
 }
 
+// fileMimeType handles file mime type.
 func fileMimeType(file api.File) string {
 	if file.MimeType == nil {
 		return ""
@@ -779,6 +795,7 @@ func fileMimeType(file api.File) string {
 	return strings.TrimSpace(*file.MimeType)
 }
 
+// protocolType handles protocol type.
 func protocolType(protocol api.Protocol) string {
 	if protocol.ProtocolType == nil {
 		return ""

@@ -52,6 +52,7 @@ var (
 			Foreground(lipgloss.Color("#d6b5b5"))
 )
 
+// boxWidth handles box width.
 func boxWidth(width int) int {
 	// Prefer near-full width so dense tables do not clip on common laptop sizes.
 	if width <= 0 {
@@ -64,6 +65,7 @@ func boxWidth(width int) int {
 	return w
 }
 
+// safeBoxWidth handles safe box width.
 func safeBoxWidth(width int) int {
 	if width <= 0 {
 		return boxWidth(width)
@@ -75,6 +77,7 @@ func safeBoxWidth(width int) int {
 	return w
 }
 
+// renderBox renders render box.
 func renderBox(style lipgloss.Style, targetWidth int, content string) string {
 	width := safeBoxWidth(targetWidth)
 	if width <= 0 {
@@ -187,6 +190,7 @@ func TitledBoxWithHeaderStyle(title, content string, width int, headerStyle lipg
 	return titledBoxWithStyle(title, content, width, boxBorder, headerStyle, lipgloss.Color("#273540"))
 }
 
+// titledBoxWithStyle handles titled box with style.
 func titledBoxWithStyle(title, content string, width int, boxStyle, headerStyle lipgloss.Style, borderColor lipgloss.Color) string {
 	if title == "" {
 		return renderBox(boxStyle, width, content)
@@ -233,6 +237,7 @@ func titledBoxWithStyle(title, content string, width int, boxStyle, headerStyle 
 	return strings.Join(lines, "\n")
 }
 
+// truncateRunes handles truncate runes.
 func truncateRunes(s string, max int) string {
 	if max <= 0 {
 		return ""
@@ -253,6 +258,7 @@ func truncateRunes(s string, max int) string {
 	return b.String()
 }
 
+// maxInt handles max int.
 func maxInt(a, b int) int {
 	if a > b {
 		return a
@@ -260,6 +266,7 @@ func maxInt(a, b int) int {
 	return b
 }
 
+// padRight handles pad right.
 func padRight(s string, width int) string {
 	w := lipgloss.Width(s)
 	if w >= width {
@@ -443,6 +450,7 @@ func DiffTable(title string, rows []DiffRow, width int) string {
 	return TitledBox(title, b.String(), width)
 }
 
+// wrapDiffLine handles wrap diff line.
 func wrapDiffLine(line string, width int) []string {
 	line = strings.TrimSpace(SanitizeText(line))
 	if line == "" {
@@ -503,6 +511,7 @@ func MetadataTable(data map[string]any, width int) string {
 	return TitledBox("Metadata", strings.Join(lines, "\n"), width)
 }
 
+// renderMetadataLines renders render metadata lines.
 func renderMetadataLines(data map[string]any, indent int) []string {
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -529,6 +538,7 @@ func renderMetadataLines(data map[string]any, indent int) []string {
 	return lines
 }
 
+// renderMetadataValueLines renders render metadata value lines.
 func renderMetadataValueLines(val any, indent int) []string {
 	pad := strings.Repeat(" ", indent)
 	val = normalizeStructuredValue(val)
@@ -573,6 +583,7 @@ func renderMetadataValueLines(val any, indent int) []string {
 	}
 }
 
+// normalizeStructuredValue handles normalize structured value.
 func normalizeStructuredValue(val any) any {
 	switch typed := val.(type) {
 	case string:
@@ -600,6 +611,7 @@ func normalizeStructuredValue(val any) any {
 	return val
 }
 
+// parseMetadataScopesInline parses parse metadata scopes inline.
 func parseMetadataScopesInline(value any) string {
 	switch typed := value.(type) {
 	case []string:
@@ -628,6 +640,7 @@ func parseMetadataScopesInline(value any) string {
 	}
 }
 
+// formatMetadataValue handles format metadata value.
 func formatMetadataValue(val any) string {
 	val = normalizeStructuredValue(val)
 	switch typed := val.(type) {

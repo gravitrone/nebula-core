@@ -130,4 +130,3 @@ async def test_rate_limit_host_fallback_isolated_by_host(monkeypatch):
 
     assert await decorated(request=req_a) == "ok"
     assert await decorated(request=req_b) == "ok"
-

@@ -29,10 +29,26 @@ class _DummyPool:
     """Minimal async pool stub keyed by node id."""
 
     def __init__(self, rows: dict[str, dict]):
+        """Handle init.
+
+        Args:
+            rows: Input parameter for __init__.
+        """
+
         self._rows = rows
         self.calls = 0
 
     async def fetchrow(self, _query, *args):
+        """Get fetchrow.
+
+        Args:
+            _query: Input parameter for fetchrow.
+            *args: Input parameter for fetchrow.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.calls += 1
         node_id = str(args[0]) if args else ""
         return self._rows.get(node_id)
@@ -42,18 +58,45 @@ class _RoutePool:
     """Route-focused pool stub with queued fetchrow/fetch responses."""
 
     def __init__(self, *, fetchrows: list[dict | None] | None = None, fetch_rows=None):
+        """Handle init.
+
+        Args:
+            fetchrows: Input parameter for __init__.
+            fetch_rows: Input parameter for __init__.
+        """
+
         self._fetchrows = list(fetchrows or [])
         self._fetch_rows = list(fetch_rows or [])
         self.fetchrow_calls = []
         self.fetch_calls = []
 
     async def fetchrow(self, query, *args):
+        """Get fetchrow.
+
+        Args:
+            query: Input parameter for fetchrow.
+            *args: Input parameter for fetchrow.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetchrow_calls.append((query, args))
         if not self._fetchrows:
             return None
         return self._fetchrows.pop(0)
 
     async def fetch(self, query, *args):
+        """Get fetch.
+
+        Args:
+            query: Input parameter for fetch.
+            *args: Input parameter for fetch.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetch_calls.append((query, args))
         if not self._fetch_rows:
             return []
@@ -109,7 +152,9 @@ def test_has_write_scopes_happy_and_edge_cases():
 
     assert _has_write_scopes(["scope-public"], []) is True
     assert _has_write_scopes([], ["scope-public"]) is False
-    assert _has_write_scopes(["scope-public", "scope-private"], ["scope-public"]) is True
+    assert (
+        _has_write_scopes(["scope-public", "scope-private"], ["scope-public"]) is True
+    )
     assert _has_write_scopes(["scope-public"], ["scope-private"]) is False
 
 
@@ -259,7 +304,9 @@ async def test_validate_relationship_node_ignores_other_node_types(enums):
     """Non-guarded node types should pass through validation."""
 
     pool = _DummyPool({})
-    await _validate_relationship_node(pool, enums, _auth(scopes=["scope-public"]), "file", "x")
+    await _validate_relationship_node(
+        pool, enums, _auth(scopes=["scope-public"]), "file", "x"
+    )
 
 
 @pytest.mark.asyncio
@@ -284,16 +331,30 @@ async def test_create_relationship_returns_pending_approval_payload(enums, monke
     )
 
     async def _approval(*_args, **_kwargs):
+        """Handle approval.
+
+        Args:
+            *_args: Input parameter for _approval.
+            **_kwargs: Input parameter for _approval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return {"requires_approval": True, "approval_id": "appr-1"}
 
-    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
+    )
     result = await create_relationship(payload, req, auth=auth)
     assert result["requires_approval"] is True
     assert result["approval_id"] == "appr-1"
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_maps_value_error_to_invalid_input(enums, monkeypatch):
+async def test_create_relationship_maps_value_error_to_invalid_input(
+    enums, monkeypatch
+):
     """create_relationship should convert executor ValueError to INVALID_INPUT."""
 
     pool = _RoutePool(
@@ -313,13 +374,34 @@ async def test_create_relationship_maps_value_error_to_invalid_input(enums, monk
     )
 
     async def _approval(*_args, **_kwargs):
+        """Handle approval.
+
+        Args:
+            *_args: Input parameter for _approval.
+            **_kwargs: Input parameter for _approval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return None
 
     async def _raise(*_args, **_kwargs):
+        """Handle raise.
+
+        Args:
+            *_args: Input parameter for _raise.
+            **_kwargs: Input parameter for _raise.
+        """
+
         raise ValueError("bad relationship payload")
 
-    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
-    monkeypatch.setattr("nebula_api.routes.relationships.execute_create_relationship", _raise)
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
+    )
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.execute_create_relationship", _raise
+    )
 
     with pytest.raises(HTTPException) as exc:
         await create_relationship(payload, req, auth=auth)
@@ -348,13 +430,37 @@ async def test_create_relationship_success_payload(enums, monkeypatch):
     )
 
     async def _approval(*_args, **_kwargs):
+        """Handle approval.
+
+        Args:
+            *_args: Input parameter for _approval.
+            **_kwargs: Input parameter for _approval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return None
 
     async def _ok(*_args, **_kwargs):
+        """Handle ok.
+
+        Args:
+            *_args: Input parameter for _ok.
+            **_kwargs: Input parameter for _ok.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return {"id": "rel-1", "source_type": "entity"}
 
-    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
-    monkeypatch.setattr("nebula_api.routes.relationships.execute_create_relationship", _ok)
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
+    )
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.execute_create_relationship", _ok
+    )
     result = await create_relationship(payload, req, auth=auth)
     assert result["data"]["id"] == "rel-1"
 
@@ -445,9 +551,21 @@ async def test_update_relationship_returns_pending_approval_payload(enums, monke
     req = _request(pool, enums)
 
     async def _approval(*_args, **_kwargs):
+        """Handle approval.
+
+        Args:
+            *_args: Input parameter for _approval.
+            **_kwargs: Input parameter for _approval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return {"requires_approval": True, "approval_id": "appr-update"}
 
-    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
+    )
     result = await update_relationship(
         "5a898df8-7f2f-478f-b796-bf013dc5172a",
         UpdateRelationshipBody(properties={"note": "ok"}, status="active"),
@@ -478,9 +596,21 @@ async def test_update_relationship_success_payload(enums, monkeypatch):
     req = _request(pool, enums)
 
     async def _approval(*_args, **_kwargs):
+        """Handle approval.
+
+        Args:
+            *_args: Input parameter for _approval.
+            **_kwargs: Input parameter for _approval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return None
 
-    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
+    monkeypatch.setattr(
+        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
+    )
     result = await update_relationship(
         "5a898df8-7f2f-478f-b796-bf013dc5172a",
         UpdateRelationshipBody(properties={"note": "ok"}, status="active"),

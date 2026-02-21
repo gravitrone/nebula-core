@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestParseMetadataInput handles test parse metadata input.
 func TestParseMetadataInput(t *testing.T) {
 	input := "name: alex\nprofile:\n  age: 17\n  tags: [ai, ml]"
 	got, err := parseMetadataInput(input)
@@ -23,6 +24,7 @@ func TestParseMetadataInput(t *testing.T) {
 	assert.Equal(t, []any{"ai", "ml"}, tags)
 }
 
+// TestParseMetadataInputPipeRows handles test parse metadata input pipe rows.
 func TestParseMetadataInputPipeRows(t *testing.T) {
 	input := strings.Join([]string{
 		"profile | timezone | europe/warsaw",
@@ -40,6 +42,7 @@ func TestParseMetadataInputPipeRows(t *testing.T) {
 	assert.Equal(t, "alxx", got["owner"])
 }
 
+// TestParseMetadataInputErrors handles test parse metadata input errors.
 func TestParseMetadataInputErrors(t *testing.T) {
 	_, err := parseMetadataInput("name alex")
 	assert.Error(t, err)
@@ -48,6 +51,7 @@ func TestParseMetadataInputErrors(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestMetadataToInput handles test metadata to input.
 func TestMetadataToInput(t *testing.T) {
 	data := map[string]any{
 		"name": "alex",
@@ -61,6 +65,7 @@ func TestMetadataToInput(t *testing.T) {
 	assert.Contains(t, out, "  age: 17")
 }
 
+// TestMetadataScopeHelpers handles test metadata scope helpers.
 func TestMetadataScopeHelpers(t *testing.T) {
 	input := map[string]any{
 		"scopes": []any{"Public", "private"},
@@ -77,6 +82,7 @@ func TestMetadataScopeHelpers(t *testing.T) {
 	assert.Equal(t, []string{"private"}, merged["scopes"])
 }
 
+// TestNormalizeStructuredMetadataValueParsesStringSlices handles test normalize structured metadata value parses string slices.
 func TestNormalizeStructuredMetadataValueParsesStringSlices(t *testing.T) {
 	raw := map[string]any{
 		"context_segments": []string{
@@ -94,6 +100,7 @@ func TestNormalizeStructuredMetadataValueParsesStringSlices(t *testing.T) {
 	}
 }
 
+// TestMetadataLinesStyledRenderContextSegmentsCleanly handles test metadata lines styled render context segments cleanly.
 func TestMetadataLinesStyledRenderContextSegmentsCleanly(t *testing.T) {
 	data := map[string]any{
 		"context_segments": []string{
@@ -118,6 +125,7 @@ func TestMetadataLinesStyledRenderContextSegmentsCleanly(t *testing.T) {
 	assert.Contains(t, joined, "[public] Public profile block.")
 }
 
+// TestMetadataDisplayRowsFlattensNestedMapsAndLists handles test metadata display rows flattens nested maps and lists.
 func TestMetadataDisplayRowsFlattensNestedMapsAndLists(t *testing.T) {
 	data := map[string]any{
 		"owner": "alxx",
@@ -144,6 +152,7 @@ func TestMetadataDisplayRowsFlattensNestedMapsAndLists(t *testing.T) {
 	assert.Contains(t, fields, "context_segments[0]")
 }
 
+// TestRenderMetadataBlockWithTitleUsesTableLayoutAndScopes handles test render metadata block with title uses table layout and scopes.
 func TestRenderMetadataBlockWithTitleUsesTableLayoutAndScopes(t *testing.T) {
 	data := map[string]any{
 		"scopes": []any{"public", "admin"},
@@ -164,6 +173,7 @@ func TestRenderMetadataBlockWithTitleUsesTableLayoutAndScopes(t *testing.T) {
 	assert.Contains(t, clean, "[admin]")
 }
 
+// TestFormatMetadataInlineSanitizesStructuredValues handles test format metadata inline sanitizes structured values.
 func TestFormatMetadataInlineSanitizesStructuredValues(t *testing.T) {
 	inline := formatMetadataInline(map[string]any{
 		"k\x1b]0;bad\x07": "v\u202E",
@@ -174,6 +184,7 @@ func TestFormatMetadataInlineSanitizesStructuredValues(t *testing.T) {
 	assert.Contains(t, inline, "\"v\"")
 }
 
+// TestSanitizeMetadataValueRecursesNestedCollections handles test sanitize metadata value recurses nested collections.
 func TestSanitizeMetadataValueRecursesNestedCollections(t *testing.T) {
 	sanitized := sanitizeMetadataValue(map[string]any{
 		"ke\u202Ey": []any{"va\x1b]0;bad\x07l", map[string]any{"n\x1b]x": "v"}},
@@ -184,6 +195,7 @@ func TestSanitizeMetadataValueRecursesNestedCollections(t *testing.T) {
 	assert.Contains(t, sanitized, "key")
 }
 
+// TestWrapMetadataDisplayLineAndWordsWrapLongInput handles test wrap metadata display line and words wrap long input.
 func TestWrapMetadataDisplayLineAndWordsWrapLongInput(t *testing.T) {
 	line := "  - this is a very long metadata line that should wrap safely across columns"
 	wrapped := wrapMetadataDisplayLine(line, 24)
@@ -196,6 +208,7 @@ func TestWrapMetadataDisplayLineAndWordsWrapLongInput(t *testing.T) {
 	assert.GreaterOrEqual(t, len(words), 2)
 }
 
+// TestWrapMetadataDisplayLinesPreservesBlankRows handles test wrap metadata display lines preserves blank rows.
 func TestWrapMetadataDisplayLinesPreservesBlankRows(t *testing.T) {
 	lines := wrapMetadataDisplayLines([]string{"", "hello world"}, 6)
 	assert.NotEmpty(t, lines)
@@ -203,6 +216,7 @@ func TestWrapMetadataDisplayLinesPreservesBlankRows(t *testing.T) {
 	assert.GreaterOrEqual(t, len(lines), 2)
 }
 
+// TestRenderMetadataSelectableBlockHidesSelectionColumnWhenNothingIsSelected handles test render metadata selectable block hides selection column when nothing is selected.
 func TestRenderMetadataSelectableBlockHidesSelectionColumnWhenNothingIsSelected(t *testing.T) {
 	rows := []metadataDisplayRow{
 		{field: "note", value: "hello"},
@@ -219,6 +233,7 @@ func TestRenderMetadataSelectableBlockHidesSelectionColumnWhenNothingIsSelected(
 	assert.NotContains(t, clean, ">[ ]")
 }
 
+// TestRenderMetadataSelectableBlockShowsSelectionColumnWhenRowsSelected handles test render metadata selectable block shows selection column when rows selected.
 func TestRenderMetadataSelectableBlockShowsSelectionColumnWhenRowsSelected(t *testing.T) {
 	rows := []metadataDisplayRow{
 		{field: "note", value: "hello"},
@@ -235,6 +250,7 @@ func TestRenderMetadataSelectableBlockShowsSelectionColumnWhenRowsSelected(t *te
 	assert.NotContains(t, clean, ">[")
 }
 
+// TestRenderMetadataSelectableBlockHumanizesContextSegmentField handles test render metadata selectable block humanizes context segment field.
 func TestRenderMetadataSelectableBlockHumanizesContextSegmentField(t *testing.T) {
 	rows := []metadataDisplayRow{
 		{field: "context_segments[0]", value: "[public] hello"},
@@ -250,6 +266,7 @@ func TestRenderMetadataSelectableBlockHumanizesContextSegmentField(t *testing.T)
 	assert.NotContains(t, clean, "context_segments[0]")
 }
 
+// TestRenderMetadataSelectableBlockHumanizesNumericPathSegments handles test render metadata selectable block humanizes numeric path segments.
 func TestRenderMetadataSelectableBlockHumanizesNumericPathSegments(t *testing.T) {
 	rows := []metadataDisplayRow{
 		{field: "profile.aliases[0]", value: "Bro"},

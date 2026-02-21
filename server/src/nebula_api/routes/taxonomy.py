@@ -68,6 +68,13 @@ ROW_QUERY_BY_KIND = {
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except ValueError:
@@ -75,6 +82,15 @@ def _require_uuid(value: str, label: str) -> None:
 
 
 def _kind_or_error(kind: str) -> dict[str, Any]:
+    """Handle kind or error.
+
+    Args:
+        kind: Input parameter for _kind_or_error.
+
+    Returns:
+        Result value from the operation.
+    """
+
     cfg = KIND_MAP.get(kind)
     if cfg is None:
         api_error("INVALID_INPUT", f"Unknown taxonomy kind: {kind}", 400)
@@ -82,6 +98,13 @@ def _kind_or_error(kind: str) -> dict[str, Any]:
 
 
 def _require_admin_scope(auth: dict, enums: EnumRegistry) -> None:
+    """Handle require admin scope.
+
+    Args:
+        auth: Input parameter for _require_admin_scope.
+        enums: Input parameter for _require_admin_scope.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -93,10 +116,27 @@ def _require_admin_scope(auth: dict, enums: EnumRegistry) -> None:
 
 
 async def _refresh_enums(request: Request) -> None:
+    """Handle refresh enums.
+
+    Args:
+        request: Input parameter for _refresh_enums.
+    """
+
     request.app.state.enums = await load_enums(request.app.state.pool)
 
 
 async def _usage_count(pool: Any, cfg: dict[str, Any], item_id: str) -> int:
+    """Handle usage count.
+
+    Args:
+        pool: Input parameter for _usage_count.
+        cfg: Input parameter for _usage_count.
+        item_id: Input parameter for _usage_count.
+
+    Returns:
+        Result value from the operation.
+    """
+
     value = await pool.fetchval(QUERIES[cfg["usage"]], item_id)
     if value is None:
         return 0
@@ -106,6 +146,17 @@ async def _usage_count(pool: Any, cfg: dict[str, Any], item_id: str) -> int:
 async def _fetch_taxonomy_row(
     pool: Any, kind: str, item_id: str
 ) -> dict[str, Any] | None:
+    """Handle fetch taxonomy row.
+
+    Args:
+        pool: Input parameter for _fetch_taxonomy_row.
+        kind: Input parameter for _fetch_taxonomy_row.
+        item_id: Input parameter for _fetch_taxonomy_row.
+
+    Returns:
+        Result value from the operation.
+    """
+
     query = ROW_QUERY_BY_KIND[kind]
     row = await pool.fetchrow(
         query,
@@ -117,6 +168,15 @@ async def _fetch_taxonomy_row(
 async def _ensure_can_archive(
     pool: Any, kind: str, cfg: dict[str, Any], item_id: str
 ) -> None:
+    """Handle ensure can archive.
+
+    Args:
+        pool: Input parameter for _ensure_can_archive.
+        kind: Input parameter for _ensure_can_archive.
+        cfg: Input parameter for _ensure_can_archive.
+        item_id: Input parameter for _ensure_can_archive.
+    """
+
     usage = await _usage_count(pool, cfg, item_id)
     if usage > 0:
         api_error(
@@ -150,6 +210,13 @@ def _validate_payload(
     kind: str,
     payload: TaxonomyCreateBody | TaxonomyUpdateBody,
 ) -> None:
+    """Handle validate payload.
+
+    Args:
+        kind: Input parameter for _validate_payload.
+        payload: Input parameter for _validate_payload.
+    """
+
     supports = _kind_or_error(kind)["supports"]
     if payload.is_symmetric is not None and "is_symmetric" not in supports:
         api_error(
@@ -261,11 +328,7 @@ async def update_taxonomy(
     name = payload.name.strip() if payload.name is not None else None
     if payload.name is not None and not name:
         api_error("INVALID_INPUT", "Name cannot be empty", 400)
-    if (
-        current["is_builtin"]
-        and name is not None
-        and name != current["name"]
-    ):
+    if current["is_builtin"] and name is not None and name != current["name"]:
         api_error("CONFLICT", "Built-in taxonomy names are immutable", 409)
 
     try:

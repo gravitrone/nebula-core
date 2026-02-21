@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestReloginCmdUnavailableWithoutClientOrConfig handles test relogin cmd unavailable without client or config.
 func TestReloginCmdUnavailableWithoutClientOrConfig(t *testing.T) {
 	app := NewApp(nil, nil)
 
@@ -26,6 +27,7 @@ func TestReloginCmdUnavailableWithoutClientOrConfig(t *testing.T) {
 	assert.Contains(t, em.err.Error(), "re-login unavailable")
 }
 
+// TestReloginCmdRequiresUsername handles test relogin cmd requires username.
 func TestReloginCmdRequiresUsername(t *testing.T) {
 	client := api.NewClient("http://example.com", "key")
 	app := NewApp(client, &config.Config{APIKey: "key"})
@@ -39,16 +41,17 @@ func TestReloginCmdRequiresUsername(t *testing.T) {
 	assert.Contains(t, em.err.Error(), "username missing")
 }
 
+// TestReloginCmdCallsLoginAndReturnsAPIKey handles test relogin cmd calls login and returns apikey.
 func TestReloginCmdCallsLoginAndReturnsAPIKey(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/keys/login" && r.Method == http.MethodPost {
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"api_key":   "nbl_testkey",
 					"entity_id": "ent-1",
 					"username":  "alxx",
 				},
-			})
+			}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -68,6 +71,7 @@ func TestReloginCmdCallsLoginAndReturnsAPIKey(t *testing.T) {
 	assert.Equal(t, "nbl_testkey", done.apiKey)
 }
 
+// TestToastSanitizesTextAndRendersBranches handles test toast sanitizes text and renders branches.
 func TestToastSanitizesTextAndRendersBranches(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.width = 80
@@ -87,6 +91,7 @@ func TestToastSanitizesTextAndRendersBranches(t *testing.T) {
 	assert.NotEmpty(t, app.renderToast())
 }
 
+// TestQuickstartKeyFlowRoutesTabsAndCompletes handles test quickstart key flow routes tabs and completes.
 func TestQuickstartKeyFlowRoutesTabsAndCompletes(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -117,6 +122,7 @@ func TestQuickstartKeyFlowRoutesTabsAndCompletes(t *testing.T) {
 	assert.Equal(t, "success", updated.toast.level)
 }
 
+// TestQuickstartSkipsOnEscapeAndResetsState handles test quickstart skips on escape and resets state.
 func TestQuickstartSkipsOnEscapeAndResetsState(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -133,6 +139,7 @@ func TestQuickstartSkipsOnEscapeAndResetsState(t *testing.T) {
 	assert.Equal(t, "info", updated.toast.level)
 }
 
+// TestRenderQuickstartDoesNotPanic handles test render quickstart does not panic.
 func TestRenderQuickstartDoesNotPanic(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.width = 80
@@ -143,6 +150,7 @@ func TestRenderQuickstartDoesNotPanic(t *testing.T) {
 	assert.Contains(t, out, "Getting Started")
 }
 
+// TestStartupParsingHelpers handles test startup parsing helpers.
 func TestStartupParsingHelpers(t *testing.T) {
 	code, msg := parseErrorCodeAndMessage("FORBIDDEN: missing scope")
 	assert.Equal(t, "FORBIDDEN", code)

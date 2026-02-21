@@ -13,6 +13,7 @@ func (c *Client) Login(username string) (*LoginResponse, error) {
 	return decodeOne[LoginResponse](data)
 }
 
+// CreateKey creates create key.
 func (c *Client) CreateKey(name string) (*CreateKeyResponse, error) {
 	body := map[string]string{"name": name}
 	data, err := c.post("/api/keys", body)
@@ -22,6 +23,7 @@ func (c *Client) CreateKey(name string) (*CreateKeyResponse, error) {
 	return decodeOne[CreateKeyResponse](data)
 }
 
+// ListKeys lists list keys.
 func (c *Client) ListKeys() ([]APIKey, error) {
 	data, err := c.get("/api/keys")
 	if err != nil {
@@ -30,6 +32,7 @@ func (c *Client) ListKeys() ([]APIKey, error) {
 	return decodeList[APIKey](data)
 }
 
+// ListAllKeys lists list all keys.
 func (c *Client) ListAllKeys() ([]APIKey, error) {
 	data, err := c.get("/api/keys/all")
 	if err != nil {
@@ -38,6 +41,7 @@ func (c *Client) ListAllKeys() ([]APIKey, error) {
 	return decodeList[APIKey](data)
 }
 
+// RevokeKey handles revoke key.
 func (c *Client) RevokeKey(keyID string) error {
 	_, err := c.del(fmt.Sprintf("/api/keys/%s", keyID))
 	return err

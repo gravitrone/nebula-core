@@ -8,7 +8,9 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_approve_invalid_enum_marks_approved_failed(api, db_pool, auth_override, enums, untrusted_agent_row):
+async def test_approve_invalid_enum_marks_approved_failed(
+    api, db_pool, auth_override, enums, untrusted_agent_row
+):
     """Approving a poisoned request should not 500 and should mark approved-failed."""
 
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
@@ -53,4 +55,3 @@ async def test_approve_invalid_enum_marks_approved_failed(api, db_pool, auth_ove
     )
     assert updated["status"] == "approved-failed"
     assert updated["execution_error"]
-

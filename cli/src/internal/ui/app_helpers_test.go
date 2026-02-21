@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestCenterBlockPadsShortLines handles test center block pads short lines.
 func TestCenterBlockPadsShortLines(t *testing.T) {
 	in := "hi\nworld"
 	out := centerBlock(in, 10)
@@ -19,12 +20,14 @@ func TestCenterBlockPadsShortLines(t *testing.T) {
 	assert.Contains(t, lines[1], "world")
 }
 
+// TestCenterBlockLeavesWideLinesUnchanged handles test center block leaves wide lines unchanged.
 func TestCenterBlockLeavesWideLinesUnchanged(t *testing.T) {
 	in := "0123456789"
 	assert.Equal(t, in, centerBlock(in, 5))
 	assert.Equal(t, in, centerBlock(in, 0))
 }
 
+// TestAppRenderTipsDoesNotPanic handles test app render tips does not panic.
 func TestAppRenderTipsDoesNotPanic(t *testing.T) {
 	app := App{width: 80}
 	assert.NotPanics(t, func() { _ = app.renderTips() })

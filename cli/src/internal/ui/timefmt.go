@@ -4,6 +4,7 @@ import "time"
 
 const compactTimeColumnWidth = 15
 
+// formatLocalTimeCompact handles format local time compact.
 func formatLocalTimeCompact(ts time.Time) string {
 	if ts.IsZero() {
 		return "None"
@@ -11,6 +12,7 @@ func formatLocalTimeCompact(ts time.Time) string {
 	return ts.Local().Format("01-02 15:04 MST")
 }
 
+// formatLocalTimeFull handles format local time full.
 func formatLocalTimeFull(ts time.Time) string {
 	if ts.IsZero() {
 		return "None"

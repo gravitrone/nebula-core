@@ -30,6 +30,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -40,6 +50,17 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 
 def _resolve_scope_ids(scopes: list[str], auth: dict, enums: Any) -> list:
+    """Handle resolve scope ids.
+
+    Args:
+        scopes: Input parameter for _resolve_scope_ids.
+        auth: Input parameter for _resolve_scope_ids.
+        enums: Input parameter for _resolve_scope_ids.
+
+    Returns:
+        Result value from the operation.
+    """
+
     caller_scope_ids = auth.get("scopes", []) or []
     if not scopes:
         return caller_scope_ids
@@ -52,6 +73,17 @@ def _resolve_scope_ids(scopes: list[str], auth: dict, enums: Any) -> list:
 
 
 def _visible_scope_names(auth: dict, enums: Any, scope_ids: list | None) -> list[str]:
+    """Handle visible scope names.
+
+    Args:
+        auth: Input parameter for _visible_scope_names.
+        enums: Input parameter for _visible_scope_names.
+        scope_ids: Input parameter for _visible_scope_names.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if _is_admin(auth, enums):
         return sorted(enums.scopes.name_to_id.keys())
     return scope_names_from_ids(scope_ids or [], enums)
@@ -60,6 +92,16 @@ def _visible_scope_names(auth: dict, enums: Any, scope_ids: list | None) -> list
 def _normalize_relationship_export_row(
     row: Any, scope_names: list[str]
 ) -> dict[str, Any]:
+    """Handle normalize relationship export row.
+
+    Args:
+        row: Input parameter for _normalize_relationship_export_row.
+        scope_names: Input parameter for _normalize_relationship_export_row.
+
+    Returns:
+        Result value from the operation.
+    """
+
     item = dict(row)
     item["properties"] = sanitize_relationship_properties(
         item.get("properties"), scope_names
@@ -68,6 +110,18 @@ def _normalize_relationship_export_row(
 
 
 async def _job_visible(pool: Any, auth: dict, enums: Any, job_id: str) -> bool:
+    """Handle job visible.
+
+    Args:
+        pool: Input parameter for _job_visible.
+        auth: Input parameter for _job_visible.
+        enums: Input parameter for _job_visible.
+        job_id: Input parameter for _job_visible.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if _is_admin(auth, enums):
         return True
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
@@ -89,6 +143,7 @@ def _flatten_value(value: Any) -> str:
     Returns:
         String representation for CSV output.
     """
+
     if value is None:
         return ""
     if isinstance(value, list):
@@ -108,6 +163,7 @@ def _to_csv(rows: list[dict[str, Any]], field_order: list[str] | None = None) ->
     Returns:
         CSV string content.
     """
+
     if not rows:
         return ""
     if not field_order:
@@ -130,6 +186,7 @@ def _export_response(rows: list[dict[str, Any]], fmt: str) -> dict[str, Any]:
     Returns:
         API response payload.
     """
+
     fmt = (fmt or "json").lower()
     if fmt not in {"json", "csv"}:
         api_error("VALIDATION_ERROR", "Format must be json or csv", 400)
@@ -180,6 +237,7 @@ async def export_entities(
     Returns:
         Export response payload.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     scope_ids = auth.get("scopes", [])
@@ -239,6 +297,7 @@ async def export_context(
     Returns:
         Export response payload.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -289,6 +348,7 @@ async def export_relationships(
     Returns:
         Export response payload.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     scope_ids = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
@@ -350,6 +410,7 @@ async def export_jobs(
     Returns:
         Export response payload.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     agent_filter = agent_id
@@ -391,6 +452,7 @@ async def export_snapshot(
     Returns:
         Export response payload.
     """
+
     if format.lower() != "json":
         api_error("VALIDATION_ERROR", "Snapshot export supports json only", 400)
 

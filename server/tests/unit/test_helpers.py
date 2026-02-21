@@ -263,9 +263,26 @@ class _DummyTransaction:
     """Async no-op transaction context for helper tests."""
 
     async def __aenter__(self):
+        """Handle aenter.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        """Handle aexit.
+
+        Args:
+            exc_type: Input parameter for __aexit__.
+            exc: Input parameter for __aexit__.
+            tb: Input parameter for __aexit__.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return False
 
 
@@ -273,12 +290,35 @@ class _DummyAcquire:
     """Async wrapper returning a provided connection."""
 
     def __init__(self, conn):
+        """Handle init.
+
+        Args:
+            conn: Input parameter for __init__.
+        """
+
         self._conn = conn
 
     async def __aenter__(self):
+        """Handle aenter.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return self._conn
 
     async def __aexit__(self, exc_type, exc, tb):
+        """Handle aexit.
+
+        Args:
+            exc_type: Input parameter for __aexit__.
+            exc: Input parameter for __aexit__.
+            tb: Input parameter for __aexit__.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return False
 
 
@@ -286,6 +326,13 @@ class _DummyConn:
     """Tiny asyncpg-like connection stub for approval helper tests."""
 
     def __init__(self, fetchval_result=0, fetchrow_result=None):
+        """Handle init.
+
+        Args:
+            fetchval_result: Input parameter for __init__.
+            fetchrow_result: Input parameter for __init__.
+        """
+
         self.fetchval_result = fetchval_result
         self.fetchrow_result = fetchrow_result
         self.executed = []
@@ -293,17 +340,50 @@ class _DummyConn:
         self.fetchrow_calls = []
 
     async def execute(self, query, *args):
+        """Handle execute.
+
+        Args:
+            query: Input parameter for execute.
+            *args: Input parameter for execute.
+        """
+
         self.executed.append((query, args))
 
     async def fetchval(self, query, *args):
+        """Get fetchval.
+
+        Args:
+            query: Input parameter for fetchval.
+            *args: Input parameter for fetchval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetchval_calls.append((query, args))
         return self.fetchval_result
 
     async def fetchrow(self, query, *args):
+        """Get fetchrow.
+
+        Args:
+            query: Input parameter for fetchrow.
+            *args: Input parameter for fetchrow.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetchrow_calls.append((query, args))
         return self.fetchrow_result
 
     def transaction(self):
+        """Handle transaction.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _DummyTransaction()
 
 
@@ -311,10 +391,26 @@ class _DummyPoolNoAcquire:
     """Pool stub without acquire; drives fetchval fallback branch."""
 
     def __init__(self, fetchval_result=0):
+        """Handle init.
+
+        Args:
+            fetchval_result: Input parameter for __init__.
+        """
+
         self.fetchval_result = fetchval_result
         self.calls = []
 
     async def fetchval(self, query, *args):
+        """Get fetchval.
+
+        Args:
+            query: Input parameter for fetchval.
+            *args: Input parameter for fetchval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.calls.append((query, args))
         return self.fetchval_result
 
@@ -329,13 +425,35 @@ class _DummyPoolAsyncAcquire:
     """Pool stub where acquire is async (triggers fallback path)."""
 
     def __init__(self, fetchval_result=0):
+        """Handle init.
+
+        Args:
+            fetchval_result: Input parameter for __init__.
+        """
+
         self.fetchval_result = fetchval_result
         self.calls = []
 
     async def acquire(self):  # pragma: no cover - never awaited in helper path
+        """Handle acquire.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return None
 
     async def fetchval(self, query, *args):
+        """Get fetchval.
+
+        Args:
+            query: Input parameter for fetchval.
+            *args: Input parameter for fetchval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.calls.append((query, args))
         return self.fetchval_result
 
@@ -344,9 +462,21 @@ class _DummyPoolWithAcquire:
     """Pool stub with acquire context manager."""
 
     def __init__(self, conn):
+        """Handle init.
+
+        Args:
+            conn: Input parameter for __init__.
+        """
+
         self._conn = conn
 
     def acquire(self):
+        """Handle acquire.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _DummyAcquire(self._conn)
 
 
@@ -354,20 +484,49 @@ class _EnrollmentConn:
     """Connection stub for enrollment helper lifecycle tests."""
 
     def __init__(self, fetchrow_results=None):
+        """Handle init.
+
+        Args:
+            fetchrow_results: Input parameter for __init__.
+        """
+
         self._fetchrow_results = list(fetchrow_results or [])
         self.fetchrow_calls = []
         self.execute_calls = []
 
     async def fetchrow(self, query, *args):
+        """Get fetchrow.
+
+        Args:
+            query: Input parameter for fetchrow.
+            *args: Input parameter for fetchrow.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetchrow_calls.append((query, args))
         if not self._fetchrow_results:
             return None
         return self._fetchrow_results.pop(0)
 
     async def execute(self, query, *args):
+        """Handle execute.
+
+        Args:
+            query: Input parameter for execute.
+            *args: Input parameter for execute.
+        """
+
         self.execute_calls.append((query, args))
 
     def transaction(self):
+        """Handle transaction.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _DummyTransaction()
 
 
@@ -381,6 +540,15 @@ class _EnrollmentPool:
         fetch_results=None,
         fetchval_results=None,
     ):
+        """Handle init.
+
+        Args:
+            conn: Input parameter for __init__.
+            fetchrow_results: Input parameter for __init__.
+            fetch_results: Input parameter for __init__.
+            fetchval_results: Input parameter for __init__.
+        """
+
         self._conn = conn
         self._fetchrow_results = list(fetchrow_results or [])
         self._fetch_results = list(fetch_results or [])
@@ -391,6 +559,16 @@ class _EnrollmentPool:
         self.execute_calls = []
 
     async def fetchrow(self, query, *args):
+        """Get fetchrow.
+
+        Args:
+            query: Input parameter for fetchrow.
+            *args: Input parameter for fetchrow.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetchrow_calls.append((query, args))
         if not self._fetchrow_results:
             return None
@@ -398,23 +576,56 @@ class _EnrollmentPool:
         return item() if callable(item) else item
 
     async def fetch(self, query, *args):
+        """Get fetch.
+
+        Args:
+            query: Input parameter for fetch.
+            *args: Input parameter for fetch.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetch_calls.append((query, args))
         if not self._fetch_results:
             return []
         return self._fetch_results.pop(0)
 
     async def fetchval(self, query, *args):
+        """Get fetchval.
+
+        Args:
+            query: Input parameter for fetchval.
+            *args: Input parameter for fetchval.
+
+        Returns:
+            Result value from the operation.
+        """
+
         self.fetchval_calls.append((query, args))
         if not self._fetchval_results:
             return None
         return self._fetchval_results.pop(0)
 
     async def execute(self, query, *args):
+        """Handle execute.
+
+        Args:
+            query: Input parameter for execute.
+            *args: Input parameter for execute.
+        """
+
         self.execute_calls.append((query, args))
         if args and isinstance(args[0], (int, float)):
             await __import__("asyncio").sleep(args[0])
 
     def acquire(self):
+        """Handle acquire.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _DummyAcquire(self._conn)
 
 
@@ -422,7 +633,9 @@ class TestApprovalCapacityAndCreation:
     """Async coverage for approval queue helper branches."""
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fetchval_fallback_accepts(self, monkeypatch):
+    async def test_ensure_approval_capacity_fetchval_fallback_accepts(
+        self, monkeypatch
+    ):
         """Fallback fetchval path should pass when queue is below cap."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -431,7 +644,9 @@ class TestApprovalCapacityAndCreation:
         assert len(pool.calls) == 1
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fetchval_fallback_rejects(self, monkeypatch):
+    async def test_ensure_approval_capacity_fetchval_fallback_rejects(
+        self, monkeypatch
+    ):
         """Fallback fetchval path should reject when queue exceeds cap."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -447,7 +662,9 @@ class TestApprovalCapacityAndCreation:
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fallback_handles_none_count(self, monkeypatch):
+    async def test_ensure_approval_capacity_fallback_handles_none_count(
+        self, monkeypatch
+    ):
         """Fallback fetchval path should no-op on None count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -455,7 +672,9 @@ class TestApprovalCapacityAndCreation:
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fallback_handles_non_int_count(self, monkeypatch):
+    async def test_ensure_approval_capacity_fallback_handles_non_int_count(
+        self, monkeypatch
+    ):
         """Fallback fetchval path should no-op on non-int count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -471,7 +690,9 @@ class TestApprovalCapacityAndCreation:
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=0)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fallback_when_acquire_is_async(self, monkeypatch):
+    async def test_ensure_approval_capacity_fallback_when_acquire_is_async(
+        self, monkeypatch
+    ):
         """Async acquire should route to fallback fetchval path."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -489,15 +710,21 @@ class TestApprovalCapacityAndCreation:
 
         overflow = _DummyPoolWithAcquire(_DummyConn(fetchval_result=10))
         with pytest.raises(ValueError):
-            await ensure_approval_capacity(pool=overflow, agent_id="agent-1", requested=1)
+            await ensure_approval_capacity(
+                pool=overflow, agent_id="agent-1", requested=1
+            )
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_conn_branch_requested_zero(self, monkeypatch):
+    async def test_ensure_approval_capacity_conn_branch_requested_zero(
+        self, monkeypatch
+    ):
         """Conn branch should no-op when requested is zero."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result=10)
-        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=0, conn=conn)
+        await ensure_approval_capacity(
+            pool=None, agent_id="agent-1", requested=0, conn=conn
+        )
         assert len(conn.executed) == 1  # advisory lock still acquired
 
     @pytest.mark.asyncio
@@ -507,23 +734,33 @@ class TestApprovalCapacityAndCreation:
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result=10)
         with pytest.raises(ValueError):
-            await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
+            await ensure_approval_capacity(
+                pool=None, agent_id="agent-1", requested=1, conn=conn
+            )
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_conn_branch_handles_none_count(self, monkeypatch):
+    async def test_ensure_approval_capacity_conn_branch_handles_none_count(
+        self, monkeypatch
+    ):
         """Conn branch should no-op on None count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result=None)
-        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
+        await ensure_approval_capacity(
+            pool=None, agent_id="agent-1", requested=1, conn=conn
+        )
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_conn_branch_handles_non_int_count(self, monkeypatch):
+    async def test_ensure_approval_capacity_conn_branch_handles_non_int_count(
+        self, monkeypatch
+    ):
         """Conn branch should no-op on non-int count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result="oops")
-        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
+        await ensure_approval_capacity(
+            pool=None, agent_id="agent-1", requested=1, conn=conn
+        )
 
     @pytest.mark.asyncio
     async def test_create_approval_request_with_conn(self, monkeypatch):
@@ -567,7 +804,9 @@ class TestApprovalCapacityAndCreation:
         assert len(conn.fetchrow_calls) == 1
 
     @pytest.mark.asyncio
-    async def test_create_approval_request_returns_empty_on_missing_row(self, monkeypatch):
+    async def test_create_approval_request_returns_empty_on_missing_row(
+        self, monkeypatch
+    ):
         """create_approval_request should return empty dict when row is missing."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -913,7 +1152,9 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert pool.fetch_calls == []
 
     @pytest.mark.asyncio
-    async def test_enrich_approval_rows_populates_labels_and_relationship_fallbacks(self):
+    async def test_enrich_approval_rows_populates_labels_and_relationship_fallbacks(
+        self,
+    ):
         """Enrichment should attach readable labels for ids and relationship fields."""
 
         requested_by = "6d0cdce8-f930-4518-b261-a0bac7ac89d0"
@@ -1066,6 +1307,16 @@ class TestApprovalEnrichmentAndAuditHelpers:
         """Approval list/get helpers should route through enrichment utility."""
 
         async def _fake_enrich(_pool, rows):
+            """Handle fake enrich.
+
+            Args:
+                _pool: Input parameter for _fake_enrich.
+                rows: Input parameter for _fake_enrich.
+
+            Returns:
+                Result value from the operation.
+            """
+
             for row in rows:
                 row["enriched"] = True
             return rows
@@ -1134,7 +1385,11 @@ class TestApprovalEnrichmentAndAuditHelpers:
 
         wrong_table = _EnrollmentPool(
             fetchrow_results=[
-                {"table_name": "jobs", "record_id": "entity-1", "new_data": {"name": "x"}}
+                {
+                    "table_name": "jobs",
+                    "record_id": "entity-1",
+                    "new_data": {"name": "x"},
+                }
             ]
         )
         with pytest.raises(ValueError):
@@ -1215,7 +1470,11 @@ class TestApprovalEnrichmentAndAuditHelpers:
         enums = type(
             "Enums",
             (),
-            {"scopes": type("Scopes", (), {"name_to_id": {"public": "scope-public"}})()},
+            {
+                "scopes": type(
+                    "Scopes", (), {"name_to_id": {"public": "scope-public"}}
+                )()
+            },
         )()
         scopes = await bulk_update_entity_scopes(
             pool,
@@ -1284,7 +1543,9 @@ class TestApprovalEnrichmentAndAuditHelpers:
             ]
         )
         with pytest.raises(ValueError):
-            await get_approval_diff(missing_entity_id_pool, "approval-update-missing-id")
+            await get_approval_diff(
+                missing_entity_id_pool, "approval-update-missing-id"
+            )
 
         missing_entity_pool = _EnrollmentPool(
             fetchrow_results=[
@@ -1296,7 +1557,9 @@ class TestApprovalEnrichmentAndAuditHelpers:
             ]
         )
         with pytest.raises(ValueError):
-            await get_approval_diff(missing_entity_pool, "approval-update-missing-entity")
+            await get_approval_diff(
+                missing_entity_pool, "approval-update-missing-entity"
+            )
 
         missing_rel_id_pool = _EnrollmentPool(
             fetchrow_results=[
@@ -1346,7 +1609,11 @@ class TestApprovalEnrichmentAndAuditHelpers:
             fetchrow_results=[
                 {
                     "request_type": "update_entity",
-                    "change_details": {"entity_id": "entity-1", "name": "new", "tags": ["x"]},
+                    "change_details": {
+                        "entity_id": "entity-1",
+                        "name": "new",
+                        "tags": ["x"],
+                    },
                 },
                 {"name": "old", "tags": ["x"]},
             ]
@@ -1421,6 +1688,18 @@ class TestApprovalEnrichmentAndAuditHelpers:
         seen = []
 
         async def _executor(_pool, _enums, _details, review_details):
+            """Handle executor.
+
+            Args:
+                _pool: Input parameter for _executor.
+                _enums: Input parameter for _executor.
+                _details: Input parameter for _executor.
+                review_details: Input parameter for _executor.
+
+            Returns:
+                Result value from the operation.
+            """
+
             seen.append(review_details)
             return {"id": "agent-created"}
 
@@ -1461,7 +1740,8 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert all("_reviewed_by" not in item for item in seen)
         # system actor path should set + reset change tracking keys.
         assert any(
-            "SET app.changed_by_type = 'system'" in call[0] for call in pool_invalid.execute_calls
+            "SET app.changed_by_type = 'system'" in call[0]
+            for call in pool_invalid.execute_calls
         )
         assert any(
             "RESET app.changed_by_id" in call[0] for call in pool_invalid.execute_calls
@@ -1504,12 +1784,33 @@ class TestApprovalEnrichmentAndAuditHelpers:
         )
 
         async def _create_entity_exec(_pool, _enums, _details):
+            """Handle create entity exec.
+
+            Args:
+                _pool: Input parameter for _create_entity_exec.
+                _enums: Input parameter for _create_entity_exec.
+                _details: Input parameter for _create_entity_exec.
+
+            Returns:
+                Result value from the operation.
+            """
+
             return {"id": "entity-1"}
 
         async def _raise_exec(_pool, _enums, _details):
+            """Handle raise exec.
+
+            Args:
+                _pool: Input parameter for _raise_exec.
+                _enums: Input parameter for _raise_exec.
+                _details: Input parameter for _raise_exec.
+            """
+
             raise RuntimeError("boom")
 
-        monkeypatch.setitem(executor_mod.EXECUTORS, "create_entity", _create_entity_exec)
+        monkeypatch.setitem(
+            executor_mod.EXECUTORS, "create_entity", _create_entity_exec
+        )
         good_pool = _EnrollmentPool(
             fetchrow_results=[
                 {
@@ -1528,11 +1829,13 @@ class TestApprovalEnrichmentAndAuditHelpers:
         )
         assert result["entity"]["id"] == "entity-1"
         assert any(
-            "SET app.changed_by_type = 'entity'" in call[0] for call in good_pool.execute_calls
+            "SET app.changed_by_type = 'entity'" in call[0]
+            for call in good_pool.execute_calls
         )
-        assert any(
-            "_reviewed_by" in str(call[1]) for call in good_pool.fetchval_calls
-        ) is False
+        assert (
+            any("_reviewed_by" in str(call[1]) for call in good_pool.fetchval_calls)
+            is False
+        )
 
         monkeypatch.setitem(executor_mod.EXECUTORS, "create_entity", _raise_exec)
         fail_pool = _EnrollmentPool(
@@ -1567,6 +1870,18 @@ class TestApprovalEnrichmentAndAuditHelpers:
         seen: list[dict] = []
 
         async def _executor(_pool, _enums, _details, review_details):
+            """Handle executor.
+
+            Args:
+                _pool: Input parameter for _executor.
+                _enums: Input parameter for _executor.
+                _details: Input parameter for _executor.
+                review_details: Input parameter for _executor.
+
+            Returns:
+                Result value from the operation.
+            """
+
             seen.append(review_details)
             return {"id": "agent-created"}
 

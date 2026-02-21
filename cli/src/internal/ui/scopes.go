@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// scopeNameList handles scope name list.
 func scopeNameList(names map[string]string) []string {
 	if len(names) == 0 {
 		return nil
@@ -21,6 +22,7 @@ func scopeNameList(names map[string]string) []string {
 	return opts
 }
 
+// scopeSelected handles scope selected.
 func scopeSelected(scopes []string, scope string) bool {
 	for _, s := range scopes {
 		if s == scope {
@@ -30,6 +32,7 @@ func scopeSelected(scopes []string, scope string) bool {
 	return false
 }
 
+// toggleScope handles toggle scope.
 func toggleScope(scopes []string, scope string) []string {
 	out := make([]string, 0, len(scopes))
 	removed := false
@@ -46,6 +49,7 @@ func toggleScope(scopes []string, scope string) []string {
 	return out
 }
 
+// renderScopePills renders render scope pills.
 func renderScopePills(scopes []string, focused bool) string {
 	if len(scopes) == 0 && !focused {
 		return "-"
@@ -66,6 +70,7 @@ func renderScopePills(scopes []string, focused bool) string {
 	return b.String()
 }
 
+// scopeBadgeStyle handles scope badge style.
 func scopeBadgeStyle(scope string) lipgloss.Style {
 	switch strings.ToLower(strings.TrimSpace(scope)) {
 	case "public":
@@ -81,6 +86,7 @@ func scopeBadgeStyle(scope string) lipgloss.Style {
 	}
 }
 
+// renderScopeBadge renders render scope badge.
 func renderScopeBadge(scope string) string {
 	scope = strings.TrimSpace(scope)
 	if scope == "" {
@@ -89,6 +95,7 @@ func renderScopeBadge(scope string) string {
 	return scopeBadgeStyle(scope).Render("[" + scope + "]")
 }
 
+// renderScopeOptions renders render scope options.
 func renderScopeOptions(selected []string, options []string, idx int) string {
 	if len(options) == 0 {
 		options = append([]string{}, selected...)

@@ -27,6 +27,12 @@ def _untrusted_auth_override(agent_row: dict, enums: object, scopes: list[str]):
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     return mock_auth
@@ -155,9 +161,10 @@ async def test_import_context_invalid_url_returns_failed_row(api):
     data = r.json()["data"]
     assert data["created"] == 0
     assert data["failed"] == 1
-    assert "http://" in data["errors"][0]["error"] or "https://" in data["errors"][0][
-        "error"
-    ]
+    assert (
+        "http://" in data["errors"][0]["error"]
+        or "https://" in data["errors"][0]["error"]
+    )
 
 
 @pytest.mark.asyncio
@@ -276,7 +283,9 @@ async def test_import_entities_untrusted_agent_invalid_type_rejected_preapproval
             "/api/import/entities",
             json={
                 "format": "json",
-                "items": [{"name": "Bad Type Queue", "type": "made-up", "scopes": ["public"]}],
+                "items": [
+                    {"name": "Bad Type Queue", "type": "made-up", "scopes": ["public"]}
+                ],
             },
         )
     app.dependency_overrides.pop(require_auth, None)
@@ -341,7 +350,9 @@ async def test_import_entities_untrusted_agent_success_queues_approval(
             "/api/import/entities",
             json={
                 "format": "json",
-                "items": [{"name": "Queue Entity", "type": "person", "scopes": ["public"]}],
+                "items": [
+                    {"name": "Queue Entity", "type": "person", "scopes": ["public"]}
+                ],
             },
         )
     app.dependency_overrides.pop(require_auth, None)
@@ -350,7 +361,9 @@ async def test_import_entities_untrusted_agent_success_queues_approval(
     body = resp.json()
     assert len(body["approvals"]) == 1
     approval_id = body["approvals"][0]["approval_id"]
-    row = await db_pool.fetchrow("SELECT id FROM approval_requests WHERE id = $1::uuid", approval_id)
+    row = await db_pool.fetchrow(
+        "SELECT id FROM approval_requests WHERE id = $1::uuid", approval_id
+    )
     assert row is not None
 
 
@@ -406,7 +419,13 @@ async def test_import_context_untrusted_agent_success_queues_approval(
             "/api/import/context",
             json={
                 "format": "json",
-                "items": [{"title": "Queued Context", "source_type": "note", "scopes": ["public"]}],
+                "items": [
+                    {
+                        "title": "Queued Context",
+                        "source_type": "note",
+                        "scopes": ["public"],
+                    }
+                ],
             },
         )
     app.dependency_overrides.pop(require_auth, None)
@@ -588,7 +607,10 @@ async def test_import_jobs_untrusted_agent_success_queues_and_sets_agent_id(
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post(
             "/api/import/jobs",
-            json={"format": "json", "items": [{"title": "Queued Job", "priority": "high"}]},
+            json={
+                "format": "json",
+                "items": [{"title": "Queued Job", "priority": "high"}],
+            },
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -614,6 +636,13 @@ async def test_import_untrusted_agent_rate_limited_returns_429(
     """Import should return 429 when approval queue capacity check fails."""
 
     async def _raise_capacity(*_args, **_kwargs):
+        """Handle raise capacity.
+
+        Args:
+            *_args: Input parameter for _raise_capacity.
+            **_kwargs: Input parameter for _raise_capacity.
+        """
+
         raise ValueError("approval queue full")
 
     from nebula_api.routes import imports as imports_routes
@@ -630,7 +659,9 @@ async def test_import_untrusted_agent_rate_limited_returns_429(
             "/api/import/entities",
             json={
                 "format": "json",
-                "items": [{"name": "Rate Limited", "type": "person", "scopes": ["public"]}],
+                "items": [
+                    {"name": "Rate Limited", "type": "person", "scopes": ["public"]}
+                ],
             },
         )
     app.dependency_overrides.pop(require_auth, None)
@@ -647,7 +678,9 @@ async def test_import_entities_trusted_agent_runs_direct_write_path(api_agent_au
         "/api/import/entities",
         json={
             "format": "json",
-            "items": [{"name": "Trusted Import", "type": "person", "scopes": ["public"]}],
+            "items": [
+                {"name": "Trusted Import", "type": "person", "scopes": ["public"]}
+            ],
         },
     )
     assert resp.status_code == 200

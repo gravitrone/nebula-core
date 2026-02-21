@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestLoginCmdRejectsEmptyUsername handles test login cmd rejects empty username.
 func TestLoginCmdRejectsEmptyUsername(t *testing.T) {
 	oldStdin := os.Stdin
 	defer func() { os.Stdin = oldStdin }()
@@ -28,6 +29,7 @@ func TestLoginCmdRejectsEmptyUsername(t *testing.T) {
 	assert.Contains(t, err.Error(), "username is required")
 }
 
+// TestAgentCmdUnknownSubcommandDeterministicError handles test agent cmd unknown subcommand deterministic error.
 func TestAgentCmdUnknownSubcommandDeterministicError(t *testing.T) {
 	cmd := AgentCmd()
 	cmd.SetArgs([]string{"nope"})
@@ -36,6 +38,7 @@ func TestAgentCmdUnknownSubcommandDeterministicError(t *testing.T) {
 	assert.Contains(t, err.Error(), "unknown command")
 }
 
+// TestAgentCmdHelpWorks handles test agent cmd help works.
 func TestAgentCmdHelpWorks(t *testing.T) {
 	cmd := AgentCmd()
 	cmd.SetArgs([]string{"--help"})
@@ -43,11 +46,14 @@ func TestAgentCmdHelpWorks(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestKeysCmdNotLoggedInErrors handles test keys cmd not logged in errors.
 func TestKeysCmdNotLoggedInErrors(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	assert.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		assert.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cmd := KeysCmd()
 	cmd.SetArgs([]string{"list"})

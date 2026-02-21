@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestListViewsEnterFilteringModeWithF handles test list views enter filtering mode with f.
 func TestListViewsEnterFilteringModeWithF(t *testing.T) {
 	keyF := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}}
 

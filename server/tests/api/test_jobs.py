@@ -342,6 +342,12 @@ async def test_agent_cannot_update_job_outside_scopes(api, db_pool, enums):
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     app.dependency_overrides[require_auth] = mock_auth
@@ -375,6 +381,12 @@ def _agent_auth_override(agent_row: dict, scope_ids: list):
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     return mock_auth

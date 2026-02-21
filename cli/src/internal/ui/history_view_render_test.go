@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestHistoryViewRendersListAndFiltersLine handles test history view renders list and filters line.
 func TestHistoryViewRendersListAndFiltersLine(t *testing.T) {
 	now := time.Now()
 	model := NewHistoryModel(nil)
@@ -45,6 +46,7 @@ func TestHistoryViewRendersListAndFiltersLine(t *testing.T) {
 	assert.Contains(t, out, "entities")
 }
 
+// TestHistoryViewRendersScopesActorsAndDetail handles test history view renders scopes actors and detail.
 func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 	now := time.Now()
 	model := NewHistoryModel(nil)
@@ -99,6 +101,7 @@ func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 	assert.Contains(t, out, "unit-test")
 }
 
+// TestHistoryViewRendersFilterDialogAndErrorBox handles test history view renders filter dialog and error box.
 func TestHistoryViewRendersFilterDialogAndErrorBox(t *testing.T) {
 	model := NewHistoryModel(nil)
 	model.width = 80
@@ -116,6 +119,7 @@ func TestHistoryViewRendersFilterDialogAndErrorBox(t *testing.T) {
 	assert.Contains(t, out, "boom")
 }
 
+// TestHistoryDetailMetadataDiffRendersStructuredRows handles test history detail metadata diff renders structured rows.
 func TestHistoryDetailMetadataDiffRendersStructuredRows(t *testing.T) {
 	now := time.Now()
 	model := NewHistoryModel(nil)
@@ -152,6 +156,7 @@ func TestHistoryDetailMetadataDiffRendersStructuredRows(t *testing.T) {
 	assert.NotContains(t, out, "{\"")
 }
 
+// TestHistoryActorsViewNormalizesUnknownSystemLabels handles test history actors view normalizes unknown system labels.
 func TestHistoryActorsViewNormalizesUnknownSystemLabels(t *testing.T) {
 	now := time.Now()
 	model := NewHistoryModel(nil)
@@ -170,6 +175,7 @@ func TestHistoryActorsViewNormalizesUnknownSystemLabels(t *testing.T) {
 	assert.NotContains(t, strings.ToLower(out), "unknown")
 }
 
+// TestHistoryRenderRevertConfirmAndUnknownLabelHelper handles test history render revert confirm and unknown label helper.
 func TestHistoryRenderRevertConfirmAndUnknownLabelHelper(t *testing.T) {
 	now := time.Now()
 	model := NewHistoryModel(nil)

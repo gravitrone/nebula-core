@@ -388,7 +388,9 @@ async def test_approve_mixed_entity_updates_do_not_fail_with_missing_id(
     assert "bulk-approved" in (update_result["entity"].get("tags") or [])
 
 
-async def test_approve_revert_entity_executes(db_pool, enums, untrusted_agent, test_entity):
+async def test_approve_revert_entity_executes(
+    db_pool, enums, untrusted_agent, test_entity
+):
     """revert_entity approvals should execute via executor registry."""
 
     await db_pool.execute(

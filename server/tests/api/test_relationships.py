@@ -236,7 +236,9 @@ async def test_update_relationship_accepts_archived_alias(api, db_pool):
 
     archived_names = {
         row["name"]
-        for row in await db_pool.fetch("SELECT name FROM statuses WHERE category = 'archived'")
+        for row in await db_pool.fetch(
+            "SELECT name FROM statuses WHERE category = 'archived'"
+        )
     }
 
     resp = await api.patch(

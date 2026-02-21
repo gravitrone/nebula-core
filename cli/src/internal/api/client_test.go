@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testServer handles test server.
 func testServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *Client) {
 	t.Helper()
 	srv := httptest.NewServer(handler)
@@ -22,21 +23,24 @@ func testServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *Clie
 	return srv, client
 }
 
+// jsonResponse handles json response.
 func jsonResponse(data any) []byte {
 	b, _ := json.Marshal(map[string]any{"data": data})
 	return b
 }
 
+// TestGetEntity handles test get entity.
 func TestGetEntity(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "Bearer nbl_testkey", r.Header.Get("Authorization"))
 		assert.Contains(t, r.URL.Path, "/api/entities/")
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":   "abc-123",
 			"name": "test entity",
 			"tags": []string{"test"},
 		}))
+		require.NoError(t, err)
 	})
 
 	entity, err := client.GetEntity("abc-123")
@@ -45,14 +49,16 @@ func TestGetEntity(t *testing.T) {
 	assert.Equal(t, "test entity", entity.Name)
 }
 
+// TestQueryEntities handles test query entities.
 func TestQueryEntities(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "active", r.URL.Query().Get("status"))
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "1", "name": "one", "tags": []string{}},
 			{"id": "2", "name": "two", "tags": []string{}},
 		}))
+		require.NoError(t, err)
 	})
 
 	entities, err := client.QueryEntities(QueryParams{"status": "active"})
@@ -60,6 +66,7 @@ func TestQueryEntities(t *testing.T) {
 	assert.Len(t, entities, 2)
 }
 
+// TestQueryAuditLog handles test query audit log.
 func TestQueryAuditLog(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -72,9 +79,10 @@ func TestQueryAuditLog(t *testing.T) {
 		assert.Equal(t, "scope-1", r.URL.Query().Get("scope_id"))
 		assert.Equal(t, "25", r.URL.Query().Get("limit"))
 		assert.Equal(t, "0", r.URL.Query().Get("offset"))
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "audit-1", "table_name": "entities", "record_id": "ent-1"},
 		}))
+		require.NoError(t, err)
 	})
 
 	items, err := client.QueryAuditLogWithPagination(
@@ -92,13 +100,15 @@ func TestQueryAuditLog(t *testing.T) {
 	assert.Equal(t, "audit-1", items[0].ID)
 }
 
+// TestListAuditScopes handles test list audit scopes.
 func TestListAuditScopes(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/api/audit/scopes", r.URL.Path)
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "scope-1", "name": "public", "agent_count": 2},
 		}))
+		require.NoError(t, err)
 	})
 
 	scopes, err := client.ListAuditScopes()
@@ -107,14 +117,16 @@ func TestListAuditScopes(t *testing.T) {
 	assert.Equal(t, "scope-1", scopes[0].ID)
 }
 
+// TestListAuditActors handles test list audit actors.
 func TestListAuditActors(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/api/audit/actors", r.URL.Path)
 		assert.Equal(t, "agent", r.URL.Query().Get("actor_type"))
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"changed_by_type": "agent", "changed_by_id": "agent-1", "action_count": 3},
 		}))
+		require.NoError(t, err)
 	})
 
 	actors, err := client.ListAuditActors("agent")
@@ -122,17 +134,20 @@ func TestListAuditActors(t *testing.T) {
 	require.Len(t, actors, 1)
 	assert.Equal(t, "agent-1", actors[0].ActorID)
 }
+
+// TestCreateEntity handles test create entity.
 func TestCreateEntity(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		var body CreateEntityInput
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "new entity", body.Name)
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":   "new-id",
 			"name": "new entity",
 			"tags": []string{},
 		}))
+		require.NoError(t, err)
 	})
 
 	entity, err := client.CreateEntity(CreateEntityInput{
@@ -146,12 +161,14 @@ func TestCreateEntity(t *testing.T) {
 	assert.Equal(t, "new-id", entity.ID)
 }
 
+// TestGetPendingApprovals handles test get pending approvals.
 func TestGetPendingApprovals(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/approvals/pending", r.URL.Path)
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "ap-1", "agent_id": "ag-1", "action_type": "register", "status": "pending", "details": map[string]any{}},
 		}))
+		require.NoError(t, err)
 	})
 
 	approvals, err := client.GetPendingApprovals()
@@ -160,14 +177,16 @@ func TestGetPendingApprovals(t *testing.T) {
 	assert.Equal(t, "ap-1", approvals[0].ID)
 }
 
+// TestApproveRequest handles test approve request.
 func TestApproveRequest(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/approve")
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id": "ap-1", "status": "approved", "agent_id": "ag-1",
 			"action_type": "register", "details": map[string]any{},
 		}))
+		require.NoError(t, err)
 	})
 
 	approval, err := client.ApproveRequest("ap-1")
@@ -175,12 +194,14 @@ func TestApproveRequest(t *testing.T) {
 	assert.Equal(t, "approved", approval.Status)
 }
 
+// TestListAgents handles test list agents.
 func TestListAgents(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "ag-1", "name": "test-agent", "status": "active", "requires_approval": true, "scopes": []string{"public"}},
 		}))
+		require.NoError(t, err)
 	})
 
 	agents, err := client.ListAgents("")
@@ -189,15 +210,17 @@ func TestListAgents(t *testing.T) {
 	assert.Equal(t, "test-agent", agents[0].Name)
 }
 
+// TestLogin handles test login.
 func TestLogin(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/keys/login")
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"api_key":   "nbl_newkey",
 			"entity_id": "ent-1",
 			"username":  "testuser",
 		}))
+		require.NoError(t, err)
 	})
 
 	resp, err := client.Login("testuser")
@@ -206,6 +229,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, "testuser", resp.Username)
 }
 
+// TestHTTPError handles test httperror.
 func TestHTTPError(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -215,7 +239,8 @@ func TestHTTPError(t *testing.T) {
 				"message": "entity not found",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.GetEntity("nope")
@@ -223,6 +248,7 @@ func TestHTTPError(t *testing.T) {
 	assert.Contains(t, err.Error(), "NOT_FOUND")
 }
 
+// TestHTTPErrorNestedDetailFormat handles test httperror nested detail format.
 func TestHTTPErrorNestedDetailFormat(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -241,6 +267,7 @@ func TestHTTPErrorNestedDetailFormat(t *testing.T) {
 	assert.Equal(t, "FORBIDDEN: Admin scope required", err.Error())
 }
 
+// TestHealth handles test health.
 func TestHealth(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -253,6 +280,7 @@ func TestHealth(t *testing.T) {
 	assert.Equal(t, "ok", status)
 }
 
+// TestBuildQuery handles test build query.
 func TestBuildQuery(t *testing.T) {
 	result := buildQuery("/api/entities", QueryParams{"status": "active", "type": "person"})
 	assert.Contains(t, result, "/api/entities?")
@@ -260,16 +288,19 @@ func TestBuildQuery(t *testing.T) {
 	assert.Contains(t, result, "type=person")
 }
 
+// TestBuildQueryEmpty handles test build query empty.
 func TestBuildQueryEmpty(t *testing.T) {
 	result := buildQuery("/api/entities", nil)
 	assert.Equal(t, "/api/entities", result)
 }
 
+// TestNewClientCustomTimeout handles test new client custom timeout.
 func TestNewClientCustomTimeout(t *testing.T) {
 	client := NewClient("http://example.com", "nbl_testkey", 5*time.Second)
 	assert.Equal(t, 5*time.Second, client.httpClient.Timeout)
 }
 
+// TestWithTimeoutClonesClient handles test with timeout clones client.
 func TestWithTimeoutClonesClient(t *testing.T) {
 	client := NewClient("http://example.com", "nbl_testkey", 30*time.Second)
 	clone := client.WithTimeout(2 * time.Second)
@@ -278,15 +309,17 @@ func TestWithTimeoutClonesClient(t *testing.T) {
 	assert.NotSame(t, client, clone)
 }
 
+// TestClientConcurrentRequests handles test client concurrent requests.
 func TestClientConcurrentRequests(t *testing.T) {
 	var count atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count.Add(1)
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":   "ent-1",
 			"name": "test entity",
 			"tags": []string{},
 		}))
+		require.NoError(t, err)
 	}))
 	t.Cleanup(srv.Close)
 
@@ -312,15 +345,17 @@ func TestClientConcurrentRequests(t *testing.T) {
 	assert.Equal(t, int32(workers), count.Load())
 }
 
+// TestCreateKey handles test create key.
 func TestCreateKey(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"api_key": "nbl_abc123",
 			"key_id":  "key-1",
 			"prefix":  "nbl_abc",
 			"name":    "my-key",
 		}))
+		require.NoError(t, err)
 	})
 
 	resp, err := client.CreateKey("my-key")
@@ -329,17 +364,19 @@ func TestCreateKey(t *testing.T) {
 	assert.Equal(t, "my-key", resp.Name)
 }
 
+// TestSetAPIKeyUpdatesSubsequentRequests handles test set apikey updates subsequent requests.
 func TestSetAPIKeyUpdatesSubsequentRequests(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer nbl_newkey" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":   "ent-1",
 			"name": "ok",
 			"tags": []string{},
 		}))
+		require.NoError(t, err)
 	})
 
 	client.SetAPIKey("")
@@ -352,11 +389,13 @@ func TestSetAPIKeyUpdatesSubsequentRequests(t *testing.T) {
 	assert.Equal(t, "ent-1", entity.ID)
 }
 
+// TestQueryJobs handles test query jobs.
 func TestQueryJobs(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "j-1", "title": "test job", "status": "pending"},
 		}))
+		require.NoError(t, err)
 	})
 
 	jobs, err := client.QueryJobs(nil)
@@ -365,14 +404,16 @@ func TestQueryJobs(t *testing.T) {
 	assert.Equal(t, "test job", jobs[0].Title)
 }
 
+// TestRegisterAgent handles test register agent.
 func TestRegisterAgent(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"agent_id":            "ag-new",
 			"approval_request_id": "ap-new",
 			"status":              "pending_approval",
 		}))
+		require.NoError(t, err)
 	})
 
 	resp, err := client.RegisterAgent(RegisterAgentInput{

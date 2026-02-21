@@ -12,10 +12,12 @@ import (
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
+// RoundTrip handles round trip.
 func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
 }
 
+// TestExportMethodsBuildPathQueryAndDecode handles test export methods build path query and decode.
 func TestExportMethodsBuildPathQueryAndDecode(t *testing.T) {
 	cases := []struct {
 		name string
@@ -67,11 +69,12 @@ func TestExportMethodsBuildPathQueryAndDecode(t *testing.T) {
 				assert.Equal(t, "json", r.URL.Query().Get("format"))
 				assert.Equal(t, "10", r.URL.Query().Get("limit"))
 
-				w.Write(jsonResponse(map[string]any{
+				_, err := w.Write(jsonResponse(map[string]any{
 					"format": "json",
 					"items":  []map[string]any{{"id": "x"}},
 					"count":  1,
 				}))
+				require.NoError(t, err)
 			})
 
 			out, err := tc.call(client)
@@ -83,6 +86,7 @@ func TestExportMethodsBuildPathQueryAndDecode(t *testing.T) {
 	}
 }
 
+// TestImportMethodsEncodeBodyAndDecode handles test import methods encode body and decode.
 func TestImportMethodsEncodeBodyAndDecode(t *testing.T) {
 	cases := []struct {
 		name string
@@ -123,12 +127,13 @@ func TestImportMethodsEncodeBodyAndDecode(t *testing.T) {
 				assert.Equal(t, "json", body.Format)
 				assert.Equal(t, "[]", body.Data)
 
-				w.Write(jsonResponse(map[string]any{
+				_, err := w.Write(jsonResponse(map[string]any{
 					"created": 1,
 					"failed":  0,
 					"errors":  []map[string]any{},
 					"items":   []map[string]any{{"id": "ok"}},
 				}))
+				require.NoError(t, err)
 			})
 
 			out, err := tc.call(client)
@@ -139,6 +144,7 @@ func TestImportMethodsEncodeBodyAndDecode(t *testing.T) {
 	}
 }
 
+// TestBulkUpdateCallsEncodeBodyAndDecode handles test bulk update calls encode body and decode.
 func TestBulkUpdateCallsEncodeBodyAndDecode(t *testing.T) {
 	cases := []struct {
 		name string
@@ -180,10 +186,11 @@ func TestBulkUpdateCallsEncodeBodyAndDecode(t *testing.T) {
 				require.NoError(t, json.NewDecoder(r.Body).Decode(&raw))
 				assert.Equal(t, "add", raw["op"])
 
-				w.Write(jsonResponse(map[string]any{
+				_, err := w.Write(jsonResponse(map[string]any{
 					"updated":    2,
 					"entity_ids": []string{"e1", "e2"},
 				}))
+				require.NoError(t, err)
 			})
 
 			out, err := tc.call(client)
@@ -194,10 +201,12 @@ func TestBulkUpdateCallsEncodeBodyAndDecode(t *testing.T) {
 	}
 }
 
+// TestClientErrorEnvelopeReturnsCodeMessage handles test client error envelope returns code message.
 func TestClientErrorEnvelopeReturnsCodeMessage(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":{"code":"BAD_REQUEST","message":"nope"}}`))
+		_, err := w.Write([]byte(`{"error":{"code":"BAD_REQUEST","message":"nope"}}`))
+		require.NoError(t, err)
 	})
 
 	_, err := client.ExportEntities(QueryParams{})
@@ -205,6 +214,7 @@ func TestClientErrorEnvelopeReturnsCodeMessage(t *testing.T) {
 	assert.ErrorContains(t, err, "BAD_REQUEST: nope")
 }
 
+// TestClientTransportFailureSurfacesDeterministicError handles test client transport failure surfaces deterministic error.
 func TestClientTransportFailureSurfacesDeterministicError(t *testing.T) {
 	client := NewClient("http://example.com", "nbl_testkey")
 	client.httpClient.Transport = roundTripperFunc(func(*http.Request) (*http.Response, error) {

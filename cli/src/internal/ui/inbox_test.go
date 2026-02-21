@@ -14,16 +14,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testClient handles test client.
 func testClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestInboxModelInit handles test inbox model init.
 func TestInboxModelInit(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{"data": []map[string]any{}}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -31,6 +34,7 @@ func TestInboxModelInit(t *testing.T) {
 	assert.NotNil(t, cmd)
 }
 
+// TestInboxModelLoadsApprovals handles test inbox model loads approvals.
 func TestInboxModelLoadsApprovals(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -39,7 +43,8 @@ func TestInboxModelLoadsApprovals(t *testing.T) {
 				{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -53,6 +58,7 @@ func TestInboxModelLoadsApprovals(t *testing.T) {
 	assert.Equal(t, "ap-1", model.items[0].ID)
 }
 
+// TestInboxModelNavigationKeys handles test inbox model navigation keys.
 func TestInboxModelNavigationKeys(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -61,7 +67,8 @@ func TestInboxModelNavigationKeys(t *testing.T) {
 				{"id": "ap-2", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -83,6 +90,7 @@ func TestInboxModelNavigationKeys(t *testing.T) {
 	assert.Equal(t, 0, model.list.Selected())
 }
 
+// TestInboxModelEnterShowsDetail handles test inbox model enter shows detail.
 func TestInboxModelEnterShowsDetail(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -90,7 +98,8 @@ func TestInboxModelEnterShowsDetail(t *testing.T) {
 				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -108,6 +117,7 @@ func TestInboxModelEnterShowsDetail(t *testing.T) {
 	assert.Equal(t, "ap-1", model.detail.ID)
 }
 
+// TestInboxDetailLoadsDiff handles test inbox detail loads diff.
 func TestInboxDetailLoadsDiff(t *testing.T) {
 	diffCalled := false
 	var paths []string
@@ -120,10 +130,11 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 					{"id": "ap-1", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		case strings.Contains(r.URL.Path, "/diff"):
 			diffCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"approval_id":  "ap-1",
 					"request_type": "update_entity",
@@ -132,6 +143,7 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -157,6 +169,7 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 	assert.Contains(t, changes, "status")
 }
 
+// TestInboxModelEscapeBackFromDetail handles test inbox model escape back from detail.
 func TestInboxModelEscapeBackFromDetail(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -164,7 +177,8 @@ func TestInboxModelEscapeBackFromDetail(t *testing.T) {
 				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -183,10 +197,12 @@ func TestInboxModelEscapeBackFromDetail(t *testing.T) {
 	assert.Nil(t, model.detail)
 }
 
+// TestInboxModelRenderEmpty handles test inbox model render empty.
 func TestInboxModelRenderEmpty(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{"data": []map[string]any{}}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -200,6 +216,7 @@ func TestInboxModelRenderEmpty(t *testing.T) {
 	assert.Contains(t, view, "No pending approvals")
 }
 
+// TestInboxBulkApproveRequiresConfirm handles test inbox bulk approve requires confirm.
 func TestInboxBulkApproveRequiresConfirm(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -208,7 +225,8 @@ func TestInboxBulkApproveRequiresConfirm(t *testing.T) {
 				{"id": "ap-2", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -225,6 +243,7 @@ func TestInboxBulkApproveRequiresConfirm(t *testing.T) {
 	assert.Contains(t, view, "Approve")
 }
 
+// TestInboxModelRenderLoading handles test inbox model render loading.
 func TestInboxModelRenderLoading(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		// should not be called
@@ -237,6 +256,7 @@ func TestInboxModelRenderLoading(t *testing.T) {
 	assert.Contains(t, view, "Loading")
 }
 
+// TestInboxModelRejectInputHandling handles test inbox model reject input handling.
 func TestInboxModelRejectInputHandling(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -244,7 +264,8 @@ func TestInboxModelRejectInputHandling(t *testing.T) {
 				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewInboxModel(client)
@@ -278,6 +299,7 @@ func TestInboxModelRejectInputHandling(t *testing.T) {
 	assert.Equal(t, "", model.rejectBuf)
 }
 
+// TestInboxToggleSelectAll handles test inbox toggle select all.
 func TestInboxToggleSelectAll(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{
@@ -293,17 +315,20 @@ func TestInboxToggleSelectAll(t *testing.T) {
 	assert.Equal(t, 0, model.selectedCount())
 }
 
+// TestInboxApproveAllFiltered handles test inbox approve all filtered.
 func TestInboxApproveAllFiltered(t *testing.T) {
 	var approved []string
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/approvals/") && strings.HasSuffix(r.URL.Path, "/approve") {
 			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/approvals/"), "/approve")
 			approved = append(approved, id)
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": id}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": id}})
+			require.NoError(t, err)
 			return
 		}
 		if r.URL.Path == "/api/approvals/pending" {
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -327,6 +352,7 @@ func TestInboxApproveAllFiltered(t *testing.T) {
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
 }
 
+// TestInboxApproveAllConfirmAcceptsEnter handles test inbox approve all confirm accepts enter.
 func TestInboxApproveAllConfirmAcceptsEnter(t *testing.T) {
 	var approved []string
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -334,10 +360,12 @@ func TestInboxApproveAllConfirmAcceptsEnter(t *testing.T) {
 		case strings.HasPrefix(r.URL.Path, "/api/approvals/") && strings.HasSuffix(r.URL.Path, "/approve"):
 			id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/approvals/"), "/approve")
 			approved = append(approved, id)
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": id}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": id}})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/approvals/pending":
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -361,6 +389,7 @@ func TestInboxApproveAllConfirmAcceptsEnter(t *testing.T) {
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
 }
 
+// TestInboxApproveAllConfirmCancelsOnEsc handles test inbox approve all confirm cancels on esc.
 func TestInboxApproveAllConfirmCancelsOnEsc(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.confirmBulk = true
@@ -378,6 +407,7 @@ func TestInboxApproveAllConfirmCancelsOnEsc(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+// TestInboxFilterByAgentAndType handles test inbox filter by agent and type.
 func TestInboxFilterByAgentAndType(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{
@@ -391,6 +421,7 @@ func TestInboxFilterByAgentAndType(t *testing.T) {
 	assert.Equal(t, "ap-1", model.items[model.filtered[0]].ID)
 }
 
+// TestInboxFilterByTerm handles test inbox filter by term.
 func TestInboxFilterByTerm(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{
@@ -404,6 +435,7 @@ func TestInboxFilterByTerm(t *testing.T) {
 	assert.Equal(t, "ap-1", model.items[model.filtered[0]].ID)
 }
 
+// TestInboxBatchApproveSelected handles test inbox batch approve selected.
 func TestInboxBatchApproveSelected(t *testing.T) {
 	var approved []string
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -415,11 +447,13 @@ func TestInboxBatchApproveSelected(t *testing.T) {
 					{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		case strings.HasSuffix(r.URL.Path, "/approve"):
 			parts := strings.Split(r.URL.Path, "/")
 			approved = append(approved, parts[len(parts)-2])
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -440,11 +474,12 @@ func TestInboxBatchApproveSelected(t *testing.T) {
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	require.NotNil(t, cmd)
 	msg = cmd()
-	model, _ = model.Update(msg)
+	_, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
 }
 
+// TestInboxApproveAllMixedRequestsStaysDeterministic handles test inbox approve all mixed requests stays deterministic.
 func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 	var approved []string
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -479,11 +514,13 @@ func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 					},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		case strings.HasSuffix(r.URL.Path, "/approve"):
 			parts := strings.Split(r.URL.Path, "/")
 			approved = append(approved, parts[len(parts)-2])
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -504,11 +541,12 @@ func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	require.NotNil(t, cmd)
 	msg = cmd()
-	model, _ = model.Update(msg)
+	_, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-bulk", "ap-update"}, approved)
 }
 
+// TestInboxApproveRegisterAgentOpensGrantEditor handles test inbox approve register agent opens grant editor.
 func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -541,6 +579,7 @@ func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 	assert.False(t, model.grantTrusted)
 }
 
+// TestInboxApproveRegisterAgentSendsGrantPayload handles test inbox approve register agent sends grant payload.
 func TestInboxApproveRegisterAgentSendsGrantPayload(t *testing.T) {
 	approvedBody := map[string]any{}
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -590,6 +629,7 @@ func TestInboxApproveRegisterAgentSendsGrantPayload(t *testing.T) {
 	assert.Equal(t, false, approvedBody["grant_requires_approval"])
 }
 
+// TestInboxBatchRejectSelected handles test inbox batch reject selected.
 func TestInboxBatchRejectSelected(t *testing.T) {
 	var rejected []string
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -601,11 +641,13 @@ func TestInboxBatchRejectSelected(t *testing.T) {
 					{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		case strings.HasSuffix(r.URL.Path, "/reject"):
 			parts := strings.Split(r.URL.Path, "/")
 			rejected = append(rejected, parts[len(parts)-2])
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": parts[len(parts)-2]}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -629,11 +671,12 @@ func TestInboxBatchRejectSelected(t *testing.T) {
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	require.NotNil(t, cmd)
 	msg = cmd()
-	model, _ = model.Update(msg)
+	_, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, rejected)
 }
 
+// TestParseFilterTime handles test parse filter time.
 func TestParseFilterTime(t *testing.T) {
 	if parseFilterTime("nonsense") != nil {
 		t.Fatal("expected nil for invalid time")
@@ -666,6 +709,7 @@ func TestParseFilterTime(t *testing.T) {
 	}
 }
 
+// TestParseApprovalFilterTokens handles test parse approval filter tokens.
 func TestParseApprovalFilterTokens(t *testing.T) {
 	filter := parseApprovalFilter("agent:Alpha type:Create since:1d custom")
 	assert.Equal(t, "alpha", filter.agent)
@@ -674,6 +718,7 @@ func TestParseApprovalFilterTokens(t *testing.T) {
 	assert.Equal(t, []string{"custom"}, filter.terms)
 }
 
+// TestInboxRenderGrantEditorShowsCurrentInputs handles test inbox render grant editor shows current inputs.
 func TestInboxRenderGrantEditorShowsCurrentInputs(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.width = 90

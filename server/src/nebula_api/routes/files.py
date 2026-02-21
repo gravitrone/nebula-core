@@ -24,6 +24,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -36,6 +46,18 @@ def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
 async def _file_visible(
     pool: Any, enums: EnumRegistry, auth: dict, file_id: str
 ) -> bool:
+    """Handle file visible.
+
+    Args:
+        pool: Input parameter for _file_visible.
+        enums: Input parameter for _file_visible.
+        auth: Input parameter for _file_visible.
+        file_id: Input parameter for _file_visible.
+
+    Returns:
+        Result value from the operation.
+    """
+
     file_id = str(file_id)
     if _is_admin(auth, enums):
         return True

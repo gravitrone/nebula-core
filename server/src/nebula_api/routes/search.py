@@ -33,11 +33,29 @@ class SemanticSearchBody(BaseModel):
     @field_validator("query", mode="before")
     @classmethod
     def _clean_query(cls, value: str) -> str:
+        """Handle clean query.
+
+        Args:
+            value: Input parameter for _clean_query.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return str(value or "").strip()
 
     @field_validator("kinds", mode="before")
     @classmethod
     def _clean_kinds(cls, value: list[str] | None) -> list[str]:
+        """Handle clean kinds.
+
+        Args:
+            value: Input parameter for _clean_kinds.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not value:
             return list(DEFAULT_SEMANTIC_KINDS)
         out: list[str] = []
@@ -49,6 +67,16 @@ class SemanticSearchBody(BaseModel):
 
 
 def _scope_filter_ids(auth: dict, enums: Any) -> list[str] | None:
+    """Handle scope filter ids.
+
+    Args:
+        auth: Input parameter for _scope_filter_ids.
+        enums: Input parameter for _scope_filter_ids.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if auth.get("caller_type") == "user":
         public_id = enums.scopes.name_to_id.get("public")
         return [public_id] if public_id else []
@@ -57,6 +85,15 @@ def _scope_filter_ids(auth: dict, enums: Any) -> list[str] | None:
 
 
 def _entity_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    """Handle entity candidate.
+
+    Args:
+        row: Input parameter for _entity_candidate.
+
+    Returns:
+        Result value from the operation.
+    """
+
     metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     text = " ".join(
@@ -82,6 +119,15 @@ def _entity_candidate(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _context_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    """Handle context candidate.
+
+    Args:
+        row: Input parameter for _context_candidate.
+
+    Returns:
+        Result value from the operation.
+    """
+
     metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     content = str(row.get("content") or "")

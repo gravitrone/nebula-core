@@ -26,6 +26,16 @@ JOB_PRIORITY_VALUES = {"low", "medium", "high", "critical"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -36,6 +46,14 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 
 def _require_job_read(auth: dict, enums: Any, job: dict) -> None:
+    """Handle require job read.
+
+    Args:
+        auth: Input parameter for _require_job_read.
+        enums: Input parameter for _require_job_read.
+        job: Input parameter for _require_job_read.
+    """
+
     if _is_admin(auth, enums):
         return
     job_scopes = job.get("privacy_scope_ids") or []
@@ -45,6 +63,14 @@ def _require_job_read(auth: dict, enums: Any, job: dict) -> None:
 
 
 def _require_job_write(auth: dict, enums: Any, job: dict) -> None:
+    """Handle require job write.
+
+    Args:
+        auth: Input parameter for _require_job_write.
+        enums: Input parameter for _require_job_write.
+        job: Input parameter for _require_job_write.
+    """
+
     _require_job_read(auth, enums, job)
     if _is_admin(auth, enums):
         return
@@ -61,6 +87,13 @@ def _require_job_write(auth: dict, enums: Any, job: dict) -> None:
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except ValueError:
@@ -160,6 +193,7 @@ async def create_job(
     Returns:
         API response with created job or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
@@ -216,6 +250,7 @@ async def get_job(
     Returns:
         API response with job data.
     """
+
     pool = request.app.state.pool
 
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
@@ -259,6 +294,7 @@ async def query_jobs(
     Returns:
         API response with job list.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -307,6 +343,7 @@ async def update_job_status(
     Returns:
         API response with updated job or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
@@ -363,6 +400,7 @@ async def update_job(
     Returns:
         API response with updated job or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
@@ -419,6 +457,7 @@ async def create_subtask(
     Returns:
         API response with created subtask or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     parent_row = await pool.fetchrow(QUERIES["jobs/get"], job_id)

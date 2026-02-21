@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestHandleOnboardingKeysRequiresUsername handles test handle onboarding keys requires username.
 func TestHandleOnboardingKeysRequiresUsername(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
@@ -25,6 +26,7 @@ func TestHandleOnboardingKeysRequiresUsername(t *testing.T) {
 	assert.False(t, updated.onboardingBusy)
 }
 
+// TestHandleOnboardingKeysEditsUsernameBuffer handles test handle onboarding keys edits username buffer.
 func TestHandleOnboardingKeysEditsUsernameBuffer(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
@@ -39,6 +41,7 @@ func TestHandleOnboardingKeysEditsUsernameBuffer(t *testing.T) {
 	assert.Equal(t, "az", updated.onboardingName)
 }
 
+// TestOnboardingLoginCmdReturnsLoginPayload handles test onboarding login cmd returns login payload.
 func TestOnboardingLoginCmdReturnsLoginPayload(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/keys/login" || r.Method != http.MethodPost {
@@ -72,6 +75,7 @@ func TestOnboardingLoginCmdReturnsLoginPayload(t *testing.T) {
 	assert.Equal(t, "alxx", done.resp.Username)
 }
 
+// TestRenderOnboardingSanitizesAndShowsBusyState handles test render onboarding sanitizes and shows busy state.
 func TestRenderOnboardingSanitizesAndShowsBusyState(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.width = 80

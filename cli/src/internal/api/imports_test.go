@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestImportEntities handles test import entities.
 func TestImportEntities(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -20,12 +21,13 @@ func TestImportEntities(t *testing.T) {
 		assert.Equal(t, "json", body.Format)
 		assert.Equal(t, "[]", body.Data)
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"created": 1,
 			"failed":  0,
 			"errors":  []map[string]any{},
 			"items":   []map[string]any{{"id": "ent-1"}},
 		}))
+		require.NoError(t, err)
 	}))
 	t.Cleanup(srv.Close)
 

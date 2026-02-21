@@ -14,6 +14,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/ui"
 )
 
+// main runs the CLI entrypoint.
 func main() {
 	root := newRootCommand()
 	if err := root.Execute(); err != nil {
@@ -22,6 +23,7 @@ func main() {
 	}
 }
 
+// newRootCommand handles new root command.
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "nebula",
@@ -45,12 +47,14 @@ func newRootCommand() *cobra.Command {
 	return root
 }
 
+// init initializes package defaults.
 func init() {
 	// Force truecolor so hex colors render correctly
 	// Must be set before any lipgloss style initialization
-	os.Setenv("COLORTERM", "truecolor")
+	_ = os.Setenv("COLORTERM", "truecolor")
 }
 
+// runTUI runs run tui.
 func runTUI() error {
 	cfg, err := config.Load()
 	if err != nil {
@@ -79,6 +83,7 @@ func runTUI() error {
 	return nil
 }
 
+// isInteractiveTerminal handles is interactive terminal.
 func isInteractiveTerminal(file *os.File) bool {
 	if file == nil {
 		return false

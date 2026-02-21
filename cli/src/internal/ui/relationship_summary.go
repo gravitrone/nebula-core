@@ -16,6 +16,7 @@ type relationshipSummaryEntry struct {
 	Node string
 }
 
+// renderRelationshipSummaryTable renders render relationship summary table.
 func renderRelationshipSummaryTable(nodeType, nodeID string, rels []api.Relationship, maxRows, width int) string {
 	rows, extra := relationshipSummaryEntries(nodeType, nodeID, rels, maxRows)
 	if len(rows) == 0 && extra == 0 {
@@ -53,6 +54,7 @@ func renderRelationshipSummaryTable(nodeType, nodeID string, rels []api.Relation
 	return components.TitledBox("Relationships", content, width)
 }
 
+// relationshipSummaryRows handles relationship summary rows.
 func relationshipSummaryRows(nodeType, nodeID string, rels []api.Relationship, maxRows int) []components.TableRow {
 	entries, extra := relationshipSummaryEntries(nodeType, nodeID, rels, maxRows)
 	rows := make([]components.TableRow, 0, len(entries)+1)
@@ -71,6 +73,7 @@ func relationshipSummaryRows(nodeType, nodeID string, rels []api.Relationship, m
 	return rows
 }
 
+// relationshipSummaryEntries handles relationship summary entries.
 func relationshipSummaryEntries(nodeType, nodeID string, rels []api.Relationship, maxRows int) ([]relationshipSummaryEntry, int) {
 	if maxRows <= 0 {
 		maxRows = 5
@@ -98,6 +101,7 @@ func relationshipSummaryEntries(nodeType, nodeID string, rels []api.Relationship
 	return entries, extra
 }
 
+// relationshipSummaryColumnWidths handles relationship summary column widths.
 func relationshipSummaryColumnWidths(contentWidth int) (int, int, int) {
 	if contentWidth < 32 {
 		contentWidth = 32
@@ -133,6 +137,7 @@ func relationshipSummaryColumnWidths(contentWidth int) (int, int, int) {
 	return rel, dir, node
 }
 
+// relationshipDirectionAndEndpoint handles relationship direction and endpoint.
 func relationshipDirectionAndEndpoint(nodeType, nodeID string, rel api.Relationship) (string, string) {
 	sourceID := strings.TrimSpace(rel.SourceID)
 	targetID := strings.TrimSpace(rel.TargetID)
@@ -152,6 +157,7 @@ func relationshipDirectionAndEndpoint(nodeType, nodeID string, rel api.Relations
 	}
 }
 
+// relationshipNodeLabel handles relationship node label.
 func relationshipNodeLabel(name, nodeID, nodeType string) string {
 	clean := strings.TrimSpace(components.SanitizeOneLine(name))
 	if clean != "" {

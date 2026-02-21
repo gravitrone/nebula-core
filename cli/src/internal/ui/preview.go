@@ -22,6 +22,7 @@ const (
 	minSideBySideContentWidth = 138
 )
 
+// preferredPreviewWidth handles preferred preview width.
 func preferredPreviewWidth(contentWidth int) int {
 	if contentWidth <= 0 {
 		return previewMinWidth
@@ -36,6 +37,7 @@ func preferredPreviewWidth(contentWidth int) int {
 	return previewWidth
 }
 
+// previewBoxContentWidth handles preview box content width.
 func previewBoxContentWidth(width int) int {
 	if width <= 0 {
 		return 0
@@ -47,6 +49,7 @@ func previewBoxContentWidth(width int) int {
 	return contentWidth
 }
 
+// renderPreviewBox renders render preview box.
 func renderPreviewBox(content string, width int) string {
 	if width <= 0 {
 		return ""
@@ -61,6 +64,7 @@ func renderPreviewBox(content string, width int) string {
 	return previewBoxStyle.Width(inner).Render(content)
 }
 
+// wrapPreviewText handles wrap preview text.
 func wrapPreviewText(text string, width int) []string {
 	text = components.SanitizeOneLine(text)
 	if width <= 0 || text == "" {
@@ -95,6 +99,7 @@ func wrapPreviewText(text string, width int) []string {
 	return out
 }
 
+// renderPreviewRow renders render preview row.
 func renderPreviewRow(label, value string, width int) string {
 	label = components.SanitizeOneLine(label)
 	value = components.SanitizeOneLine(value)
@@ -111,6 +116,7 @@ func renderPreviewRow(label, value string, width int) string {
 	return MetaKeyStyle.Render(label) + MetaPunctStyle.Render(": ") + MetaValueStyle.Render(value)
 }
 
+// renderPreviewScopeRow renders render preview scope row.
 func renderPreviewScopeRow(label, value string, width int) string {
 	prefixWidth := lipgloss.Width(label) + 2 // ": "
 	maxValue := width - prefixWidth
@@ -156,6 +162,7 @@ func renderPreviewScopeRow(label, value string, width int) string {
 	return MetaKeyStyle.Render(label) + MetaPunctStyle.Render(": ") + strings.Join(parts, " ")
 }
 
+// parseScopePreviewTokens parses parse scope preview tokens.
 func parseScopePreviewTokens(value string) []string {
 	value = strings.TrimSpace(components.SanitizeOneLine(value))
 	if value == "" || value == "-" {
@@ -183,6 +190,7 @@ func parseScopePreviewTokens(value string) []string {
 	return out
 }
 
+// formatScopePreview handles format scope preview.
 func formatScopePreview(scopes []string) string {
 	if len(scopes) == 0 {
 		return "-"
@@ -201,6 +209,7 @@ func formatScopePreview(scopes []string) string {
 	return strings.Join(out, " ")
 }
 
+// previewStringValue handles preview string value.
 func previewStringValue(m api.JSONMap, key string) string {
 	if m == nil {
 		return ""
@@ -216,6 +225,7 @@ func previewStringValue(m api.JSONMap, key string) string {
 	return components.SanitizeOneLine(s)
 }
 
+// previewListValue handles preview list value.
 func previewListValue(m api.JSONMap, key string) string {
 	if m == nil {
 		return ""
@@ -239,6 +249,7 @@ func previewListValue(m api.JSONMap, key string) string {
 	return strings.Join(out, ", ")
 }
 
+// padPreviewLines handles pad preview lines.
 func padPreviewLines(lines []string, width int) string {
 	if width <= 0 || len(lines) == 0 {
 		return ""

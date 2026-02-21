@@ -23,7 +23,9 @@ async def test_authenticate_agent_missing_env_var_raises(monkeypatch):
     pool = MagicMock()
     pool.fetchrow = AsyncMock()
 
-    with pytest.raises(ValueError, match="NEBULA_API_KEY environment variable is required"):
+    with pytest.raises(
+        ValueError, match="NEBULA_API_KEY environment variable is required"
+    ):
         await authenticate_agent(pool)
 
     pool.fetchrow.assert_not_awaited()
@@ -62,7 +64,16 @@ async def test_authenticate_agent_hash_mismatch_raises(monkeypatch):
     """Hash mismatch should raise ValueError without leaking raw argon2 errors."""
 
     class DummyHasher:
+        """Stub hasher that simulates a mismatch."""
+
         def verify(self, *_args, **_kwargs):
+            """Handle verify.
+
+            Args:
+                *_args: Input parameter for verify.
+                **_kwargs: Input parameter for verify.
+            """
+
             raise argon2.exceptions.VerifyMismatchError
 
     monkeypatch.setenv("NEBULA_API_KEY", "nbl_testkey_aaaaaaaaaaaaaaaa")
@@ -85,7 +96,19 @@ async def test_authenticate_agent_non_agent_key_raises(monkeypatch):
     """Keys without an agent_id should be rejected as non-agent keys."""
 
     class DummyHasher:
+        """Stub hasher that always verifies successfully."""
+
         def verify(self, *_args, **_kwargs):
+            """Handle verify.
+
+            Args:
+                *_args: Input parameter for verify.
+                **_kwargs: Input parameter for verify.
+
+            Returns:
+                Result value from the operation.
+            """
+
             return True
 
     monkeypatch.setenv("NEBULA_API_KEY", "nbl_testkey_aaaaaaaaaaaaaaaa")
@@ -103,7 +126,19 @@ async def test_authenticate_agent_inactive_agent_raises(monkeypatch):
     """Missing agent row should raise ValueError without leaking DB details."""
 
     class DummyHasher:
+        """Stub hasher that always verifies successfully."""
+
         def verify(self, *_args, **_kwargs):
+            """Handle verify.
+
+            Args:
+                *_args: Input parameter for verify.
+                **_kwargs: Input parameter for verify.
+
+            Returns:
+                Result value from the operation.
+            """
+
             return True
 
     monkeypatch.setenv("NEBULA_API_KEY", "nbl_testkey_aaaaaaaaaaaaaaaa")
@@ -120,4 +155,3 @@ async def test_authenticate_agent_inactive_agent_raises(monkeypatch):
 
     with pytest.raises(ValueError, match="Agent not found or inactive"):
         await authenticate_agent(pool)
-

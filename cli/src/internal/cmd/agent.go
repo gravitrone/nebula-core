@@ -21,6 +21,7 @@ func AgentCmd() *cobra.Command {
 	return cmd
 }
 
+// agentRegisterCmd handles agent register cmd.
 func agentRegisterCmd() *cobra.Command {
 	var desc string
 	cmd := &cobra.Command{
@@ -58,6 +59,7 @@ func agentRegisterCmd() *cobra.Command {
 	return cmd
 }
 
+// agentListCmd handles agent list cmd.
 func agentListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",

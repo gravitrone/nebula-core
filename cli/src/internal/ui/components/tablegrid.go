@@ -97,6 +97,7 @@ func TableGridWithActiveRow(columns []TableColumn, rows [][]string, tableWidth i
 	return strings.Join(out, "\n")
 }
 
+// headerCells handles header cells.
 func headerCells(columns []TableColumn) []string {
 	hdr := make([]string, len(columns))
 	for i, c := range columns {
@@ -105,6 +106,7 @@ func headerCells(columns []TableColumn) []string {
 	return hdr
 }
 
+// fitGridColumns handles fit grid columns.
 func fitGridColumns(columns []TableColumn, sep string, tableWidth int) []TableColumn {
 	fitted := make([]TableColumn, len(columns))
 	copy(fitted, columns)
@@ -171,6 +173,7 @@ func fitGridColumns(columns []TableColumn, sep string, tableWidth int) []TableCo
 	return fitted
 }
 
+// isPinnedSystemHeader handles is pinned system header.
 func isPinnedSystemHeader(header string) bool {
 	switch strings.ToLower(strings.TrimSpace(header)) {
 	case "at", "last", "created", "updated", "timestamp", "when":
@@ -180,6 +183,7 @@ func isPinnedSystemHeader(header string) bool {
 	}
 }
 
+// shrinkColumns handles shrink columns.
 func shrinkColumns(columns []TableColumn, mins []int, deficit int) int {
 	if deficit <= 0 || len(columns) == 0 {
 		return 0
@@ -203,6 +207,7 @@ func shrinkColumns(columns []TableColumn, mins []int, deficit int) int {
 	return deficit
 }
 
+// renderGridRow renders render grid row.
 func renderGridRow(columns []TableColumn, cells []string, sep string, tableWidth int, header bool, active bool) string {
 	headerStyle := boxLabelStyle
 	if header {
@@ -249,6 +254,7 @@ func renderGridRow(columns []TableColumn, cells []string, sep string, tableWidth
 	return line
 }
 
+// renderGridRule renders render grid rule.
 func renderGridRule(columns []TableColumn, cross, horiz string, tableWidth int) string {
 	if horiz == "" {
 		horiz = "-"
@@ -272,6 +278,7 @@ func renderGridRule(columns []TableColumn, cross, horiz string, tableWidth int) 
 	return gridLineStyle.Inline(true).Render(line)
 }
 
+// renderGridCell renders render grid cell.
 func renderGridCell(text string, width int, align lipgloss.Position) string {
 	if width <= 0 {
 		return ""
@@ -296,6 +303,7 @@ func renderGridCell(text string, width int, align lipgloss.Position) string {
 	}
 }
 
+// highlightSelectionMarkers handles highlight selection markers.
 func highlightSelectionMarkers(value string) string {
 	highlighted := strings.ReplaceAll(value, "[X]", gridSelectedMarkStyle.Render("[X]"))
 	highlighted = strings.ReplaceAll(highlighted, "[x]", gridSelectedMarkStyle.Render("[x]"))

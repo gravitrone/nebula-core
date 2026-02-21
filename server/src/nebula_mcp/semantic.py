@@ -48,6 +48,15 @@ SEMANTIC_EXPANSIONS = {
 
 
 def _tokenize(text: str) -> list[str]:
+    """Handle tokenize.
+
+    Args:
+        text: Input parameter for _tokenize.
+
+    Returns:
+        Result value from the operation.
+    """
+
     normalized = re.sub(r"[^a-z0-9\s]+", " ", text.lower())
     parts = [p for p in normalized.split() if p and p not in STOP_WORDS]
     out: list[str] = []
@@ -59,6 +68,15 @@ def _tokenize(text: str) -> list[str]:
 
 
 def _expanded_tokens(text: str) -> list[str]:
+    """Handle expanded tokens.
+
+    Args:
+        text: Input parameter for _expanded_tokens.
+
+    Returns:
+        Result value from the operation.
+    """
+
     tokens = _tokenize(text)
     expanded = list(tokens)
     for token in tokens:
@@ -67,6 +85,16 @@ def _expanded_tokens(text: str) -> list[str]:
 
 
 def _hash_index(token: str, dims: int) -> tuple[int, float]:
+    """Handle hash index.
+
+    Args:
+        token: Input parameter for _hash_index.
+        dims: Input parameter for _hash_index.
+
+    Returns:
+        Result value from the operation.
+    """
+
     digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
     idx = int.from_bytes(digest[:4], "big") % dims
     sign = 1.0 if digest[4] & 1 else -1.0
@@ -74,6 +102,16 @@ def _hash_index(token: str, dims: int) -> tuple[int, float]:
 
 
 def _embed_text(text: str, dims: int = SEMANTIC_DIMENSIONS) -> list[float]:
+    """Handle embed text.
+
+    Args:
+        text: Input parameter for _embed_text.
+        dims: Input parameter for _embed_text.
+
+    Returns:
+        Result value from the operation.
+    """
+
     vec = [0.0] * dims
     tokens = _expanded_tokens(text)
     for token in tokens:
