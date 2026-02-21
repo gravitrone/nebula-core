@@ -715,38 +715,28 @@ func (m ProtocolsModel) handleAddKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) 
 }
 
 func (m ProtocolsModel) renderAdd() string {
-	var b strings.Builder
+	rows := make([][2]string, 0, len(m.addFields))
 	for i, f := range m.addFields {
-		selected := i == m.addFocus
-		if selected {
-			b.WriteString(SelectedStyle.Render("  " + f.label + ":"))
-		} else {
-			b.WriteString(MutedStyle.Render("  " + f.label + ":"))
-		}
-		b.WriteString("\n")
+		value := "-"
 		switch i {
 		case protoFieldStatus:
-			b.WriteString(NormalStyle.Render("  " + protocolStatusOptions[m.addStatusIdx]))
+			value = protocolStatusOptions[m.addStatusIdx]
 		case protoFieldTags:
-			b.WriteString(NormalStyle.Render("  " + m.renderTags(m.addTags, m.addTagBuf)))
+			value = m.renderTags(m.addTags, m.addTagBuf)
 		case protoFieldApplies:
-			b.WriteString(NormalStyle.Render("  " + m.renderApplies(m.addApplies, m.addApplyBuf)))
+			value = m.renderApplies(m.addApplies, m.addApplyBuf)
 		case protoFieldMetadata:
-			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-			if meta == "" {
-				meta = "-"
-			}
-			b.WriteString(NormalStyle.Render("  " + meta))
+			value = renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
 		default:
-			b.WriteString(NormalStyle.Render("  " + f.value))
+			value = formatFormValue(f.value, i == m.addFocus)
 		}
-		b.WriteString("\n\n")
+		rows = append(rows, [2]string{f.label, value})
 	}
+	body := renderFormGrid("Add Protocol", rows, m.addFocus, m.width)
 	if m.addErr != "" {
-		b.WriteString(ErrorStyle.Render(m.addErr))
-		b.WriteString("\n")
+		body += "\n\n" + ErrorStyle.Render(m.addErr)
 	}
-	return components.TitledBox("Add Protocol", b.String(), m.width)
+	return body
 }
 
 func (m ProtocolsModel) saveAdd() (ProtocolsModel, tea.Cmd) {
@@ -886,34 +876,24 @@ func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 }
 
 func (m ProtocolsModel) renderEdit() string {
-	var b strings.Builder
+	rows := make([][2]string, 0, len(m.editFields))
 	for i, f := range m.editFields {
-		selected := i == m.editFocus
-		if selected {
-			b.WriteString(SelectedStyle.Render("  " + f.label + ":"))
-		} else {
-			b.WriteString(MutedStyle.Render("  " + f.label + ":"))
-		}
-		b.WriteString("\n")
+		value := "-"
 		switch i {
 		case protoEditFieldStatus:
-			b.WriteString(NormalStyle.Render("  " + protocolStatusOptions[m.editStatusIdx]))
+			value = protocolStatusOptions[m.editStatusIdx]
 		case protoEditFieldTags:
-			b.WriteString(NormalStyle.Render("  " + m.renderTags(m.editTags, m.editTagBuf)))
+			value = m.renderTags(m.editTags, m.editTagBuf)
 		case protoEditFieldApplies:
-			b.WriteString(NormalStyle.Render("  " + m.renderApplies(m.editApplies, m.editApplyBuf)))
+			value = m.renderApplies(m.editApplies, m.editApplyBuf)
 		case protoEditFieldMetadata:
-			meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-			if meta == "" {
-				meta = "-"
-			}
-			b.WriteString(NormalStyle.Render("  " + meta))
+			value = renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
 		default:
-			b.WriteString(NormalStyle.Render("  " + f.value))
+			value = formatFormValue(f.value, i == m.editFocus)
 		}
-		b.WriteString("\n\n")
+		rows = append(rows, [2]string{f.label, value})
 	}
-	return components.TitledBox("Edit Protocol", b.String(), m.width)
+	return renderFormGrid("Edit Protocol", rows, m.editFocus, m.width)
 }
 
 func (m ProtocolsModel) saveEdit() (ProtocolsModel, tea.Cmd) {

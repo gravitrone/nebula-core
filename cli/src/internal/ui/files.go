@@ -717,53 +717,38 @@ func (m FilesModel) handleAddKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 }
 
 func (m FilesModel) renderAdd() string {
-	var b strings.Builder
-	for i, f := range m.addFields {
-		label := "  " + MutedStyle.Render(f.label+":")
-		if i == m.addFocus {
-			label = "  " + SelectedStyle.Render(f.label+":")
-		}
-		b.WriteString(label + "\n")
-
+	rows := make([][2]string, 0, len(m.addFields))
+	for i := range m.addFields {
+		label := m.addFields[i].label
+		value := "-"
 		switch i {
 		case fileFieldName:
-			renderTextField(&b, m.addName, i == m.addFocus)
+			value = formatFormValue(m.addName, i == m.addFocus)
 		case fileFieldPath:
-			renderTextField(&b, m.addPath, i == m.addFocus)
+			value = formatFormValue(m.addPath, i == m.addFocus)
 		case fileFieldMime:
-			renderTextField(&b, m.addMime, i == m.addFocus)
+			value = formatFormValue(m.addMime, i == m.addFocus)
 		case fileFieldSize:
-			renderTextField(&b, m.addSize, i == m.addFocus)
+			value = formatFormValue(m.addSize, i == m.addFocus)
 		case fileFieldChecksum:
-			renderTextField(&b, m.addChecksum, i == m.addFocus)
+			value = formatFormValue(m.addChecksum, i == m.addFocus)
 		case fileFieldStatus:
-			status := fileStatusOptions[m.addStatusIdx]
-			b.WriteString(NormalStyle.Render("  " + status))
+			value = fileStatusOptions[m.addStatusIdx]
 		case fileFieldTags:
-			if i == m.addFocus {
-				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(true)))
-			} else {
-				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(false)))
-			}
+			value = m.renderAddTags(i == m.addFocus)
 		case fileFieldMeta:
-			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-			if meta == "" {
-				meta = "-"
-			}
-			b.WriteString(NormalStyle.Render("  " + meta))
+			value = renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
 		}
-
-		if i < len(m.addFields)-1 {
-			b.WriteString("\n\n")
-		}
+		rows = append(rows, [2]string{label, value})
 	}
+	body := renderFormGrid("Add File", rows, m.addFocus, m.width)
 	if m.addErr != "" {
-		b.WriteString("\n\n" + ErrorStyle.Render(m.addErr))
+		body += "\n\n" + ErrorStyle.Render(m.addErr)
 	}
 	if m.addSaved {
-		b.WriteString("\n\n" + SuccessStyle.Render("Saved."))
+		body += "\n\n" + SuccessStyle.Render("Saved.")
 	}
-	return components.TitledBox("Add File", b.String(), m.width)
+	return body
 }
 
 func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
@@ -989,44 +974,30 @@ func (m FilesModel) handleEditKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 
 func (m FilesModel) renderEdit() string {
 	fields := []string{"Filename", "File Path", "MIME Type", "Size (bytes)", "Checksum", "Status", "Tags", "Metadata"}
-	var b strings.Builder
-	for i, f := range fields {
-		label := "  " + MutedStyle.Render(f+":")
-		if i == m.editFocus {
-			label = "  " + SelectedStyle.Render(f+":")
-		}
-		b.WriteString(label + "\n")
+	rows := make([][2]string, 0, len(fields))
+	for i, label := range fields {
+		value := "-"
 		switch i {
 		case fileFieldName:
-			renderTextField(&b, m.editName, i == m.editFocus)
+			value = formatFormValue(m.editName, i == m.editFocus)
 		case fileFieldPath:
-			renderTextField(&b, m.editPath, i == m.editFocus)
+			value = formatFormValue(m.editPath, i == m.editFocus)
 		case fileFieldMime:
-			renderTextField(&b, m.editMime, i == m.editFocus)
+			value = formatFormValue(m.editMime, i == m.editFocus)
 		case fileFieldSize:
-			renderTextField(&b, m.editSize, i == m.editFocus)
+			value = formatFormValue(m.editSize, i == m.editFocus)
 		case fileFieldChecksum:
-			renderTextField(&b, m.editChecksum, i == m.editFocus)
+			value = formatFormValue(m.editChecksum, i == m.editFocus)
 		case fileFieldStatus:
-			b.WriteString(NormalStyle.Render("  " + fileStatusOptions[m.editStatusIdx]))
+			value = fileStatusOptions[m.editStatusIdx]
 		case fileFieldTags:
-			if i == m.editFocus {
-				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(true)))
-			} else {
-				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(false)))
-			}
+			value = m.renderEditTags(i == m.editFocus)
 		case fileFieldMeta:
-			meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-			if meta == "" {
-				meta = "-"
-			}
-			b.WriteString(NormalStyle.Render("  " + meta))
+			value = renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
 		}
-		if i < len(fields)-1 {
-			b.WriteString("\n\n")
-		}
+		rows = append(rows, [2]string{label, value})
 	}
-	return components.TitledBox("Edit File", b.String(), m.width)
+	return renderFormGrid("Edit File", rows, m.editFocus, m.width)
 }
 
 func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
@@ -1245,16 +1216,15 @@ func appendChar(target *string, msg tea.KeyMsg) {
 	}
 }
 
-func renderTextField(b *strings.Builder, value string, focused bool) {
-	if value == "" && !focused {
-		b.WriteString(NormalStyle.Render("  -"))
-		return
+func formatFormValue(value string, focused bool) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" && !focused {
+		return "-"
 	}
 	if focused {
-		b.WriteString(NormalStyle.Render("  " + value + AccentStyle.Render("█")))
-		return
+		return strings.TrimRight(value, "\n") + AccentStyle.Render("█")
 	}
-	b.WriteString(NormalStyle.Render("  " + value))
+	return value
 }
 
 func derefString(value *string) string {
