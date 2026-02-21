@@ -1740,7 +1740,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert all("_reviewed_by" not in item for item in seen)
         # system actor path should set + reset change tracking keys.
         assert any(
-            "SET app.changed_by_type = 'system'" in call[0]
+            "set_config('app.changed_by_type'" in call[0]
             for call in pool_invalid.execute_calls
         )
         assert any(
@@ -1829,7 +1829,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
         )
         assert result["entity"]["id"] == "entity-1"
         assert any(
-            "SET app.changed_by_type = 'entity'" in call[0]
+            "set_config('app.changed_by_type'" in call[0]
             for call in good_pool.execute_calls
         )
         assert (

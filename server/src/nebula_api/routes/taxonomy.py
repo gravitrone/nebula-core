@@ -58,12 +58,10 @@ KIND_MAP = {
 }
 
 ROW_QUERY_BY_KIND = {
-    "scopes": "SELECT id, name, is_builtin FROM privacy_scopes WHERE id = $1::uuid",
-    "entity-types": "SELECT id, name, is_builtin FROM entity_types WHERE id = $1::uuid",
-    "relationship-types": (
-        "SELECT id, name, is_builtin FROM relationship_types WHERE id = $1::uuid"
-    ),
-    "log-types": "SELECT id, name, is_builtin FROM log_types WHERE id = $1::uuid",
+    "scopes": "taxonomy/get_scope_row",
+    "entity-types": "taxonomy/get_entity_type_row",
+    "relationship-types": "taxonomy/get_relationship_type_row",
+    "log-types": "taxonomy/get_log_type_row",
 }
 
 
@@ -159,7 +157,7 @@ async def _fetch_taxonomy_row(
 
     query = ROW_QUERY_BY_KIND[kind]
     row = await pool.fetchrow(
-        query,
+        QUERIES[query],
         item_id,
     )
     return dict(row) if row else None

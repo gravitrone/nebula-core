@@ -180,10 +180,7 @@ async def ensure_approval_capacity(
             if fetchval is None:
                 return
             count = await fetchval(
-                (
-                    "SELECT COUNT(*) FROM approval_requests "
-                    "WHERE status = 'pending' AND requested_by = $1"
-                ),
+                QUERIES["approvals/count_pending_for_agent"],
                 agent_id,
             )
             if count is None:
@@ -204,15 +201,9 @@ async def ensure_approval_capacity(
                 )
         return
 
-    await conn.execute(
-        "SELECT pg_advisory_xact_lock(hashtext($1))",
-        str(agent_id),
-    )
+    await conn.execute(QUERIES["runtime/advisory_lock_hashtext"], str(agent_id))
     count = await conn.fetchval(
-        (
-            "SELECT COUNT(*) FROM approval_requests "
-            "WHERE status = 'pending' AND requested_by = $1"
-        ),
+        QUERIES["approvals/count_pending_for_agent"],
         agent_id,
     )
     if count is None:
@@ -383,7 +374,7 @@ async def wait_for_enrollment_status(
             session["retry_after_ms"] = ENROLLMENT_WAIT_POLL_SECONDS * 1000
             return session
 
-        await pool.execute("SELECT pg_sleep($1)", ENROLLMENT_WAIT_POLL_SECONDS)
+        await pool.execute(QUERIES["runtime/pg_sleep"], ENROLLMENT_WAIT_POLL_SECONDS)
 
 
 async def redeem_enrollment_key(
@@ -701,73 +692,49 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
 
     entity_name_map = await _fetch_name_map(
         pool,
-        "SELECT id::text AS id, name AS label FROM entities WHERE id = ANY($1::uuid[])",
+        QUERIES["approvals/label_entities_by_ids"],
         entity_ids,
     )
     context_name_map = await _fetch_name_map(
         pool,
-        (
-            "SELECT id::text AS id, title AS label "
-            "FROM context_items WHERE id = ANY($1::uuid[])"
-        ),
+        QUERIES["approvals/label_context_by_ids"],
         context_ids,
     )
     job_name_map = await _fetch_name_map_text(
         pool,
-        "SELECT id::text AS id, title AS label FROM jobs WHERE id = ANY($1::text[])",
+        QUERIES["approvals/label_jobs_by_ids"],
         job_ids,
     )
     log_name_map = await _fetch_name_map(
         pool,
-        (
-            "SELECT l.id::text AS id, COALESCE(lt.name, 'log') AS label "
-            "FROM logs l LEFT JOIN log_types lt ON l.type_id = lt.id "
-            "WHERE l.id = ANY($1::uuid[])"
-        ),
+        QUERIES["approvals/label_logs_by_ids"],
         log_ids,
     )
     file_name_map = await _fetch_name_map(
         pool,
-        (
-            "SELECT id::text AS id, filename AS label "
-            "FROM files WHERE id = ANY($1::uuid[])"
-        ),
+        QUERIES["approvals/label_files_by_ids"],
         file_ids,
     )
     protocol_name_map = await _fetch_name_map(
         pool,
-        (
-            "SELECT id::text AS id, COALESCE(title, name, 'protocol') AS label "
-            "FROM protocols WHERE id = ANY($1::uuid[])"
-        ),
+        QUERIES["approvals/label_protocols_by_ids"],
         protocol_ids,
     )
     agent_name_map = await _fetch_name_map(
         pool,
-        "SELECT id::text AS id, name AS label FROM agents WHERE id = ANY($1::uuid[])",
+        QUERIES["approvals/label_agents_by_ids"],
         requested_ids.union(agent_ids),
     )
     requested_entity_map = await _fetch_name_map(
         pool,
-        "SELECT id::text AS id, name AS label FROM entities WHERE id = ANY($1::uuid[])",
+        QUERIES["approvals/label_entities_by_ids"],
         requested_ids,
     )
     relationship_map: dict[str, dict[str, Any]] = {}
     relationship_uuid_ids = _to_uuid_list(relationship_ids)
     if relationship_uuid_ids:
         rel_rows = await pool.fetch(
-            """
-            SELECT
-                r.id::text AS id,
-                rt.name AS relationship_type,
-                r.source_type,
-                r.source_id::text AS source_id,
-                r.target_type,
-                r.target_id::text AS target_id
-            FROM relationships r
-            LEFT JOIN relationship_types rt ON r.type_id = rt.id
-            WHERE r.id = ANY($1::uuid[])
-            """,
+            QUERIES["approvals/label_relationships_by_ids"],
             relationship_uuid_ids,
         )
         relationship_map = {str(r["id"]): dict(r) for r in rel_rows}
@@ -920,13 +887,11 @@ async def approve_request(
 
     try:
         if reviewed_by:
-            await pool.execute("SET app.changed_by_type = 'entity'")
-            await pool.fetchval(
-                "SELECT set_config('app.changed_by_id', $1, false)", reviewed_by
-            )
+            await pool.execute(QUERIES["runtime/set_changed_by_type"], "entity")
+            await pool.fetchval(QUERIES["runtime/set_changed_by_id_local"], reviewed_by)
         else:
-            await pool.execute("SET app.changed_by_type = 'system'")
-            await pool.execute("RESET app.changed_by_id")
+            await pool.execute(QUERIES["runtime/set_changed_by_type"], "system")
+            await pool.execute(QUERIES["runtime/reset_changed_by_id"])
 
         if normalized_request_type == "register_agent":
             raw_review_details = approval.get("review_details") or {}
@@ -969,8 +934,8 @@ async def approve_request(
         raise
 
     finally:
-        await pool.execute("RESET app.changed_by_type")
-        await pool.execute("RESET app.changed_by_id")
+        await pool.execute(QUERIES["runtime/reset_changed_by_type"])
+        await pool.execute(QUERIES["runtime/reset_changed_by_id"])
 
 
 async def reject_request(

@@ -316,18 +316,18 @@ async def _run_import(
         async with conn.transaction():
             if auth["caller_type"] == "user":
                 await conn.execute(
-                    "SELECT set_config('app.changed_by_type', $1, true)", "entity"
+                    QUERIES["runtime/set_changed_by_type"], "entity"
                 )
                 await conn.execute(
-                    "SELECT set_config('app.changed_by_id', $1, true)",
+                    QUERIES["runtime/set_changed_by_id"],
                     str(auth["entity_id"]),
                 )
             else:
                 await conn.execute(
-                    "SELECT set_config('app.changed_by_type', $1, true)", "agent"
+                    QUERIES["runtime/set_changed_by_type"], "agent"
                 )
                 await conn.execute(
-                    "SELECT set_config('app.changed_by_id', $1, true)",
+                    QUERIES["runtime/set_changed_by_id"],
                     str(auth["agent_id"]),
                 )
 

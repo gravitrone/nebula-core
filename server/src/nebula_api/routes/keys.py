@@ -125,12 +125,7 @@ async def login(payload: LoginInput, request: Request) -> dict[str, Any]:
             scope_ids = _append_scope(scope_ids, scope_id)
         if scope_ids != (entity.get("privacy_scope_ids") or []):
             entity = await pool.fetchrow(
-                """
-                UPDATE entities
-                SET privacy_scope_ids = $2::uuid[], updated_at = NOW()
-                WHERE id = $1::uuid
-                RETURNING *
-                """,
+                QUERIES["entities/update_scope_ids"],
                 entity["id"],
                 scope_ids,
             )

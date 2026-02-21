@@ -431,13 +431,15 @@ async def revert_entity(
 
     pool = request.app.state.pool
     async with pool.acquire() as conn:
-        await conn.execute("SET app.changed_by_type = 'entity'")
-        await conn.execute("SET app.changed_by_id = $1", auth["entity_id"])
+        await conn.execute(QUERIES["runtime/set_changed_by_type"], "entity")
+        await conn.execute(
+            QUERIES["runtime/set_changed_by_id"], str(auth["entity_id"])
+        )
         try:
             result = await do_revert_entity(conn, entity_id, payload.audit_id)
         finally:
-            await conn.execute("RESET app.changed_by_type")
-            await conn.execute("RESET app.changed_by_id")
+            await conn.execute(QUERIES["runtime/reset_changed_by_type"])
+            await conn.execute(QUERIES["runtime/reset_changed_by_id"])
 
     return success(result)
 

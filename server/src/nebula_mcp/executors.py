@@ -113,7 +113,7 @@ async def execute_create_entity(
             lock_parts.append(payload.source_path)
 
         await conn.execute(
-            "SELECT pg_advisory_xact_lock($1)", _advisory_lock_key(*lock_parts)
+            QUERIES["runtime/advisory_lock"], _advisory_lock_key(*lock_parts)
         )
 
         # LAYER 1: Name + Type + Scopes dedup (likely duplicate)

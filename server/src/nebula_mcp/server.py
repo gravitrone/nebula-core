@@ -220,12 +220,10 @@ TAXONOMY_KIND_MAP = {
 }
 
 TAXONOMY_ROW_QUERY_MAP = {
-    "scopes": "SELECT id, name, is_builtin FROM privacy_scopes WHERE id = $1::uuid",
-    "entity-types": "SELECT id, name, is_builtin FROM entity_types WHERE id = $1::uuid",
-    "relationship-types": (
-        "SELECT id, name, is_builtin FROM relationship_types WHERE id = $1::uuid"
-    ),
-    "log-types": "SELECT id, name, is_builtin FROM log_types WHERE id = $1::uuid",
+    "scopes": "taxonomy/get_scope_row",
+    "entity-types": "taxonomy/get_entity_type_row",
+    "relationship-types": "taxonomy/get_relationship_type_row",
+    "log-types": "taxonomy/get_log_type_row",
 }
 
 
@@ -560,7 +558,7 @@ async def _get_taxonomy_row(pool: Any, kind: str, item_id: str) -> dict | None:
 
     query = TAXONOMY_ROW_QUERY_MAP[kind]
     row = await pool.fetchrow(
-        query,
+        QUERIES[query],
         item_id,
     )
     return dict(row) if row else None
@@ -1033,11 +1031,9 @@ async def _run_bulk_import(
 
     async with pool.acquire() as conn:
         async with conn.transaction():
+            await conn.execute(QUERIES["runtime/set_changed_by_type"], "agent")
             await conn.execute(
-                "SELECT set_config('app.changed_by_type', $1, true)", "agent"
-            )
-            await conn.execute(
-                "SELECT set_config('app.changed_by_id', $1, true)", str(agent["id"])
+                QUERIES["runtime/set_changed_by_id"], str(agent["id"])
             )
 
             for idx, item in enumerate(items, start=1):
@@ -1423,14 +1419,7 @@ async def login_user(payload: LoginInput, ctx: Context) -> dict:
                 scope_ids.append(scope_id)
         if scope_ids != (entity.get("privacy_scope_ids") or []):
             entity = await pool.fetchrow(
-                """
-                UPDATE entities
-                SET privacy_scope_ids = $2::uuid[], updated_at = NOW()
-                WHERE id = $1::uuid
-                RETURNING *
-                """,
-                entity["id"],
-                scope_ids,
+                QUERIES["entities/update_scope_ids"], entity["id"], scope_ids
             )
 
     raw_key, prefix, key_hash = generate_api_key()
@@ -2007,13 +1996,13 @@ async def revert_entity(payload: RevertEntityInput, ctx: Context) -> dict:
         return resp
 
     async with pool.acquire() as conn:
-        await conn.execute("SET app.changed_by_type = 'agent'")
-        await conn.execute("SET app.changed_by_id = $1", agent["id"])
+        await conn.execute(QUERIES["runtime/set_changed_by_type"], "agent")
+        await conn.execute(QUERIES["runtime/set_changed_by_id"], str(agent["id"]))
         try:
             return await do_revert_entity(conn, payload.entity_id, payload.audit_id)
         finally:
-            await conn.execute("RESET app.changed_by_type")
-            await conn.execute("RESET app.changed_by_id")
+            await conn.execute(QUERIES["runtime/reset_changed_by_type"])
+            await conn.execute(QUERIES["runtime/reset_changed_by_id"])
 
 
 # --- Context Tools ---
