@@ -12,10 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAppInitAndViewRendersBannerTabsAndHints handles test app init and view renders banner tabs and hints.
 func TestAppInitAndViewRendersBannerTabsAndHints(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/approvals/pending" {
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -45,10 +46,11 @@ func TestAppInitAndViewRendersBannerTabsAndHints(t *testing.T) {
 	assert.Contains(t, clean, "Quit")
 }
 
+// TestAppHelpAndQuitConfirmViewsRender handles test app help and quit confirm views render.
 func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/approvals/pending" {
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -87,6 +89,7 @@ func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 	assert.Contains(t, cleanQuit, "alias")
 }
 
+// TestAppTabWantsArrowsAndCanExitToTabNav handles test app tab wants arrows and can exit to tab nav.
 func TestAppTabWantsArrowsAndCanExitToTabNav(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 

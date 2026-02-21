@@ -47,6 +47,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -71,6 +81,16 @@ def _list_scope_ids(auth: dict, enums: Any) -> list:
 
 
 def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
+    """Handle has write scopes.
+
+    Args:
+        agent_scopes: Input parameter for _has_write_scopes.
+        node_scopes: Input parameter for _has_write_scopes.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not node_scopes:
         return True
     if not agent_scopes:
@@ -81,6 +101,15 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 async def _require_entity_write_access(
     pool: Any, enums: Any, auth: dict, entity_ids: list[str]
 ) -> None:
+    """Handle require entity write access.
+
+    Args:
+        pool: Input parameter for _require_entity_write_access.
+        enums: Input parameter for _require_entity_write_access.
+        auth: Input parameter for _require_entity_write_access.
+        entity_ids: Input parameter for _require_entity_write_access.
+    """
+
     for entity_id in entity_ids:
         try:
             UUID(entity_id)
@@ -98,6 +127,15 @@ async def _require_entity_write_access(
 
 
 def _validate_tag_list(tags: list[str] | None) -> list[str] | None:
+    """Handle validate tag list.
+
+    Args:
+        tags: Input parameter for _validate_tag_list.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if tags is None:
         return None
     cleaned = [t.strip() for t in tags if t and t.strip()]
@@ -133,6 +171,15 @@ class CreateEntityBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
 
@@ -154,6 +201,15 @@ class UpdateEntityBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
 
@@ -195,6 +251,15 @@ class BulkUpdateTagsBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
 
@@ -228,6 +293,7 @@ async def create_entity(
     Returns:
         API response with created entity or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
@@ -278,6 +344,7 @@ async def get_entity(
     Returns:
         API response with entity data.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -326,6 +393,7 @@ async def get_entity_history(
     Returns:
         API response with audit history entries.
     """
+
     pool = request.app.state.pool
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
     if not row:
@@ -357,6 +425,7 @@ async def revert_entity(
     Returns:
         API response with revert result.
     """
+
     if auth["caller_type"] != "user":
         api_error("FORBIDDEN", "Only users can revert entities", 403)
 
@@ -389,6 +458,7 @@ async def bulk_update_entity_tags(
     Returns:
         API response with updated entity ids.
     """
+
     if not payload.entity_ids:
         api_error("VALIDATION_ERROR", "No entity ids provided", 400)
 
@@ -426,6 +496,7 @@ async def bulk_update_entity_scopes(
     Returns:
         API response with updated entity ids.
     """
+
     if not payload.entity_ids:
         api_error("VALIDATION_ERROR", "No entity ids provided", 400)
 
@@ -490,6 +561,7 @@ async def query_entities(
     Returns:
         Paginated API response with entities.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -537,6 +609,7 @@ async def update_entity(
     Returns:
         API response with updated entity or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -594,6 +667,7 @@ async def search_by_metadata(
     Returns:
         API response with matching entities.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     scope_ids = _list_scope_ids(auth, enums)

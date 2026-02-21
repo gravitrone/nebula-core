@@ -22,6 +22,7 @@ func KeysCmd() *cobra.Command {
 	return cmd
 }
 
+// keysListCmd handles keys list cmd.
 func keysListCmd() *cobra.Command {
 	var all bool
 	cmd := &cobra.Command{
@@ -74,6 +75,7 @@ func keysListCmd() *cobra.Command {
 	return cmd
 }
 
+// keysCreateCmd handles keys create cmd.
 func keysCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create <name>",
@@ -101,6 +103,7 @@ func keysCreateCmd() *cobra.Command {
 	}
 }
 
+// keysRevokeCmd handles keys revoke cmd.
 func keysRevokeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "revoke <key-id>",

@@ -13,7 +13,11 @@ from nebula_mcp.models import (
     GetRelationshipsInput,
     QueryRelationshipsInput,
 )
-from nebula_mcp.server import create_relationship, get_relationships, query_relationships
+from nebula_mcp.server import (
+    create_relationship,
+    get_relationships,
+    query_relationships,
+)
 
 
 def _make_context(pool, enums, agent):

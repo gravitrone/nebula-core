@@ -30,9 +30,7 @@ async def test_get_schema_includes_enterprise_taxonomy(api):
     assert builtin_scopes == {"admin", "private", "public", "sensitive"}
 
     builtin_entity_types = {
-        row["name"]
-        for row in taxonomy["entity_types"]
-        if row.get("is_builtin") is True
+        row["name"] for row in taxonomy["entity_types"] if row.get("is_builtin") is True
     }
     assert builtin_entity_types == {
         "document",
@@ -72,4 +70,3 @@ async def test_get_schema_includes_enterprise_taxonomy(api):
         "critical",
     ]
     assert "approved-failed" in body["constraints"]["approval_requests"]["status"]
-

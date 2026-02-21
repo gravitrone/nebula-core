@@ -15,18 +15,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testProtocolsClient handles test protocols client.
 func testProtocolsClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestProtocolsListToDetailToEditFlow handles test protocols list to detail to edit flow.
 func TestProtocolsListToDetailToEditFlow(t *testing.T) {
 	now := time.Now()
 	_, client := testProtocolsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/protocols") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "proto-1",
@@ -41,6 +43,7 @@ func TestProtocolsListToDetailToEditFlow(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -66,6 +69,7 @@ func TestProtocolsListToDetailToEditFlow(t *testing.T) {
 	assert.Equal(t, protocolsViewEdit, model.view)
 }
 
+// TestProtocolsAddValidationErrorOnEmpty handles test protocols add validation error on empty.
 func TestProtocolsAddValidationErrorOnEmpty(t *testing.T) {
 	_, client := testProtocolsClient(t, func(w http.ResponseWriter, r *http.Request) {})
 	model := NewProtocolsModel(client)
@@ -75,6 +79,7 @@ func TestProtocolsAddValidationErrorOnEmpty(t *testing.T) {
 	assert.Equal(t, "Name is required", model.addErr)
 }
 
+// TestProtocolsDetailRendersRelationshipsSection handles test protocols detail renders relationships section.
 func TestProtocolsDetailRendersRelationshipsSection(t *testing.T) {
 	now := time.Now()
 	content := "rules"
@@ -112,6 +117,7 @@ func TestProtocolsDetailRendersRelationshipsSection(t *testing.T) {
 	assert.Contains(t, out, "Sprint Job")
 }
 
+// TestProtocolsAddFlowSubmitsCreateProtocol handles test protocols add flow submits create protocol.
 func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 	now := time.Now()
 	var created api.CreateProtocolInput
@@ -121,7 +127,7 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/protocols") && r.Method == http.MethodGet:
 			// Used both for initial load and post-create reload.
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
 				"id":         "proto-1",
 				"name":       "p1",
 				"title":      "Protocol 1",
@@ -132,11 +138,13 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 				"created_at": now,
 				"updated_at": now,
 			}}})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/protocols" && r.Method == http.MethodPost:
 			posted = true
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&created))
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "proto-1"}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "proto-1"}})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -153,12 +161,12 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 	assert.Equal(t, protocolsViewAdd, model.view)
 
 	// Name.
-	for _, r := range []rune("p1") {
+	for _, r := range "p1" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	// Title.
-	for _, r := range []rune("Protocol 1") {
+	for _, r := range "Protocol 1" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -167,13 +175,13 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	}
 	assert.Equal(t, protoFieldApplies, model.addFocus)
-	for _, r := range []rune("entity") {
+	for _, r := range "entity" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown}) // Status
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown}) // Tags
 	assert.Equal(t, protoFieldTags, model.addFocus)
-	for _, r := range []rune("t1") {
+	for _, r := range "t1" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -182,7 +190,7 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	}
 	assert.Equal(t, protoFieldContent, model.addFocus)
-	for _, r := range []rune("hello") {
+	for _, r := range "hello" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -201,6 +209,7 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 	assert.Equal(t, []string{"t1"}, created.Tags)
 }
 
+// TestProtocolsEditFlowCommitsTagAndApplyAndSaves handles test protocols edit flow commits tag and apply and saves.
 func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 	now := time.Now()
 	var patched api.UpdateProtocolInput
@@ -209,7 +218,7 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 	_, client := testProtocolsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/protocols") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
 				"id":         "proto-1",
 				"name":       "p1",
 				"title":      "Protocol 1",
@@ -220,11 +229,13 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 				"created_at": now,
 				"updated_at": now,
 			}}})
+			require.NoError(t, err)
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/protocols/") && r.Method == http.MethodPatch:
 			patchedName = strings.TrimPrefix(r.URL.Path, "/api/protocols/")
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&patched))
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "proto-1"}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "proto-1"}})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -247,7 +258,7 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	}
 	assert.Equal(t, protoEditFieldApplies, model.editFocus)
-	for _, r := range []rune("entity") {
+	for _, r := range "entity" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -256,7 +267,7 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	}
 	assert.Equal(t, protoEditFieldTags, model.editFocus)
-	for _, r := range []rune("t2") {
+	for _, r := range "t2" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -274,6 +285,7 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 	assert.Equal(t, protocolsViewList, model.view)
 }
 
+// TestProtocolPtrHelpers handles test protocol ptr helpers.
 func TestProtocolPtrHelpers(t *testing.T) {
 	assert.Nil(t, stringPtr(""))
 	assert.Nil(t, stringPtr("  "))
@@ -286,6 +298,7 @@ func TestProtocolPtrHelpers(t *testing.T) {
 	assert.Equal(t, []string{"a"}, *slicePtr([]string{"a"}))
 }
 
+// TestProtocolsRenderHelpersCoverListAddAndEdit handles test protocols render helpers cover list add and edit.
 func TestProtocolsRenderHelpersCoverListAddAndEdit(t *testing.T) {
 	now := time.Now()
 	content := "protocol content"

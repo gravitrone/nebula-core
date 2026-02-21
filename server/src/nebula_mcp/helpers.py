@@ -76,7 +76,9 @@ def _decode_json_object(value: Any) -> dict:
     return {}
 
 
-def filter_context_segments(metadata: dict | str | None, agent_scopes: list[str]) -> dict | None:
+def filter_context_segments(
+    metadata: dict | str | None, agent_scopes: list[str]
+) -> dict | None:
     """Filter context segments by agent's privacy scopes.
 
     Args:
@@ -129,6 +131,7 @@ def sanitize_relationship_properties(
 
 
 # --- Approval Workflow ---
+
 
 def _pending_approval_limit() -> int:
     """Return global pending-approval queue cap with sane bounds."""
@@ -246,6 +249,15 @@ async def create_approval_request(
     """
 
     async def _create(active_conn: Any) -> dict:
+        """Handle create.
+
+        Args:
+            active_conn: Input parameter for _create.
+
+        Returns:
+            Result value from the operation.
+        """
+
         await ensure_approval_capacity(pool, agent_id, conn=active_conn)
         row = await active_conn.fetchrow(
             QUERIES["approvals/create_request"],
@@ -468,6 +480,15 @@ async def get_approval_request(pool: Pool, approval_id: str) -> dict | None:
 
 
 def _safe_parse_uuid(value: str | None) -> str | None:
+    """Handle safe parse uuid.
+
+    Args:
+        value: Input parameter for _safe_parse_uuid.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not value:
         return None
     text = str(value).strip()
@@ -480,6 +501,15 @@ def _safe_parse_uuid(value: str | None) -> str | None:
 
 
 def _to_uuid_list(values: set[str]) -> list[str]:
+    """Handle to uuid list.
+
+    Args:
+        values: Input parameter for _to_uuid_list.
+
+    Returns:
+        Result value from the operation.
+    """
+
     out: list[str] = []
     for value in values:
         parsed = _safe_parse_uuid(value)
@@ -489,6 +519,15 @@ def _to_uuid_list(values: set[str]) -> list[str]:
 
 
 def _normalize_change_details(raw: Any) -> dict[str, Any]:
+    """Handle normalize change details.
+
+    Args:
+        raw: Input parameter for _normalize_change_details.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if isinstance(raw, dict):
         return dict(raw)
     if isinstance(raw, str):
@@ -502,6 +541,15 @@ def _normalize_change_details(raw: Any) -> dict[str, Any]:
 
 
 def _extract_string_list(value: Any) -> list[str]:
+    """Handle extract string list.
+
+    Args:
+        value: Input parameter for _extract_string_list.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if isinstance(value, list):
         return [str(v).strip() for v in value if str(v).strip()]
     if isinstance(value, tuple | set):
@@ -530,9 +578,18 @@ def _extract_string_list(value: Any) -> list[str]:
     return []
 
 
-async def _fetch_name_map(
-    pool: Pool, sql: str, ids: set[str]
-) -> dict[str, str]:
+async def _fetch_name_map(pool: Pool, sql: str, ids: set[str]) -> dict[str, str]:
+    """Handle fetch name map.
+
+    Args:
+        pool: Input parameter for _fetch_name_map.
+        sql: Input parameter for _fetch_name_map.
+        ids: Input parameter for _fetch_name_map.
+
+    Returns:
+        Result value from the operation.
+    """
+
     uuid_ids = _to_uuid_list(ids)
     if not uuid_ids:
         return {}
@@ -546,9 +603,18 @@ async def _fetch_name_map(
     return resolved
 
 
-async def _fetch_name_map_text(
-    pool: Pool, sql: str, ids: set[str]
-) -> dict[str, str]:
+async def _fetch_name_map_text(pool: Pool, sql: str, ids: set[str]) -> dict[str, str]:
+    """Handle fetch name map text.
+
+    Args:
+        pool: Input parameter for _fetch_name_map_text.
+        sql: Input parameter for _fetch_name_map_text.
+        ids: Input parameter for _fetch_name_map_text.
+
+    Returns:
+        Result value from the operation.
+    """
+
     text_ids = sorted({str(v).strip() for v in ids if str(v).strip()})
     if not text_ids:
         return {}
@@ -563,6 +629,16 @@ async def _fetch_name_map_text(
 
 
 async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
+    """Handle enrich approval rows.
+
+    Args:
+        pool: Input parameter for _enrich_approval_rows.
+        rows: Input parameter for _enrich_approval_rows.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not rows:
         return rows
 
@@ -697,6 +773,16 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
         relationship_map = {str(r["id"]): dict(r) for r in rel_rows}
 
     def resolve_node_label(node_type: str | None, node_id: str | None) -> str | None:
+        """Handle resolve node label.
+
+        Args:
+            node_type: Input parameter for resolve_node_label.
+            node_id: Input parameter for resolve_node_label.
+
+        Returns:
+            Result value from the operation.
+        """
+
         kind = (node_type or "").strip().lower()
         if kind == "job":
             text_id = str(node_id or "").strip()
@@ -725,10 +811,9 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
         requested_id = _safe_parse_uuid(row.get("requested_by"))
         row["requested_by_name"] = None
         if requested_id:
-            row["requested_by_name"] = (
-                agent_name_map.get(requested_id)
-                or requested_entity_map.get(requested_id)
-            )
+            row["requested_by_name"] = agent_name_map.get(
+                requested_id
+            ) or requested_entity_map.get(requested_id)
 
         details = _normalize_change_details(row.get("change_details"))
 
@@ -1150,6 +1235,7 @@ def _normalize_diff_value(value: object) -> object:
     Returns:
         JSON-encoded string for complex types, otherwise original value.
     """
+
     if isinstance(value, (dict, list)):
         return json.dumps(value, sort_keys=True)
     return value

@@ -35,6 +35,13 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _require_admin_scope(auth: dict, enums: Any) -> None:
+    """Handle require admin scope.
+
+    Args:
+        auth: Input parameter for _require_admin_scope.
+        enums: Input parameter for _require_admin_scope.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -46,6 +53,13 @@ def _require_admin_scope(auth: dict, enums: Any) -> None:
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except ValueError:
@@ -92,6 +106,7 @@ async def get_pending(
     Returns:
         API response with pending approvals.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
@@ -115,6 +130,7 @@ async def get_approval(
     Returns:
         API response with approval request data.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
@@ -144,6 +160,7 @@ async def approve(
     Returns:
         API response with approval result.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
@@ -221,6 +238,7 @@ async def reject(
     Returns:
         API response with rejection result.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)
@@ -248,6 +266,7 @@ async def get_diff(
     Returns:
         API response with approval diff data.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     _require_admin_scope(auth, enums)

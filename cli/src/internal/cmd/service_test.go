@@ -11,12 +11,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestTailLinesSkipsBlankAndLimits handles test tail lines skips blank and limits.
 func TestTailLinesSkipsBlankAndLimits(t *testing.T) {
 	lines := []string{"", "a", " ", "b", "c", ""}
 	out := tailLines(lines, 2)
 	assert.Equal(t, []string{"b", "c"}, out)
 }
 
+// TestNormalizeServerDirCandidate handles test normalize server dir candidate.
 func TestNormalizeServerDirCandidate(t *testing.T) {
 	tmp := t.TempDir()
 	_, ok := normalizeServerDirCandidate(tmp)
@@ -31,6 +33,7 @@ func TestNormalizeServerDirCandidate(t *testing.T) {
 	assert.Equal(t, valid, dir)
 }
 
+// TestResolveServerDirUsesEnv handles test resolve server dir uses env.
 func TestResolveServerDirUsesEnv(t *testing.T) {
 	valid := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(valid, "src", "nebula_api"), 0o755))
@@ -42,6 +45,7 @@ func TestResolveServerDirUsesEnv(t *testing.T) {
 	assert.Equal(t, valid, got)
 }
 
+// TestRunLogsCmdWithoutLogFileShowsFriendlyMessage handles test run logs cmd without log file shows friendly message.
 func TestRunLogsCmdWithoutLogFileShowsFriendlyMessage(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	var out bytes.Buffer
@@ -49,6 +53,7 @@ func TestRunLogsCmdWithoutLogFileShowsFriendlyMessage(t *testing.T) {
 	assert.Contains(t, out.String(), "No API logs yet")
 }
 
+// TestAPIStateRoundTrip handles test apistate round trip.
 func TestAPIStateRoundTrip(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	state := &apiRuntimeState{

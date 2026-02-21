@@ -35,6 +35,7 @@ func ApplyNebulaHelp(root *cobra.Command) {
 	})
 }
 
+// applyHelpRecursively handles apply help recursively.
 func applyHelpRecursively(command *cobra.Command) {
 	command.SetHelpFunc(func(c *cobra.Command, _ []string) {
 		renderNebulaHelp(c.OutOrStdout(), c)
@@ -48,6 +49,7 @@ func applyHelpRecursively(command *cobra.Command) {
 	}
 }
 
+// renderNebulaHelp renders render nebula help.
 func renderNebulaHelp(out io.Writer, command *cobra.Command) {
 	rows := []components.TableRow{
 		{Label: "command", Value: command.CommandPath()},
@@ -95,6 +97,7 @@ func renderNebulaHelp(out io.Writer, command *cobra.Command) {
 	renderCommandPanel(out, "Help", rows)
 }
 
+// visibleSubcommands handles visible subcommands.
 func visibleSubcommands(command *cobra.Command) []*cobra.Command {
 	list := make([]*cobra.Command, 0)
 	for _, sub := range command.Commands() {
@@ -109,6 +112,7 @@ func visibleSubcommands(command *cobra.Command) []*cobra.Command {
 	return list
 }
 
+// visibleFlags handles visible flags.
 func visibleFlags(command *cobra.Command) []components.TableRow {
 	flagRows := make([]components.TableRow, 0, 8)
 	seen := make(map[string]struct{})

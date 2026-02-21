@@ -11,22 +11,26 @@ import (
 
 var ansiPattern = regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
+// stripANSI handles strip ansi.
 func stripANSI(input string) string {
 	return ansiPattern.ReplaceAllString(input, "")
 }
 
+// TestHintIncludesKeyAndDesc handles test hint includes key and desc.
 func TestHintIncludesKeyAndDesc(t *testing.T) {
 	out := Hint("↑/↓", "Scroll")
 	assert.True(t, strings.Contains(out, "Scroll"))
 	assert.True(t, strings.Contains(out, "↑/↓"))
 }
 
+// TestStatusBarRendersHints handles test status bar renders hints.
 func TestStatusBarRendersHints(t *testing.T) {
 	out := StatusBar([]string{Hint("q", "Quit")}, 0)
 	assert.True(t, strings.Contains(out, "Quit"))
 	assert.True(t, strings.Contains(out, "q"))
 }
 
+// TestWrapSegmentsWrapsWhenNarrow handles test wrap segments wraps when narrow.
 func TestWrapSegmentsWrapsWhenNarrow(t *testing.T) {
 	segments := []string{"123456", "abcdef", "ghijkl"}
 	rows := wrapSegments(segments, 10)
@@ -36,6 +40,7 @@ func TestWrapSegmentsWrapsWhenNarrow(t *testing.T) {
 	}
 }
 
+// TestStatusBarKeepsSingleRowAndAddsOverflowHint handles test status bar keeps single row and adds overflow hint.
 func TestStatusBarKeepsSingleRowAndAddsOverflowHint(t *testing.T) {
 	hints := []string{
 		Hint("1-9/0", "Tabs"),
@@ -62,6 +67,7 @@ func TestStatusBarKeepsSingleRowAndAddsOverflowHint(t *testing.T) {
 	}
 }
 
+// TestStatusBarClampNeverWrapsToSecondContentRow handles test status bar clamp never wraps to second content row.
 func TestStatusBarClampNeverWrapsToSecondContentRow(t *testing.T) {
 	hints := []string{
 		Hint("1-9/0", "Tabs"),
@@ -87,6 +93,7 @@ func TestStatusBarClampNeverWrapsToSecondContentRow(t *testing.T) {
 	}
 }
 
+// TestStatusBarCentersHintsWhenWidthProvided handles test status bar centers hints when width provided.
 func TestStatusBarCentersHintsWhenWidthProvided(t *testing.T) {
 	out := StatusBar([]string{Hint("q", "Quit")}, 100)
 	lines := strings.Split(out, "\n")

@@ -12,6 +12,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
+// parseMetadataInput parses parse metadata input.
 func parseMetadataInput(input string) (map[string]any, error) {
 	if strings.TrimSpace(input) == "" {
 		return nil, nil
@@ -82,6 +83,7 @@ func parseMetadataInput(input string) (map[string]any, error) {
 	return root, nil
 }
 
+// parseMetadataValue parses parse metadata value.
 func parseMetadataValue(raw string, lineNum int) (any, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
@@ -105,6 +107,7 @@ func parseMetadataValue(raw string, lineNum int) (any, error) {
 	return parseMetadataScalar(raw), nil
 }
 
+// parseMetadataPipeLine parses parse metadata pipe line.
 func parseMetadataPipeLine(content string, lineNum int) (string, string, error) {
 	parts := strings.Split(content, "|")
 	trimmed := make([]string, 0, len(parts))
@@ -127,6 +130,7 @@ func parseMetadataPipeLine(content string, lineNum int) (string, string, error) 
 	return strings.Join(pathParts, "."), value, nil
 }
 
+// setMetadataPath sets set metadata path.
 func setMetadataPath(root map[string]any, path string, value any, lineNum int) error {
 	segments := strings.Split(path, ".")
 	if len(segments) == 0 {
@@ -159,6 +163,7 @@ func setMetadataPath(root map[string]any, path string, value any, lineNum int) e
 	return nil
 }
 
+// parseMetadataScalar parses parse metadata scalar.
 func parseMetadataScalar(raw string) any {
 	if raw == "" {
 		return ""
@@ -170,6 +175,7 @@ func parseMetadataScalar(raw string) any {
 	return raw
 }
 
+// metadataToInput handles metadata to input.
 func metadataToInput(data map[string]any) string {
 	if len(data) == 0 {
 		return ""
@@ -178,6 +184,7 @@ func metadataToInput(data map[string]any) string {
 	return strings.Join(lines, "\n")
 }
 
+// metadataInputLines handles metadata input lines.
 func metadataInputLines(data map[string]any, indent int) []string {
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -203,6 +210,7 @@ func metadataInputLines(data map[string]any, indent int) []string {
 	return lines
 }
 
+// formatMetadataValue handles format metadata value.
 func formatMetadataValue(value any) string {
 	value = normalizeStructuredMetadataValue(value)
 	switch typed := value.(type) {
@@ -235,6 +243,7 @@ func formatMetadataValue(value any) string {
 	}
 }
 
+// formatMetadataInline handles format metadata inline.
 func formatMetadataInline(value any) string {
 	value = normalizeStructuredMetadataValue(value)
 	switch typed := value.(type) {
@@ -267,6 +276,7 @@ func formatMetadataInline(value any) string {
 	}
 }
 
+// renderMetadataInput renders render metadata input.
 func renderMetadataInput(input string) string {
 	if strings.TrimSpace(input) == "" {
 		return "-"
@@ -326,6 +336,7 @@ func renderMetadataInput(input string) string {
 	return strings.Join(lines, "\n")
 }
 
+// renderMetadataEditorPreview renders render metadata editor preview.
 func renderMetadataEditorPreview(buffer string, scopes []string, width int, maxRows int) string {
 	if maxRows < 1 {
 		maxRows = 1
@@ -375,6 +386,7 @@ func renderMetadataEditorPreview(buffer string, scopes []string, width int, maxR
 	return colorizeScopeBadges(strings.Join(lines, "\n"))
 }
 
+// leadingSpaces handles leading spaces.
 func leadingSpaces(s string) int {
 	count := 0
 	for _, r := range s {
@@ -386,6 +398,7 @@ func leadingSpaces(s string) int {
 	return count
 }
 
+// metadataPreview handles metadata preview.
 func metadataPreview(data map[string]any, maxLen int) string {
 	if len(data) == 0 || maxLen <= 0 {
 		return ""
@@ -418,6 +431,7 @@ func metadataPreview(data map[string]any, maxLen int) string {
 	return metadataValuePreview(data[sorted[0]], maxLen)
 }
 
+// metadataValuePreview handles metadata value preview.
 func metadataValuePreview(value any, maxLen int) string {
 	value = normalizeStructuredMetadataValue(value)
 	if maxLen <= 0 {
@@ -477,6 +491,7 @@ func metadataValuePreview(value any, maxLen int) string {
 	}
 }
 
+// humanizeGoMapString handles humanize go map string.
 func humanizeGoMapString(raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if !strings.HasPrefix(trimmed, "map[") || !strings.HasSuffix(trimmed, "]") {
@@ -509,6 +524,7 @@ func humanizeGoMapString(raw string) string {
 	}
 }
 
+// sanitizeMetadataValue handles sanitize metadata value.
 func sanitizeMetadataValue(value any) any {
 	switch typed := value.(type) {
 	case string:
@@ -530,10 +546,12 @@ func sanitizeMetadataValue(value any) any {
 	}
 }
 
+// renderMetadataBlock renders render metadata block.
 func renderMetadataBlock(data map[string]any, width int, expanded bool) string {
 	return renderMetadataBlockWithTitle("Metadata", data, width, expanded)
 }
 
+// renderMetadataBlockWithTitle renders render metadata block with title.
 func renderMetadataBlockWithTitle(title string, data map[string]any, width int, expanded bool) string {
 	if len(data) == 0 {
 		return ""
@@ -577,6 +595,7 @@ type metadataDisplayRow struct {
 	value string
 }
 
+// metadataPanelPageSize handles metadata panel page size.
 func metadataPanelPageSize(expanded bool) int {
 	if expanded {
 		return 24
@@ -584,6 +603,7 @@ func metadataPanelPageSize(expanded bool) int {
 	return 12
 }
 
+// syncMetadataList handles sync metadata list.
 func syncMetadataList(list *components.List, rows []metadataDisplayRow, pageSize int) {
 	if list == nil {
 		return
@@ -635,6 +655,7 @@ func syncMetadataList(list *components.List, rows []metadataDisplayRow, pageSize
 	list.Offset = prevOffset
 }
 
+// renderMetadataSelectableBlockWithTitle renders render metadata selectable block with title.
 func renderMetadataSelectableBlockWithTitle(
 	title string,
 	rows []metadataDisplayRow,
@@ -662,10 +683,14 @@ func renderMetadataSelectableBlockWithTitle(
 	}
 
 	selectedCount := 0
-	for _, v := range selected {
-		if v {
-			selectedCount++
+	for idx, v := range selected {
+		if !v {
+			continue
 		}
+		if idx < 0 || idx >= len(rows) {
+			continue
+		}
+		selectedCount++
 	}
 	showSelectionColumn := showSelectors && selectedCount > 0
 	columnBudget := contentWidth
@@ -692,7 +717,7 @@ func renderMetadataSelectableBlockWithTitle(
 			continue
 		}
 		row := rows[absIdx]
-		if showSelectors && list.IsSelected(absIdx) {
+		if showSelectionColumn && list.IsSelected(absIdx) {
 			activeVisible = len(gridRows)
 		}
 		group, field := metadataGroupAndField(row.field)
@@ -731,12 +756,14 @@ func renderMetadataSelectableBlockWithTitle(
 	return components.TitledBox(title, content, width)
 }
 
+// metadataDisplayRows handles metadata display rows.
 func metadataDisplayRows(data map[string]any) []metadataDisplayRow {
 	rows := make([]metadataDisplayRow, 0, len(data)*2)
 	flattenMetadataMapRows("", data, &rows)
 	return rows
 }
 
+// metadataGroupAndField handles metadata group and field.
 func metadataGroupAndField(path string) (string, string) {
 	trimmed := strings.TrimSpace(path)
 	if trimmed == "" {
@@ -794,6 +821,7 @@ func metadataGroupAndField(path string) (string, string) {
 	return group, field
 }
 
+// splitMetadataPath handles split metadata path.
 func splitMetadataPath(path string) []string {
 	path = strings.TrimSpace(path)
 	if path == "" {
@@ -813,6 +841,7 @@ func splitMetadataPath(path string) []string {
 	return out
 }
 
+// metadataColumnWidths handles metadata column widths.
 func metadataColumnWidths(contentWidth int) (int, int, int) {
 	if contentWidth < 34 {
 		contentWidth = 34
@@ -849,6 +878,7 @@ func metadataColumnWidths(contentWidth int) (int, int, int) {
 	return groupWidth, fieldWidth, valueWidth
 }
 
+// flattenMetadataMapRows handles flatten metadata map rows.
 func flattenMetadataMapRows(prefix string, data map[string]any, rows *[]metadataDisplayRow) {
 	if len(data) == 0 {
 		if prefix != "" {
@@ -894,6 +924,7 @@ func flattenMetadataMapRows(prefix string, data map[string]any, rows *[]metadata
 	}
 }
 
+// flattenMetadataListRows handles flatten metadata list rows.
 func flattenMetadataListRows(prefix string, items []any, rows *[]metadataDisplayRow) {
 	if len(items) == 0 {
 		*rows = append(*rows, metadataDisplayRow{field: prefix, value: "None"})
@@ -957,6 +988,7 @@ func flattenMetadataListRows(prefix string, items []any, rows *[]metadataDisplay
 	}
 }
 
+// metadataLinesStyled handles metadata lines styled.
 func metadataLinesStyled(data map[string]any, indent int) []string {
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -1013,6 +1045,7 @@ func metadataLinesStyled(data map[string]any, indent int) []string {
 	return lines
 }
 
+// metadataLinesPlain handles metadata lines plain.
 func metadataLinesPlain(data map[string]any, indent int) []string {
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -1055,6 +1088,7 @@ func metadataLinesPlain(data map[string]any, indent int) []string {
 	return lines
 }
 
+// extractMetadataScopes handles extract metadata scopes.
 func extractMetadataScopes(data map[string]any) []string {
 	if data == nil {
 		return nil
@@ -1082,6 +1116,7 @@ func extractMetadataScopes(data map[string]any) []string {
 	return normalizeScopeList(out)
 }
 
+// stripMetadataScopes handles strip metadata scopes.
 func stripMetadataScopes(data map[string]any) map[string]any {
 	if len(data) == 0 {
 		return data
@@ -1096,6 +1131,7 @@ func stripMetadataScopes(data map[string]any) map[string]any {
 	return clean
 }
 
+// mergeMetadataScopes handles merge metadata scopes.
 func mergeMetadataScopes(data map[string]any, scopes []string) map[string]any {
 	if data == nil {
 		data = map[string]any{}
@@ -1109,6 +1145,7 @@ func mergeMetadataScopes(data map[string]any, scopes []string) map[string]any {
 	return data
 }
 
+// normalizeScopeList handles normalize scope list.
 func normalizeScopeList(values []string) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(values))
@@ -1127,6 +1164,7 @@ func normalizeScopeList(values []string) []string {
 	return out
 }
 
+// metadataListLinesStyled handles metadata list lines styled.
 func metadataListLinesStyled(items []any, indent int) []string {
 	if len(items) == 0 {
 		return nil
@@ -1169,6 +1207,7 @@ func metadataListLinesStyled(items []any, indent int) []string {
 	return lines
 }
 
+// metadataListLinesPlain handles metadata list lines plain.
 func metadataListLinesPlain(items []any, indent int) []string {
 	if len(items) == 0 {
 		return nil
@@ -1205,6 +1244,7 @@ func metadataListLinesPlain(items []any, indent int) []string {
 	return lines
 }
 
+// normalizeStructuredMetadataValue handles normalize structured metadata value.
 func normalizeStructuredMetadataValue(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:
@@ -1253,6 +1293,7 @@ func normalizeStructuredMetadataValue(value any) any {
 	}
 }
 
+// parseJSONStructuredString parses parse jsonstructured string.
 func parseJSONStructuredString(raw string) (any, bool) {
 	trimmed := strings.TrimSpace(raw)
 	if len(trimmed) < 2 {
@@ -1264,8 +1305,9 @@ func parseJSONStructuredString(raw string) (any, bool) {
 			trimmed = strings.TrimSpace(unquoted)
 		}
 	}
-	if !((strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
-		(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]"))) {
+	isObject := strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")
+	isArray := strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")
+	if !isObject && !isArray {
 		return nil, false
 	}
 	var parsed any
@@ -1280,6 +1322,7 @@ func parseJSONStructuredString(raw string) (any, bool) {
 	}
 }
 
+// parseStringSlice parses parse string slice.
 func parseStringSlice(value any) []string {
 	switch typed := value.(type) {
 	case []string:
@@ -1308,6 +1351,7 @@ func parseStringSlice(value any) []string {
 	}
 }
 
+// scopeBadgesText handles scope badges text.
 func scopeBadgesText(scopes []string) []string {
 	if len(scopes) == 0 {
 		return nil
@@ -1323,6 +1367,7 @@ func scopeBadgesText(scopes []string) []string {
 	return out
 }
 
+// wrapMetadataDisplayLines handles wrap metadata display lines.
 func wrapMetadataDisplayLines(lines []string, width int) []string {
 	if width <= 0 || len(lines) == 0 {
 		return lines
@@ -1334,6 +1379,7 @@ func wrapMetadataDisplayLines(lines []string, width int) []string {
 	return out
 }
 
+// wrapMetadataDisplayLine handles wrap metadata display line.
 func wrapMetadataDisplayLine(line string, width int) []string {
 	clean := strings.TrimRight(components.SanitizeText(line), " ")
 	if clean == "" {
@@ -1373,6 +1419,7 @@ func wrapMetadataDisplayLine(line string, width int) []string {
 	return out
 }
 
+// wrapMetadataWords handles wrap metadata words.
 func wrapMetadataWords(text string, width int) []string {
 	if width <= 0 {
 		return []string{components.SanitizeOneLine(text)}
@@ -1412,6 +1459,7 @@ func wrapMetadataWords(text string, width int) []string {
 	return out
 }
 
+// colorizeScopeBadges handles colorize scope badges.
 func colorizeScopeBadges(text string) string {
 	rendered := text
 	for _, scope := range []string{"public", "private", "sensitive", "admin"} {

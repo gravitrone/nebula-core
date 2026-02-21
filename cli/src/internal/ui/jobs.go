@@ -119,6 +119,7 @@ func NewJobsModel(client *api.Client) JobsModel {
 	}
 }
 
+// Init handles init.
 func (m JobsModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = jobsViewList
@@ -140,6 +141,7 @@ func (m JobsModel) Init() tea.Cmd {
 	return m.loadJobs
 }
 
+// Update updates update.
 func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case jobsLoadedMsg:
@@ -229,6 +231,7 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m JobsModel) View() string {
 	if m.addMeta.Active {
 		return m.addMeta.Render(m.width)
@@ -296,6 +299,7 @@ func (m JobsModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m JobsModel) handleModeKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -310,6 +314,7 @@ func (m JobsModel) handleModeKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m JobsModel) toggleMode() (JobsModel, tea.Cmd) {
 	m.modeFocus = false
 	m.detail = nil
@@ -458,6 +463,7 @@ func (m JobsModel) renderList() string {
 	return components.TitledBox(title, content, m.width)
 }
 
+// renderJobPreview renders render job preview.
 func (m JobsModel) renderJobPreview(j api.Job, width int) string {
 	if width <= 0 {
 		return ""
@@ -507,6 +513,7 @@ func (m JobsModel) renderJobPreview(j api.Job, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// handleListKeys handles handle list keys.
 func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
@@ -586,6 +593,7 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m JobsModel) handleFilterInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -672,6 +680,7 @@ func (m JobsModel) handleAddKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderAdd renders render add.
 func (m JobsModel) renderAdd() string {
 	if m.addSaving {
 		return MutedStyle.Render("Saving...")
@@ -750,6 +759,7 @@ func (m JobsModel) renderAdd() string {
 	return components.TitledBox("Add Job", b.String(), m.width)
 }
 
+// saveAdd handles save add.
 func (m JobsModel) saveAdd() (JobsModel, tea.Cmd) {
 	title := strings.TrimSpace(m.addFields[jobFieldTitle].value)
 	if title == "" {
@@ -784,6 +794,7 @@ func (m JobsModel) saveAdd() (JobsModel, tea.Cmd) {
 	}
 }
 
+// resetAddForm handles reset add form.
 func (m *JobsModel) resetAddForm() {
 	m.addSaved = false
 	m.addSaving = false
@@ -812,6 +823,7 @@ func (m *JobsModel) startEdit() {
 	m.editSaving = false
 }
 
+// handleEditKeys handles handle edit keys.
 func (m JobsModel) handleEditKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -862,6 +874,7 @@ func (m JobsModel) handleEditKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderEdit renders render edit.
 func (m JobsModel) renderEdit() string {
 	var b strings.Builder
 
@@ -934,6 +947,7 @@ func (m JobsModel) renderEdit() string {
 	return components.TitledBox("Edit Job", b.String(), m.width)
 }
 
+// saveEdit handles save edit.
 func (m JobsModel) saveEdit() (JobsModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
@@ -964,6 +978,7 @@ func (m JobsModel) saveEdit() (JobsModel, tea.Cmd) {
 	}
 }
 
+// valueOrEmpty handles value or empty.
 func valueOrEmpty(value *string) string {
 	if value == nil {
 		return ""
@@ -981,6 +996,7 @@ func (m JobsModel) loadJobs() tea.Msg {
 	return jobsLoadedMsg{items}
 }
 
+// loadScopeOptions loads load scope options.
 func (m JobsModel) loadScopeOptions() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -998,6 +1014,7 @@ func (m JobsModel) loadScopeOptions() tea.Cmd {
 	}
 }
 
+// applyJobSearch handles apply job search.
 func (m *JobsModel) applyJobSearch() {
 	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
 	if query == "" {
@@ -1021,6 +1038,7 @@ func (m *JobsModel) applyJobSearch() {
 	m.updateSearchSuggest()
 }
 
+// retainSelection handles retain selection.
 func (m *JobsModel) retainSelection() {
 	if len(m.selected) == 0 {
 		return
@@ -1038,6 +1056,7 @@ func (m *JobsModel) retainSelection() {
 	m.selected = next
 }
 
+// toggleSelected handles toggle selected.
 func (m *JobsModel) toggleSelected() {
 	idx := m.list.Selected()
 	if idx < 0 || idx >= len(m.items) {
@@ -1054,6 +1073,7 @@ func (m *JobsModel) toggleSelected() {
 	m.selected[id] = true
 }
 
+// toggleSelectAll handles toggle select all.
 func (m *JobsModel) toggleSelectAll() {
 	if len(m.items) == 0 {
 		return
@@ -1069,6 +1089,7 @@ func (m *JobsModel) toggleSelectAll() {
 	m.selected = selected
 }
 
+// selectedIDs handles selected ids.
 func (m JobsModel) selectedIDs() []string {
 	if len(m.selected) == 0 {
 		return nil
@@ -1088,10 +1109,12 @@ func (m JobsModel) selectedIDs() []string {
 	return ids
 }
 
+// selectedCount handles selected count.
 func (m JobsModel) selectedCount() int {
 	return len(m.selectedIDs())
 }
 
+// updateSearchSuggest updates update search suggest.
 func (m *JobsModel) updateSearchSuggest() {
 	m.searchSuggest = ""
 	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
@@ -1107,6 +1130,7 @@ func (m *JobsModel) updateSearchSuggest() {
 	}
 }
 
+// handleDetailKeys handles handle detail keys.
 func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isUp(msg):
@@ -1138,6 +1162,7 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleStatusInput handles handle status input.
 func (m JobsModel) handleStatusInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1180,6 +1205,7 @@ func (m JobsModel) handleStatusInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleSubtaskInput handles handle subtask input.
 func (m JobsModel) handleSubtaskInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1212,6 +1238,7 @@ func (m JobsModel) handleSubtaskInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleLinkInput handles handle link input.
 func (m JobsModel) handleLinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1269,6 +1296,7 @@ func (m JobsModel) handleLinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleUnlinkInput handles handle unlink input.
 func (m JobsModel) handleUnlinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1312,6 +1340,7 @@ func (m JobsModel) handleUnlinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
+// parsePositiveListIndex parses parse positive list index.
 func parsePositiveListIndex(value string) int {
 	if value == "" {
 		return 0
@@ -1326,6 +1355,7 @@ func parsePositiveListIndex(value string) int {
 	return total
 }
 
+// renderDetail renders render detail.
 func (m JobsModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -1371,6 +1401,7 @@ func (m JobsModel) renderDetail() string {
 	return strings.Join(sections, "\n\n")
 }
 
+// loadDetailRelationships loads load detail relationships.
 func (m JobsModel) loadDetailRelationships(jobID string) tea.Cmd {
 	return func() tea.Msg {
 		rels, err := m.client.GetRelationships("job", jobID)
@@ -1381,6 +1412,7 @@ func (m JobsModel) loadDetailRelationships(jobID string) tea.Cmd {
 	}
 }
 
+// formatJobLine handles format job line.
 func formatJobLine(j api.Job) string {
 	p := ""
 	if j.Priority != nil {

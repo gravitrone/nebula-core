@@ -180,6 +180,7 @@ async def authenticate_agent(pool: Pool) -> AgentDict:
     Raises:
         ValueError: If key missing, invalid, or agent inactive.
     """
+
     api_key = os.environ.get("NEBULA_API_KEY")
     if not api_key:
         raise ValueError(
@@ -224,11 +225,26 @@ async def authenticate_agent_with_key(
 
 
 def _env_truthy(name: str) -> bool:
+    """Handle env truthy.
+
+    Args:
+        name: Input parameter for _env_truthy.
+
+    Returns:
+        Result value from the operation.
+    """
+
     value = os.environ.get(name, "")
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _local_insecure_agent_name() -> str:
+    """Handle local insecure agent name.
+
+    Returns:
+        Result value from the operation.
+    """
+
     value = os.environ.get(LOCAL_INSECURE_AGENT_ENV, "")
     cleaned = value.strip()
     if cleaned:
@@ -239,6 +255,16 @@ def _local_insecure_agent_name() -> str:
 async def _get_or_create_local_insecure_agent(
     pool: Pool, enums: EnumRegistry
 ) -> AgentDict:
+    """Handle get or create local insecure agent.
+
+    Args:
+        pool: Input parameter for _get_or_create_local_insecure_agent.
+        enums: Input parameter for _get_or_create_local_insecure_agent.
+
+    Returns:
+        Result value from the operation.
+    """
+
     name = _local_insecure_agent_name()
     existing = await pool.fetchrow(QUERIES["agents/get"], name)
     if existing:

@@ -15,18 +15,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testLogsClient handles test logs client.
 func testLogsClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestLogsInitLoadsLogsAndScopes handles test logs init loads logs and scopes.
 func TestLogsInitLoadsLogsAndScopes(t *testing.T) {
 	now := time.Now()
 	_, client := testLogsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/logs") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "log-1",
@@ -41,9 +43,10 @@ func TestLogsInitLoadsLogsAndScopes(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":            "scope-1",
@@ -55,6 +58,7 @@ func TestLogsInitLoadsLogsAndScopes(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -77,6 +81,7 @@ func TestLogsInitLoadsLogsAndScopes(t *testing.T) {
 	assert.Contains(t, model.scopeOptions, "public")
 }
 
+// TestLogsAddValidationErrorOnEmpty handles test logs add validation error on empty.
 func TestLogsAddValidationErrorOnEmpty(t *testing.T) {
 	_, client := testLogsClient(t, func(w http.ResponseWriter, r *http.Request) {})
 	model := NewLogsModel(client)
@@ -86,12 +91,13 @@ func TestLogsAddValidationErrorOnEmpty(t *testing.T) {
 	assert.Equal(t, "Type is required", model.addErr)
 }
 
+// TestLogsListNavigationOpensDetailAndReturnsToList handles test logs list navigation opens detail and returns to list.
 func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 	now := time.Now()
 	_, client := testLogsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/logs") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "log-1",
@@ -117,9 +123,11 @@ func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "s1", "name": "public"}}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "s1", "name": "public"}}})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -153,6 +161,7 @@ func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 	assert.Contains(t, model.View(), "Logs")
 }
 
+// TestLogsDetailRendersRelationshipsSection handles test logs detail renders relationships section.
 func TestLogsDetailRendersRelationshipsSection(t *testing.T) {
 	now := time.Now()
 	model := NewLogsModel(nil)
@@ -188,6 +197,7 @@ func TestLogsDetailRendersRelationshipsSection(t *testing.T) {
 	assert.Contains(t, out, "Bro")
 }
 
+// TestLogsAddFlowCommitsTagsAndSaves handles test logs add flow commits tags and saves.
 func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	now := time.Now()
 	var created api.CreateLogInput
@@ -195,15 +205,17 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	_, client := testLogsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/logs") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "s1", "name": "public"}}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "s1", "name": "public"}}})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/logs" && r.Method == http.MethodPost:
 			posted = true
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&created))
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":         "log-1",
 				"log_type":   created.LogType,
 				"timestamp":  now,
@@ -214,6 +226,7 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 				"created_at": now,
 				"updated_at": now,
 			}})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -234,7 +247,7 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	assert.Equal(t, logsViewAdd, model.view)
 
 	// Fill type.
-	for _, r := range []rune("workout") {
+	for _, r := range "workout" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	assert.Equal(t, "workout", model.addType)
@@ -246,13 +259,13 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	assert.Equal(t, logFieldTags, model.addFocus)
 
 	// Commit tag and dedupe.
-	for _, r := range []rune("alpha") {
+	for _, r := range "alpha" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	require.Equal(t, []string{"alpha"}, model.addTags)
 
-	for _, r := range []rune("alpha") {
+	for _, r := range "alpha" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -276,6 +289,7 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	assert.True(t, model.addSaved)
 }
 
+// TestLogsEditFlowSavesPatchAndReturnsToList handles test logs edit flow saves patch and returns to list.
 func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	now := time.Now()
 	var patched api.UpdateLogInput
@@ -283,7 +297,7 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	_, client := testLogsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/logs") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "log-1",
@@ -298,14 +312,17 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "s1", "name": "public"}}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "s1", "name": "public"}}})
+			require.NoError(t, err)
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/logs/") && r.Method == http.MethodPatch:
 			patchedID = strings.TrimPrefix(r.URL.Path, "/api/logs/")
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&patched))
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": patchedID}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": patchedID}})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -328,7 +345,7 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	// Move focus to tags and add one tag.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	assert.Equal(t, logEditFieldTags, model.editFocus)
-	for _, r := range []rune("beta") {
+	for _, r := range "beta" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -350,6 +367,7 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	assert.Equal(t, logsViewList, model.view)
 }
 
+// TestParseLogTimestamp handles test parse log timestamp.
 func TestParseLogTimestamp(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		ts, err := parseLogTimestamp("")
@@ -378,6 +396,7 @@ func TestParseLogTimestamp(t *testing.T) {
 	})
 }
 
+// TestLogsRenderAddEditAndTagHelpers handles test logs render add edit and tag helpers.
 func TestLogsRenderAddEditAndTagHelpers(t *testing.T) {
 	now := time.Now()
 	model := NewLogsModel(nil)
@@ -425,6 +444,7 @@ func TestLogsRenderAddEditAndTagHelpers(t *testing.T) {
 	assert.Contains(t, editView, "Tags")
 }
 
+// TestLogsFormsRenderMetadataPreviewTable handles test logs forms render metadata preview table.
 func TestLogsFormsRenderMetadataPreviewTable(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.width = 100

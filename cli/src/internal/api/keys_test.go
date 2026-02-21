@@ -10,12 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestListKeysFiltered handles test list keys filtered.
 func TestListKeysFiltered(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/keys", r.URL.Path)
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "key-1", "prefix": "nbl_abc", "name": "my-key", "active": true},
 		}))
+		require.NoError(t, err)
 	})
 
 	keys, err := client.ListKeys()
@@ -24,13 +26,15 @@ func TestListKeysFiltered(t *testing.T) {
 	assert.Equal(t, "my-key", keys[0].Name)
 }
 
+// TestListAllKeys handles test list all keys.
 func TestListAllKeys(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/keys/all", r.URL.Path)
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "key-1", "prefix": "nbl_abc", "name": "key1", "active": true},
 			{"id": "key-2", "prefix": "nbl_def", "name": "key2", "active": false},
 		}))
+		require.NoError(t, err)
 	})
 
 	keys, err := client.ListAllKeys()
@@ -38,17 +42,20 @@ func TestListAllKeys(t *testing.T) {
 	assert.Len(t, keys, 2)
 }
 
+// TestRevokeKey handles test revoke key.
 func TestRevokeKey(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/keys/key-1")
-		w.Write(jsonResponse(map[string]any{}))
+		_, err := w.Write(jsonResponse(map[string]any{}))
+		require.NoError(t, err)
 	})
 
 	err := client.RevokeKey("key-1")
 	require.NoError(t, err)
 }
 
+// TestRevokeKeyNotFound handles test revoke key not found.
 func TestRevokeKeyNotFound(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -58,7 +65,8 @@ func TestRevokeKeyNotFound(t *testing.T) {
 				"message": "key not found",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	err := client.RevokeKey("nonexistent")
@@ -66,16 +74,18 @@ func TestRevokeKeyNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "NOT_FOUND")
 }
 
+// TestLoginUnauthenticated handles test login unauthenticated.
 func TestLoginUnauthenticated(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Login endpoint should not require auth
 		assert.Empty(t, r.Header.Get("Authorization"))
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"api_key":   "nbl_newkey",
 			"entity_id": "ent-1",
 			"username":  "testuser",
 		}))
+		require.NoError(t, err)
 	}))
 	defer srv.Close()
 
@@ -85,6 +95,7 @@ func TestLoginUnauthenticated(t *testing.T) {
 	assert.Equal(t, "nbl_newkey", resp.APIKey)
 }
 
+// TestLoginInvalidUsername handles test login invalid username.
 func TestLoginInvalidUsername(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
@@ -94,7 +105,8 @@ func TestLoginInvalidUsername(t *testing.T) {
 				"message": "username must be alphanumeric",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.Login("invalid@user")
@@ -102,6 +114,7 @@ func TestLoginInvalidUsername(t *testing.T) {
 	assert.Contains(t, err.Error(), "INVALID_USERNAME")
 }
 
+// TestCreateKeyDuplicateName handles test create key duplicate name.
 func TestCreateKeyDuplicateName(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(409)
@@ -111,7 +124,8 @@ func TestCreateKeyDuplicateName(t *testing.T) {
 				"message": "key name already exists",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.CreateKey("existing-key")

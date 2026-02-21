@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestFilterInputAcrossTabs handles test filter input across tabs.
 func TestFilterInputAcrossTabs(t *testing.T) {
 	t.Run("context", func(t *testing.T) {
 		model := NewContextModel(nil)

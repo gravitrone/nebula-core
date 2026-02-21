@@ -118,6 +118,7 @@ func NewFilesModel(client *api.Client) FilesModel {
 	}
 }
 
+// Init handles init.
 func (m FilesModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = filesViewList
@@ -156,6 +157,7 @@ func (m FilesModel) Init() tea.Cmd {
 	return m.loadFiles()
 }
 
+// Update updates update.
 func (m FilesModel) Update(msg tea.Msg) (FilesModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case filesLoadedMsg:
@@ -216,6 +218,7 @@ func (m FilesModel) Update(msg tea.Msg) (FilesModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m FilesModel) View() string {
 	if m.addMeta.Active {
 		return m.addMeta.Render(m.width)
@@ -264,6 +267,7 @@ func (m FilesModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m FilesModel) handleModeKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -278,6 +282,7 @@ func (m FilesModel) handleModeKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m FilesModel) toggleMode() (FilesModel, tea.Cmd) {
 	m.modeFocus = false
 	if m.view == filesViewAdd {
@@ -413,6 +418,7 @@ func (m FilesModel) renderList() string {
 	return components.TitledBox("Files", content, m.width)
 }
 
+// renderFilePreview renders render file preview.
 func (m FilesModel) renderFilePreview(f api.File, width int) string {
 	if width <= 0 {
 		return ""
@@ -464,6 +470,7 @@ func (m FilesModel) renderFilePreview(f api.File, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// handleListKeys handles handle list keys.
 func (m FilesModel) handleListKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
@@ -523,6 +530,7 @@ func (m FilesModel) handleListKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m FilesModel) handleFilterInput(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -570,6 +578,7 @@ func (m FilesModel) handleDetailKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderDetail renders render detail.
 func (m FilesModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -610,6 +619,7 @@ func (m FilesModel) renderDetail() string {
 	return strings.Join(sections, "\n\n")
 }
 
+// loadDetailRelationships loads load detail relationships.
 func (m FilesModel) loadDetailRelationships(fileID string) tea.Cmd {
 	return func() tea.Msg {
 		rels, err := m.client.GetRelationships("file", fileID)
@@ -716,6 +726,7 @@ func (m FilesModel) handleAddKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderAdd renders render add.
 func (m FilesModel) renderAdd() string {
 	rows := make([][2]string, 0, len(m.addFields))
 	for i := range m.addFields {
@@ -751,6 +762,7 @@ func (m FilesModel) renderAdd() string {
 	return body
 }
 
+// saveAdd handles save add.
 func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
 	name := strings.TrimSpace(m.addName)
 	if name == "" {
@@ -794,6 +806,7 @@ func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
 	}
 }
 
+// resetAddForm handles reset add form.
 func (m *FilesModel) resetAddForm() {
 	m.addSaved = false
 	m.addSaving = false
@@ -810,6 +823,7 @@ func (m *FilesModel) resetAddForm() {
 	m.addMeta.Reset()
 }
 
+// commitAddTag handles commit add tag.
 func (m *FilesModel) commitAddTag() {
 	raw := strings.TrimSpace(m.addTagBuf)
 	if raw == "" {
@@ -831,6 +845,7 @@ func (m *FilesModel) commitAddTag() {
 	m.addTagBuf = ""
 }
 
+// renderAddTags renders render add tags.
 func (m FilesModel) renderAddTags(focused bool) string {
 	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
 		return "-"
@@ -891,6 +906,7 @@ func (m FilesModel) startEdit() {
 	m.editSaving = false
 }
 
+// handleEditKeys handles handle edit keys.
 func (m FilesModel) handleEditKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -972,6 +988,7 @@ func (m FilesModel) handleEditKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderEdit renders render edit.
 func (m FilesModel) renderEdit() string {
 	fields := []string{"Filename", "File Path", "MIME Type", "Size (bytes)", "Checksum", "Status", "Tags", "Metadata"}
 	rows := make([][2]string, 0, len(fields))
@@ -1000,6 +1017,7 @@ func (m FilesModel) renderEdit() string {
 	return renderFormGrid("Edit File", rows, m.editFocus, m.width)
 }
 
+// saveEdit handles save edit.
 func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
 	size, err := parseFileSize(m.editSize)
 	if err != nil {
@@ -1046,6 +1064,7 @@ func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
 	}
 }
 
+// commitEditTag handles commit edit tag.
 func (m *FilesModel) commitEditTag() {
 	raw := strings.TrimSpace(m.editTagBuf)
 	if raw == "" {
@@ -1067,6 +1086,7 @@ func (m *FilesModel) commitEditTag() {
 	m.editTagBuf = ""
 }
 
+// renderEditTags renders render edit tags.
 func (m FilesModel) renderEditTags(focused bool) string {
 	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
 		return "-"
@@ -1107,6 +1127,7 @@ func (m FilesModel) loadFiles() tea.Cmd {
 	}
 }
 
+// loadScopeOptions loads load scope options.
 func (m FilesModel) loadScopeOptions() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1124,6 +1145,7 @@ func (m FilesModel) loadScopeOptions() tea.Cmd {
 	}
 }
 
+// applyFileSearch handles apply file search.
 func (m *FilesModel) applyFileSearch() {
 	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
 	if query == "" {
@@ -1146,6 +1168,7 @@ func (m *FilesModel) applyFileSearch() {
 	m.updateSearchSuggest()
 }
 
+// updateSearchSuggest updates update search suggest.
 func (m *FilesModel) updateSearchSuggest() {
 	m.searchSuggest = ""
 	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
@@ -1160,6 +1183,7 @@ func (m *FilesModel) updateSearchSuggest() {
 	}
 }
 
+// formatFileLine handles format file line.
 func formatFileLine(f api.File) string {
 	name := components.SanitizeText(f.Filename)
 	if name == "" {
@@ -1181,6 +1205,7 @@ func formatFileLine(f api.File) string {
 	return strings.Join(segments, " · ")
 }
 
+// parseFileSize parses parse file size.
 func parseFileSize(raw string) (*int64, error) {
 	value := strings.TrimSpace(raw)
 	if value == "" {
@@ -1193,6 +1218,7 @@ func parseFileSize(raw string) (*int64, error) {
 	return &parsed, nil
 }
 
+// formatFileSize handles format file size.
 func formatFileSize(size int64) string {
 	if size < 1024 {
 		return fmt.Sprintf("%d B", size)
@@ -1209,6 +1235,7 @@ func formatFileSize(size int64) string {
 	return fmt.Sprintf("%.1f GB", gb)
 }
 
+// appendChar handles append char.
 func appendChar(target *string, msg tea.KeyMsg) {
 	ch := msg.String()
 	if len(ch) == 1 || ch == " " {
@@ -1216,6 +1243,7 @@ func appendChar(target *string, msg tea.KeyMsg) {
 	}
 }
 
+// formatFormValue handles format form value.
 func formatFormValue(value string, focused bool) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" && !focused {
@@ -1227,6 +1255,7 @@ func formatFormValue(value string, focused bool) string {
 	return value
 }
 
+// derefString handles deref string.
 func derefString(value *string) string {
 	if value == nil {
 		return ""

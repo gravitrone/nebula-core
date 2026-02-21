@@ -183,6 +183,7 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 	return app
 }
 
+// Init handles init.
 func (a App) Init() tea.Cmd {
 	if a.onboarding {
 		return nil
@@ -194,6 +195,7 @@ func (a App) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
+// Update updates update.
 func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	prevViewKey := a.viewStateKey()
 
@@ -520,6 +522,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return a, cmd
 }
 
+// View handles view.
 func (a App) View() string {
 	components.SetTableGridActiveRowsEnabled(a.rowHighlightEnabled())
 	defer components.SetTableGridActiveRowsEnabled(true)
@@ -611,6 +614,7 @@ func (a App) View() string {
 	return fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints)
 }
 
+// rowHighlightEnabled handles row highlight enabled.
 func (a App) rowHighlightEnabled() bool {
 	if a.tabNav {
 		return false
@@ -644,6 +648,7 @@ func (a App) rowHighlightEnabled() bool {
 	return false
 }
 
+// switchTab handles switch tab.
 func (a *App) switchTab(newTab int) (App, tea.Cmd) {
 	oldTab := a.tab
 	a.tab = newTab
@@ -658,6 +663,7 @@ func (a *App) switchTab(newTab int) (App, tea.Cmd) {
 	return *a, nil
 }
 
+// clearContentFocus handles clear content focus.
 func (a *App) clearContentFocus() {
 	a.entities.modeFocus = false
 	a.rels.modeFocus = false
@@ -669,6 +675,7 @@ func (a *App) clearContentFocus() {
 	a.profile.sectionFocus = false
 }
 
+// resetBodyScrollOnViewChange handles reset body scroll on view change.
 func (a *App) resetBodyScrollOnViewChange(prevViewKey string) {
 	nextViewKey := a.viewStateKey()
 	if prevViewKey != "" && prevViewKey != nextViewKey {
@@ -677,6 +684,7 @@ func (a *App) resetBodyScrollOnViewChange(prevViewKey string) {
 	a.bodyViewKey = nextViewKey
 }
 
+// viewStateKey handles view state key.
 func (a App) viewStateKey() string {
 	if a.helpOpen {
 		return "help"
@@ -772,6 +780,7 @@ func (a App) tabWantsArrows() bool {
 	return false
 }
 
+// renderTabs renders render tabs.
 func (a App) renderTabs() string {
 	segments := make([]string, 0, len(tabNames))
 	for i, name := range tabNames {
@@ -789,6 +798,7 @@ func (a App) renderTabs() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, segments...)
 }
 
+// initTab handles init tab.
 func (a App) initTab(tab int) tea.Cmd {
 	switch tab {
 	case tabInbox:
@@ -815,6 +825,7 @@ func (a App) initTab(tab int) tea.Cmd {
 	return nil
 }
 
+// statusHints handles status hints.
 func (a App) statusHints() []string {
 	if a.quitConfirm {
 		return []string{
@@ -859,6 +870,7 @@ func (a App) statusHints() []string {
 	return hints
 }
 
+// statusHintsForTab handles status hints for tab.
 func (a App) statusHintsForTab() []string {
 	base := []string{
 		components.Hint("1-9/0", "Tabs"),
@@ -1275,20 +1287,21 @@ func (a App) statusHintsForTab() []string {
 			components.Hint("k", "API Key"),
 			components.Hint("p", "Queue Limit"),
 		}
-		if a.profile.section == 0 {
-			hints = append(hints,
-				components.Hint("n", "New Key"),
-				components.Hint("r", "Revoke"),
-			)
-		} else if a.profile.section == 1 {
-			hints = append(hints,
-				components.Hint("enter", "Details"),
-				components.Hint("t", "Toggle Trust"),
-			)
-		} else {
-			if a.profile.taxPromptMode != taxPromptNone {
+			switch a.profile.section {
+			case 0:
 				hints = append(hints,
-					components.Hint("enter", "Apply"),
+					components.Hint("n", "New Key"),
+					components.Hint("r", "Revoke"),
+				)
+			case 1:
+				hints = append(hints,
+					components.Hint("enter", "Details"),
+					components.Hint("t", "Toggle Trust"),
+				)
+			default:
+				if a.profile.taxPromptMode != taxPromptNone {
+					hints = append(hints,
+						components.Hint("enter", "Apply"),
 					components.Hint("esc", "Cancel"),
 				)
 			} else {
@@ -1302,16 +1315,18 @@ func (a App) statusHintsForTab() []string {
 					components.Hint("i", "Inactive"),
 				)
 			}
+			}
+			return append(base, hints...)
 		}
-		return append(base, hints...)
-	}
-	return base
+		return base
 }
 
+// renderTips renders render tips.
 func (a App) renderTips() string {
 	return ""
 }
 
+// renderHelp renders render help.
 func (a App) renderHelp() string {
 	hints := a.statusHintsForTab()
 	lines := make([]string, 0, len(hints)+2)
@@ -1324,11 +1339,13 @@ func (a App) renderHelp() string {
 	return components.Indent(components.TitledBox("Help", body, a.width), 1)
 }
 
+// renderQuitConfirm renders render quit confirm.
 func (a App) renderQuitConfirm() string {
 	body := "You have unsaved changes. Quit anyway?"
 	return components.Indent(components.ConfirmDialog("Quit", body), 1)
 }
 
+// runStartupCheckCmd runs run startup check cmd.
 func (a App) runStartupCheckCmd() tea.Cmd {
 	return func() tea.Msg {
 		var checkClient *api.Client
@@ -1357,6 +1374,7 @@ func (a App) runStartupCheckCmd() tea.Cmd {
 	}
 }
 
+// reloginCmd handles relogin cmd.
 func (a *App) reloginCmd() tea.Cmd {
 	if a.client == nil || a.config == nil {
 		return func() tea.Msg {
@@ -1378,6 +1396,7 @@ func (a *App) reloginCmd() tea.Cmd {
 	}
 }
 
+// setToast sets set toast.
 func (a *App) setToast(level, text string) tea.Cmd {
 	a.toast = &appToast{
 		level: level,
@@ -1388,6 +1407,7 @@ func (a *App) setToast(level, text string) tea.Cmd {
 	})
 }
 
+// countViewLines handles count view lines.
 func countViewLines(block string) int {
 	if strings.TrimSpace(block) == "" {
 		return 0
@@ -1395,6 +1415,7 @@ func countViewLines(block string) int {
 	return strings.Count(block, "\n") + 1
 }
 
+// clampBodyForViewport handles clamp body for viewport.
 func clampBodyForViewport(body string, totalHeight, topLines, hintLines, scroll int) (string, bool) {
 	lines := strings.Split(body, "\n")
 	if len(lines) == 0 {
@@ -1443,6 +1464,7 @@ func clampBodyForViewport(body string, totalHeight, topLines, hintLines, scroll 
 	return strings.Join(trimmed, "\n"), true
 }
 
+// renderToast renders render toast.
 func (a App) renderToast() string {
 	if a.toast == nil {
 		return ""
@@ -1463,6 +1485,7 @@ func (a App) renderToast() string {
 	}
 }
 
+// renderStartupPanel renders render startup panel.
 func (a App) renderStartupPanel() string {
 	rows := []components.TableRow{
 		{Label: "API", Value: a.startup.API, ValueColor: startupStatusColor(a.startup.API)},
@@ -1472,6 +1495,7 @@ func (a App) renderStartupPanel() string {
 	return components.Table("Startup Checks", rows, a.width)
 }
 
+// toastCmdForMsg handles toast cmd for msg.
 func (a *App) toastCmdForMsg(msg tea.Msg) tea.Cmd {
 	var level, text string
 	switch typed := msg.(type) {
@@ -1510,6 +1534,7 @@ func (a *App) toastCmdForMsg(msg tea.Msg) tea.Cmd {
 	return a.setToast(level, text)
 }
 
+// handleQuickstartKeys handles handle quickstart keys.
 func (a *App) handleQuickstartKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1546,6 +1571,7 @@ func (a *App) handleQuickstartKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return *a, nil
 }
 
+// handleOnboardingKeys handles handle onboarding keys.
 func (a *App) handleOnboardingKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if isQuit(msg) {
 		return *a, tea.Quit
@@ -1576,6 +1602,7 @@ func (a *App) handleOnboardingKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return *a, nil
 }
 
+// onboardingLoginCmd handles onboarding login cmd.
 func (a *App) onboardingLoginCmd(username string) tea.Cmd {
 	name := strings.TrimSpace(username)
 	return func() tea.Msg {
@@ -1588,6 +1615,7 @@ func (a *App) onboardingLoginCmd(username string) tea.Cmd {
 	}
 }
 
+// renderOnboarding renders render onboarding.
 func (a App) renderOnboarding() string {
 	prompt := components.SanitizeOneLine(strings.TrimSpace(a.onboardingName))
 	if prompt == "" {
@@ -1613,6 +1641,7 @@ func (a App) renderOnboarding() string {
 	return components.TitledBox("Onboarding", body, a.width)
 }
 
+// finishQuickstart handles finish quickstart.
 func (a *App) finishQuickstart(skipped bool) (tea.Model, tea.Cmd) {
 	a.quickstartOpen = false
 	a.quickstartStep = 0
@@ -1631,6 +1660,7 @@ func (a *App) finishQuickstart(skipped bool) (tea.Model, tea.Cmd) {
 	return *a, a.setToast("success", "Quickstart complete.")
 }
 
+// renderQuickstart renders render quickstart.
 func (a App) renderQuickstart() string {
 	type quickstartStep struct {
 		title  string
@@ -1651,7 +1681,7 @@ func (a App) renderQuickstart() string {
 	}
 	step := steps[a.quickstartStep]
 
-	labelStyle := MetaKeyStyle.Copy().Bold(true)
+	labelStyle := MetaKeyStyle.Bold(true)
 	valueStyle := NormalStyle
 
 	rows := []string{
@@ -1663,6 +1693,7 @@ func (a App) renderQuickstart() string {
 	return components.Indent(components.TitledBox("Getting Started", body, a.width), 1)
 }
 
+// parseErrorCodeAndMessage parses parse error code and message.
 func parseErrorCodeAndMessage(errText string) (string, string) {
 	text := strings.TrimSpace(errText)
 	if text == "" {
@@ -1684,6 +1715,7 @@ func parseErrorCodeAndMessage(errText string) (string, string) {
 	return code, strings.TrimSpace(parts[1])
 }
 
+// shouldShowRecoveryHints handles should show recovery hints.
 func shouldShowRecoveryHints(code, msg string) bool {
 	if !strings.EqualFold(strings.TrimSpace(code), "FORBIDDEN") {
 		return false
@@ -1692,6 +1724,7 @@ func shouldShowRecoveryHints(code, msg string) bool {
 	return strings.Contains(lower, "scope") || strings.Contains(lower, "admin")
 }
 
+// classifyStartupAPI handles classify startup api.
 func classifyStartupAPI(errText string) string {
 	if strings.TrimSpace(errText) == "" {
 		return "ok"
@@ -1703,6 +1736,7 @@ func classifyStartupAPI(errText string) string {
 	return "down"
 }
 
+// classifyStartupAuth handles classify startup auth.
 func classifyStartupAuth(errText string, cfg *config.Config) string {
 	if cfg == nil || strings.TrimSpace(cfg.APIKey) == "" {
 		return "missing"
@@ -1713,6 +1747,7 @@ func classifyStartupAuth(errText string, cfg *config.Config) string {
 	return "invalid"
 }
 
+// classifyStartupTaxonomy handles classify startup taxonomy.
 func classifyStartupTaxonomy(errText string) string {
 	if strings.TrimSpace(errText) == "" {
 		return "ok"
@@ -1728,6 +1763,7 @@ func classifyStartupTaxonomy(errText string) string {
 	}
 }
 
+// startupToastCopy handles startup toast copy.
 func startupToastCopy(summary startupSummary) (string, string) {
 	if summary.API == "ok" && summary.Auth == "ok" && summary.Taxonomy == "ok" {
 		return "success", "Startup checks passed: API, auth, and taxonomy are healthy."
@@ -1738,6 +1774,7 @@ func startupToastCopy(summary startupSummary) (string, string) {
 	return "warning", fmt.Sprintf("Startup checks: auth=%s, taxonomy=%s.", summary.Auth, summary.Taxonomy)
 }
 
+// startupStatusColor handles startup status color.
 func startupStatusColor(status string) string {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "ok":
@@ -1753,6 +1790,7 @@ func startupStatusColor(status string) string {
 	}
 }
 
+// openPaletteCommand handles open palette command.
 func (a *App) openPaletteCommand() {
 	a.paletteOpen = true
 	// Open in explicit command mode. Users can backspace this to switch to search mode.
@@ -1764,11 +1802,13 @@ func (a *App) openPaletteCommand() {
 	a.paletteFiltered = filterPalette(a.paletteActions, "")
 }
 
+// paletteCommandMode handles palette command mode.
 func (a App) paletteCommandMode() bool {
 	query := strings.TrimSpace(a.paletteQuery)
 	return strings.HasPrefix(query, "/")
 }
 
+// renderPalette renders render palette.
 func (a App) renderPalette() string {
 	commandMode := a.paletteCommandMode()
 	title := "Search"
@@ -1854,6 +1894,7 @@ func (a App) renderPalette() string {
 	return components.TitledBox(title, b.String(), a.width)
 }
 
+// refreshPaletteFiltered handles refresh palette filtered.
 func (a *App) refreshPaletteFiltered() tea.Cmd {
 	a.paletteQuery = components.SanitizeOneLine(a.paletteQuery)
 
@@ -1894,6 +1935,7 @@ func (a *App) refreshPaletteFiltered() tea.Cmd {
 	return nil
 }
 
+// loadPaletteSearch loads load palette search.
 func (a App) loadPaletteSearch(query string) tea.Cmd {
 	if a.client == nil {
 		return nil
@@ -1960,6 +2002,7 @@ func (a App) loadPaletteSearch(query string) tea.Cmd {
 	}
 }
 
+// buildSearchPaletteActions builds build search palette actions.
 func buildSearchPaletteActions(
 	query string,
 	entities []api.Entity,
@@ -2001,6 +2044,7 @@ func buildSearchPaletteActions(
 	return actions, selections
 }
 
+// handlePaletteKeys handles handle palette keys.
 func (a App) handlePaletteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -2037,6 +2081,7 @@ func (a App) handlePaletteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
+// runPaletteAction runs run palette action.
 func (a *App) runPaletteAction(action paletteAction) (tea.Model, tea.Cmd) {
 	a.tabNav = false
 
@@ -2127,6 +2172,7 @@ func (a *App) runPaletteAction(action paletteAction) (tea.Model, tea.Cmd) {
 	return *a, nil
 }
 
+// applySearchSelection handles apply search selection.
 func (a *App) applySearchSelection(msg searchSelectionMsg) (tea.Model, tea.Cmd) {
 	a.tabNav = false
 	switch msg.kind {
@@ -2182,6 +2228,7 @@ func (a *App) applySearchSelection(msg searchSelectionMsg) (tea.Model, tea.Cmd) 
 	return *a, nil
 }
 
+// hasUnsaved handles has unsaved.
 func (a App) hasUnsaved() bool {
 	if a.inbox.rejecting {
 		return true
@@ -2211,6 +2258,7 @@ func (a App) hasUnsaved() bool {
 	return false
 }
 
+// contextHasInput handles context has input.
 func contextHasInput(m ContextModel) bool {
 	for _, f := range m.fields {
 		if strings.TrimSpace(f.value) != "" {
@@ -2226,6 +2274,7 @@ func contextHasInput(m ContextModel) bool {
 	return false
 }
 
+// defaultPaletteActions handles default palette actions.
 func defaultPaletteActions() []paletteAction {
 	return []paletteAction{
 		{ID: "tab:inbox", Label: "Inbox", Desc: "Go to inbox"},
@@ -2244,6 +2293,7 @@ func defaultPaletteActions() []paletteAction {
 	}
 }
 
+// filterPalette handles filter palette.
 func filterPalette(items []paletteAction, query string) []paletteAction {
 	if query == "" {
 		return items
@@ -2260,6 +2310,7 @@ func filterPalette(items []paletteAction, query string) []paletteAction {
 	return filtered
 }
 
+// centerBlock handles center block.
 func centerBlock(s string, width int) string {
 	if width <= 0 {
 		return s
@@ -2276,6 +2327,7 @@ func centerBlock(s string, width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// centerBlockUniform handles center block uniform.
 func centerBlockUniform(s string, width int) string {
 	if width <= 0 {
 		return s
@@ -2304,6 +2356,7 @@ func centerBlockUniform(s string, width int) string {
 	return strings.Join(lines, "\n")
 }
 
+// canExitToTabNav handles can exit to tab nav.
 func (a App) canExitToTabNav() bool {
 	switch a.tab {
 	case tabInbox:
@@ -2375,6 +2428,7 @@ func (a App) canExitToTabNav() bool {
 	return false
 }
 
+// focusModeLineForActiveTab handles focus mode line for active tab.
 func (a *App) focusModeLineForActiveTab() bool {
 	switch a.tab {
 	case tabEntities:
@@ -2426,6 +2480,7 @@ func (a *App) focusModeLineForActiveTab() bool {
 	return false
 }
 
+// tabIndexForKey handles tab index for key.
 func tabIndexForKey(key string) (int, bool) {
 	switch key {
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":

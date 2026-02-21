@@ -16,16 +16,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testJobsClient handles test jobs client.
 func testJobsClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestJobsModelInit handles test jobs model init.
 func TestJobsModelInit(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{"data": []map[string]any{}}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -33,6 +36,7 @@ func TestJobsModelInit(t *testing.T) {
 	assert.NotNil(t, cmd)
 }
 
+// TestJobsModelLoadsJobs handles test jobs model loads jobs.
 func TestJobsModelLoadsJobs(t *testing.T) {
 	priority := "high"
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +46,8 @@ func TestJobsModelLoadsJobs(t *testing.T) {
 				{"id": "job-2", "status": "active", "title": "Another Job", "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -57,6 +62,7 @@ func TestJobsModelLoadsJobs(t *testing.T) {
 	assert.Equal(t, "job-1", model.items[0].ID)
 }
 
+// TestJobsModelNavigationKeys handles test jobs model navigation keys.
 func TestJobsModelNavigationKeys(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -65,7 +71,8 @@ func TestJobsModelNavigationKeys(t *testing.T) {
 				{"id": "job-2", "status": "active", "title": "Job 2", "created_at": time.Now()},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -83,6 +90,7 @@ func TestJobsModelNavigationKeys(t *testing.T) {
 	assert.Equal(t, 0, model.list.Selected())
 }
 
+// TestJobsModelEnterShowsDetail handles test jobs model enter shows detail.
 func TestJobsModelEnterShowsDetail(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -90,7 +98,8 @@ func TestJobsModelEnterShowsDetail(t *testing.T) {
 				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -106,6 +115,7 @@ func TestJobsModelEnterShowsDetail(t *testing.T) {
 	assert.Equal(t, "job-1", model.detail.ID)
 }
 
+// TestJobsModelEscapeBackFromDetail handles test jobs model escape back from detail.
 func TestJobsModelEscapeBackFromDetail(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -113,7 +123,8 @@ func TestJobsModelEscapeBackFromDetail(t *testing.T) {
 				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -131,6 +142,7 @@ func TestJobsModelEscapeBackFromDetail(t *testing.T) {
 	assert.Nil(t, model.detail)
 }
 
+// TestJobsModelStatusChangeFlow handles test jobs model status change flow.
 func TestJobsModelStatusChangeFlow(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -138,7 +150,8 @@ func TestJobsModelStatusChangeFlow(t *testing.T) {
 				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -153,6 +166,7 @@ func TestJobsModelStatusChangeFlow(t *testing.T) {
 	assert.NotNil(t, model.detail)
 }
 
+// TestJobsModelStatusInputHandling handles test jobs model status input handling.
 func TestJobsModelStatusInputHandling(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -160,7 +174,8 @@ func TestJobsModelStatusInputHandling(t *testing.T) {
 				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
 			},
 		}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -187,10 +202,12 @@ func TestJobsModelStatusInputHandling(t *testing.T) {
 	assert.Equal(t, "", model.statusBuf)
 }
 
+// TestJobsModelRenderEmpty handles test jobs model render empty.
 func TestJobsModelRenderEmpty(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{"data": []map[string]any{}}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -206,7 +223,8 @@ func TestJobsModelRenderEmpty(t *testing.T) {
 func TestJobsListClampsLongRows(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{"data": []map[string]any{}}
-		json.NewEncoder(w).Encode(resp)
+		err := json.NewEncoder(w).Encode(resp)
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -229,6 +247,7 @@ func TestJobsListClampsLongRows(t *testing.T) {
 	}
 }
 
+// TestJobsModelRenderLoading handles test jobs model render loading.
 func TestJobsModelRenderLoading(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {})
 
@@ -239,6 +258,7 @@ func TestJobsModelRenderLoading(t *testing.T) {
 	assert.Contains(t, view, "Loading jobs")
 }
 
+// TestJobsModelCreateSubtask handles test jobs model create subtask.
 func TestJobsModelCreateSubtask(t *testing.T) {
 	var subtaskTitle string
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -249,12 +269,13 @@ func TestJobsModelCreateSubtask(t *testing.T) {
 					{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now()},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			err := json.NewEncoder(w).Encode(resp)
+			require.NoError(t, err)
 		case r.URL.Path == "/api/jobs/job-1/subtasks" && r.Method == http.MethodPost:
 			var body map[string]string
-			json.NewDecoder(r.Body).Decode(&body)
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			subtaskTitle = body["title"]
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "job-1"}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "job-1"}}))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -272,11 +293,12 @@ func TestJobsModelCreateSubtask(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	msg = cmd()
-	model, _ = model.Update(msg)
+	_, _ = model.Update(msg)
 
 	assert.Equal(t, "foo", subtaskTitle)
 }
 
+// TestJobsSearchFiltersList handles test jobs search filters list.
 func TestJobsSearchFiltersList(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.allItems = []api.Job{{ID: "job-1", Title: "Alpha", Status: "pending"}, {ID: "job-2", Title: "Beta", Status: "active"}}
@@ -287,6 +309,7 @@ func TestJobsSearchFiltersList(t *testing.T) {
 	assert.Equal(t, "job-1", model.items[0].ID)
 }
 
+// TestJobsLinkInputCreatesRelationship handles test jobs link input creates relationship.
 func TestJobsLinkInputCreatesRelationship(t *testing.T) {
 	var received api.CreateRelationshipInput
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -295,7 +318,7 @@ func TestJobsLinkInputCreatesRelationship(t *testing.T) {
 			return
 		}
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&received))
-		json.NewEncoder(w).Encode(map[string]any{
+		err := json.NewEncoder(w).Encode(map[string]any{
 			"data": map[string]any{
 				"id":          "rel-1",
 				"source_type": "job",
@@ -306,6 +329,7 @@ func TestJobsLinkInputCreatesRelationship(t *testing.T) {
 				"status":      "active",
 			},
 		})
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -328,6 +352,7 @@ func TestJobsLinkInputCreatesRelationship(t *testing.T) {
 	}, received)
 }
 
+// TestJobsUnlinkInputSupportsRowIndex handles test jobs unlink input supports row index.
 func TestJobsUnlinkInputSupportsRowIndex(t *testing.T) {
 	var updatedID string
 	var updatedPayload api.UpdateRelationshipInput
@@ -338,12 +363,13 @@ func TestJobsUnlinkInputSupportsRowIndex(t *testing.T) {
 		}
 		updatedID = strings.TrimPrefix(r.URL.Path, "/api/relationships/")
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&updatedPayload))
-		json.NewEncoder(w).Encode(map[string]any{
+		err := json.NewEncoder(w).Encode(map[string]any{
 			"data": map[string]any{
 				"id":     updatedID,
 				"status": "archived",
 			},
 		})
+		require.NoError(t, err)
 	})
 
 	model := NewJobsModel(client)
@@ -365,6 +391,7 @@ func TestJobsUnlinkInputSupportsRowIndex(t *testing.T) {
 	assert.Equal(t, "archived", *updatedPayload.Status)
 }
 
+// TestJobsRenderEditShowsFields handles test jobs render edit shows fields.
 func TestJobsRenderEditShowsFields(t *testing.T) {
 	now := time.Now()
 	model := NewJobsModel(nil)
@@ -388,30 +415,34 @@ func TestJobsRenderEditShowsFields(t *testing.T) {
 	assert.Contains(t, out, "Metadata:")
 }
 
+// TestJobsBulkStatusUpdateForSelectedRows handles test jobs bulk status update for selected rows.
 func TestJobsBulkStatusUpdateForSelectedRows(t *testing.T) {
 	var statusCalls []string
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/jobs" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "job-1", "status": "pending", "title": "Job 1", "created_at": time.Now()},
 					{"id": "job-2", "status": "pending", "title": "Job 2", "created_at": time.Now()},
 				},
 			})
+			require.NoError(t, err)
 		case strings.HasPrefix(r.URL.Path, "/api/jobs/") && strings.HasSuffix(r.URL.Path, "/status") && r.Method == http.MethodPatch:
 			var payload map[string]string
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
 			statusCalls = append(statusCalls, r.URL.Path+"="+payload["status"])
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":     strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/jobs/"), "/status"),
 					"status": payload["status"],
 					"title":  "updated",
 				},
 			})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -432,7 +463,7 @@ func TestJobsBulkStatusUpdateForSelectedRows(t *testing.T) {
 	// Trigger bulk status update.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
 	assert.True(t, model.changingSt)
-	for _, r := range []rune("active") {
+	for _, r := range "active" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -448,6 +479,7 @@ func TestJobsBulkStatusUpdateForSelectedRows(t *testing.T) {
 	assert.Equal(t, 0, model.selectedCount())
 }
 
+// TestJobsToggleSelectAllSelectsAndClears handles test jobs toggle select all selects and clears.
 func TestJobsToggleSelectAllSelectsAndClears(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.items = []api.Job{

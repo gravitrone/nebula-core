@@ -6,13 +6,17 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+// TestRunTUIMissingConfigReturnsError handles test run tuimissing config returns error.
 func TestRunTUIMissingConfigReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
@@ -43,6 +47,7 @@ func TestRunTUIMissingConfigReturnsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestMainHelpFlagDoesNotExit handles test main help flag does not exit.
 func TestMainHelpFlagDoesNotExit(t *testing.T) {
 	oldArgs := os.Args
 	os.Args = []string{"nebula", "--help"}

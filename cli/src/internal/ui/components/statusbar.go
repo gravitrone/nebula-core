@@ -3,9 +3,6 @@ package components
 import "github.com/charmbracelet/lipgloss"
 
 var (
-	hintKeyStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#7f57b4")).
-			Bold(true)
 	hintDescStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#9ba0bf"))
 	keyCapStyle = lipgloss.NewStyle().
@@ -46,6 +43,7 @@ func Hint(key, desc string) string {
 	return hintDescStyle.Render(desc+" ") + keyText
 }
 
+// wrapSegments handles wrap segments.
 func wrapSegments(segments []string, width int) []string {
 	if width <= 0 {
 		return []string{lipgloss.JoinHorizontal(lipgloss.Top, segments...)}
@@ -70,6 +68,7 @@ func wrapSegments(segments []string, width int) []string {
 	return rows
 }
 
+// clampStatusSegments handles clamp status segments.
 func clampStatusSegments(segments []string, width int) []string {
 	if len(segments) == 0 || width <= 0 {
 		return segments
@@ -105,6 +104,7 @@ func clampStatusSegments(segments []string, width int) []string {
 	return []string{lipgloss.NewStyle().MaxWidth(width).Render(segments[0])}
 }
 
+// statusSegmentsWidth handles status segments width.
 func statusSegmentsWidth(segments []string) int {
 	if len(segments) == 0 {
 		return 0

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestImportExportResources handles test import export resources.
 func TestImportExportResources(t *testing.T) {
 	importResources := importExportResourcesForMode(importMode)
 	exportResources := importExportResourcesForMode(exportMode)
@@ -24,6 +25,7 @@ func TestImportExportResources(t *testing.T) {
 	assert.True(t, hasContext)
 }
 
+// TestImportExportStartResets handles test import export start resets.
 func TestImportExportStartResets(t *testing.T) {
 	model := NewImportExportModel(&api.Client{})
 	model.path = "tmp"

@@ -7,11 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestSearchInitReturnsNilCmd handles test search init returns nil cmd.
 func TestSearchInitReturnsNilCmd(t *testing.T) {
 	model := NewSearchModel(nil)
 	assert.Nil(t, model.Init())
 }
 
+// TestSearchViewRendersEmptyAndPopulatedStates handles test search view renders empty and populated states.
 func TestSearchViewRendersEmptyAndPopulatedStates(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.width = 80

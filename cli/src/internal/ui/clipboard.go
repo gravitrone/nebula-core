@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// copyTextToClipboard handles copy text to clipboard.
 func copyTextToClipboard(text string) error {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	candidates := [][]string{

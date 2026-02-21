@@ -9,11 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestSaveConfigCreatesDirectories handles test save config creates directories.
 func TestSaveConfigCreatesDirectories(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cfg := Config{
 		APIKey: "test-key",
@@ -29,21 +32,28 @@ func TestSaveConfigCreatesDirectories(t *testing.T) {
 	assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
 }
 
+// TestLoadConfigNonExistent handles test load config non existent.
 func TestLoadConfigNonExistent(t *testing.T) {
 	dir := t.TempDir()
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", os.Getenv("HOME"))
+	oldHome := os.Getenv("HOME")
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	_, err := Load()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
 
+// TestSaveLoadRoundtripWithAllFields handles test save load roundtrip with all fields.
 func TestSaveLoadRoundtripWithAllFields(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	original := Config{
 		APIKey:            "nbl_verylongkeystring12345",
@@ -68,11 +78,14 @@ func TestSaveLoadRoundtripWithAllFields(t *testing.T) {
 	assert.Equal(t, original.QuickstartPending, loaded.QuickstartPending)
 }
 
+// TestSaveConfigOverwritesExisting handles test save config overwrites existing.
 func TestSaveConfigOverwritesExisting(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	// First save
 	cfg1 := Config{APIKey: "key1"}
@@ -90,15 +103,18 @@ func TestSaveConfigOverwritesExisting(t *testing.T) {
 	assert.Equal(t, "key2", loaded.APIKey)
 }
 
+// TestLoadConfigEmptyFile handles test load config empty file.
 func TestLoadConfigEmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	// Create .nebula dir and empty config
 	cfgDir := filepath.Join(dir, ".nebula")
-	os.MkdirAll(cfgDir, 0700)
+	require.NoError(t, os.MkdirAll(cfgDir, 0700))
 	path := filepath.Join(cfgDir, "config")
 
 	err := os.WriteFile(path, []byte(""), 0600)
@@ -108,14 +124,17 @@ func TestLoadConfigEmptyFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestLoadConfigInvalidYAML handles test load config invalid yaml.
 func TestLoadConfigInvalidYAML(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cfgDir := filepath.Join(dir, ".nebula")
-	os.MkdirAll(cfgDir, 0700)
+	require.NoError(t, os.MkdirAll(cfgDir, 0700))
 	path := filepath.Join(cfgDir, "config")
 
 	err := os.WriteFile(path, []byte("invalid: yaml: content:"), 0600)
@@ -125,11 +144,14 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestSaveConfigWithEmptyAPIKey handles test save config with empty apikey.
 func TestSaveConfigWithEmptyAPIKey(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cfg := Config{
 		APIKey: "", // Empty key should fail on load
@@ -143,11 +165,14 @@ func TestSaveConfigWithEmptyAPIKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "api_key")
 }
 
+// TestConfigPermissionsStrictlyEnforced handles test config permissions strictly enforced.
 func TestConfigPermissionsStrictlyEnforced(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cfg := Config{APIKey: "secret"}
 	err := cfg.Save()
@@ -164,14 +189,17 @@ func TestConfigPermissionsStrictlyEnforced(t *testing.T) {
 	assert.Contains(t, err.Error(), "permissions")
 }
 
+// TestLoadConfigWithLegacyServerURLAndMissingAPIKey handles test load config with legacy server urland missing apikey.
 func TestLoadConfigWithLegacyServerURLAndMissingAPIKey(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cfgDir := filepath.Join(dir, ".nebula")
-	os.MkdirAll(cfgDir, 0700)
+	require.NoError(t, os.MkdirAll(cfgDir, 0700))
 	path := filepath.Join(cfgDir, "config")
 
 	// Legacy server_url is ignored, but missing api_key still fails.
@@ -183,14 +211,17 @@ func TestLoadConfigWithLegacyServerURLAndMissingAPIKey(t *testing.T) {
 	assert.Contains(t, err.Error(), "api_key")
 }
 
+// TestLoadConfigIgnoresLegacyServerURLField handles test load config ignores legacy server urlfield.
 func TestLoadConfigIgnoresLegacyServerURLField(t *testing.T) {
 	dir := t.TempDir()
 	oldHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", oldHome)
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
 
 	cfgDir := filepath.Join(dir, ".nebula")
-	os.MkdirAll(cfgDir, 0700)
+	require.NoError(t, os.MkdirAll(cfgDir, 0700))
 	path := filepath.Join(cfgDir, "config")
 
 	err := os.WriteFile(path, []byte("server_url: http://legacy\napi_key: key123\nusername: test\n"), 0600)
@@ -202,6 +233,7 @@ func TestLoadConfigIgnoresLegacyServerURLField(t *testing.T) {
 	assert.Equal(t, "test", loaded.Username)
 }
 
+// TestPathReturnsCorrectLocation handles test path returns correct location.
 func TestPathReturnsCorrectLocation(t *testing.T) {
 	path := Path()
 	assert.Contains(t, path, ".nebula")

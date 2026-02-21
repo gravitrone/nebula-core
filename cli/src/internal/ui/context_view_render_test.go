@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestContextAddLinkSearchSaveAndReset handles test context add link search save and reset.
 func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	now := time.Now()
 	createCalled := false
@@ -22,20 +23,20 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "scope-1", "name": "public", "agent_count": 1},
 				},
-			})
+			}))
 		case strings.HasPrefix(r.URL.Path, "/api/entities") && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "ent-1", "name": "OpenAI", "type": "organization", "status": "active", "tags": []string{}, "metadata": map[string]any{}},
 				},
-			})
+			}))
 		case r.URL.Path == "/api/context" && r.Method == http.MethodPost:
 			createCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":                "k-1",
 					"name":              "Alpha",
@@ -47,7 +48,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 					"created_at":        now,
 					"updated_at":        now,
 				},
-			})
+			}))
 		case r.URL.Path == "/api/context/k-1/link" && r.Method == http.MethodPost:
 			linkCalled = true
 			w.WriteHeader(http.StatusOK)
@@ -77,7 +78,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 
 	// Type a query and run the search command.
 	var searchCmd tea.Cmd
-	for _, r := range []rune("Open") {
+	for _, r := range "Open" {
 		model, searchCmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	require.NotNil(t, searchCmd)
@@ -94,13 +95,13 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 
 	// Fill title.
 	model.focus = fieldTitle
-	for _, r := range []rune("Alpha") {
+	for _, r := range "Alpha" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
 	// Commit a tag.
 	model.focus = fieldTags
-	for _, r := range []rune("demo") {
+	for _, r := range "demo" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -133,6 +134,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	assert.Len(t, model.scopes, 0)
 }
 
+// TestContextLibraryDetailEditAndSave handles test context library detail edit and save.
 func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	now := time.Now()
 	updateCalled := false
@@ -143,13 +145,13 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "scope-1", "name": "public", "agent_count": 1},
 				},
-			})
+			}))
 		case r.URL.Path == "/api/context" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":                "k-1",
@@ -166,9 +168,9 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 						"updated_at":        now,
 					},
 				},
-			})
+			}))
 		case r.URL.Path == "/api/context/k-1" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":                "k-1",
 					"name":              "Alpha",
@@ -183,10 +185,10 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 					"created_at":        now,
 					"updated_at":        now,
 				},
-			})
+			}))
 		case r.URL.Path == "/api/context/k-1" && r.Method == http.MethodPatch:
 			updateCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":                "k-1",
 					"name":              "Alpha",
@@ -201,7 +203,7 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 					"created_at":        now,
 					"updated_at":        now,
 				},
-			})
+			}))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -250,7 +252,7 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 
 	// Add a tag and save.
 	model.editFocus = contextEditFieldTags
-	for _, r := range []rune("new") {
+	for _, r := range "new" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -265,6 +267,7 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	assert.Equal(t, contextViewDetail, model.view)
 }
 
+// TestContextDetailAndPreviewShowRelationshipSummary handles test context detail and preview show relationship summary.
 func TestContextDetailAndPreviewShowRelationshipSummary(t *testing.T) {
 	now := time.Now()
 	model := NewContextModel(nil)
@@ -306,6 +309,7 @@ func TestContextDetailAndPreviewShowRelationshipSummary(t *testing.T) {
 	assert.Contains(t, preview, "1")
 }
 
+// TestContextRenderLinkEntityPreviewShowsCoreFields handles test context render link entity preview shows core fields.
 func TestContextRenderLinkEntityPreviewShowsCoreFields(t *testing.T) {
 	model := NewContextModel(nil)
 	preview := components.SanitizeText(

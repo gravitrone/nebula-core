@@ -14,23 +14,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// contextTestClient handles context test client.
 func contextTestClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestContextSaveLinksEntities handles test context save links entities.
 func TestContextSaveLinksEntities(t *testing.T) {
 	var linked []string
 	_, client := contextTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/context" && r.Method == http.MethodPost:
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "k-1", "name": "note"}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "k-1", "name": "note"}}))
 		case strings.HasPrefix(r.URL.Path, "/api/context/") && strings.HasSuffix(r.URL.Path, "/link"):
 			var body map[string]string
-			json.NewDecoder(r.Body).Decode(&body)
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			linked = append(linked, body["entity_id"])
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}}))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -50,6 +52,7 @@ func TestContextSaveLinksEntities(t *testing.T) {
 	assert.True(t, model.saved)
 }
 
+// TestContextLinkSearchAddsEntity handles test context link search adds entity.
 func TestContextLinkSearchAddsEntity(t *testing.T) {
 	model := NewContextModel(nil)
 	model.linkSearching = true
@@ -62,10 +65,11 @@ func TestContextLinkSearchAddsEntity(t *testing.T) {
 	assert.False(t, model.linkSearching)
 }
 
+// TestContextLinkSearchCommand handles test context link search command.
 func TestContextLinkSearchCommand(t *testing.T) {
 	_, client := contextTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" {
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "ent-1", "name": "Alpha", "tags": []string{}}}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{"id": "ent-1", "name": "Alpha", "tags": []string{}}}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -84,17 +88,20 @@ func TestContextLinkSearchCommand(t *testing.T) {
 	assert.Equal(t, "ent-1", model.linkResults[0].ID)
 }
 
+// TestNormalizeTag handles test normalize tag.
 func TestNormalizeTag(t *testing.T) {
 	assert.Equal(t, "hello-world", normalizeTag(" Hello_World "))
 	assert.Equal(t, "foo-bar-baz", normalizeTag("#Foo  Bar   Baz"))
 	assert.Equal(t, "", normalizeTag(""))
 }
 
+// TestNormalizeScope handles test normalize scope.
 func TestNormalizeScope(t *testing.T) {
 	assert.Equal(t, "private", normalizeScope(" Private "))
 	assert.Equal(t, "team-scope", normalizeScope("#Team Scope"))
 }
 
+// TestCommitTagDedupes handles test commit tag dedupes.
 func TestCommitTagDedupes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.tags = []string{"alpha"}
@@ -103,6 +110,7 @@ func TestCommitTagDedupes(t *testing.T) {
 	assert.Equal(t, []string{"alpha"}, model.tags)
 }
 
+// TestCommitScopeDedupes handles test commit scope dedupes.
 func TestCommitScopeDedupes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.scopes = []string{"public"}
@@ -111,6 +119,7 @@ func TestCommitScopeDedupes(t *testing.T) {
 	assert.Equal(t, []string{"public"}, model.scopes)
 }
 
+// TestCommitEditScopeDedupes handles test commit edit scope dedupes.
 func TestCommitEditScopeDedupes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.editScopes = []string{"public"}
@@ -119,13 +128,14 @@ func TestCommitEditScopeDedupes(t *testing.T) {
 	assert.Equal(t, []string{"public"}, model.editScopes)
 }
 
+// TestContextToggleModeLoadsList handles test context toggle mode loads list.
 func TestContextToggleModeLoadsList(t *testing.T) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, client := contextTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/context" {
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{"id": "k-1", "name": "Alpha", "source_type": "note", "tags": []string{}, "created_at": now},
-			}})
+			}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -143,6 +153,7 @@ func TestContextToggleModeLoadsList(t *testing.T) {
 	assert.Len(t, model.items, 1)
 }
 
+// TestContextListEnterShowsDetail handles test context list enter shows detail.
 func TestContextListEnterShowsDetail(t *testing.T) {
 	model := NewContextModel(nil)
 	model.view = contextViewList
@@ -158,6 +169,7 @@ func TestContextListEnterShowsDetail(t *testing.T) {
 	assert.Equal(t, contextViewDetail, model.view)
 }
 
+// TestContextListEnterRejectsMissingID handles test context list enter rejects missing id.
 func TestContextListEnterRejectsMissingID(t *testing.T) {
 	model := NewContextModel(nil)
 	model.view = contextViewList
@@ -178,6 +190,7 @@ func TestContextListEnterRejectsMissingID(t *testing.T) {
 	assert.Equal(t, contextViewList, model.view)
 }
 
+// TestContextRenderEditShowsTagsAndScopes handles test context render edit shows tags and scopes.
 func TestContextRenderEditShowsTagsAndScopes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.width = 100

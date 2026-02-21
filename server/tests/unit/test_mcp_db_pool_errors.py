@@ -24,7 +24,9 @@ class TestGetPoolErrorTranslation:
 
         monkeypatch.setattr(asyncpg, "create_pool", fake_create_pool)
 
-        with pytest.raises(RuntimeError, match="Database connection failed. Is Docker running\\?"):
+        with pytest.raises(
+            RuntimeError, match="Database connection failed. Is Docker running\\?"
+        ):
             await get_pool()
 
     async def test_non_connection_postgres_error_reraises(self, monkeypatch):
@@ -41,4 +43,3 @@ class TestGetPoolErrorTranslation:
 
         with pytest.raises(asyncpg.PostgresError, match="boom"):
             await get_pool()
-

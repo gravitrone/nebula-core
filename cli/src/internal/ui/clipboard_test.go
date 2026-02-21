@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCopyTextToClipboardReturnsNotFoundWhenNoBinaryExists handles test copy text to clipboard returns not found when no binary exists.
 func TestCopyTextToClipboardReturnsNotFoundWhenNoBinaryExists(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
@@ -18,6 +19,7 @@ func TestCopyTextToClipboardReturnsNotFoundWhenNoBinaryExists(t *testing.T) {
 	assert.Contains(t, err.Error(), "clipboard utility not found")
 }
 
+// TestCopyTextToClipboardUsesFirstAvailableCandidate handles test copy text to clipboard uses first available candidate.
 func TestCopyTextToClipboardUsesFirstAvailableCandidate(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell-script clipboard shim is unix-only")

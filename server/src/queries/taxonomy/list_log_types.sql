@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy list_log_types
 SELECT
     id,
     name,

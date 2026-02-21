@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestEntitiesDetailMetadataPanelHidesSelectionColumnUntilAnyRowSelected handles test entities detail metadata panel hides selection column until any row selected.
 func TestEntitiesDetailMetadataPanelHidesSelectionColumnUntilAnyRowSelected(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100
@@ -44,6 +45,7 @@ func TestEntitiesDetailMetadataPanelHidesSelectionColumnUntilAnyRowSelected(t *t
 	assert.Contains(t, clean, "enter inspect")
 }
 
+// TestEntitiesDetailMetadataPanelHidesSelectorsWhenNotInSelectMode handles test entities detail metadata panel hides selectors when not in select mode.
 func TestEntitiesDetailMetadataPanelHidesSelectorsWhenNotInSelectMode(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100
@@ -69,6 +71,7 @@ func TestEntitiesDetailMetadataPanelHidesSelectorsWhenNotInSelectMode(t *testing
 	assert.NotContains(t, clean, "[X]")
 }
 
+// TestEntitiesDetailMetadataCopyCurrentRow handles test entities detail metadata copy current row.
 func TestEntitiesDetailMetadataCopyCurrentRow(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100
@@ -103,6 +106,7 @@ func TestEntitiesDetailMetadataCopyCurrentRow(t *testing.T) {
 	assert.Equal(t, entitiesViewDetail, next.view)
 }
 
+// TestEntitiesDetailMetadataInspectEscReturnsToTable handles test entities detail metadata inspect esc returns to table.
 func TestEntitiesDetailMetadataInspectEscReturnsToTable(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100
@@ -124,6 +128,7 @@ func TestEntitiesDetailMetadataInspectEscReturnsToTable(t *testing.T) {
 	require.False(t, next.metaInspect)
 }
 
+// TestEntitiesDetailMetadataMultiSelectCopy handles test entities detail metadata multi select copy.
 func TestEntitiesDetailMetadataMultiSelectCopy(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100

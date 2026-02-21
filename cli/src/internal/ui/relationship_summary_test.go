@@ -7,6 +7,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 )
 
+// TestRelationshipSummaryRowsDirection handles test relationship summary rows direction.
 func TestRelationshipSummaryRowsDirection(t *testing.T) {
 	rels := []api.Relationship{
 		{
@@ -31,6 +32,7 @@ func TestRelationshipSummaryRowsDirection(t *testing.T) {
 	}
 }
 
+// TestRelationshipSummaryRowsShowsMore handles test relationship summary rows shows more.
 func TestRelationshipSummaryRowsShowsMore(t *testing.T) {
 	rels := []api.Relationship{
 		{Type: "rel-a", SourceType: "entity", SourceID: "e-1", TargetType: "entity", TargetID: "e-2"},
@@ -50,6 +52,7 @@ func TestRelationshipSummaryRowsShowsMore(t *testing.T) {
 	}
 }
 
+// TestRenderRelationshipSummaryTableUsesGridLayout handles test render relationship summary table uses grid layout.
 func TestRenderRelationshipSummaryTableUsesGridLayout(t *testing.T) {
 	rels := []api.Relationship{
 		{

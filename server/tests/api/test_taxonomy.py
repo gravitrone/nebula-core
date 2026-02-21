@@ -29,6 +29,12 @@ async def admin_auth_override(test_entity, enums):
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     app.dependency_overrides[require_auth] = mock_auth
@@ -97,7 +103,10 @@ async def test_taxonomy_requires_admin_scope(api):
             {
                 "name": "sdk-log",
                 "description": "log type for SDK tests",
-                "value_schema": {"type": "object", "properties": {"v": {"type": "number"}}},
+                "value_schema": {
+                    "type": "object",
+                    "properties": {"v": {"type": "number"}},
+                },
             },
             {"description": "log type for SDK tests v2"},
         ),
@@ -175,7 +184,9 @@ async def test_taxonomy_builtin_archive_is_rejected(api_admin):
 
 
 @pytest.mark.asyncio
-async def test_taxonomy_scope_archive_conflict_when_referenced(api_admin, db_pool, enums):
+async def test_taxonomy_scope_archive_conflict_when_referenced(
+    api_admin, db_pool, enums
+):
     """Archiving a scope in active use returns conflict."""
 
     created = await api_admin.post(
@@ -205,7 +216,9 @@ async def test_taxonomy_scope_archive_conflict_when_referenced(api_admin, db_poo
 
 
 @pytest.mark.asyncio
-async def test_taxonomy_entity_type_archive_conflict_when_referenced(api_admin, db_pool, enums):
+async def test_taxonomy_entity_type_archive_conflict_when_referenced(
+    api_admin, db_pool, enums
+):
     """Archiving an entity type in active use returns conflict."""
 
     created = await api_admin.post(
@@ -291,7 +304,9 @@ async def test_taxonomy_relationship_type_archive_conflict_when_referenced(
 
 
 @pytest.mark.asyncio
-async def test_taxonomy_log_type_archive_conflict_when_referenced(api_admin, db_pool, enums):
+async def test_taxonomy_log_type_archive_conflict_when_referenced(
+    api_admin, db_pool, enums
+):
     """Archiving a log type in active use returns conflict."""
 
     created = await api_admin.post(

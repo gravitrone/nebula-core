@@ -16,12 +16,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// relTestClient handles rel test client.
 func relTestClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestRelationshipsInitLoadsNames handles test relationships init loads names.
 func TestRelationshipsInitLoadsNames(t *testing.T) {
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -31,11 +33,11 @@ func TestRelationshipsInitLoadsNames(t *testing.T) {
 					{"id": "rel-1", "source_id": "ent-1", "target_id": "ent-2", "relationship_type": "uses", "properties": map[string]any{}},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
 		case "/api/entities/ent-1":
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-1", "name": "Nebula", "tags": []string{}}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-1", "name": "Nebula", "tags": []string{}}}))
 		case "/api/entities/ent-2":
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-2", "name": "Postgres", "tags": []string{}}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-2", "name": "Postgres", "tags": []string{}}}))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -58,6 +60,7 @@ func TestRelationshipsInitLoadsNames(t *testing.T) {
 	assert.Contains(t, model.list.Items[0], "uses · Nebula -> Postgres")
 }
 
+// applyMsg handles apply msg.
 func applyMsg(model RelationshipsModel, msg tea.Msg) RelationshipsModel {
 	var cmd tea.Cmd
 	model, cmd = model.Update(msg)
@@ -71,14 +74,15 @@ func applyMsg(model RelationshipsModel, msg tea.Msg) RelationshipsModel {
 	return applyMsg(model, next)
 }
 
+// TestRelationshipsCreateSubmitCallsAPI handles test relationships create submit calls api.
 func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 	var captured api.CreateRelationshipInput
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/relationships" && r.Method == http.MethodPost {
 			var body api.CreateRelationshipInput
-			json.NewDecoder(r.Body).Decode(&body)
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			captured = body
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "rel-1"}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "rel-1"}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -102,6 +106,7 @@ func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 	assert.Equal(t, "job", captured.TargetType)
 }
 
+// TestRelationshipsCreateLiveSearch handles test relationships create live search.
 func TestRelationshipsCreateLiveSearch(t *testing.T) {
 	capturedQueries := map[string]string{}
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -113,19 +118,19 @@ func TestRelationshipsCreateLiveSearch(t *testing.T) {
 					{"id": "ent-1", "name": "alxx", "type": "person"},
 				},
 			}
-			json.NewEncoder(w).Encode(resp)
+			require.NoError(t, json.NewEncoder(w).Encode(resp))
 			return
 		case "/api/context":
 			capturedQueries["context"] = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{{"id": "ctx-1", "title": "alpha note", "source_type": "note", "status": "active"}},
-			})
+			}))
 			return
 		case "/api/jobs":
 			capturedQueries["jobs"] = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{{"id": "job-1", "title": "alpha job", "status": "planning", "priority": "high"}},
-			})
+			}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -146,6 +151,7 @@ func TestRelationshipsCreateLiveSearch(t *testing.T) {
 	assert.Equal(t, "ent-1", model.createResults[0].ID)
 }
 
+// TestRelationshipTypeSuggestions handles test relationship type suggestions.
 func TestRelationshipTypeSuggestions(t *testing.T) {
 	model := NewRelationshipsModel(api.NewClient("http://example.com", "key"))
 	model.typeOptions = []string{"works-on", "created-by"}
@@ -156,6 +162,7 @@ func TestRelationshipTypeSuggestions(t *testing.T) {
 	assert.Equal(t, "works-on", model.createTypeResults[0])
 }
 
+// TestRelationshipsInitViewDetailEditAndConfirmFlow handles test relationships init view detail edit and confirm flow.
 func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 	now := time.Now()
 	var patched bool
@@ -164,7 +171,7 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/relationships" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{
 					"id":                "rel-1",
 					"source_type":       "entity",
@@ -178,22 +185,22 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 					"properties":        map[string]any{},
 					"created_at":        now,
 				},
-			}})
+			}}))
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{"id": "s1", "name": "public", "agent_count": 0, "entity_count": 0, "context_count": 0},
-			}})
+			}}))
 			return
 		case r.URL.Path == "/api/entities" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{"id": "ent-1", "name": "Alpha", "type": "entity", "tags": []string{}},
 				{"id": "ent-2", "name": "Beta", "type": "entity", "tags": []string{}},
-			}})
+			}}))
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/relationships/") && r.Method == http.MethodPatch:
 			patched = true
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":                "rel-1",
 				"source_id":         "ent-1",
 				"target_id":         "ent-2",
@@ -201,7 +208,7 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 				"status":            "archived",
 				"properties":        map[string]any{},
 				"created_at":        now,
-			}})
+			}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -237,17 +244,18 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 	require.True(t, patched)
 }
 
+// TestRelationshipsModeFocusTogglesToAddFlow handles test relationships mode focus toggles to add flow.
 func TestRelationshipsModeFocusTogglesToAddFlow(t *testing.T) {
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/relationships" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		case r.URL.Path == "/api/entities" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -274,6 +282,7 @@ func TestRelationshipsModeFocusTogglesToAddFlow(t *testing.T) {
 	assert.Equal(t, relsViewCreateSourceSearch, model.view)
 }
 
+// TestRelationshipsEditPropertiesUsesMetadataPreviewTable handles test relationships edit properties uses metadata preview table.
 func TestRelationshipsEditPropertiesUsesMetadataPreviewTable(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 100
@@ -294,6 +303,7 @@ func TestRelationshipsEditPropertiesUsesMetadataPreviewTable(t *testing.T) {
 	assert.Contains(t, out, "profile | timezone | Europe/Warsaw")
 }
 
+// TestRelationshipsCreateFlowSubmitsAndReturnsToList handles test relationships create flow submits and returns to list.
 func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	now := time.Now()
 	var createdType string
@@ -301,26 +311,26 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/relationships" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		case r.URL.Path == "/api/entities" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{"id": "ent-1", "name": "Alpha", "type": "entity", "tags": []string{}},
 				{"id": "ent-2", "name": "Beta", "type": "entity", "tags": []string{}},
-			}})
+			}}))
 			return
 		case r.URL.Path == "/api/audit/scopes" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		case r.URL.Path == "/api/relationships" && r.Method == http.MethodPost:
 			var body api.CreateRelationshipInput
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			createdType = body.Type
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":                "rel-1",
 				"relationship_type": body.Type,
 				"created_at":        now,
-			}})
+			}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -343,7 +353,7 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	assert.Contains(t, model.View(), "Source Node")
 
 	// Type query to filter from cache.
-	for _, r := range []rune("al") {
+	for _, r := range "al" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	require.NotEmpty(t, model.createResults)
@@ -353,7 +363,7 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	assert.Equal(t, relsViewCreateTargetSearch, model.view)
 
 	// Type query and select target.
-	for _, r := range []rune("be") {
+	for _, r := range "be" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	require.NotEmpty(t, model.createResults)
@@ -362,7 +372,7 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	assert.Contains(t, model.View(), "Relationship Type")
 
 	// Type relationship type and submit.
-	for _, r := range []rune("knows") {
+	for _, r := range "knows" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -373,6 +383,7 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	assert.Equal(t, relsViewList, model.view)
 }
 
+// TestRelationshipsListClampsLongEdgeAndPreviewRows handles test relationships list clamps long edge and preview rows.
 func TestRelationshipsListClampsLongEdgeAndPreviewRows(t *testing.T) {
 	now := time.Now()
 	model := NewRelationshipsModel(nil)
@@ -402,6 +413,7 @@ func TestRelationshipsListClampsLongEdgeAndPreviewRows(t *testing.T) {
 	}
 }
 
+// TestRelationshipsEditAndCreatePreviewHelpers handles test relationships edit and create preview helpers.
 func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 	now := time.Now()
 	var patched api.UpdateRelationshipInput
@@ -409,7 +421,7 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/relationships/") && r.Method == http.MethodPatch {
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&patched))
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"id":                "rel-1",
 				"source_type":       "entity",
 				"source_id":         "ent-1",
@@ -419,7 +431,7 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 				"status":            "active",
 				"properties":        map[string]any{"note": "ok"},
 				"created_at":        now,
-			}})
+			}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

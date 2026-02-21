@@ -24,6 +24,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -34,6 +44,15 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 
 def _validate_tag_list(tags: list[str] | None) -> list[str] | None:
+    """Handle validate tag list.
+
+    Args:
+        tags: Input parameter for _validate_tag_list.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if tags is None:
         return None
     cleaned = [t.strip() for t in tags if t and t.strip()]
@@ -63,6 +82,15 @@ class CreateProtocolBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
 
@@ -83,6 +111,15 @@ class UpdateProtocolBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
 

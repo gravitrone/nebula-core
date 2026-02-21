@@ -9,21 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCreateContext handles test create context.
 func TestCreateContext(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/api/context", r.URL.Path)
 
 		var body CreateContextInput
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "video", body.SourceType)
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":          "know-1",
 			"title":       body.Title,
 			"source_type": body.SourceType,
 			"url":         body.URL,
 		}))
+		require.NoError(t, err)
 	})
 
 	context, err := client.CreateContext(CreateContextInput{
@@ -38,14 +40,16 @@ func TestCreateContext(t *testing.T) {
 	assert.Equal(t, "video", context.SourceType)
 }
 
+// TestQueryContext handles test query context.
 func TestQueryContext(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "video", r.URL.Query().Get("source_type"))
 
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "k1", "title": "Video 1", "source_type": "video", "url": "url1"},
 			{"id": "k2", "title": "Video 2", "source_type": "video", "url": "url2"},
 		}))
+		require.NoError(t, err)
 	})
 
 	items, err := client.QueryContext(QueryParams{"source_type": "video"})
@@ -54,22 +58,25 @@ func TestQueryContext(t *testing.T) {
 	assert.Equal(t, "video", items[0].SourceType)
 }
 
+// TestLinkContext handles test link context.
 func TestLinkContext(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/link")
 
 		var body map[string]string
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "ent-1", body["entity_id"])
 
-		w.Write(jsonResponse(map[string]any{}))
+		_, err := w.Write(jsonResponse(map[string]any{}))
+		require.NoError(t, err)
 	})
 
 	err := client.LinkContext("know-1", "ent-1")
 	require.NoError(t, err)
 }
 
+// TestCreateContextMissingURL handles test create context missing url.
 func TestCreateContextMissingURL(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
@@ -79,7 +86,8 @@ func TestCreateContextMissingURL(t *testing.T) {
 				"message": "url required for source type video",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.CreateContext(CreateContextInput{
@@ -90,9 +98,11 @@ func TestCreateContextMissingURL(t *testing.T) {
 	assert.Contains(t, err.Error(), "VALIDATION_ERROR")
 }
 
+// TestQueryContextEmpty handles test query context empty.
 func TestQueryContextEmpty(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(jsonResponse([]map[string]any{}))
+		_, err := w.Write(jsonResponse([]map[string]any{}))
+		require.NoError(t, err)
 	})
 
 	items, err := client.QueryContext(QueryParams{})
@@ -100,6 +110,7 @@ func TestQueryContextEmpty(t *testing.T) {
 	assert.Len(t, items, 0)
 }
 
+// TestLinkContextInvalidEntity handles test link context invalid entity.
 func TestLinkContextInvalidEntity(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -109,7 +120,8 @@ func TestLinkContextInvalidEntity(t *testing.T) {
 				"message": "entity not found",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	err := client.LinkContext("know-1", "invalid-ent")

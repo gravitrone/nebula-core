@@ -38,6 +38,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -48,6 +58,16 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 
 def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
+    """Handle has write scopes.
+
+    Args:
+        agent_scopes: Input parameter for _has_write_scopes.
+        node_scopes: Input parameter for _has_write_scopes.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not node_scopes:
         return True
     if not agent_scopes:
@@ -58,6 +78,15 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 async def _require_entity_write_access(
     pool: Any, enums: Any, auth: dict, entity_id: str
 ) -> None:
+    """Handle require entity write access.
+
+    Args:
+        pool: Input parameter for _require_entity_write_access.
+        enums: Input parameter for _require_entity_write_access.
+        auth: Input parameter for _require_entity_write_access.
+        entity_id: Input parameter for _require_entity_write_access.
+    """
+
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
@@ -72,6 +101,15 @@ async def _require_entity_write_access(
 async def _require_context_write_access(
     pool: Any, enums: Any, auth: dict, context_id: str
 ) -> None:
+    """Handle require context write access.
+
+    Args:
+        pool: Input parameter for _require_context_write_access.
+        enums: Input parameter for _require_context_write_access.
+        auth: Input parameter for _require_context_write_access.
+        context_id: Input parameter for _require_context_write_access.
+    """
+
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["context/get"], context_id, None)
@@ -84,6 +122,15 @@ async def _require_context_write_access(
 
 
 def _validate_tag_list(tags: list[str] | None) -> list[str] | None:
+    """Handle validate tag list.
+
+    Args:
+        tags: Input parameter for _validate_tag_list.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if tags is None:
         return None
     cleaned = [t.strip() for t in tags if t and t.strip()]
@@ -119,11 +166,29 @@ class CreateContextBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
     @field_validator("url", mode="before")
     @classmethod
     def _validate_url(cls, v: str | None) -> str | None:
+        """Handle validate url.
+
+        Args:
+            v: Input parameter for _validate_url.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not v:
             return v
         v = v.strip()
@@ -170,11 +235,29 @@ class UpdateContextBody(BaseModel):
     @field_validator("tags", mode="before")
     @classmethod
     def _clean_tags(cls, v: list[str] | None) -> list[str] | None:
+        """Handle clean tags.
+
+        Args:
+            v: Input parameter for _clean_tags.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return _validate_tag_list(v)
 
     @field_validator("url", mode="before")
     @classmethod
     def _validate_url(cls, v: str | None) -> str | None:
+        """Handle validate url.
+
+        Args:
+            v: Input parameter for _validate_url.
+
+        Returns:
+            Result value from the operation.
+        """
+
         if not v:
             return v
         v = v.strip()
@@ -199,6 +282,7 @@ async def create_context(
     Returns:
         API response with created context or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
@@ -254,6 +338,7 @@ async def query_context(
     Returns:
         Paginated API response with context items.
     """
+
     pool = request.app.state.pool
     scope_ids = auth.get("scopes", [])
     tag_list = tags.split(",") if tags else None
@@ -293,6 +378,7 @@ async def get_context(
     Returns:
         API response with context data.
     """
+
     pool = request.app.state.pool
     scope_ids = auth.get("scopes", [])
     try:
@@ -331,6 +417,7 @@ async def link_to_entity(
     Returns:
         API response with created relationship or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     try:
@@ -382,6 +469,7 @@ async def update_context(
     Returns:
         API response with updated context or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     try:

@@ -62,9 +62,7 @@ async def test_api_search_entities_filters_context_segments(api, db_pool, enums)
         ],
         "signal": "needle",
     }
-    await _make_entity(
-        db_pool, enums, "Metadata Leak", ["public", "private"], metadata
-    )
+    await _make_entity(db_pool, enums, "Metadata Leak", ["public", "private"], metadata)
 
     resp = await api.post(
         "/api/entities/search",

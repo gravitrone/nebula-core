@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestBuildEntityPaletteActions handles test build entity palette actions.
 func TestBuildEntityPaletteActions(t *testing.T) {
 	actions, selections := buildSearchPaletteActions(
 		"alpha",
@@ -34,6 +35,7 @@ func TestBuildEntityPaletteActions(t *testing.T) {
 	assert.Equal(t, "ent-123456789", selection.entity.ID)
 }
 
+// TestBuildSearchPaletteActionsIncludesRelationshipHits handles test build search palette actions includes relationship hits.
 func TestBuildSearchPaletteActionsIncludesRelationshipHits(t *testing.T) {
 	actions, selections := buildSearchPaletteActions(
 		"owns",
@@ -63,6 +65,7 @@ func TestBuildSearchPaletteActionsIncludesRelationshipHits(t *testing.T) {
 	assert.Equal(t, "rel-1", selection.rel.ID)
 }
 
+// TestFilterPalette handles test filter palette.
 func TestFilterPalette(t *testing.T) {
 	items := []paletteAction{
 		{ID: "tab:inbox", Label: "Inbox", Desc: "Approvals"},
@@ -74,6 +77,7 @@ func TestFilterPalette(t *testing.T) {
 	assert.Equal(t, "tab:jobs", filtered[0].ID)
 }
 
+// TestRunPaletteActionEntityJump handles test run palette action entity jump.
 func TestRunPaletteActionEntityJump(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.paletteSelections = map[string]paletteSelection{
@@ -92,6 +96,7 @@ func TestRunPaletteActionEntityJump(t *testing.T) {
 	assert.Equal(t, entitiesViewDetail, updated.entities.view)
 }
 
+// TestRunPaletteActionRelationshipJump handles test run palette action relationship jump.
 func TestRunPaletteActionRelationshipJump(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.paletteSelections = map[string]paletteSelection{
@@ -110,6 +115,7 @@ func TestRunPaletteActionRelationshipJump(t *testing.T) {
 	assert.Equal(t, "rel-1", updated.rels.detail.ID)
 }
 
+// TestRunPaletteActionLogJump handles test run palette action log jump.
 func TestRunPaletteActionLogJump(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.paletteSelections = map[string]paletteSelection{
@@ -128,6 +134,7 @@ func TestRunPaletteActionLogJump(t *testing.T) {
 	assert.Equal(t, "log-1", updated.logs.detail.ID)
 }
 
+// TestRunPaletteActionFileJump handles test run palette action file jump.
 func TestRunPaletteActionFileJump(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.paletteSelections = map[string]paletteSelection{
@@ -146,6 +153,7 @@ func TestRunPaletteActionFileJump(t *testing.T) {
 	assert.Equal(t, "file-1", updated.files.detail.ID)
 }
 
+// TestRunPaletteActionProtocolJump handles test run palette action protocol jump.
 func TestRunPaletteActionProtocolJump(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.paletteSelections = map[string]paletteSelection{
@@ -164,6 +172,7 @@ func TestRunPaletteActionProtocolJump(t *testing.T) {
 	assert.Equal(t, "proto-1", updated.protocols.detail.ID)
 }
 
+// TestRunPaletteActionProfileSections handles test run palette action profile sections.
 func TestRunPaletteActionProfileSections(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 
@@ -187,6 +196,7 @@ func TestRunPaletteActionProfileSections(t *testing.T) {
 	assert.Equal(t, 2, updated.profile.section)
 }
 
+// TestRenderTabsShowsActiveTabWhenTabNavDisabled handles test render tabs shows active tab when tab nav disabled.
 func TestRenderTabsShowsActiveTabWhenTabNavDisabled(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabEntities
@@ -196,6 +206,7 @@ func TestRenderTabsShowsActiveTabWhenTabNavDisabled(t *testing.T) {
 	assert.Contains(t, out, TabActiveStyle.Render("Entities"))
 }
 
+// TestRenderTabsShowsFocusedStyleWhenTabNavEnabled handles test render tabs shows focused style when tab nav enabled.
 func TestRenderTabsShowsFocusedStyleWhenTabNavEnabled(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabEntities
@@ -205,6 +216,7 @@ func TestRenderTabsShowsFocusedStyleWhenTabNavEnabled(t *testing.T) {
 	assert.Contains(t, out, TabFocusStyle.Render("Entities"))
 }
 
+// TestTabNavAllowsActionKeys handles test tab nav allows action keys.
 func TestTabNavAllowsActionKeys(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabRelations
@@ -218,6 +230,7 @@ func TestTabNavAllowsActionKeys(t *testing.T) {
 	assert.Equal(t, relsViewCreateSourceSearch, updated.rels.view)
 }
 
+// TestTabNavDownMovesIntoModeLineFocus handles test tab nav down moves into mode line focus.
 func TestTabNavDownMovesIntoModeLineFocus(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabEntities
@@ -231,6 +244,7 @@ func TestTabNavDownMovesIntoModeLineFocus(t *testing.T) {
 	assert.True(t, updated.entities.modeFocus)
 }
 
+// TestTabNavDownMovesIntoSettingsSectionFocus handles test tab nav down moves into settings section focus.
 func TestTabNavDownMovesIntoSettingsSectionFocus(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabProfile
@@ -243,6 +257,7 @@ func TestTabNavDownMovesIntoSettingsSectionFocus(t *testing.T) {
 	assert.True(t, updated.profile.sectionFocus)
 }
 
+// TestProfileUpPromotesSectionFocusBeforeExitingToTabNav handles test profile up promotes section focus before exiting to tab nav.
 func TestProfileUpPromotesSectionFocusBeforeExitingToTabNav(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabProfile
@@ -257,6 +272,7 @@ func TestProfileUpPromotesSectionFocusBeforeExitingToTabNav(t *testing.T) {
 	assert.True(t, updated.profile.sectionFocus)
 }
 
+// TestProfileSectionFocusUpCanExitToTopTabNav handles test profile section focus up can exit to top tab nav.
 func TestProfileSectionFocusUpCanExitToTopTabNav(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabProfile
@@ -269,6 +285,7 @@ func TestProfileSectionFocusUpCanExitToTopTabNav(t *testing.T) {
 	assert.True(t, updated.tabNav)
 }
 
+// TestBodyScrollResetsWhenFilesSubviewChanges handles test body scroll resets when files subview changes.
 func TestBodyScrollResetsWhenFilesSubviewChanges(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabFiles
@@ -284,6 +301,7 @@ func TestBodyScrollResetsWhenFilesSubviewChanges(t *testing.T) {
 	assert.Zero(t, updated.bodyScroll)
 }
 
+// TestBodyScrollResetsWhenEnteringModeLineFromTabNav handles test body scroll resets when entering mode line from tab nav.
 func TestBodyScrollResetsWhenEnteringModeLineFromTabNav(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabEntities
@@ -299,6 +317,7 @@ func TestBodyScrollResetsWhenEnteringModeLineFromTabNav(t *testing.T) {
 	assert.Zero(t, updated.bodyScroll)
 }
 
+// TestPaletteModeSwitchesBetweenCommandAndSearch handles test palette mode switches between command and search.
 func TestPaletteModeSwitchesBetweenCommandAndSearch(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.openPaletteCommand()
@@ -320,6 +339,7 @@ func TestPaletteModeSwitchesBetweenCommandAndSearch(t *testing.T) {
 	assert.False(t, updated.paletteSearchLoading)
 }
 
+// TestUnifiedPaletteRemovesDedicatedSearchTabActions handles test unified palette removes dedicated search tab actions.
 func TestUnifiedPaletteRemovesDedicatedSearchTabActions(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 
@@ -330,6 +350,7 @@ func TestUnifiedPaletteRemovesDedicatedSearchTabActions(t *testing.T) {
 	}
 }
 
+// TestHelpToggle handles test help toggle.
 func TestHelpToggle(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
@@ -341,6 +362,7 @@ func TestHelpToggle(t *testing.T) {
 	assert.False(t, updated.helpOpen)
 }
 
+// TestQuitConfirmWhenUnsaved handles test quit confirm when unsaved.
 func TestQuitConfirmWhenUnsaved(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.know.view = contextViewAdd
@@ -353,6 +375,7 @@ func TestQuitConfirmWhenUnsaved(t *testing.T) {
 	assert.Nil(t, cmd)
 }
 
+// TestQuitConfirmAccepts handles test quit confirm accepts.
 func TestQuitConfirmAccepts(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.quitConfirm = true
@@ -367,6 +390,7 @@ func TestQuitConfirmAccepts(t *testing.T) {
 	assert.True(t, ok)
 }
 
+// TestQuitConfirmCancels handles test quit confirm cancels.
 func TestQuitConfirmCancels(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.quitConfirm = true
@@ -377,6 +401,7 @@ func TestQuitConfirmCancels(t *testing.T) {
 	assert.False(t, updated.quitConfirm)
 }
 
+// TestRenderPaletteSanitizesEntries handles test render palette sanitizes entries.
 func TestRenderPaletteSanitizesEntries(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.width = 80
@@ -388,6 +413,7 @@ func TestRenderPaletteSanitizesEntries(t *testing.T) {
 	assert.False(t, strings.Contains(out, "\x1b"))
 }
 
+// TestAppClearsErrorOnInput handles test app clears error on input.
 func TestAppClearsErrorOnInput(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.err = "oops"
@@ -398,6 +424,7 @@ func TestAppClearsErrorOnInput(t *testing.T) {
 	assert.Empty(t, updated.err)
 }
 
+// TestClampBodyForViewportSupportsScrollMarkers handles test clamp body for viewport supports scroll markers.
 func TestClampBodyForViewportSupportsScrollMarkers(t *testing.T) {
 	lines := make([]string, 0, 24)
 	for i := 1; i <= 24; i++ {
@@ -419,6 +446,7 @@ func TestClampBodyForViewportSupportsScrollMarkers(t *testing.T) {
 	assert.NotContains(t, endScroll, "... ↓ more")
 }
 
+// TestClampBodyForViewportRespectsAvailableViewportLines handles test clamp body for viewport respects available viewport lines.
 func TestClampBodyForViewportRespectsAvailableViewportLines(t *testing.T) {
 	lines := make([]string, 0, 40)
 	for i := 1; i <= 40; i++ {
@@ -434,6 +462,7 @@ func TestClampBodyForViewportRespectsAvailableViewportLines(t *testing.T) {
 	assert.LessOrEqual(t, len(got), available)
 }
 
+// TestAppBodyScrollHotkeys handles test app body scroll hotkeys.
 func TestAppBodyScrollHotkeys(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
@@ -445,6 +474,7 @@ func TestAppBodyScrollHotkeys(t *testing.T) {
 	assert.Equal(t, 0, app.bodyScroll)
 }
 
+// TestRowHighlightEnabledRequiresListFocus handles test row highlight enabled requires list focus.
 func TestRowHighlightEnabledRequiresListFocus(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabEntities
@@ -457,6 +487,7 @@ func TestRowHighlightEnabledRequiresListFocus(t *testing.T) {
 	assert.False(t, app.rowHighlightEnabled())
 }
 
+// TestRowHighlightEnabledDisabledInTabNav handles test row highlight enabled disabled in tab nav.
 func TestRowHighlightEnabledDisabledInTabNav(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabEntities
@@ -466,6 +497,7 @@ func TestRowHighlightEnabledDisabledInTabNav(t *testing.T) {
 	assert.False(t, app.rowHighlightEnabled())
 }
 
+// TestRowHighlightEnabledDisabledWhenSettingsSectionFocused handles test row highlight enabled disabled when settings section focused.
 func TestRowHighlightEnabledDisabledWhenSettingsSectionFocused(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabProfile

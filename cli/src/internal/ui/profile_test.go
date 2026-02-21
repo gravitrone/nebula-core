@@ -15,12 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testProfileClient handles test profile client.
 func testProfileClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestProfileAgentDetailToggle handles test profile agent detail toggle.
 func TestProfileAgentDetailToggle(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.section = 1
@@ -45,6 +47,7 @@ func TestProfileAgentDetailToggle(t *testing.T) {
 	assert.Nil(t, model.agentDetail)
 }
 
+// TestProfileSetAPIKeyPersistsAndUpdatesClient handles test profile set apikey persists and updates client.
 func TestProfileSetAPIKeyPersistsAndUpdatesClient(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -87,6 +90,7 @@ func TestProfileSetAPIKeyPersistsAndUpdatesClient(t *testing.T) {
 	assert.Equal(t, "Bearer nbl_newkey", seenAuth)
 }
 
+// TestProfileKeysLoadCreateAndRevokeFlows handles test profile keys load create and revoke flows.
 func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 	now := time.Now()
 	var createName string
@@ -97,7 +101,7 @@ func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 		switch {
 		case r.URL.Path == "/api/keys/all" && r.Method == http.MethodGet:
 			keysAllCalls++
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{
 					"id":         "k1",
 					"key_prefix": "nbl_abc123",
@@ -105,17 +109,19 @@ func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 					"created_at": now,
 				},
 			}})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/keys" && r.Method == http.MethodPost:
 			var body map[string]string
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 			createName = body["name"]
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 				"api_key": "nbl_created_secret",
 				"key_id":  "k2",
 				"prefix":  "nbl_created",
 				"name":    createName,
 			}})
+			require.NoError(t, err)
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/keys/") && r.Method == http.MethodDelete:
 			revokedID = strings.TrimPrefix(r.URL.Path, "/api/keys/")
@@ -138,7 +144,7 @@ func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 	// Create key flow.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	require.True(t, model.creating)
-	for _, r := range []rune("my key") {
+	for _, r := range "my key" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -160,6 +166,7 @@ func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 	assert.Equal(t, "k1", revokedID)
 }
 
+// TestProfileAgentsLoadAndToggleTrustFlow handles test profile agents load and toggle trust flow.
 func TestProfileAgentsLoadAndToggleTrustFlow(t *testing.T) {
 	now := time.Now()
 	var patchedID string
@@ -170,7 +177,7 @@ func TestProfileAgentsLoadAndToggleTrustFlow(t *testing.T) {
 		switch {
 		case r.URL.Path == "/api/agents/" && r.Method == http.MethodGet:
 			agentsCalls++
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
 				{
 					"id":                "agent-1",
 					"name":              "Alpha",
@@ -182,11 +189,13 @@ func TestProfileAgentsLoadAndToggleTrustFlow(t *testing.T) {
 					"updated_at":        now,
 				},
 			}})
+			require.NoError(t, err)
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/agents/") && r.Method == http.MethodPatch:
 			patchedID = strings.TrimPrefix(r.URL.Path, "/api/agents/")
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&patched))
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": patchedID}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": patchedID}})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -216,12 +225,14 @@ func TestProfileAgentsLoadAndToggleTrustFlow(t *testing.T) {
 	require.GreaterOrEqual(t, agentsCalls, 2)
 }
 
+// TestMaskedAPIKey handles test masked apikey.
 func TestMaskedAPIKey(t *testing.T) {
 	assert.Equal(t, "-", maskedAPIKey(""))
 	assert.Equal(t, "*****", maskedAPIKey("abcde"))
 	assert.Equal(t, "abcdef...7890", maskedAPIKey("abcdef1234567890"))
 }
 
+// TestProfileActiveListAndParsePositiveIntHelpers handles test profile active list and parse positive int helpers.
 func TestProfileActiveListAndParsePositiveIntHelpers(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.section = 0
@@ -243,6 +254,7 @@ func TestProfileActiveListAndParsePositiveIntHelpers(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TestProfileHandlePendingLimitInputAndRenderAgentDetail handles test profile handle pending limit input and render agent detail.
 func TestProfileHandlePendingLimitInputAndRenderAgentDetail(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -285,6 +297,7 @@ func TestProfileHandlePendingLimitInputAndRenderAgentDetail(t *testing.T) {
 	assert.Contains(t, detail, "Descriptio")
 }
 
+// TestProfileSectionFocusArrowNavigation handles test profile section focus arrow navigation.
 func TestProfileSectionFocusArrowNavigation(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.sectionFocus = true
@@ -305,6 +318,7 @@ func TestProfileSectionFocusArrowNavigation(t *testing.T) {
 	assert.False(t, model.sectionFocus)
 }
 
+// TestProfileUpFromTopListReturnsToSectionFocus handles test profile up from top list returns to section focus.
 func TestProfileUpFromTopListReturnsToSectionFocus(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.section = 0

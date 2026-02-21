@@ -19,7 +19,9 @@ func RunInteractiveLogin(in io.Reader, out io.Writer) error {
 	reader := bufio.NewReader(in)
 
 	renderCommandMessage(out, "Nebula Login", "Enter username to create or resume your local session.")
-	fmt.Fprint(out, "\nusername: ")
+	if _, err := fmt.Fprint(out, "\nusername: "); err != nil {
+		return fmt.Errorf("write prompt: %w", err)
+	}
 	username, _ := reader.ReadString('\n')
 	username = strings.TrimSpace(username)
 

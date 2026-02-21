@@ -13,9 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestAppPaletteOpenFilterAndExecuteTab handles test app palette open filter and execute tab.
 func TestAppPaletteOpenFilterAndExecuteTab(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 	})
 
 	app := NewApp(client, &config.Config{})
@@ -24,7 +25,7 @@ func TestAppPaletteOpenFilterAndExecuteTab(t *testing.T) {
 	app = model.(App)
 	assert.True(t, app.paletteOpen)
 
-	for _, r := range []rune("/job") {
+	for _, r := range "/job" {
 		model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 		app = model.(App)
 	}
@@ -36,9 +37,10 @@ func TestAppPaletteOpenFilterAndExecuteTab(t *testing.T) {
 	assert.Equal(t, tabJobs, app.tab)
 }
 
+// TestAppPaletteArrowKeysMoveSelection handles test app palette arrow keys move selection.
 func TestAppPaletteArrowKeysMoveSelection(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, _ *http.Request) {
-		json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 	})
 
 	app := NewApp(client, &config.Config{})
@@ -57,16 +59,17 @@ func TestAppPaletteArrowKeysMoveSelection(t *testing.T) {
 	assert.Equal(t, 0, app.paletteIndex)
 }
 
+// TestAppPaletteTextSearchLoadsAndJumpsToDetail handles test app palette text search loads and jumps to detail.
 func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 	var gotQuery string
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" {
 			gotQuery = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "ent-1", "name": "Alpha", "type": "person"},
 				},
-			})
+			}))
 			return
 		}
 		if r.URL.Path == "/api/context" ||
@@ -75,7 +78,7 @@ func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 			r.URL.Path == "/api/logs" ||
 			r.URL.Path == "/api/files" ||
 			r.URL.Path == "/api/protocols" {
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -114,6 +117,7 @@ func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 	assert.Equal(t, entitiesViewDetail, app.entities.view)
 }
 
+// TestApplySearchSelectionSwitchesTabAndSetsDetail handles test apply search selection switches tab and sets detail.
 func TestApplySearchSelectionSwitchesTabAndSetsDetail(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 

@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// startDefaultAPIBaseServer handles start default apibase server.
 func startDefaultAPIBaseServer(t *testing.T, handler http.Handler) func() {
 	t.Helper()
 
@@ -39,6 +40,7 @@ func startDefaultAPIBaseServer(t *testing.T, handler http.Handler) func() {
 	}
 }
 
+// TestLoginCmdSuccessAgainstDefaultAPIBaseURL handles test login cmd success against default apibase url.
 func TestLoginCmdSuccessAgainstDefaultAPIBaseURL(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
@@ -78,6 +80,7 @@ func TestLoginCmdSuccessAgainstDefaultAPIBaseURL(t *testing.T) {
 	assert.True(t, loaded.QuickstartPending)
 }
 
+// TestKeysAndAgentListHappyPathsAgainstDefaultAPIBaseURL handles test keys and agent list happy paths against default apibase url.
 func TestKeysAndAgentListHappyPathsAgainstDefaultAPIBaseURL(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	require.NoError(t, (&config.Config{APIKey: "nbl_test", Username: "alxx"}).Save())
@@ -86,15 +89,15 @@ func TestKeysAndAgentListHappyPathsAgainstDefaultAPIBaseURL(t *testing.T) {
 	shutdown := startDefaultAPIBaseServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/keys" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
 				"id":         "k1",
 				"key_prefix": "nbl_abc123",
 				"name":       "demo",
 				"created_at": now,
-			}}})
+			}}}))
 			return
 		case r.URL.Path == "/api/agents/" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{{
 				"id":                "agent-1",
 				"name":              "Alpha",
 				"status":            "active",
@@ -103,7 +106,7 @@ func TestKeysAndAgentListHappyPathsAgainstDefaultAPIBaseURL(t *testing.T) {
 				"capabilities":      []string{"read"},
 				"created_at":        now,
 				"updated_at":        now,
-			}}})
+			}}}))
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)

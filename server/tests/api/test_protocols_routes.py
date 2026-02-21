@@ -102,7 +102,9 @@ async def test_query_protocols_limit_does_not_starve_public_rows(api, db_pool, e
         None,
     )
 
-    resp = await api.get("/api/protocols/", params={"status_category": "active", "limit": 1})
+    resp = await api.get(
+        "/api/protocols/", params={"status_category": "active", "limit": 1}
+    )
     assert resp.status_code == 200
     names = [item["name"] for item in resp.json()["data"]]
     assert names

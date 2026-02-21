@@ -41,11 +41,13 @@ type MetadataEditor struct {
 	notice string
 }
 
+// Open handles open.
 func (m *MetadataEditor) Open(initial map[string]any) {
 	m.Active = true
 	m.Load(initial)
 }
 
+// Reset handles reset.
 func (m *MetadataEditor) Reset() {
 	m.Active = false
 	m.Buffer = ""
@@ -64,6 +66,7 @@ func (m *MetadataEditor) Reset() {
 	m.notice = ""
 }
 
+// Load loads load.
 func (m *MetadataEditor) Load(initial map[string]any) {
 	m.Scopes = extractMetadataScopes(initial)
 	m.Buffer = metadataToInput(stripMetadataScopes(initial))
@@ -79,6 +82,7 @@ func (m *MetadataEditor) Load(initial map[string]any) {
 	m.syncList()
 }
 
+// HandleKey handles handle key.
 func (m *MetadataEditor) HandleKey(msg tea.KeyMsg) bool {
 	if m.scopeSelecting {
 		options := m.scopeOptions
@@ -216,6 +220,7 @@ func (m *MetadataEditor) HandleKey(msg tea.KeyMsg) bool {
 	return false
 }
 
+// Render renders render.
 func (m MetadataEditor) Render(width int) string {
 	if m.entryMode {
 		return m.renderEntryMode(width)
@@ -226,6 +231,7 @@ func (m MetadataEditor) Render(width int) string {
 	return m.renderTableMode(width)
 }
 
+// renderTableMode renders render table mode.
 func (m MetadataEditor) renderTableMode(width int) string {
 	contentWidth := components.BoxContentWidth(width) - 4
 	if contentWidth < 44 {
@@ -249,10 +255,14 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	}
 	visible := m.list.Visible()
 	selectedCount := 0
-	for _, selected := range m.selected {
-		if selected {
-			selectedCount++
+	for idx, selected := range m.selected {
+		if !selected {
+			continue
 		}
+		if idx < 0 || idx >= len(rows) {
+			continue
+		}
+		selectedCount++
 	}
 	showSelectionColumn := selectedCount > 0
 	columnBudget := contentWidth
@@ -279,7 +289,7 @@ func (m MetadataEditor) renderTableMode(width int) string {
 		}
 		row := rows[absIdx]
 		group, field := metadataGroupAndField(row.path)
-		if m.list.IsSelected(absIdx) {
+		if showSelectionColumn && m.list.IsSelected(absIdx) {
 			activeRow = len(gridRows)
 		}
 		cells := make([]string, 0, 4)
@@ -313,6 +323,7 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	return components.Indent(components.TitledBox("Metadata", body, width)+"\n\n"+m.renderScopeBox(width), 1)
 }
 
+// renderEntryMode renders render entry mode.
 func (m MetadataEditor) renderEntryMode(width int) string {
 	title := "Add Metadata Row"
 	if m.entryEditIdx >= 0 {
@@ -326,6 +337,7 @@ func (m MetadataEditor) renderEntryMode(width int) string {
 	return components.Indent(body, 1)
 }
 
+// renderInspectMode renders render inspect mode.
 func (m MetadataEditor) renderInspectMode(width int) string {
 	lines := m.inspectLines()
 	if len(lines) == 0 {
@@ -359,6 +371,7 @@ func (m MetadataEditor) renderInspectMode(width int) string {
 	return components.Indent(components.TitledBox("Metadata Value", colorizeScopeBadges(body), width), 1)
 }
 
+// renderScopeBox renders render scope box.
 func (m MetadataEditor) renderScopeBox(width int) string {
 	var content strings.Builder
 	content.WriteString(MutedStyle.Render("Scopes:"))
@@ -371,6 +384,7 @@ func (m MetadataEditor) renderScopeBox(width int) string {
 	return components.TitledBox("Scopes", content.String(), width)
 }
 
+// SetScopeOptions sets set scope options.
 func (m *MetadataEditor) SetScopeOptions(options []string) {
 	m.scopeOptions = options
 	if len(m.scopeOptions) == 0 {
@@ -382,6 +396,7 @@ func (m *MetadataEditor) SetScopeOptions(options []string) {
 	}
 }
 
+// dropLastRune handles drop last rune.
 func dropLastRune(s string) string {
 	if s == "" {
 		return ""
@@ -390,6 +405,7 @@ func dropLastRune(s string) string {
 	return string(runes[:len(runes)-1])
 }
 
+// syncList handles sync list.
 func (m *MetadataEditor) syncList() {
 	if m.list == nil {
 		m.list = components.NewList(metadataPanelPageSize(false))
@@ -406,6 +422,7 @@ func (m *MetadataEditor) syncList() {
 	}
 }
 
+// toDisplayRows handles to display rows.
 func (m MetadataEditor) toDisplayRows() []metadataDisplayRow {
 	rows := make([]metadataDisplayRow, 0, len(m.rows))
 	for _, row := range m.rows {
@@ -414,6 +431,7 @@ func (m MetadataEditor) toDisplayRows() []metadataDisplayRow {
 	return rows
 }
 
+// selectedRowIndex handles selected row index.
 func (m MetadataEditor) selectedRowIndex() int {
 	if m.list == nil {
 		return -1
@@ -425,6 +443,7 @@ func (m MetadataEditor) selectedRowIndex() int {
 	return idx
 }
 
+// toggleSelection handles toggle selection.
 func (m *MetadataEditor) toggleSelection(idx int) {
 	if idx < 0 || idx >= len(m.rows) {
 		return
@@ -439,6 +458,7 @@ func (m *MetadataEditor) toggleSelection(idx int) {
 	m.selected[idx] = true
 }
 
+// toggleSelectAll handles toggle select all.
 func (m *MetadataEditor) toggleSelectAll() {
 	if len(m.rows) == 0 {
 		return
@@ -454,6 +474,7 @@ func (m *MetadataEditor) toggleSelectAll() {
 	m.selected = all
 }
 
+// commitEntry handles commit entry.
 func (m *MetadataEditor) commitEntry() error {
 	path, value, err := parseMetadataPipeLine(m.entryBuf, 1)
 	if err != nil {
@@ -491,6 +512,7 @@ func (m *MetadataEditor) commitEntry() error {
 	return nil
 }
 
+// rebuildBuffer handles rebuild buffer.
 func (m *MetadataEditor) rebuildBuffer() {
 	if len(m.rows) == 0 {
 		m.Buffer = ""
@@ -507,6 +529,7 @@ func (m *MetadataEditor) rebuildBuffer() {
 	m.Buffer = metadataToInput(root)
 }
 
+// copySelectedValues handles copy selected values.
 func (m MetadataEditor) copySelectedValues() (int, error) {
 	if len(m.rows) == 0 {
 		return 0, nil
@@ -546,6 +569,7 @@ func (m MetadataEditor) copySelectedValues() (int, error) {
 	return len(values), nil
 }
 
+// moveInspect handles move inspect.
 func (m *MetadataEditor) moveInspect(delta int) {
 	lines := m.inspectLines()
 	page := m.inspectPageSize()
@@ -562,6 +586,7 @@ func (m *MetadataEditor) moveInspect(delta int) {
 	}
 }
 
+// inspectPageSize handles inspect page size.
 func (m MetadataEditor) inspectPageSize() int {
 	page := 12
 	if page < 6 {
@@ -573,6 +598,7 @@ func (m MetadataEditor) inspectPageSize() int {
 	return page
 }
 
+// inspectValue handles inspect value.
 func (m MetadataEditor) inspectValue() string {
 	if m.inspectRowIdx < 0 || m.inspectRowIdx >= len(m.rows) {
 		return ""
@@ -580,6 +606,7 @@ func (m MetadataEditor) inspectValue() string {
 	return m.rows[m.inspectRowIdx].value
 }
 
+// inspectLines handles inspect lines.
 func (m MetadataEditor) inspectLines() []string {
 	if m.inspectRowIdx < 0 || m.inspectRowIdx >= len(m.rows) {
 		return nil
@@ -608,6 +635,7 @@ func (m MetadataEditor) inspectLines() []string {
 	return lines
 }
 
+// metadataEditorRowsFromMap handles metadata editor rows from map.
 func metadataEditorRowsFromMap(data map[string]any) []metadataEditorRow {
 	if len(data) == 0 {
 		return nil

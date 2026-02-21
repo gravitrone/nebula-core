@@ -198,7 +198,9 @@ async def test_logs_validation_errors(api):
 
 
 @pytest.mark.asyncio
-async def test_logs_agent_scope_checks_entity_context_job(api_agent_auth, db_pool, enums):
+async def test_logs_agent_scope_checks_entity_context_job(
+    api_agent_auth, db_pool, enums
+):
     """Agent should be blocked from logs linked to inaccessible scoped nodes."""
 
     sensitive_entity = await _insert_entity(
@@ -207,7 +209,9 @@ async def test_logs_agent_scope_checks_entity_context_job(api_agent_auth, db_poo
     sensitive_context = await _insert_context(
         db_pool, enums, "SensitiveCtx", scopes=["sensitive"]
     )
-    sensitive_job = await _insert_job(db_pool, enums, "SensitiveJob", scopes=["sensitive"])
+    sensitive_job = await _insert_job(
+        db_pool, enums, "SensitiveJob", scopes=["sensitive"]
+    )
 
     log_entity = await _insert_log(db_pool, enums, "event")
     log_context = await _insert_log(db_pool, enums, "event")
@@ -239,7 +243,9 @@ async def test_logs_agent_scope_checks_entity_context_job(api_agent_auth, db_poo
         str(log_job["id"]),
     )
 
-    public_entity = await _insert_entity(db_pool, enums, "PublicEntity", scopes=["public"])
+    public_entity = await _insert_entity(
+        db_pool, enums, "PublicEntity", scopes=["public"]
+    )
     await _insert_relationship(
         db_pool,
         enums,

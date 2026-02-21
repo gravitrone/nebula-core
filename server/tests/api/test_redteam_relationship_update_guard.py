@@ -106,7 +106,9 @@ async def test_untrusted_update_queues_approval_without_mutating(db_pool, enums)
     relationship = await _make_relationship(
         db_pool, enums, a["id"], b["id"], {"note": "original"}
     )
-    untrusted = await _make_agent(db_pool, enums, "rel-untrusted-guard", ["public"], True)
+    untrusted = await _make_agent(
+        db_pool, enums, "rel-untrusted-guard", ["public"], True
+    )
 
     before = await db_pool.fetchval(
         "SELECT properties FROM relationships WHERE id = $1", relationship["id"]

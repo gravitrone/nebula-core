@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestJobsListSearchSuggestToggleAddSaveAndReset handles test jobs list search suggest toggle add save and reset.
 func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	now := time.Now()
 	createCalled := false
@@ -21,7 +22,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/jobs" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "job-1",
@@ -34,15 +35,17 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "scope-1", "name": "public", "agent_count": 1},
 				},
 			})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/jobs" && r.Method == http.MethodPost:
 			createCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":         "job-new",
 					"title":      "New Job",
@@ -52,6 +55,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 					"updated_at": now,
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -90,7 +94,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	assert.Contains(t, out, "Add Job")
 
 	// Enter title.
-	for _, r := range []rune("New Job") {
+	for _, r := range "New Job" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
@@ -112,6 +116,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	assert.Equal(t, "", model.addFields[jobFieldTitle].value)
 }
 
+// TestJobsDetailRendersAndEditSaves handles test jobs detail renders and edit saves.
 func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 	now := time.Now()
 	updateCalled := false
@@ -120,7 +125,7 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/api/jobs/") && r.Method == http.MethodPatch:
 			updateCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":         "job-1",
 					"title":      "Alpha Job",
@@ -130,10 +135,13 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 					"updated_at": now,
 				},
 			})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/jobs" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -170,7 +178,7 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 
 	// Edit description and save.
 	model.editFocus = jobEditFieldDescription
-	for _, r := range []rune(" world") {
+	for _, r := range " world" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	var saveCmd tea.Cmd
@@ -182,6 +190,7 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 	assert.True(t, updateCalled)
 }
 
+// TestJobsDetailRendersRelationshipsSummary handles test jobs detail renders relationships summary.
 func TestJobsDetailRendersRelationshipsSummary(t *testing.T) {
 	now := time.Now()
 	model := NewJobsModel(nil)
@@ -217,6 +226,7 @@ func TestJobsDetailRendersRelationshipsSummary(t *testing.T) {
 	assert.Contains(t, out, "Owner")
 }
 
+// TestJobsFormsRenderMetadataPreviewTable handles test jobs forms render metadata preview table.
 func TestJobsFormsRenderMetadataPreviewTable(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.width = 100

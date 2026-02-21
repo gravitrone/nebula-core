@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy update_scope
 UPDATE privacy_scopes
 SET
     name = COALESCE(NULLIF($2, ''), name),

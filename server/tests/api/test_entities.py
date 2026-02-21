@@ -25,6 +25,12 @@ def _agent_auth_override(agent_row: dict, scope_ids: list[int]) -> callable:
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     return mock_auth
@@ -145,6 +151,13 @@ async def test_create_entity_executor_value_error_returns_400(api, monkeypatch):
     """Create route should normalize executor value errors."""
 
     async def _boom(*_args, **_kwargs):
+        """Handle boom.
+
+        Args:
+            *_args: Input parameter for _boom.
+            **_kwargs: Input parameter for _boom.
+        """
+
         raise ValueError("entity create failed")
 
     monkeypatch.setattr("nebula_api.routes.entities.execute_create_entity", _boom)
@@ -251,6 +264,13 @@ async def test_update_entity_executor_value_error_returns_400(
     """Update route should normalize executor value errors."""
 
     async def _boom(*_args, **_kwargs):
+        """Handle boom.
+
+        Args:
+            *_args: Input parameter for _boom.
+            **_kwargs: Input parameter for _boom.
+        """
+
         raise ValueError("entity update failed")
 
     monkeypatch.setattr("nebula_api.routes.entities.execute_update_entity", _boom)
@@ -503,13 +523,13 @@ async def test_bulk_update_scopes_untrusted_agent_returns_approval_required(
     async with AsyncClient(
         transport=transport, base_url="http://test", follow_redirects=True
     ) as client:
-            r = await client.post(
-                "/api/entities/bulk/scopes",
-                json={
-                    "entity_ids": [str(entity["id"])],
-                    "scopes": ["public"],
-                    "op": "set",
-                },
+        r = await client.post(
+            "/api/entities/bulk/scopes",
+            json={
+                "entity_ids": [str(entity["id"])],
+                "scopes": ["public"],
+                "op": "set",
+            },
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -546,13 +566,13 @@ async def test_bulk_update_tags_untrusted_agent_returns_approval_required(
     async with AsyncClient(
         transport=transport, base_url="http://test", follow_redirects=True
     ) as client:
-            r = await client.post(
-                "/api/entities/bulk/tags",
-                json={
-                    "entity_ids": [str(entity["id"])],
-                    "tags": ["queued"],
-                    "op": "add",
-                },
+        r = await client.post(
+            "/api/entities/bulk/tags",
+            json={
+                "entity_ids": [str(entity["id"])],
+                "tags": ["queued"],
+                "op": "add",
+            },
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -601,6 +621,12 @@ async def test_revert_entity_forbidden_for_agents(db_pool, enums, test_entity):
     )
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return {
             "key_id": None,
             "caller_type": "agent",

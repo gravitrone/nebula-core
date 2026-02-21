@@ -68,7 +68,9 @@ async def _make_job(
     return dict(row)
 
 
-async def _make_relationship_with_segments(db_pool, enums, source_id: str, target_id: str):
+async def _make_relationship_with_segments(
+    db_pool, enums, source_id: str, target_id: str
+):
     """Create and return a relationship with mixed-scope context segments."""
 
     props = {
@@ -94,7 +96,13 @@ async def _make_relationship_with_segments(db_pool, enums, source_id: str, targe
 
 
 async def _make_job_relationship(
-    db_pool, enums, *, source_type: str, source_id: str, target_type: str, target_id: str
+    db_pool,
+    enums,
+    *,
+    source_type: str,
+    source_id: str,
+    target_type: str,
+    target_id: str,
 ) -> dict:
     """Create and return a relationship row linking job and non-job nodes."""
 

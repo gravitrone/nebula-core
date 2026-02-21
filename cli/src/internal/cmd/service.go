@@ -72,6 +72,7 @@ func LogsCmd() *cobra.Command {
 	return cmd
 }
 
+// runStartCmd runs run start cmd.
 func runStartCmd(out io.Writer) error {
 	if err := os.MkdirAll(runtimeDir(), 0o700); err != nil {
 		return fmt.Errorf("create runtime dir: %w", err)
@@ -103,7 +104,9 @@ func runStartCmd(out io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("open api log: %w", err)
 	}
-	defer logFile.Close()
+	defer func() {
+		_ = logFile.Close()
+	}()
 
 	cmd := exec.Command(
 		uvicornPath,
@@ -148,6 +151,7 @@ func runStartCmd(out io.Writer) error {
 	return nil
 }
 
+// runStopCmd runs run stop cmd.
 func runStopCmd(out io.Writer) error {
 	state, _ := loadAPIState()
 	pid := 0
@@ -198,6 +202,7 @@ func runStopCmd(out io.Writer) error {
 	return nil
 }
 
+// runLogsCmd runs run logs cmd.
 func runLogsCmd(out io.Writer, _ bool, tail int) error {
 	if tail <= 0 {
 		tail = 120
@@ -224,22 +229,27 @@ func runLogsCmd(out io.Writer, _ bool, tail int) error {
 	return nil
 }
 
+// runtimeDir runs runtime dir.
 func runtimeDir() string {
 	return filepath.Dir(config.Path())
 }
 
+// apiStatePath handles api state path.
 func apiStatePath() string {
 	return filepath.Join(runtimeDir(), apiStateFilename)
 }
 
+// apiPIDPath handles api pidpath.
 func apiPIDPath() string {
 	return filepath.Join(runtimeDir(), apiPIDFilename)
 }
 
+// apiLogPath handles api log path.
 func apiLogPath() string {
 	return filepath.Join(runtimeDir(), apiLogFilename)
 }
 
+// saveAPIState handles save apistate.
 func saveAPIState(state *apiRuntimeState) error {
 	if state == nil {
 		return fmt.Errorf("api runtime state is nil")
@@ -257,6 +267,7 @@ func saveAPIState(state *apiRuntimeState) error {
 	return os.WriteFile(apiPIDPath(), []byte(strconv.Itoa(state.PID)), 0o600)
 }
 
+// loadAPIState loads load apistate.
 func loadAPIState() (*apiRuntimeState, error) {
 	raw, err := os.ReadFile(apiStatePath())
 	if err != nil {
@@ -269,6 +280,7 @@ func loadAPIState() (*apiRuntimeState, error) {
 	return &state, nil
 }
 
+// readPIDFile handles read pidfile.
 func readPIDFile() (int, bool) {
 	raw, err := os.ReadFile(apiPIDPath())
 	if err != nil {
@@ -281,12 +293,14 @@ func readPIDFile() (int, bool) {
 	return pid, true
 }
 
+// cleanupAPIState handles cleanup apistate.
 func cleanupAPIState() error {
 	_ = os.Remove(apiPIDPath())
 	_ = os.Remove(apiStatePath())
 	return nil
 }
 
+// processAlive handles process alive.
 func processAlive(pid int) bool {
 	if pid <= 0 {
 		return false
@@ -302,6 +316,7 @@ func processAlive(pid int) bool {
 	return errors.Is(err, syscall.EPERM)
 }
 
+// waitForAPIHealth handles wait for apihealth.
 func waitForAPIHealth(timeout time.Duration) bool {
 	if timeout <= 0 {
 		timeout = 6 * time.Second
@@ -318,6 +333,7 @@ func waitForAPIHealth(timeout time.Duration) bool {
 	return false
 }
 
+// resolveServerDir handles resolve server dir.
 func resolveServerDir() (string, error) {
 	if env := strings.TrimSpace(os.Getenv("NEBULA_SERVER_DIR")); env != "" {
 		if dir, ok := normalizeServerDirCandidate(env); ok {
@@ -378,6 +394,7 @@ func resolveServerDir() (string, error) {
 	return "", fmt.Errorf("could not locate server dir; set NEBULA_SERVER_DIR to <repo>/server")
 }
 
+// normalizeServerDirCandidate handles normalize server dir candidate.
 func normalizeServerDirCandidate(candidate string) (string, bool) {
 	candidate = strings.TrimSpace(candidate)
 	if candidate == "" {
@@ -394,6 +411,7 @@ func normalizeServerDirCandidate(candidate string) (string, bool) {
 	return abs, true
 }
 
+// tailLines handles tail lines.
 func tailLines(lines []string, tail int) []string {
 	clean := make([]string, 0, len(lines))
 	for _, line := range lines {

@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestImportExportImportFlowReadsFileCallsAPIAndShowsResult handles test import export import flow reads file calls apiand shows result.
 func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 	var gotPath string
 	var gotBody map[string]any
@@ -20,7 +21,7 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 		gotPath = r.URL.Path
 		if r.URL.Path == "/api/import/entities" {
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&gotBody))
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"created": 1,
 					"failed":  0,
@@ -28,6 +29,7 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 					"items":   []map[string]any{{"id": "ent-1"}},
 				},
 			})
+			require.NoError(t, err)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -75,6 +77,7 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 	assert.True(t, m.closed)
 }
 
+// TestImportExportEmptyPathDoesNotRun handles test import export empty path does not run.
 func TestImportExportEmptyPathDoesNotRun(t *testing.T) {
 	m := NewImportExportModel(nil)
 	m.Start(importMode)
@@ -88,16 +91,18 @@ func TestImportExportEmptyPathDoesNotRun(t *testing.T) {
 	assert.Equal(t, stepPath, m.step)
 }
 
+// TestImportExportExportJSONWritesFile handles test import export export jsonwrites file.
 func TestImportExportExportJSONWritesFile(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/export/entities" {
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"format": "json",
 					"items":  []map[string]any{{"id": "ent-1", "name": "Alpha"}},
 					"count":  1,
 				},
 			})
+			require.NoError(t, err)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -136,16 +141,18 @@ func TestImportExportExportJSONWritesFile(t *testing.T) {
 	assert.Contains(t, clean, "Exported 1 entities")
 }
 
+// TestImportExportExportCSVWritesFile handles test import export export csvwrites file.
 func TestImportExportExportCSVWritesFile(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/export/entities" {
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"format":  "csv",
 					"content": "id,name\nent-1,Alpha\n",
 					"count":   1,
 				},
 			})
+			require.NoError(t, err)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

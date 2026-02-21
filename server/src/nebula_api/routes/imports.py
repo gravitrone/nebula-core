@@ -72,6 +72,16 @@ def _validate_taxonomy_before_approval(
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -82,6 +92,16 @@ def _is_admin(auth: dict, enums: Any) -> bool:
 
 
 def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
+    """Handle has write scopes.
+
+    Args:
+        agent_scopes: Input parameter for _has_write_scopes.
+        node_scopes: Input parameter for _has_write_scopes.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not node_scopes:
         return True
     if not agent_scopes:
@@ -92,6 +112,15 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 async def _require_entity_write_access(
     pool: Any, enums: Any, auth: dict, entity_id: str
 ) -> None:
+    """Handle require entity write access.
+
+    Args:
+        pool: Input parameter for _require_entity_write_access.
+        enums: Input parameter for _require_entity_write_access.
+        auth: Input parameter for _require_entity_write_access.
+        entity_id: Input parameter for _require_entity_write_access.
+    """
+
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
@@ -106,6 +135,15 @@ async def _require_entity_write_access(
 async def _require_context_write_access(
     pool: Any, enums: Any, auth: dict, context_id: str
 ) -> None:
+    """Handle require context write access.
+
+    Args:
+        pool: Input parameter for _require_context_write_access.
+        enums: Input parameter for _require_context_write_access.
+        auth: Input parameter for _require_context_write_access.
+        context_id: Input parameter for _require_context_write_access.
+    """
+
     if _is_admin(auth, enums):
         return
     row = await pool.fetchrow(QUERIES["context/get"], context_id, None)
@@ -118,6 +156,14 @@ async def _require_context_write_access(
 
 
 async def _require_job_owner(pool: Any, auth: dict, job_id: str) -> None:
+    """Handle require job owner.
+
+    Args:
+        pool: Input parameter for _require_job_owner.
+        auth: Input parameter for _require_job_owner.
+        job_id: Input parameter for _require_job_owner.
+    """
+
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         raise ValueError("Job not found")
@@ -125,13 +171,25 @@ async def _require_job_owner(pool: Any, auth: dict, job_id: str) -> None:
     caller_scopes = auth.get("scopes", []) or []
     if job_scopes and not any(scope in caller_scopes for scope in job_scopes):
         raise ValueError("Access denied")
-    if auth.get("caller_type") == "agent" and row.get("agent_id") != auth.get("agent_id"):
+    if auth.get("caller_type") == "agent" and row.get("agent_id") != auth.get(
+        "agent_id"
+    ):
         raise ValueError("Access denied")
 
 
 async def _validate_relationship_node(
     pool: Any, enums: Any, auth: dict, node_type: str, node_id: str
 ) -> None:
+    """Handle validate relationship node.
+
+    Args:
+        pool: Input parameter for _validate_relationship_node.
+        enums: Input parameter for _validate_relationship_node.
+        auth: Input parameter for _validate_relationship_node.
+        node_type: Input parameter for _validate_relationship_node.
+        node_id: Input parameter for _validate_relationship_node.
+    """
+
     if node_type == "entity":
         await _require_entity_write_access(pool, enums, auth, node_id)
         return
@@ -180,6 +238,7 @@ async def _run_import(
     Returns:
         API response with created items and errors.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -330,6 +389,7 @@ async def import_entities(
     Returns:
         API response with created entities or approval requirement.
     """
+
     return await _run_import(
         request,
         auth,
@@ -356,6 +416,7 @@ async def import_context(
     Returns:
         API response with created context or approval requirement.
     """
+
     return await _run_import(
         request,
         auth,
@@ -382,6 +443,7 @@ async def import_relationships(
     Returns:
         API response with created relationships or approval requirement.
     """
+
     return await _run_import(
         request,
         auth,
@@ -408,6 +470,7 @@ async def import_jobs(
     Returns:
         API response with created jobs or approval requirement.
     """
+
     return await _run_import(
         request,
         auth,

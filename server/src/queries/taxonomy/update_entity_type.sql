@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy update_entity_type
 UPDATE entity_types
 SET
     name = COALESCE(NULLIF($2, ''), name),

@@ -15,12 +15,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testProfileTaxonomyClient handles test profile taxonomy client.
 func testProfileTaxonomyClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestProfileTaxonomyCreateFlowQueuesReload handles test profile taxonomy create flow queues reload.
 func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 	now := time.Now()
 	created := false
@@ -30,7 +32,7 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 		switch {
 		case r.URL.Path == "/api/taxonomy/scopes" && r.Method == http.MethodPost:
 			created = true
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":          "scope-new",
 					"name":        "team-scope",
@@ -42,10 +44,11 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 					"updated_at":  now,
 				},
 			})
+			require.NoError(t, err)
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/taxonomy/scopes") && r.Method == http.MethodGet:
 			listed = true
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":          "scope-new",
@@ -59,6 +62,7 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		default:
 			// ProfileModel uses other endpoints on Init, but this test drives prompt flow only.
@@ -74,14 +78,14 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 	assert.Equal(t, taxPromptCreateName, model.taxPromptMode)
 
 	// Type name "team-scope" then submit.
-	for _, ch := range []rune("team-scope") {
+	for _, ch := range "team-scope" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, taxPromptCreateDescription, model.taxPromptMode)
 
 	// Type description then submit, which triggers API call.
-	for _, ch := range []rune("desc") {
+	for _, ch := range "desc" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
 	}
 	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -99,6 +103,7 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 	assert.Len(t, model.taxItems, 1)
 }
 
+// TestProfileTaxonomyArchiveAndActivateFlowQueuesReload handles test profile taxonomy archive and activate flow queues reload.
 func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 	now := time.Now()
 	archived := false
@@ -109,15 +114,17 @@ func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 		switch {
 		case r.URL.Path == "/api/taxonomy/scopes/scope-1/archive" && r.Method == http.MethodPost:
 			archived = true
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "scope-1"}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "scope-1"}})
+			require.NoError(t, err)
 			return
 		case r.URL.Path == "/api/taxonomy/scopes/scope-1/activate" && r.Method == http.MethodPost:
 			activated = true
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "scope-1"}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "scope-1"}})
+			require.NoError(t, err)
 			return
 		case strings.HasPrefix(r.URL.Path, "/api/taxonomy/scopes") && r.Method == http.MethodGet:
 			listCalls++
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":          "scope-1",
@@ -131,6 +138,7 @@ func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 			return
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -174,6 +182,7 @@ func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 	assert.GreaterOrEqual(t, listCalls, 2)
 }
 
+// TestProfileTaxonomyRenderAndHelperCoverage handles test profile taxonomy render and helper coverage.
 func TestProfileTaxonomyRenderAndHelperCoverage(t *testing.T) {
 	now := time.Now()
 	model := NewProfileModel(nil, &config.Config{Username: "alxx", APIKey: "nbl_x"})
@@ -207,6 +216,7 @@ func TestProfileTaxonomyRenderAndHelperCoverage(t *testing.T) {
 	assert.Equal(t, "Taxonomy Filter", model.taxonomyPromptTitle())
 }
 
+// ptrString handles ptr string.
 func ptrString(s string) *string {
 	return &s
 }

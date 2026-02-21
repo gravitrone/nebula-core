@@ -22,6 +22,13 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except ValueError:
@@ -29,6 +36,13 @@ def _require_uuid(value: str, label: str) -> None:
 
 
 def _require_admin_scope(auth: dict, enums: Any) -> None:
+    """Handle require admin scope.
+
+    Args:
+        auth: Input parameter for _require_admin_scope.
+        enums: Input parameter for _require_admin_scope.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -41,6 +55,7 @@ def _require_admin_scope(auth: dict, enums: Any) -> None:
 
 def _append_scope(scope_ids: list[Any] | None, scope_id: Any) -> list[Any]:
     """Return scope list with scope_id appended only when missing."""
+
     current = list(scope_ids or [])
     if scope_id not in current:
         current.append(scope_id)

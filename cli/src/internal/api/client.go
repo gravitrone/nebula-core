@@ -68,7 +68,9 @@ func (c *Client) do(method, path string, body any) ([]byte, int, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -141,6 +143,7 @@ func buildQuery(path string, params QueryParams) string {
 	return path + "?" + q.Encode()
 }
 
+// extractAPIErrorBody handles extract apierror body.
 func extractAPIErrorBody(body []byte) (string, bool) {
 	if len(body) == 0 {
 		return "", false
@@ -165,6 +168,7 @@ func extractAPIErrorBody(body []byte) (string, bool) {
 	return "", false
 }
 
+// parseErrorValue parses parse error value.
 func parseErrorValue(raw any) (string, bool) {
 	switch value := raw.(type) {
 	case string:
@@ -184,6 +188,7 @@ func parseErrorValue(raw any) (string, bool) {
 	return "", false
 }
 
+// formatAPIError handles format apierror.
 func formatAPIError(code, message string) (string, bool) {
 	code = strings.TrimSpace(code)
 	message = strings.TrimSpace(message)

@@ -174,7 +174,6 @@ type EntitiesModel struct {
 	rels       []api.Relationship
 	relList    *components.List
 	relLoading bool
-	relErr     string
 
 	scopeNames   map[string]string
 	scopeOptions []string
@@ -183,7 +182,6 @@ type EntitiesModel struct {
 	history        []api.AuditEntry
 	historyList    *components.List
 	historyLoading bool
-	historyErr     string
 
 	// relate flow
 	relateQuery   string
@@ -235,6 +233,7 @@ func NewEntitiesModel(client *api.Client) EntitiesModel {
 	}
 }
 
+// Init handles init.
 func (m EntitiesModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = entitiesViewList
@@ -276,6 +275,7 @@ func (m EntitiesModel) Init() tea.Cmd {
 	)
 }
 
+// Update updates update.
 func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case entitiesLoadedMsg:
@@ -415,6 +415,7 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m EntitiesModel) View() string {
 	if m.addMeta.Active {
 		return m.addMeta.Render(m.width)
@@ -575,6 +576,7 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m EntitiesModel) handleFilterInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -638,6 +640,7 @@ func (m EntitiesModel) handleFilterInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 	return m, nil
 }
 
+// refreshFilterSets handles refresh filter sets.
 func (m *EntitiesModel) refreshFilterSets() {
 	typeSeen := map[string]struct{}{}
 	statusSeen := map[string]struct{}{}
@@ -682,6 +685,7 @@ func (m *EntitiesModel) refreshFilterSets() {
 	}
 }
 
+// retainEntityFilterSelection handles retain entity filter selection.
 func retainEntityFilterSelection(current map[string]bool, options []string) map[string]bool {
 	if current == nil {
 		current = map[string]bool{}
@@ -702,6 +706,7 @@ func retainEntityFilterSelection(current map[string]bool, options []string) map[
 	return next
 }
 
+// sortedFilterKeys handles sorted filter keys.
 func sortedFilterKeys(values map[string]struct{}) []string {
 	if len(values) == 0 {
 		return nil
@@ -714,6 +719,7 @@ func sortedFilterKeys(values map[string]struct{}) []string {
 	return keys
 }
 
+// filterOptionsForFacet handles filter options for facet.
 func (m EntitiesModel) filterOptionsForFacet(facet entitiesFilterFacet) []string {
 	switch facet {
 	case entitiesFilterFacetType:
@@ -727,6 +733,7 @@ func (m EntitiesModel) filterOptionsForFacet(facet entitiesFilterFacet) []string
 	}
 }
 
+// filterMapForFacet handles filter map for facet.
 func (m *EntitiesModel) filterMapForFacet(facet entitiesFilterFacet) map[string]bool {
 	switch facet {
 	case entitiesFilterFacetType:
@@ -749,16 +756,19 @@ func (m *EntitiesModel) filterMapForFacet(facet entitiesFilterFacet) map[string]
 	}
 }
 
+// clearEntityFilters handles clear entity filters.
 func (m *EntitiesModel) clearEntityFilters() {
 	m.filterTypes = map[string]bool{}
 	m.filterStatus = map[string]bool{}
 	m.filterScopes = map[string]bool{}
 }
 
+// hasActiveEntityFilters handles has active entity filters.
 func (m EntitiesModel) hasActiveEntityFilters() bool {
 	return len(m.filterTypes) > 0 || len(m.filterStatus) > 0 || len(m.filterScopes) > 0
 }
 
+// applyEntityFilters handles apply entity filters.
 func (m *EntitiesModel) applyEntityFilters() {
 	filtered := make([]api.Entity, 0, len(m.allItems))
 	for _, item := range m.allItems {
@@ -777,6 +787,7 @@ func (m *EntitiesModel) applyEntityFilters() {
 	m.updateSearchSuggest()
 }
 
+// pruneBulkSelection handles prune bulk selection.
 func (m *EntitiesModel) pruneBulkSelection(items []api.Entity) {
 	if len(m.bulkSelected) == 0 {
 		return
@@ -794,6 +805,7 @@ func (m *EntitiesModel) pruneBulkSelection(items []api.Entity) {
 	}
 }
 
+// matchesEntityFilters handles matches entity filters.
 func (m EntitiesModel) matchesEntityFilters(item api.Entity) bool {
 	if len(m.filterTypes) > 0 {
 		typ := normalizeScope(item.Type)
@@ -826,6 +838,7 @@ func (m EntitiesModel) matchesEntityFilters(item api.Entity) bool {
 	return true
 }
 
+// renderFilterPicker renders render filter picker.
 func (m EntitiesModel) renderFilterPicker() string {
 	labels := []string{"Type", "Status", "Scope"}
 	facetTabs := make([]string, len(labels))
@@ -927,6 +940,7 @@ func (m EntitiesModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m EntitiesModel) handleModeKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -944,6 +958,7 @@ func (m EntitiesModel) handleModeKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m EntitiesModel) toggleMode() (EntitiesModel, tea.Cmd) {
 	m.modeFocus = false
 	if m.view == entitiesViewAdd {
@@ -1075,6 +1090,7 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderAdd renders render add.
 func (m EntitiesModel) renderAdd() string {
 	var b strings.Builder
 	for i, f := range m.addFields {
@@ -1156,6 +1172,7 @@ func (m EntitiesModel) renderAdd() string {
 	return components.TitledBox("Add Entity", b.String(), m.width)
 }
 
+// saveAdd handles save add.
 func (m EntitiesModel) saveAdd() (EntitiesModel, tea.Cmd) {
 	name := strings.TrimSpace(m.addFields[addFieldName].value)
 	if name == "" {
@@ -1202,6 +1219,7 @@ func (m EntitiesModel) saveAdd() (EntitiesModel, tea.Cmd) {
 	}
 }
 
+// resetAddForm handles reset add form.
 func (m *EntitiesModel) resetAddForm() {
 	m.addSaved = false
 	m.errText = ""
@@ -1220,6 +1238,7 @@ func (m *EntitiesModel) resetAddForm() {
 	}
 }
 
+// renderAddTags renders render add tags.
 func (m *EntitiesModel) renderAddTags(focused bool) string {
 	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
 		return "-"
@@ -1248,10 +1267,12 @@ func (m *EntitiesModel) renderAddTags(focused bool) string {
 	return b.String()
 }
 
+// renderAddScopes renders render add scopes.
 func (m *EntitiesModel) renderAddScopes(focused bool) string {
 	return renderScopePills(m.addScopes, focused)
 }
 
+// commitAddTag handles commit add tag.
 func (m *EntitiesModel) commitAddTag() {
 	raw := strings.TrimSpace(m.addTagBuf)
 	if raw == "" {
@@ -1273,6 +1294,7 @@ func (m *EntitiesModel) commitAddTag() {
 	m.addTagBuf = ""
 }
 
+// commitAddScope handles commit add scope.
 func (m *EntitiesModel) commitAddScope() {
 	raw := strings.TrimSpace(m.addScopeBuf)
 	if raw == "" {
@@ -1294,6 +1316,7 @@ func (m *EntitiesModel) commitAddScope() {
 	m.addScopeBuf = ""
 }
 
+// renderList renders render list.
 func (m EntitiesModel) renderList() string {
 	if m.loading {
 		return "  " + MutedStyle.Render("Loading entities...")
@@ -1436,6 +1459,7 @@ func (m EntitiesModel) renderList() string {
 	return components.TitledBox(title, content, m.width)
 }
 
+// renderEntityPreview renders render entity preview.
 func (m EntitiesModel) renderEntityPreview(e api.Entity, width int) string {
 	if width <= 0 {
 		return ""
@@ -1484,6 +1508,7 @@ func (m EntitiesModel) renderEntityPreview(e api.Entity, width int) string {
 	return padPreviewLines(lines, width)
 }
 
+// updateSearchSuggest updates update search suggest.
 func (m *EntitiesModel) updateSearchSuggest() {
 	m.searchSuggest = ""
 	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
@@ -1503,6 +1528,7 @@ func (m *EntitiesModel) updateSearchSuggest() {
 	}
 }
 
+// toggleBulkSelection handles toggle bulk selection.
 func (m *EntitiesModel) toggleBulkSelection(absIdx int) {
 	if absIdx < 0 || absIdx >= len(m.items) {
 		return
@@ -1518,14 +1544,17 @@ func (m *EntitiesModel) toggleBulkSelection(absIdx int) {
 	m.bulkSelected[id] = true
 }
 
+// clearBulkSelection handles clear bulk selection.
 func (m *EntitiesModel) clearBulkSelection() {
 	m.bulkSelected = map[string]bool{}
 }
 
+// bulkCount handles bulk count.
 func (m *EntitiesModel) bulkCount() int {
 	return len(m.bulkSelected)
 }
 
+// isBulkSelected handles is bulk selected.
 func (m *EntitiesModel) isBulkSelected(absIdx int) bool {
 	if absIdx < 0 || absIdx >= len(m.items) {
 		return false
@@ -1537,6 +1566,7 @@ func (m *EntitiesModel) isBulkSelected(absIdx int) bool {
 	return m.bulkSelected[id]
 }
 
+// bulkSelectedIDs handles bulk selected ids.
 func (m *EntitiesModel) bulkSelectedIDs() []string {
 	if len(m.bulkSelected) == 0 {
 		return nil
@@ -1548,6 +1578,7 @@ func (m *EntitiesModel) bulkSelectedIDs() []string {
 	return ids
 }
 
+// handleBulkPromptKeys handles handle bulk prompt keys.
 func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1586,6 +1617,7 @@ func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyMsg) (EntitiesModel, tea.
 	return m, nil
 }
 
+// bulkUpdateTags handles bulk update tags.
 func (m EntitiesModel) bulkUpdateTags(spec bulkInput) tea.Cmd {
 	ids := m.bulkSelectedIDs()
 	if len(ids) == 0 {
@@ -1611,6 +1643,7 @@ func (m EntitiesModel) bulkUpdateTags(spec bulkInput) tea.Cmd {
 	}
 }
 
+// bulkUpdateScopes handles bulk update scopes.
 func (m EntitiesModel) bulkUpdateScopes(spec bulkInput) tea.Cmd {
 	ids := m.bulkSelectedIDs()
 	if len(ids) == 0 {
@@ -1761,6 +1794,7 @@ func (m EntitiesModel) handleDetailKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd)
 	return m, nil
 }
 
+// renderDetail renders render detail.
 func (m EntitiesModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -1829,6 +1863,7 @@ func (m EntitiesModel) loadHistory() tea.Cmd {
 	}
 }
 
+// loadScopeNames loads load scope names.
 func (m EntitiesModel) loadScopeNames() tea.Cmd {
 	return func() tea.Msg {
 		scopes, err := m.client.ListAuditScopes()
@@ -1843,6 +1878,7 @@ func (m EntitiesModel) loadScopeNames() tea.Cmd {
 	}
 }
 
+// handleHistoryKeys handles handle history keys.
 func (m EntitiesModel) handleHistoryKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -1863,6 +1899,7 @@ func (m EntitiesModel) handleHistoryKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 	return m, nil
 }
 
+// renderHistory renders render history.
 func (m EntitiesModel) renderHistory() string {
 	if m.historyLoading {
 		return "  " + MutedStyle.Render("Loading history...")
@@ -1973,6 +2010,7 @@ func (m EntitiesModel) renderHistory() string {
 	return components.Indent(components.TitledBox(title, content, m.width), 1)
 }
 
+// renderEntityHistoryPreview renders render entity history preview.
 func (m EntitiesModel) renderEntityHistoryPreview(entry api.AuditEntry, width int) string {
 	if width <= 0 {
 		return ""
@@ -2023,6 +2061,7 @@ func (m *EntitiesModel) startEdit() {
 	m.editSaving = false
 }
 
+// handleEditKeys handles handle edit keys.
 func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -2080,7 +2119,8 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			}
 		}
 	default:
-		if m.editFocus == editFieldTags {
+		switch m.editFocus {
+		case editFieldTags:
 			switch {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
@@ -2090,18 +2130,18 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 					m.editTagBuf += ch
 				}
 			}
-		} else if m.editFocus == editFieldScopes {
+		case editFieldScopes:
 			if isSpace(msg) {
 				m.editScopeSelecting = true
 			}
-		} else if m.editFocus == editFieldStatus {
+		case editFieldStatus:
 			switch {
 			case isKey(msg, "left"):
 				m.editStatusIdx = (m.editStatusIdx - 1 + len(entityStatusOptions)) % len(entityStatusOptions)
 			case isKey(msg, "right"), isSpace(msg):
 				m.editStatusIdx = (m.editStatusIdx + 1) % len(entityStatusOptions)
 			}
-		} else if m.editFocus == editFieldMetadata {
+		case editFieldMetadata:
 			if isEnter(msg) {
 				m.editMeta.Active = true
 			}
@@ -2110,6 +2150,7 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	return m, nil
 }
 
+// renderEdit renders render edit.
 func (m EntitiesModel) renderEdit() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -2183,6 +2224,7 @@ func (m EntitiesModel) renderEdit() string {
 	return components.Indent(components.TitledBox("Edit Entity", b.String(), m.width), 1)
 }
 
+// saveEdit handles save edit.
 func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
@@ -2231,6 +2273,7 @@ func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 	}
 }
 
+// commitEditTag handles commit edit tag.
 func (m *EntitiesModel) commitEditTag() {
 	raw := strings.TrimSpace(m.editTagBuf)
 	if raw == "" {
@@ -2253,6 +2296,7 @@ func (m *EntitiesModel) commitEditTag() {
 	m.editTagBuf = ""
 }
 
+// commitEditScope handles commit edit scope.
 func (m *EntitiesModel) commitEditScope() {
 	raw := strings.TrimSpace(m.editScopeBuf)
 	if raw == "" {
@@ -2275,10 +2319,12 @@ func (m *EntitiesModel) commitEditScope() {
 	m.editScopesDirty = true
 }
 
+// renderEditScopes renders render edit scopes.
 func (m EntitiesModel) renderEditScopes(focused bool) string {
 	return renderScopePills(m.editScopes, focused)
 }
 
+// renderEditTags renders render edit tags.
 func (m EntitiesModel) renderEditTags(focused bool) string {
 	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
 		return "-"
@@ -2373,6 +2419,7 @@ func (m EntitiesModel) handleConfirmKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 	return m, nil
 }
 
+// renderConfirm renders render confirm.
 func (m EntitiesModel) renderConfirm() string {
 	title := "Confirm"
 	var summary []components.TableRow
@@ -2406,9 +2453,7 @@ func (m EntitiesModel) renderConfirm() string {
 				Label: "Changed At",
 				Value: formatLocalTimeFull(m.confirmAudit.ChangedAt),
 			})
-			for _, row := range buildAuditDiffRows(*m.confirmAudit) {
-				diffs = append(diffs, row)
-			}
+			diffs = append(diffs, buildAuditDiffRows(*m.confirmAudit)...)
 		}
 	case "rel-archive":
 		title = "Archive Relationship"
@@ -2430,6 +2475,7 @@ func (m EntitiesModel) renderConfirm() string {
 	return components.Indent(components.ConfirmPreviewDialog(title, summary, diffs, m.width), 1)
 }
 
+// resetConfirmState handles reset confirm state.
 func (m *EntitiesModel) resetConfirmState() {
 	m.confirmKind = ""
 	m.confirmRelID = ""
@@ -2437,6 +2483,7 @@ func (m *EntitiesModel) resetConfirmState() {
 	m.confirmAudit = nil
 }
 
+// selectedRelationshipByID handles selected relationship by id.
 func (m EntitiesModel) selectedRelationshipByID(id string) *api.Relationship {
 	if id == "" {
 		return nil
@@ -2450,6 +2497,7 @@ func (m EntitiesModel) selectedRelationshipByID(id string) *api.Relationship {
 	return nil
 }
 
+// relationshipNodeLabel handles relationship node label.
 func (m EntitiesModel) relationshipNodeLabel(name, id, typ string) string {
 	label := strings.TrimSpace(name)
 	if label == "" {
@@ -2461,6 +2509,7 @@ func (m EntitiesModel) relationshipNodeLabel(name, id, typ string) string {
 	return fmt.Sprintf("%s (%s)", label, typ)
 }
 
+// firstNonEmpty handles first non empty.
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -2499,6 +2548,7 @@ func (m EntitiesModel) handleRelationshipsKeys(msg tea.KeyMsg) (EntitiesModel, t
 	return m, nil
 }
 
+// renderRelationships renders render relationships.
 func (m EntitiesModel) renderRelationships() string {
 	if m.relLoading {
 		return "  " + MutedStyle.Render("Loading relationships...")
@@ -2546,6 +2596,7 @@ func (m *EntitiesModel) startRelate() {
 	m.relateLoading = false
 }
 
+// handleRelateKeys handles handle relate keys.
 func (m EntitiesModel) handleRelateKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch m.view {
 	case entitiesViewRelateSearch:
@@ -2613,6 +2664,7 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd)
 	return m, nil
 }
 
+// renderRelate renders render relate.
 func (m EntitiesModel) renderRelate() string {
 	switch m.view {
 	case entitiesViewRelateSearch:
@@ -2730,6 +2782,7 @@ func (m EntitiesModel) renderRelate() string {
 	return ""
 }
 
+// renderRelateEntityPreview renders render relate entity preview.
 func (m EntitiesModel) renderRelateEntityPreview(e api.Entity, width int) string {
 	if width <= 0 {
 		return ""
@@ -2780,6 +2833,7 @@ func (m *EntitiesModel) startRelEdit() {
 	m.relEditBuf = compactJSON(map[string]any(rel.Properties))
 }
 
+// handleRelEditKeys handles handle rel edit keys.
 func (m EntitiesModel) handleRelEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -2797,14 +2851,15 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 			m.relEditBuf = m.relEditBuf[:len(m.relEditBuf)-1]
 		}
 	default:
-		if m.relEditFocus == relEditFieldStatus {
+		switch m.relEditFocus {
+		case relEditFieldStatus:
 			switch {
 			case isKey(msg, "left"):
 				m.relEditStatusIdx = (m.relEditStatusIdx - 1 + len(relationshipStatusOptions)) % len(relationshipStatusOptions)
 			case isKey(msg, "right"), isSpace(msg):
 				m.relEditStatusIdx = (m.relEditStatusIdx + 1) % len(relationshipStatusOptions)
 			}
-		} else if m.relEditFocus == relEditFieldProperties {
+		case relEditFieldProperties:
 			ch := msg.String()
 			if len(ch) == 1 || ch == " " {
 				m.relEditBuf += ch
@@ -2814,6 +2869,7 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 	return m, nil
 }
 
+// renderRelEdit renders render rel edit.
 func (m EntitiesModel) renderRelEdit() string {
 	status := relationshipStatusOptions[m.relEditStatusIdx]
 	var b strings.Builder
@@ -2844,6 +2900,7 @@ func (m EntitiesModel) renderRelEdit() string {
 	return components.Indent(components.TitledBox("Edit Relationship", b.String(), m.width), 1)
 }
 
+// saveRelEdit handles save rel edit.
 func (m EntitiesModel) saveRelEdit() (EntitiesModel, tea.Cmd) {
 	status := relationshipStatusOptions[m.relEditStatusIdx]
 	input := api.UpdateRelationshipInput{Status: &status}
@@ -2882,6 +2939,7 @@ func (m EntitiesModel) loadEntities(search string) func() tea.Msg {
 	}
 }
 
+// loadEntityDetailRelationships loads load entity detail relationships.
 func (m EntitiesModel) loadEntityDetailRelationships(entityID string) tea.Cmd {
 	return func() tea.Msg {
 		items, err := m.client.GetRelationships("entity", entityID)
@@ -2892,6 +2950,7 @@ func (m EntitiesModel) loadEntityDetailRelationships(entityID string) tea.Cmd {
 	}
 }
 
+// loadRelationships loads load relationships.
 func (m EntitiesModel) loadRelationships() tea.Cmd {
 	return func() tea.Msg {
 		if m.detail == nil {
@@ -2905,6 +2964,7 @@ func (m EntitiesModel) loadRelationships() tea.Cmd {
 	}
 }
 
+// loadRelateResults loads load relate results.
 func (m EntitiesModel) loadRelateResults(query string) tea.Cmd {
 	return func() tea.Msg {
 		items, err := m.client.QueryEntities(api.QueryParams{"search_text": query})
@@ -2915,6 +2975,7 @@ func (m EntitiesModel) loadRelateResults(query string) tea.Cmd {
 	}
 }
 
+// createRelationship creates create relationship.
 func (m EntitiesModel) createRelationship(source api.Entity, target api.Entity, relType string) tea.Cmd {
 	return func() tea.Msg {
 		input := api.CreateRelationshipInput{
@@ -2932,6 +2993,7 @@ func (m EntitiesModel) createRelationship(source api.Entity, target api.Entity, 
 	}
 }
 
+// applyEntityUpdate handles apply entity update.
 func (m *EntitiesModel) applyEntityUpdate(updated api.Entity) {
 	m.detail = &updated
 	m.syncDetailMetadataRows()
@@ -2944,6 +3006,7 @@ func (m *EntitiesModel) applyEntityUpdate(updated api.Entity) {
 	}
 }
 
+// syncDetailMetadataRows handles sync detail metadata rows.
 func (m *EntitiesModel) syncDetailMetadataRows() {
 	if m.metaList == nil {
 		m.metaList = components.NewList(metadataPanelPageSize(false))
@@ -2973,11 +3036,13 @@ func (m *EntitiesModel) syncDetailMetadataRows() {
 	}
 }
 
+// clearMetaSelection handles clear meta selection.
 func (m *EntitiesModel) clearMetaSelection() {
 	m.metaSelected = map[int]bool{}
 	m.metaSelectMode = false
 }
 
+// toggleMetaSelection handles toggle meta selection.
 func (m *EntitiesModel) toggleMetaSelection(idx int) {
 	if idx < 0 || idx >= len(m.metaRows) {
 		return
@@ -2996,6 +3061,7 @@ func (m *EntitiesModel) toggleMetaSelection(idx int) {
 	m.metaSelectMode = true
 }
 
+// toggleMetaSelectAll handles toggle meta select all.
 func (m *EntitiesModel) toggleMetaSelectAll() {
 	if len(m.metaRows) == 0 {
 		return
@@ -3012,6 +3078,7 @@ func (m *EntitiesModel) toggleMetaSelectAll() {
 	m.metaSelectMode = true
 }
 
+// selectedMetaIndices handles selected meta indices.
 func (m EntitiesModel) selectedMetaIndices() []int {
 	if len(m.metaSelected) == 0 {
 		return nil
@@ -3026,6 +3093,7 @@ func (m EntitiesModel) selectedMetaIndices() []int {
 	return out
 }
 
+// copyCurrentMetadataRow handles copy current metadata row.
 func (m EntitiesModel) copyCurrentMetadataRow() tea.Cmd {
 	if len(m.metaRows) == 0 || m.metaList == nil {
 		return nil
@@ -3037,6 +3105,7 @@ func (m EntitiesModel) copyCurrentMetadataRow() tea.Cmd {
 	return m.copyMetadataRows([]int{idx})
 }
 
+// openMetaInspect handles open meta inspect.
 func (m *EntitiesModel) openMetaInspect(idx int) {
 	if idx < 0 || idx >= len(m.metaRows) {
 		return
@@ -3046,12 +3115,14 @@ func (m *EntitiesModel) openMetaInspect(idx int) {
 	m.metaInspectO = 0
 }
 
+// closeMetaInspect handles close meta inspect.
 func (m *EntitiesModel) closeMetaInspect() {
 	m.metaInspect = false
 	m.metaInspectI = 0
 	m.metaInspectO = 0
 }
 
+// moveMetaInspect handles move meta inspect.
 func (m *EntitiesModel) moveMetaInspect(delta int) {
 	if !m.metaInspect {
 		return
@@ -3071,6 +3142,7 @@ func (m *EntitiesModel) moveMetaInspect(delta int) {
 	}
 }
 
+// metaInspectPageSize handles meta inspect page size.
 func (m EntitiesModel) metaInspectPageSize() int {
 	page := 10
 	if m.height > 0 {
@@ -3085,6 +3157,7 @@ func (m EntitiesModel) metaInspectPageSize() int {
 	return page
 }
 
+// metaInspectLines handles meta inspect lines.
 func (m EntitiesModel) metaInspectLines() []string {
 	if !m.metaInspect || m.metaInspectI < 0 || m.metaInspectI >= len(m.metaRows) {
 		return nil
@@ -3116,6 +3189,7 @@ func (m EntitiesModel) metaInspectLines() []string {
 	return lines
 }
 
+// renderMetaInspect renders render meta inspect.
 func (m EntitiesModel) renderMetaInspect() string {
 	lines := m.metaInspectLines()
 	if len(lines) == 0 {
@@ -3146,6 +3220,7 @@ func (m EntitiesModel) renderMetaInspect() string {
 	return components.TitledBox("Metadata Value", colorizeScopeBadges(content), m.width)
 }
 
+// copySelectedMetadataRows handles copy selected metadata rows.
 func (m EntitiesModel) copySelectedMetadataRows() tea.Cmd {
 	indices := m.selectedMetaIndices()
 	if len(indices) == 0 {
@@ -3154,6 +3229,7 @@ func (m EntitiesModel) copySelectedMetadataRows() tea.Cmd {
 	return m.copyMetadataRows(indices)
 }
 
+// copyMetadataRows handles copy metadata rows.
 func (m EntitiesModel) copyMetadataRows(indices []int) tea.Cmd {
 	if len(indices) == 0 {
 		return nil
@@ -3183,6 +3259,7 @@ func (m EntitiesModel) copyMetadataRows(indices []int) tea.Cmd {
 	}
 }
 
+// selectedRelationship handles selected relationship.
 func (m EntitiesModel) selectedRelationship() *api.Relationship {
 	if len(m.rels) == 0 {
 		return nil
@@ -3194,6 +3271,7 @@ func (m EntitiesModel) selectedRelationship() *api.Relationship {
 	return &m.rels[idx]
 }
 
+// relationshipDirection handles relationship direction.
 func (m EntitiesModel) relationshipDirection(rel api.Relationship) (string, string) {
 	if m.detail == nil {
 		return "", relationshipLabel(rel.TargetID, rel.TargetName)
@@ -3204,6 +3282,7 @@ func (m EntitiesModel) relationshipDirection(rel api.Relationship) (string, stri
 	return "incoming", relationshipLabel(rel.SourceID, rel.SourceName)
 }
 
+// formatRelationshipLine handles format relationship line.
 func (m EntitiesModel) formatRelationshipLine(rel api.Relationship) string {
 	direction, other := m.relationshipDirection(rel)
 	label := rel.Type
@@ -3216,6 +3295,7 @@ func (m EntitiesModel) formatRelationshipLine(rel api.Relationship) string {
 	return fmt.Sprintf("%s (%s)", label, other)
 }
 
+// statusIndex handles status index.
 func statusIndex(options []string, value string) int {
 	for i, opt := range options {
 		if opt == value {
@@ -3225,6 +3305,7 @@ func statusIndex(options []string, value string) int {
 	return 0
 }
 
+// compactJSON handles compact json.
 func compactJSON(data map[string]any) string {
 	if len(data) == 0 {
 		return ""
@@ -3236,6 +3317,7 @@ func compactJSON(data map[string]any) string {
 	return string(b)
 }
 
+// parseJSONMap parses parse jsonmap.
 func parseJSONMap(input string) (map[string]any, error) {
 	var data map[string]any
 	if err := json.Unmarshal([]byte(input), &data); err != nil {
@@ -3244,6 +3326,7 @@ func parseJSONMap(input string) (map[string]any, error) {
 	return data, nil
 }
 
+// shortID handles short id.
 func shortID(id string) string {
 	if len(id) <= 8 {
 		return id
@@ -3251,6 +3334,7 @@ func shortID(id string) string {
 	return id[:8]
 }
 
+// formatEntityScopes handles format entity scopes.
 func (m EntitiesModel) formatEntityScopes(ids []string) string {
 	if len(ids) == 0 {
 		return "-"
@@ -3266,6 +3350,7 @@ func (m EntitiesModel) formatEntityScopes(ids []string) string {
 	return formatScopePreview(names)
 }
 
+// scopeNamesFromIDs handles scope names from ids.
 func (m EntitiesModel) scopeNamesFromIDs(ids []string) []string {
 	if len(ids) == 0 {
 		return nil
@@ -3281,10 +3366,12 @@ func (m EntitiesModel) scopeNamesFromIDs(ids []string) []string {
 	return out
 }
 
+// formatEntityLine handles format entity line.
 func formatEntityLine(e api.Entity) string {
 	return formatEntityLineWidth(e, maxEntityLineLen)
 }
 
+// formatEntityLineWidth handles format entity line width.
 func formatEntityLineWidth(e api.Entity, maxWidth int) string {
 	name, t := normalizeEntityNameType(
 		components.SanitizeText(e.Name),
@@ -3311,6 +3398,7 @@ func formatEntityLineWidth(e api.Entity, maxWidth int) string {
 	return joinEntitySegments(segments, lineWidth)
 }
 
+// previewTags handles preview tags.
 func previewTags(tags []string, max int) string {
 	if len(tags) == 0 || max <= 0 {
 		return ""
@@ -3326,6 +3414,7 @@ func previewTags(tags []string, max int) string {
 	return fmt.Sprintf("%s +%d", head, len(cleaned)-max)
 }
 
+// formatHistoryLine handles format history line.
 func formatHistoryLine(entry api.AuditEntry) string {
 	action := components.SanitizeText(entry.Action)
 	if action == "" {
@@ -3340,6 +3429,7 @@ func formatHistoryLine(entry api.AuditEntry) string {
 	return fmt.Sprintf("%s %s%s", when, action, fields)
 }
 
+// relationshipLabel handles relationship label.
 func relationshipLabel(id, name string) string {
 	if strings.TrimSpace(name) != "" {
 		return components.SanitizeText(name)
@@ -3347,6 +3437,7 @@ func relationshipLabel(id, name string) string {
 	return shortID(id)
 }
 
+// formatEntityHeader handles format entity header.
 func formatEntityHeader(name string, typ string, maxWidth int) string {
 	name = truncateString(components.SanitizeText(name), maxEntityNameLen)
 	if strings.TrimSpace(typ) == "" {
@@ -3366,6 +3457,7 @@ func formatEntityHeader(name string, typ string, maxWidth int) string {
 	return fmt.Sprintf("%s %s", trimmed, badge)
 }
 
+// joinEntitySegments handles join entity segments.
 func joinEntitySegments(segments []string, maxWidth int) string {
 	if len(segments) == 0 {
 		return ""
@@ -3381,6 +3473,7 @@ func joinEntitySegments(segments []string, maxWidth int) string {
 	return line
 }
 
+// normalizeEntityNameType handles normalize entity name type.
 func normalizeEntityNameType(name, typ string) (string, string) {
 	trimmed := strings.TrimSpace(name)
 	if trimmed == "" {
@@ -3403,6 +3496,7 @@ func normalizeEntityNameType(name, typ string) (string, string) {
 	return trimmed, typ
 }
 
+// parseBulkInput parses parse bulk input.
 func parseBulkInput(raw string) (bulkInput, error) {
 	input := strings.TrimSpace(raw)
 	if input == "" {
@@ -3451,6 +3545,7 @@ func parseBulkInput(raw string) (bulkInput, error) {
 	return bulkInput{op: op, values: values}, nil
 }
 
+// normalizeBulkTags handles normalize bulk tags.
 func normalizeBulkTags(values []string) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(values))
@@ -3468,6 +3563,7 @@ func normalizeBulkTags(values []string) []string {
 	return out
 }
 
+// normalizeBulkScopes handles normalize bulk scopes.
 func normalizeBulkScopes(values []string) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(values))
@@ -3489,6 +3585,7 @@ func normalizeBulkScopes(values []string) []string {
 const maxEntityNameLen = 80
 const maxEntityLineLen = 128
 
+// truncateString handles truncate string.
 func truncateString(s string, max int) string {
 	if max <= 0 {
 		return ""

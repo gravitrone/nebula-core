@@ -9,11 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestGetAgent handles test get agent.
 func TestGetAgent(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/agents/")
-		w.Write(jsonResponse(map[string]any{
+		_, _ = w.Write(jsonResponse(map[string]any{
 			"id":                "ag-1",
 			"name":              "test-agent",
 			"status":            "active",
@@ -29,10 +30,11 @@ func TestGetAgent(t *testing.T) {
 	assert.True(t, agent.RequiresApproval)
 }
 
+// TestListAgentsWithFilter handles test list agents with filter.
 func TestListAgentsWithFilter(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "active", r.URL.Query().Get("status_category"))
-		w.Write(jsonResponse([]map[string]any{
+		_, _ = w.Write(jsonResponse([]map[string]any{
 			{
 				"id":                "ag-1",
 				"name":              "agent1",
@@ -49,10 +51,11 @@ func TestListAgentsWithFilter(t *testing.T) {
 	assert.Equal(t, "agent1", agents[0].Name)
 }
 
+// TestListAgentsNoFilter handles test list agents no filter.
 func TestListAgentsNoFilter(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Empty(t, r.URL.Query().Get("status_category"))
-		w.Write(jsonResponse([]map[string]any{
+		_, _ = w.Write(jsonResponse([]map[string]any{
 			{"id": "ag-1", "name": "agent1", "status": "active", "requires_approval": false, "scopes": []string{}},
 			{"id": "ag-2", "name": "agent2", "status": "inactive", "requires_approval": true, "scopes": []string{}},
 		}))
@@ -63,16 +66,17 @@ func TestListAgentsNoFilter(t *testing.T) {
 	assert.Len(t, agents, 2)
 }
 
+// TestUpdateAgent handles test update agent.
 func TestUpdateAgent(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 
 		var body UpdateAgentInput
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.NotNil(t, body.RequiresApproval)
 		assert.False(t, *body.RequiresApproval)
 
-		w.Write(jsonResponse(map[string]any{
+		_, _ = w.Write(jsonResponse(map[string]any{
 			"id":                "ag-1",
 			"name":              "agent1",
 			"status":            "active",
@@ -89,6 +93,7 @@ func TestUpdateAgent(t *testing.T) {
 	assert.False(t, agent.RequiresApproval)
 }
 
+// TestRegisterAgentDuplicate handles test register agent duplicate.
 func TestRegisterAgentDuplicate(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(409)
@@ -98,7 +103,7 @@ func TestRegisterAgentDuplicate(t *testing.T) {
 				"message": "agent already exists",
 			},
 		})
-		w.Write(b)
+		_, _ = w.Write(b)
 	})
 
 	_, err := client.RegisterAgent(RegisterAgentInput{

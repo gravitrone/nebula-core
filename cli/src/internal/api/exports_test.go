@@ -9,16 +9,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestExportEntities handles test export entities.
 func TestExportEntities(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/api/export/entities", r.URL.Path)
 		assert.Equal(t, "csv", r.URL.Query().Get("format"))
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"format":  "csv",
 			"content": "id,name\n1,test\n",
 			"count":   1,
 		}))
+		require.NoError(t, err)
 	}))
 	t.Cleanup(srv.Close)
 

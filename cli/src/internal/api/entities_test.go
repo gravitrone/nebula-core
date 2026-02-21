@@ -10,19 +10,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestUpdateEntity handles test update entity.
 func TestUpdateEntity(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPatch, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/entities/")
 
 		var body UpdateEntityInput
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":   "ent-1",
 			"name": body.Name,
 			"tags": body.Tags,
 		}))
+		require.NoError(t, err)
 	})
 
 	entity, err := client.UpdateEntity("ent-1", UpdateEntityInput{
@@ -34,19 +36,21 @@ func TestUpdateEntity(t *testing.T) {
 	assert.Equal(t, "updated name", entity.Name)
 }
 
+// TestSearchEntities handles test search entities.
 func TestSearchEntities(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Equal(t, "/api/entities/search", r.URL.Path)
 
 		var body map[string]any
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.NotNil(t, body["metadata_query"])
 
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "1", "name": "match1", "tags": []string{}},
 			{"id": "2", "name": "match2", "tags": []string{}},
 		}))
+		require.NoError(t, err)
 	})
 
 	results, err := client.SearchEntities(map[string]any{"role": "professor"})
@@ -54,9 +58,11 @@ func TestSearchEntities(t *testing.T) {
 	assert.Len(t, results, 2)
 }
 
+// TestSearchEntitiesEmpty handles test search entities empty.
 func TestSearchEntitiesEmpty(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.Write(jsonResponse([]map[string]any{}))
+		_, err := w.Write(jsonResponse([]map[string]any{}))
+		require.NoError(t, err)
 	})
 
 	results, err := client.SearchEntities(map[string]any{})
@@ -64,6 +70,7 @@ func TestSearchEntitiesEmpty(t *testing.T) {
 	assert.Len(t, results, 0)
 }
 
+// TestGetEntityNotFound handles test get entity not found.
 func TestGetEntityNotFound(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
@@ -73,7 +80,8 @@ func TestGetEntityNotFound(t *testing.T) {
 				"message": "entity not found",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.GetEntity("nonexistent")
@@ -81,13 +89,15 @@ func TestGetEntityNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "NOT_FOUND")
 }
 
+// TestQueryEntitiesWithMultipleParams handles test query entities with multiple params.
 func TestQueryEntitiesWithMultipleParams(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "active", r.URL.Query().Get("status"))
 		assert.Equal(t, "person", r.URL.Query().Get("type"))
-		w.Write(jsonResponse([]map[string]any{
+		_, err := w.Write(jsonResponse([]map[string]any{
 			{"id": "1", "name": "test", "tags": []string{}},
 		}))
+		require.NoError(t, err)
 	})
 
 	entities, err := client.QueryEntities(QueryParams{
@@ -98,6 +108,7 @@ func TestQueryEntitiesWithMultipleParams(t *testing.T) {
 	assert.Len(t, entities, 1)
 }
 
+// TestCreateEntityMissingFields handles test create entity missing fields.
 func TestCreateEntityMissingFields(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(400)
@@ -107,7 +118,8 @@ func TestCreateEntityMissingFields(t *testing.T) {
 				"message": "missing required field: name",
 			},
 		})
-		w.Write(b)
+		_, err := w.Write(b)
+		require.NoError(t, err)
 	})
 
 	_, err := client.CreateEntity(CreateEntityInput{
@@ -119,6 +131,7 @@ func TestCreateEntityMissingFields(t *testing.T) {
 	assert.Contains(t, err.Error(), "VALIDATION_ERROR")
 }
 
+// TestGetEntityHistory handles test get entity history.
 func TestGetEntityHistory(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -127,17 +140,18 @@ func TestGetEntityHistory(t *testing.T) {
 		assert.Equal(t, "0", r.URL.Query().Get("offset"))
 
 		now := time.Now().UTC().Format(time.RFC3339)
-		w.Write(jsonResponse([]map[string]any{
-			{
-				"id":             "audit-1",
-				"table_name":     "entities",
+			_, err := w.Write(jsonResponse([]map[string]any{
+				{
+					"id":             "audit-1",
+					"table_name":     "entities",
 				"record_id":      "ent-1",
 				"action":         "update",
 				"changed_fields": []string{"tags"},
-				"changed_at":     now,
-			},
-		}))
-	})
+					"changed_at":     now,
+				},
+			}))
+			require.NoError(t, err)
+		})
 
 	rows, err := client.GetEntityHistory("ent-1", 50, 0)
 	require.NoError(t, err)
@@ -147,20 +161,22 @@ func TestGetEntityHistory(t *testing.T) {
 	}
 }
 
+// TestRevertEntity handles test revert entity.
 func TestRevertEntity(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/api/entities/ent-1/revert")
 
 		var body map[string]string
-		json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		assert.Equal(t, "audit-1", body["audit_id"])
 
-		w.Write(jsonResponse(map[string]any{
+		_, err := w.Write(jsonResponse(map[string]any{
 			"id":   "ent-1",
 			"name": "Restored",
 			"tags": []string{},
 		}))
+		require.NoError(t, err)
 	})
 
 	entity, err := client.RevertEntity("ent-1", "audit-1")
@@ -169,10 +185,12 @@ func TestRevertEntity(t *testing.T) {
 	assert.Equal(t, "Restored", entity.Name)
 }
 
+// stringPtr handles string ptr.
 func stringPtr(s string) *string {
 	return &s
 }
 
+// stringSlicePtr handles string slice ptr.
 func stringSlicePtr(v []string) *[]string {
 	return &v
 }

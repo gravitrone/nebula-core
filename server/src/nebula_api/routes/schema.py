@@ -33,4 +33,3 @@ async def get_schema(
     pool = request.app.state.pool
     contract = await load_schema_contract(pool)
     return success(contract)
-

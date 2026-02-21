@@ -64,6 +64,7 @@ type ImportExportModel struct {
 	height int
 }
 
+// NewImportExportModel handles new import export model.
 func NewImportExportModel(client *api.Client) ImportExportModel {
 	return ImportExportModel{
 		client:  client,
@@ -71,6 +72,7 @@ func NewImportExportModel(client *api.Client) ImportExportModel {
 	}
 }
 
+// Start handles start.
 func (m *ImportExportModel) Start(mode importExportMode) {
 	m.mode = mode
 	m.step = stepResource
@@ -84,6 +86,7 @@ func (m *ImportExportModel) Start(mode importExportMode) {
 	m.resources = importExportResourcesForMode(mode)
 }
 
+// Update updates update.
 func (m ImportExportModel) Update(msg tea.Msg) (ImportExportModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case importExportDoneMsg:
@@ -112,6 +115,7 @@ func (m ImportExportModel) Update(msg tea.Msg) (ImportExportModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m ImportExportModel) View() string {
 	switch m.step {
 	case stepResource:
@@ -146,6 +150,7 @@ func (m ImportExportModel) View() string {
 	}
 }
 
+// renderOptions renders render options.
 func (m ImportExportModel) renderOptions(options []importExportResource, index int) string {
 	contentWidth := components.BoxContentWidth(m.width)
 	if contentWidth < 10 {
@@ -169,6 +174,7 @@ func (m ImportExportModel) renderOptions(options []importExportResource, index i
 	return table + "\n\n" + MutedStyle.Render("enter: select | esc: cancel")
 }
 
+// renderFormatOptions renders render format options.
 func (m ImportExportModel) renderFormatOptions() string {
 	contentWidth := components.BoxContentWidth(m.width)
 	if contentWidth < 10 {
@@ -192,6 +198,7 @@ func (m ImportExportModel) renderFormatOptions() string {
 	return table + "\n\n" + MutedStyle.Render("enter: select | esc: back")
 }
 
+// handleResourceKeys handles handle resource keys.
 func (m ImportExportModel) handleResourceKeys(msg tea.KeyMsg) (ImportExportModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -210,6 +217,7 @@ func (m ImportExportModel) handleResourceKeys(msg tea.KeyMsg) (ImportExportModel
 	return m, nil
 }
 
+// handleFormatKeys handles handle format keys.
 func (m ImportExportModel) handleFormatKeys(msg tea.KeyMsg) (ImportExportModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -228,6 +236,7 @@ func (m ImportExportModel) handleFormatKeys(msg tea.KeyMsg) (ImportExportModel, 
 	return m, nil
 }
 
+// handlePathKeys handles handle path keys.
 func (m ImportExportModel) handlePathKeys(msg tea.KeyMsg) (ImportExportModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -248,6 +257,7 @@ func (m ImportExportModel) handlePathKeys(msg tea.KeyMsg) (ImportExportModel, te
 	return m, nil
 }
 
+// run runs run.
 func (m ImportExportModel) run() tea.Cmd {
 	mode := m.mode
 	resource := m.resources[m.resourceIndex].value
@@ -263,6 +273,7 @@ func (m ImportExportModel) run() tea.Cmd {
 	}
 }
 
+// runImport runs run import.
 func runImport(client *api.Client, resource, format, path string) tea.Msg {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -304,6 +315,7 @@ func runImport(client *api.Client, resource, format, path string) tea.Msg {
 	return importExportDoneMsg{summary: summary, details: details}
 }
 
+// runExport runs run export.
 func runExport(client *api.Client, resource, format, path string) tea.Msg {
 	params := api.QueryParams{
 		"format": format,
@@ -342,6 +354,7 @@ func runExport(client *api.Client, resource, format, path string) tea.Msg {
 	return importExportDoneMsg{summary: summary}
 }
 
+// importExportResourcesForMode handles import export resources for mode.
 func importExportResourcesForMode(mode importExportMode) []importExportResource {
 	if mode == importMode {
 		return []importExportResource{

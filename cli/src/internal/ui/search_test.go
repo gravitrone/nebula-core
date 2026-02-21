@@ -12,37 +12,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// searchTestClient handles search test client.
 func searchTestClient(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *api.Client) {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 	return srv, api.NewClient(srv.URL, "test-key")
 }
 
+// TestSearchModelQueryCallsEndpoints handles test search model query calls endpoints.
 func TestSearchModelQueryCallsEndpoints(t *testing.T) {
 	var entityQuery, contextQuery, jobQuery string
 	_, client := searchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/entities":
 			entityQuery = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "ent-1", "name": "alxx", "type": "person"},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/context":
 			contextQuery = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "kn-1", "name": "Nebula Notes", "source_type": "note"},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/jobs":
 			jobQuery = r.URL.Query().Get("search_text")
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "job-1", "title": "Alpha Job", "status": "active"},
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -60,19 +65,23 @@ func TestSearchModelQueryCallsEndpoints(t *testing.T) {
 	assert.Len(t, model.items, 3)
 }
 
+// TestSearchModelSelectionEmitsMsg handles test search model selection emits msg.
 func TestSearchModelSelectionEmitsMsg(t *testing.T) {
 	_, client := searchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/entities":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "ent-1", "name": "alpha", "type": "tool"},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/context":
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		case "/api/jobs":
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -83,7 +92,7 @@ func TestSearchModelSelectionEmitsMsg(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	selection := cmd().(searchSelectionMsg)
 
@@ -92,6 +101,7 @@ func TestSearchModelSelectionEmitsMsg(t *testing.T) {
 	assert.Equal(t, "ent-1", selection.entity.ID)
 }
 
+// TestSearchModelSemanticModeCallsSemanticEndpoint handles test search model semantic mode calls semantic endpoint.
 func TestSearchModelSemanticModeCallsSemanticEndpoint(t *testing.T) {
 	var semanticQuery string
 	_, client := searchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +110,7 @@ func TestSearchModelSemanticModeCallsSemanticEndpoint(t *testing.T) {
 			var payload map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
 			semanticQuery = payload["query"].(string)
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"kind":     "entity",
@@ -112,6 +122,7 @@ func TestSearchModelSemanticModeCallsSemanticEndpoint(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -131,11 +142,12 @@ func TestSearchModelSemanticModeCallsSemanticEndpoint(t *testing.T) {
 	assert.Equal(t, "entity", model.items[0].kind)
 }
 
+// TestSearchModelSemanticSelectionFetchesDetail handles test search model semantic selection fetches detail.
 func TestSearchModelSemanticSelectionFetchesDetail(t *testing.T) {
 	_, client := searchTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/search/semantic":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"kind":     "entity",
@@ -147,14 +159,16 @@ func TestSearchModelSemanticSelectionFetchesDetail(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/entities/ent-1":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":   "ent-1",
 					"name": "Agent Memory Mesh",
 					"type": "project",
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -166,7 +180,7 @@ func TestSearchModelSemanticSelectionFetchesDetail(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	selection := cmd().(searchSelectionMsg)
 	require.NotNil(t, selection.entity)

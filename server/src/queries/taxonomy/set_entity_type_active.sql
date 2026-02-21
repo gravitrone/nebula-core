@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy set_entity_type_active
 UPDATE entity_types
 SET is_active = $2
 WHERE id = $1

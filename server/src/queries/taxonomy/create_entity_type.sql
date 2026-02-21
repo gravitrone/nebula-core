@@ -1,3 +1,4 @@
+-- SQL query for server src queries taxonomy create_entity_type
 INSERT INTO entity_types (
     name,
     description,

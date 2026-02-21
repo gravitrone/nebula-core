@@ -117,6 +117,7 @@ func NewRelationshipsModel(client *api.Client) RelationshipsModel {
 	}
 }
 
+// Init handles init.
 func (m RelationshipsModel) Init() tea.Cmd {
 	m.view = relsViewList
 	m.loading = true
@@ -134,6 +135,7 @@ func (m RelationshipsModel) Init() tea.Cmd {
 	)
 }
 
+// Update updates update.
 func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case relTabLoadedMsg:
@@ -215,6 +217,7 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 	return m, nil
 }
 
+// View handles view.
 func (m RelationshipsModel) View() string {
 	if m.editMeta.Active {
 		return m.editMeta.Render(m.width)
@@ -273,6 +276,7 @@ func (m RelationshipsModel) handleListKeys(msg tea.KeyMsg) (RelationshipsModel, 
 	return m, nil
 }
 
+// handleFilterInput handles handle filter input.
 func (m RelationshipsModel) handleFilterInput(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
@@ -319,6 +323,7 @@ func (m RelationshipsModel) renderModeLine() string {
 	return add + " " + list
 }
 
+// handleModeKeys handles handle mode keys.
 func (m RelationshipsModel) handleModeKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
@@ -333,6 +338,7 @@ func (m RelationshipsModel) handleModeKeys(msg tea.KeyMsg) (RelationshipsModel, 
 	return m, nil
 }
 
+// toggleMode handles toggle mode.
 func (m RelationshipsModel) toggleMode() (RelationshipsModel, tea.Cmd) {
 	m.modeFocus = false
 	if m.isAddView() {
@@ -344,6 +350,7 @@ func (m RelationshipsModel) toggleMode() (RelationshipsModel, tea.Cmd) {
 	return m, nil
 }
 
+// isAddView handles is add view.
 func (m RelationshipsModel) isAddView() bool {
 	switch m.view {
 	case relsViewCreateSourceSearch, relsViewCreateSourceSelect, relsViewCreateTargetSearch, relsViewCreateTargetSelect, relsViewCreateType:
@@ -353,6 +360,7 @@ func (m RelationshipsModel) isAddView() bool {
 	}
 }
 
+// renderList renders render list.
 func (m RelationshipsModel) renderList() string {
 	if m.loading {
 		return "  " + MutedStyle.Render("Loading relationships...")
@@ -494,6 +502,7 @@ func (m RelationshipsModel) handleDetailKeys(msg tea.KeyMsg) (RelationshipsModel
 	return m, nil
 }
 
+// renderDetail renders render detail.
 func (m RelationshipsModel) renderDetail() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -519,6 +528,7 @@ func (m RelationshipsModel) renderDetail() string {
 	return strings.Join(sections, "\n\n")
 }
 
+// renderRelationshipPreview renders render relationship preview.
 func (m RelationshipsModel) renderRelationshipPreview(rel api.Relationship, width int) string {
 	if width <= 0 {
 		return ""
@@ -565,6 +575,7 @@ func (m *RelationshipsModel) startEdit() {
 	m.editSaving = false
 }
 
+// handleEditKeys handles handle edit keys.
 func (m RelationshipsModel) handleEditKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
@@ -583,14 +594,15 @@ func (m RelationshipsModel) handleEditKeys(msg tea.KeyMsg) (RelationshipsModel, 
 	case isKey(msg, "backspace"):
 		return m, nil
 	default:
-		if m.editFocus == relsEditFieldStatus {
+		switch m.editFocus {
+		case relsEditFieldStatus:
 			switch {
 			case isKey(msg, "left"):
 				m.editStatusIdx = (m.editStatusIdx - 1 + len(relsStatusOptions)) % len(relsStatusOptions)
 			case isKey(msg, "right"), isSpace(msg):
 				m.editStatusIdx = (m.editStatusIdx + 1) % len(relsStatusOptions)
 			}
-		} else if m.editFocus == relsEditFieldProperties {
+		case relsEditFieldProperties:
 			if isEnter(msg) {
 				m.editMeta.Active = true
 			}
@@ -599,6 +611,7 @@ func (m RelationshipsModel) handleEditKeys(msg tea.KeyMsg) (RelationshipsModel, 
 	return m, nil
 }
 
+// renderEdit renders render edit.
 func (m RelationshipsModel) renderEdit() string {
 	status := relsStatusOptions[m.editStatusIdx]
 	var b strings.Builder
@@ -634,6 +647,7 @@ func (m RelationshipsModel) renderEdit() string {
 	return components.TitledBox("Edit Relationship", b.String(), m.width)
 }
 
+// saveEdit handles save edit.
 func (m RelationshipsModel) saveEdit() (RelationshipsModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
@@ -680,6 +694,7 @@ func (m RelationshipsModel) handleConfirmKeys(msg tea.KeyMsg) (RelationshipsMode
 	return m, nil
 }
 
+// renderConfirm renders render confirm.
 func (m RelationshipsModel) renderConfirm() string {
 	if m.detail == nil {
 		return components.ConfirmDialog("Confirm", "Archive this relationship?")
@@ -714,6 +729,7 @@ func (m *RelationshipsModel) startCreate() {
 	m.createLoading = false
 }
 
+// handleCreateKeys handles handle create keys.
 func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
 	switch m.view {
 	case relsViewCreateSourceSearch:
@@ -906,6 +922,7 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel
 	return m, nil
 }
 
+// renderCreate renders render create.
 func (m RelationshipsModel) renderCreate() string {
 	switch m.view {
 	case relsViewCreateSourceSearch, relsViewCreateSourceSelect:
@@ -918,6 +935,7 @@ func (m RelationshipsModel) renderCreate() string {
 	return ""
 }
 
+// renderCreateSearch renders render create search.
 func (m RelationshipsModel) renderCreateSearch(title string) string {
 	var b strings.Builder
 	b.WriteString(MetaKeyStyle.Render("Search") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(components.SanitizeText(m.createQuery)))
@@ -1039,6 +1057,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 	return components.TitledBox(title, b.String(), m.width)
 }
 
+// renderCreateType renders render create type.
 func (m RelationshipsModel) renderCreateType() string {
 	var b strings.Builder
 	b.WriteString(MetaKeyStyle.Render("Type") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(components.SanitizeText(m.createType)))
@@ -1119,6 +1138,7 @@ func (m RelationshipsModel) renderCreateType() string {
 	return components.TitledBox("Relationship Type", b.String(), m.width)
 }
 
+// renderCreateNodePreview renders render create node preview.
 func (m RelationshipsModel) renderCreateNodePreview(candidate relationshipCreateCandidate, width int) string {
 	if width <= 0 {
 		return ""
@@ -1160,6 +1180,7 @@ func (m RelationshipsModel) renderCreateNodePreview(candidate relationshipCreate
 	return padPreviewLines(lines, width)
 }
 
+// renderCreateTypePreview renders render create type preview.
 func (m RelationshipsModel) renderCreateTypePreview(suggestion string, width int) string {
 	if width <= 0 {
 		return ""
@@ -1207,6 +1228,7 @@ func (m RelationshipsModel) loadRelationships() tea.Cmd {
 	}
 }
 
+// loadRelationshipNames loads load relationship names.
 func (m RelationshipsModel) loadRelationshipNames(items []api.Relationship) tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1252,6 +1274,7 @@ func (m RelationshipsModel) loadRelationshipNames(items []api.Relationship) tea.
 	}
 }
 
+// buildListLabels builds build list labels.
 func (m RelationshipsModel) buildListLabels() []string {
 	labels := make([]string, len(m.items))
 	for i, rel := range m.items {
@@ -1267,6 +1290,7 @@ func (m RelationshipsModel) buildListLabels() []string {
 	return labels
 }
 
+// applyListFilter handles apply list filter.
 func (m *RelationshipsModel) applyListFilter() {
 	query := strings.ToLower(strings.TrimSpace(m.filterBuf))
 	if query == "" {
@@ -1292,6 +1316,7 @@ func (m *RelationshipsModel) applyListFilter() {
 	}
 }
 
+// displayNode handles display node.
 func (m RelationshipsModel) displayNode(id, typ, name string) string {
 	if strings.TrimSpace(name) != "" {
 		return components.SanitizeText(name)
@@ -1311,6 +1336,7 @@ func (m RelationshipsModel) displayNode(id, typ, name string) string {
 	}
 }
 
+// selectedRelationship handles selected relationship.
 func (m RelationshipsModel) selectedRelationship() *api.Relationship {
 	if len(m.items) == 0 {
 		return nil
@@ -1322,6 +1348,7 @@ func (m RelationshipsModel) selectedRelationship() *api.Relationship {
 	return &m.items[idx]
 }
 
+// searchCreateNodes handles search create nodes.
 func (m RelationshipsModel) searchCreateNodes(query string) tea.Cmd {
 	return func() tea.Msg {
 		entities, err := m.client.QueryEntities(api.QueryParams{"search_text": query})
@@ -1341,6 +1368,7 @@ func (m RelationshipsModel) searchCreateNodes(query string) tea.Cmd {
 	}
 }
 
+// createRelationship creates create relationship.
 func (m RelationshipsModel) createRelationship(source relationshipCreateCandidate, target relationshipCreateCandidate, relType string) tea.Cmd {
 	return func() tea.Msg {
 		input := api.CreateRelationshipInput{
@@ -1358,6 +1386,7 @@ func (m RelationshipsModel) createRelationship(source relationshipCreateCandidat
 	}
 }
 
+// updateCreateSearch updates update create search.
 func (m *RelationshipsModel) updateCreateSearch() tea.Cmd {
 	query := strings.TrimSpace(m.createQuery)
 	if query == "" {
@@ -1381,17 +1410,20 @@ func (m *RelationshipsModel) updateCreateSearch() tea.Cmd {
 	return m.searchCreateNodes(query)
 }
 
+// resetTypeSuggestions handles reset type suggestions.
 func (m *RelationshipsModel) resetTypeSuggestions() {
 	m.createTypeResults = filterRelationshipTypes(m.typeOptions, "")
 	m.createTypeList.SetItems(m.createTypeResults)
 	m.createTypeNav = false
 }
 
+// updateTypeSuggestions updates update type suggestions.
 func (m *RelationshipsModel) updateTypeSuggestions() {
 	m.createTypeResults = filterRelationshipTypes(m.typeOptions, m.createType)
 	m.createTypeList.SetItems(m.createTypeResults)
 }
 
+// loadScopeOptions loads load scope options.
 func (m RelationshipsModel) loadScopeOptions() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1409,6 +1441,7 @@ func (m RelationshipsModel) loadScopeOptions() tea.Cmd {
 	}
 }
 
+// loadEntityCache loads load entity cache.
 func (m RelationshipsModel) loadEntityCache() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1422,6 +1455,7 @@ func (m RelationshipsModel) loadEntityCache() tea.Cmd {
 	}
 }
 
+// loadContextCache loads load context cache.
 func (m RelationshipsModel) loadContextCache() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1435,6 +1469,7 @@ func (m RelationshipsModel) loadContextCache() tea.Cmd {
 	}
 }
 
+// loadJobCache loads load job cache.
 func (m RelationshipsModel) loadJobCache() tea.Cmd {
 	if m.client == nil {
 		return nil
@@ -1448,6 +1483,7 @@ func (m RelationshipsModel) loadJobCache() tea.Cmd {
 	}
 }
 
+// uniqueRelationshipTypes handles unique relationship types.
 func uniqueRelationshipTypes(items []api.Relationship) []string {
 	seen := map[string]struct{}{}
 	out := make([]string, 0, len(items))
@@ -1466,6 +1502,7 @@ func uniqueRelationshipTypes(items []api.Relationship) []string {
 	return out
 }
 
+// filterRelationshipTypes handles filter relationship types.
 func filterRelationshipTypes(options []string, query string) []string {
 	if len(options) == 0 {
 		return nil
@@ -1483,6 +1520,7 @@ func filterRelationshipTypes(options []string, query string) []string {
 	return out
 }
 
+// combineCreateCandidates handles combine create candidates.
 func combineCreateCandidates(entities []api.Entity, contextItems []api.Context, jobs []api.Job) []relationshipCreateCandidate {
 	candidates := make([]relationshipCreateCandidate, 0, len(entities)+len(contextItems)+len(jobs))
 	for _, entity := range entities {
@@ -1559,6 +1597,7 @@ func combineCreateCandidates(entities []api.Entity, contextItems []api.Context, 
 	return candidates
 }
 
+// filterCreateCandidatesByQuery handles filter create candidates by query.
 func filterCreateCandidatesByQuery(candidates []relationshipCreateCandidate, query string) []relationshipCreateCandidate {
 	query = strings.TrimSpace(strings.ToLower(query))
 	if query == "" {
@@ -1580,6 +1619,7 @@ func filterCreateCandidatesByQuery(candidates []relationshipCreateCandidate, que
 	return out
 }
 
+// formatCreateCandidateLine handles format create candidate line.
 func formatCreateCandidateLine(candidate relationshipCreateCandidate) string {
 	name := strings.TrimSpace(candidate.Name)
 	if name == "" {

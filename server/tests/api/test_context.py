@@ -26,6 +26,12 @@ def _agent_auth_override(agent_row: dict, scope_ids: list[int]) -> callable:
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     return mock_auth
@@ -200,7 +206,9 @@ async def test_update_context_validation_errors(api):
     bad_id = await api.patch("/api/context/not-a-uuid", json={"title": "X"})
     assert bad_id.status_code == 400
 
-    bad_url = await api.patch(f"/api/context/{context['id']}", json={"url": "file://bad"})
+    bad_url = await api.patch(
+        f"/api/context/{context['id']}", json={"url": "file://bad"}
+    )
     assert bad_url.status_code == 422
 
     bad_status = await api.patch(
@@ -541,6 +549,13 @@ async def test_create_context_executor_value_error_returns_400(api, monkeypatch)
     """Create should convert executor value errors to 400 responses."""
 
     async def _boom(*_args, **_kwargs):
+        """Handle boom.
+
+        Args:
+            *_args: Input parameter for _boom.
+            **_kwargs: Input parameter for _boom.
+        """
+
         raise ValueError("ctx create failed")
 
     monkeypatch.setattr("nebula_api.routes.context.execute_create_context", _boom)
@@ -557,7 +572,9 @@ async def test_link_context_executor_value_error_returns_400(api, monkeypatch):
     """Link should convert executor value errors to 400 responses."""
 
     context = (
-        await api.post("/api/context", json={"title": "CtxLinkFail", "scopes": ["public"]})
+        await api.post(
+            "/api/context", json={"title": "CtxLinkFail", "scopes": ["public"]}
+        )
     ).json()["data"]
     entity = (
         await api.post(
@@ -567,6 +584,13 @@ async def test_link_context_executor_value_error_returns_400(api, monkeypatch):
     ).json()["data"]
 
     async def _boom(*_args, **_kwargs):
+        """Handle boom.
+
+        Args:
+            *_args: Input parameter for _boom.
+            **_kwargs: Input parameter for _boom.
+        """
+
         raise ValueError("ctx link failed")
 
     monkeypatch.setattr("nebula_api.routes.context.execute_create_relationship", _boom)
@@ -590,6 +614,13 @@ async def test_update_context_executor_value_error_returns_400(api, monkeypatch)
     ).json()["data"]
 
     async def _boom(*_args, **_kwargs):
+        """Handle boom.
+
+        Args:
+            *_args: Input parameter for _boom.
+            **_kwargs: Input parameter for _boom.
+        """
+
         raise ValueError("ctx update failed")
 
     monkeypatch.setattr("nebula_api.routes.context.execute_update_context", _boom)

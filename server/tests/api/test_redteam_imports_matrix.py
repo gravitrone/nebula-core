@@ -93,7 +93,9 @@ async def test_import_entities_csv_bad_metadata_reports_error(api):
 
 
 @pytest.mark.asyncio
-async def test_import_relationships_referential_validation_reports_error(api, test_entity):
+async def test_import_relationships_referential_validation_reports_error(
+    api, test_entity
+):
     """Relationships to missing nodes should be reported as errors (no dangling refs)."""
 
     payload = {

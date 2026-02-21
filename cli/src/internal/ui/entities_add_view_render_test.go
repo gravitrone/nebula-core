@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestEntitiesAddViewRendersTagsScopesAndMetadataPreview handles test entities add view renders tags scopes and metadata preview.
 func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 80
@@ -35,6 +36,7 @@ func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	assert.Contains(t, out, "profile | location | warsaw")
 }
 
+// TestEntitiesCommitAddScopeNormalizesAndDedupes handles test entities commit add scope normalizes and dedupes.
 func TestEntitiesCommitAddScopeNormalizesAndDedupes(t *testing.T) {
 	model := NewEntitiesModel(nil)
 

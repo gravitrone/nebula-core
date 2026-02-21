@@ -12,6 +12,7 @@ func (c *Client) RegisterAgent(input RegisterAgentInput) (*AgentRegistration, er
 	return decodeOne[AgentRegistration](data)
 }
 
+// ListAgents lists list agents.
 func (c *Client) ListAgents(statusCategory string) ([]Agent, error) {
 	params := QueryParams{}
 	if statusCategory != "" {
@@ -24,6 +25,7 @@ func (c *Client) ListAgents(statusCategory string) ([]Agent, error) {
 	return decodeList[Agent](data)
 }
 
+// GetAgent gets get agent.
 func (c *Client) GetAgent(name string) (*Agent, error) {
 	data, err := c.get(fmt.Sprintf("/api/agents/%s", name))
 	if err != nil {
@@ -32,6 +34,7 @@ func (c *Client) GetAgent(name string) (*Agent, error) {
 	return decodeOne[Agent](data)
 }
 
+// UpdateAgent updates update agent.
 func (c *Client) UpdateAgent(id string, input UpdateAgentInput) (*Agent, error) {
 	data, err := c.patch(fmt.Sprintf("/api/agents/%s", id), input)
 	if err != nil {

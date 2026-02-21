@@ -39,6 +39,7 @@ var taxonomyKinds = []struct {
 	{Label: "Log Types", Path: "log-types"},
 }
 
+// taxonomyKindPath handles taxonomy kind path.
 func (m ProfileModel) taxonomyKindPath() string {
 	if m.taxKind < 0 || m.taxKind >= len(taxonomyKinds) {
 		return taxonomyKinds[0].Path
@@ -46,6 +47,7 @@ func (m ProfileModel) taxonomyKindPath() string {
 	return taxonomyKinds[m.taxKind].Path
 }
 
+// loadTaxonomy loads load taxonomy.
 func (m ProfileModel) loadTaxonomy() tea.Msg {
 	kind := m.taxonomyKindPath()
 	items, err := m.client.ListTaxonomy(kind, m.taxIncludeInactive, m.taxSearch, 200, 0)
@@ -55,6 +57,7 @@ func (m ProfileModel) loadTaxonomy() tea.Msg {
 	return taxonomyLoadedMsg{kind: kind, items: items}
 }
 
+// setTaxonomyItems sets set taxonomy items.
 func (m *ProfileModel) setTaxonomyItems(items []api.TaxonomyEntry) {
 	m.taxItems = items
 	labels := make([]string, len(items))
@@ -64,6 +67,7 @@ func (m *ProfileModel) setTaxonomyItems(items []api.TaxonomyEntry) {
 	m.taxList.SetItems(labels)
 }
 
+// formatTaxonomyLine handles format taxonomy line.
 func formatTaxonomyLine(item api.TaxonomyEntry) string {
 	name := components.SanitizeOneLine(item.Name)
 	parts := []string{name}
@@ -79,6 +83,7 @@ func formatTaxonomyLine(item api.TaxonomyEntry) string {
 	return strings.Join(parts, "  ")
 }
 
+// selectedTaxonomy handles selected taxonomy.
 func (m ProfileModel) selectedTaxonomy() *api.TaxonomyEntry {
 	if m.taxList == nil {
 		return nil
@@ -91,11 +96,13 @@ func (m ProfileModel) selectedTaxonomy() *api.TaxonomyEntry {
 	return &item
 }
 
+// openTaxPrompt handles open tax prompt.
 func (m *ProfileModel) openTaxPrompt(mode taxonomyPromptMode, defaultValue string) {
 	m.taxPromptMode = mode
 	m.taxPromptBuf = defaultValue
 }
 
+// taxonomyPromptTitle handles taxonomy prompt title.
 func (m ProfileModel) taxonomyPromptTitle() string {
 	switch m.taxPromptMode {
 	case taxPromptCreateName:
@@ -113,6 +120,7 @@ func (m ProfileModel) taxonomyPromptTitle() string {
 	}
 }
 
+// handleTaxonomyPrompt handles handle taxonomy prompt.
 func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
@@ -137,6 +145,7 @@ func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyMsg) (ProfileModel, tea.Cm
 	}
 }
 
+// submitTaxonomyPrompt handles submit taxonomy prompt.
 func (m ProfileModel) submitTaxonomyPrompt() (ProfileModel, tea.Cmd) {
 	switch m.taxPromptMode {
 	case taxPromptCreateName:
@@ -209,6 +218,7 @@ func (m ProfileModel) submitTaxonomyPrompt() (ProfileModel, tea.Cmd) {
 	}
 }
 
+// taxonomyArchiveSelected handles taxonomy archive selected.
 func (m ProfileModel) taxonomyArchiveSelected() (ProfileModel, tea.Cmd) {
 	item := m.selectedTaxonomy()
 	if item == nil {
@@ -224,6 +234,7 @@ func (m ProfileModel) taxonomyArchiveSelected() (ProfileModel, tea.Cmd) {
 	}
 }
 
+// taxonomyActivateSelected handles taxonomy activate selected.
 func (m ProfileModel) taxonomyActivateSelected() (ProfileModel, tea.Cmd) {
 	item := m.selectedTaxonomy()
 	if item == nil {
@@ -239,6 +250,7 @@ func (m ProfileModel) taxonomyActivateSelected() (ProfileModel, tea.Cmd) {
 	}
 }
 
+// renderTaxonomy renders render taxonomy.
 func (m ProfileModel) renderTaxonomy() string {
 	var b strings.Builder
 
@@ -396,6 +408,7 @@ func (m ProfileModel) renderTaxonomy() string {
 	return b.String() + components.Indent(components.TitledBox(title, content, m.width), 1)
 }
 
+// renderTaxonomyPreview renders render taxonomy preview.
 func (m ProfileModel) renderTaxonomyPreview(item api.TaxonomyEntry, width int) string {
 	if width <= 0 {
 		return ""

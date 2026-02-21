@@ -25,6 +25,16 @@ ADMIN_SCOPE_NAMES = {"admin"}
 
 
 def _has_admin_scope(auth: dict, enums: EnumRegistry) -> bool:
+    """Handle has admin scope.
+
+    Args:
+        auth: Input parameter for _has_admin_scope.
+        enums: Input parameter for _has_admin_scope.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -35,6 +45,13 @@ def _has_admin_scope(auth: dict, enums: EnumRegistry) -> bool:
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except ValueError:
@@ -42,6 +59,13 @@ def _require_uuid(value: str, label: str) -> None:
 
 
 def _require_admin_scope(auth: dict, enums: EnumRegistry) -> None:
+    """Handle require admin scope.
+
+    Args:
+        auth: Input parameter for _require_admin_scope.
+        enums: Input parameter for _require_admin_scope.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)

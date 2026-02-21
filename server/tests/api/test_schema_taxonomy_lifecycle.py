@@ -24,6 +24,12 @@ async def admin_auth_override(test_entity, enums):
     }
 
     async def mock_auth():
+        """Handle mock auth.
+
+        Returns:
+            Result value from the operation.
+        """
+
         return auth_dict
 
     app.dependency_overrides[require_auth] = mock_auth

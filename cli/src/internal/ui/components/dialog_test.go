@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestConfirmDialogIncludesTitleMessageAndHints handles test confirm dialog includes title message and hints.
 func TestConfirmDialogIncludesTitleMessageAndHints(t *testing.T) {
 	out := ConfirmDialog("Confirm", "Are you sure?")
 	clean := SanitizeText(out)
@@ -17,6 +18,7 @@ func TestConfirmDialogIncludesTitleMessageAndHints(t *testing.T) {
 	assert.Contains(t, clean, "alias")
 }
 
+// TestInputDialogIncludesTitleInputAndHints handles test input dialog includes title input and hints.
 func TestInputDialogIncludesTitleInputAndHints(t *testing.T) {
 	out := InputDialog("Filter", "hello")
 	clean := SanitizeText(out)
@@ -26,6 +28,7 @@ func TestInputDialogIncludesTitleInputAndHints(t *testing.T) {
 	assert.Contains(t, clean, "enter: submit | esc: cancel")
 }
 
+// TestConfirmPreviewDialogIncludesSummaryAndChanges handles test confirm preview dialog includes summary and changes.
 func TestConfirmPreviewDialogIncludesSummaryAndChanges(t *testing.T) {
 	out := ConfirmPreviewDialog(
 		"Archive Entity",

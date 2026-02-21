@@ -62,6 +62,7 @@ async def pending_approval(db_pool, untrusted_agent):
 @pytest.mark.asyncio
 async def test_get_pending(api, pending_approval, auth_override, enums):
     """Test get pending."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.get("/api/approvals/pending")
@@ -73,6 +74,7 @@ async def test_get_pending(api, pending_approval, auth_override, enums):
 @pytest.mark.asyncio
 async def test_get_approval(api, pending_approval, auth_override, enums):
     """Test get approval."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.get(f"/api/approvals/{pending_approval['id']}")
@@ -169,6 +171,7 @@ async def test_get_approval_enriches_relationship_endpoints_with_labels(
 @pytest.mark.asyncio
 async def test_approve_request(api, pending_approval, auth_override, enums):
     """Test approve request."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.post(f"/api/approvals/{pending_approval['id']}/approve")
@@ -481,6 +484,7 @@ async def test_approve_register_agent_persists_review_details_shape(
 @pytest.mark.asyncio
 async def test_reject_request(api, pending_approval, auth_override, enums):
     """Test reject request."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.post(
@@ -495,6 +499,7 @@ async def test_reject_request(api, pending_approval, auth_override, enums):
 @pytest.mark.asyncio
 async def test_get_approval_not_found(api, auth_override, enums):
     """Test get approval not found."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     r = await api.get("/api/approvals/00000000-0000-0000-0000-000000000000")
@@ -543,6 +548,13 @@ async def test_approve_request_handles_executor_value_error(
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     async def _raise_value_error(*args, **kwargs):
+        """Handle raise value error.
+
+        Args:
+            *args: Input parameter for _raise_value_error.
+            **kwargs: Input parameter for _raise_value_error.
+        """
+
         raise ValueError("forced-value-error")
 
     monkeypatch.setattr(approvals_route, "do_approve", _raise_value_error)
@@ -562,6 +574,13 @@ async def test_approve_request_handles_executor_runtime_error(
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     async def _raise_runtime_error(*args, **kwargs):
+        """Handle raise runtime error.
+
+        Args:
+            *args: Input parameter for _raise_runtime_error.
+            **kwargs: Input parameter for _raise_runtime_error.
+        """
+
         raise RuntimeError("forced-runtime-error")
 
     monkeypatch.setattr(approvals_route, "do_approve", _raise_runtime_error)
@@ -572,8 +591,11 @@ async def test_approve_request_handles_executor_runtime_error(
 
 
 @pytest.mark.asyncio
-async def test_get_approval_diff_create_job(api, db_pool, untrusted_agent, auth_override, enums):
+async def test_get_approval_diff_create_job(
+    api, db_pool, untrusted_agent, auth_override, enums
+):
     """Approval diff should include create_job fields."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     row = await db_pool.fetchrow(
@@ -596,8 +618,11 @@ async def test_get_approval_diff_create_job(api, db_pool, untrusted_agent, auth_
 
 
 @pytest.mark.asyncio
-async def test_get_approval_diff_create_context(api, db_pool, untrusted_agent, auth_override, enums):
+async def test_get_approval_diff_create_context(
+    api, db_pool, untrusted_agent, auth_override, enums
+):
     """Approval diff should include create_context fields."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     row = await db_pool.fetchrow(
@@ -626,6 +651,7 @@ async def test_get_approval_diff_update_relationship(
     api, db_pool, enums, untrusted_agent, auth_override
 ):
     """Approval diff should include relationship updates."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     status_id = enums.statuses.name_to_id["active"]
@@ -698,6 +724,7 @@ async def test_get_approval_diff_update_job_status(
     api, db_pool, enums, untrusted_agent, auth_override
 ):
     """Approval diff should include job status updates."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     status_id = enums.statuses.name_to_id["in-progress"]

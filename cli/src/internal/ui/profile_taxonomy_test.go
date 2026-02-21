@@ -7,6 +7,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 )
 
+// TestTaxonomyLineSanitizeGapRepro handles test taxonomy line sanitize gap repro.
 func TestTaxonomyLineSanitizeGapRepro(t *testing.T) {
 	item := api.TaxonomyEntry{
 		Name:      "\x1b]8;;https://evil.example\x07click\x1b]8;;\x07\nsecond-line",

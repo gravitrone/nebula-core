@@ -230,6 +230,15 @@ TAXONOMY_ROW_QUERY_MAP = {
 
 
 def _clamp_limit(value: int) -> int:
+    """Handle clamp limit.
+
+    Args:
+        value: Input parameter for _clamp_limit.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value < 1:
         return 1
     if value > MAX_PAGE_LIMIT:
@@ -238,6 +247,15 @@ def _clamp_limit(value: int) -> int:
 
 
 def _clamp_hops(value: int) -> int:
+    """Handle clamp hops.
+
+    Args:
+        value: Input parameter for _clamp_hops.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value < 1:
         return 1
     if value > MAX_GRAPH_HOPS:
@@ -246,6 +264,13 @@ def _clamp_hops(value: int) -> int:
 
 
 def _require_uuid(value: str, label: str) -> None:
+    """Handle require uuid.
+
+    Args:
+        value: Input parameter for _require_uuid.
+        label: Input parameter for _require_uuid.
+    """
+
     try:
         UUID(str(value))
     except (TypeError, ValueError):
@@ -256,11 +281,26 @@ JOB_ID_PATTERN = re.compile(r"^\d{4}Q[1-4]-[A-Z2-9]{4}$")
 
 
 def _require_job_id(value: str, label: str) -> None:
+    """Handle require job id.
+
+    Args:
+        value: Input parameter for _require_job_id.
+        label: Input parameter for _require_job_id.
+    """
+
     if not JOB_ID_PATTERN.fullmatch(str(value).strip().upper()):
         raise ValueError(f"Invalid {label} id")
 
 
 def _require_node_id(node_type: str, value: str, label: str) -> None:
+    """Handle require node id.
+
+    Args:
+        node_type: Input parameter for _require_node_id.
+        value: Input parameter for _require_node_id.
+        label: Input parameter for _require_node_id.
+    """
+
     if node_type == "job":
         _require_job_id(value, label)
         return
@@ -268,12 +308,28 @@ def _require_node_id(node_type: str, value: str, label: str) -> None:
 
 
 def _require_admin(agent: dict, enums: Any) -> None:
+    """Handle require admin.
+
+    Args:
+        agent: Input parameter for _require_admin.
+        enums: Input parameter for _require_admin.
+    """
+
     scope_names = scope_names_from_ids(agent.get("scopes", []), enums)
     if not any(scope in ADMIN_SCOPES for scope in scope_names):
         raise ValueError("Admin scope required")
 
 
 def _flatten_csv_value(value: Any) -> str:
+    """Handle flatten csv value.
+
+    Args:
+        value: Input parameter for _flatten_csv_value.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if value is None:
         return ""
     if isinstance(value, list):
@@ -284,6 +340,15 @@ def _flatten_csv_value(value: Any) -> str:
 
 
 def _rows_to_csv(rows: list[dict[str, Any]]) -> str:
+    """Handle rows to csv.
+
+    Args:
+        rows: Input parameter for _rows_to_csv.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not rows:
         return ""
     headers = list(rows[0].keys())
@@ -301,6 +366,16 @@ def _rows_to_csv(rows: list[dict[str, Any]]) -> str:
 
 
 def _export_response_rows(rows: list[dict[str, Any]], fmt: str) -> dict[str, Any]:
+    """Handle export response rows.
+
+    Args:
+        rows: Input parameter for _export_response_rows.
+        fmt: Input parameter for _export_response_rows.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if fmt == "csv":
         return {"format": "csv", "content": _rows_to_csv(rows), "count": len(rows)}
     return {"format": "json", "items": rows, "count": len(rows)}
@@ -309,6 +384,17 @@ def _export_response_rows(rows: list[dict[str, Any]], fmt: str) -> dict[str, Any
 def _resolve_scope_ids_for_export(
     agent: dict, enums: Any, scope_names: list[str]
 ) -> list[Any]:
+    """Handle resolve scope ids for export.
+
+    Args:
+        agent: Input parameter for _resolve_scope_ids_for_export.
+        enums: Input parameter for _resolve_scope_ids_for_export.
+        scope_names: Input parameter for _resolve_scope_ids_for_export.
+
+    Returns:
+        Result value from the operation.
+    """
+
     caller_scope_ids = agent.get("scopes", []) or []
     if not scope_names:
         return caller_scope_ids
@@ -318,11 +404,31 @@ def _resolve_scope_ids_for_export(
 
 
 def _is_admin(agent: dict, enums: Any) -> bool:
+    """Handle is admin.
+
+    Args:
+        agent: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_names = scope_names_from_ids(agent.get("scopes", []), enums)
     return any(scope in ADMIN_SCOPES for scope in scope_names)
 
 
 def _scope_filter_ids(agent: dict, enums: Any) -> list | None:
+    """Handle scope filter ids.
+
+    Args:
+        agent: Input parameter for _scope_filter_ids.
+        enums: Input parameter for _scope_filter_ids.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if _is_admin(agent, enums):
         return None
     return agent.get("scopes", []) or []
@@ -339,7 +445,9 @@ def _visible_scope_names(
     return scope_names_from_ids(ids, enums)
 
 
-def _normalize_relationship_row(row: Any, visible_scope_names: list[str]) -> dict[str, Any]:
+def _normalize_relationship_row(
+    row: Any, visible_scope_names: list[str]
+) -> dict[str, Any]:
     """Normalize relationship payload shape and scope-filter properties."""
 
     item = dict(row)
@@ -350,6 +458,15 @@ def _normalize_relationship_row(row: Any, visible_scope_names: list[str]) -> dic
 
 
 def _entity_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    """Handle entity semantic candidate.
+
+    Args:
+        row: Input parameter for _entity_semantic_candidate.
+
+    Returns:
+        Result value from the operation.
+    """
+
     metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     text = " ".join(
@@ -375,6 +492,15 @@ def _entity_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _context_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    """Handle context semantic candidate.
+
+    Args:
+        row: Input parameter for _context_semantic_candidate.
+
+    Returns:
+        Result value from the operation.
+    """
+
     metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     content = str(row.get("content") or "")
@@ -405,6 +531,15 @@ def _context_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _taxonomy_kind_or_error(kind: str) -> dict[str, Any]:
+    """Handle taxonomy kind or error.
+
+    Args:
+        kind: Input parameter for _taxonomy_kind_or_error.
+
+    Returns:
+        Result value from the operation.
+    """
+
     cfg = TAXONOMY_KIND_MAP.get(kind)
     if cfg is None:
         raise ValueError(f"Unknown taxonomy kind: {kind}")
@@ -412,6 +547,17 @@ def _taxonomy_kind_or_error(kind: str) -> dict[str, Any]:
 
 
 async def _get_taxonomy_row(pool: Any, kind: str, item_id: str) -> dict | None:
+    """Handle get taxonomy row.
+
+    Args:
+        pool: Input parameter for _get_taxonomy_row.
+        kind: Input parameter for _get_taxonomy_row.
+        item_id: Input parameter for _get_taxonomy_row.
+
+    Returns:
+        Result value from the operation.
+    """
+
     query = TAXONOMY_ROW_QUERY_MAP[kind]
     row = await pool.fetchrow(
         query,
@@ -426,6 +572,14 @@ def _validate_taxonomy_payload(
     is_symmetric: bool | None,
     value_schema: dict | None,
 ) -> None:
+    """Handle validate taxonomy payload.
+
+    Args:
+        kind: Input parameter for _validate_taxonomy_payload.
+        is_symmetric: Input parameter for _validate_taxonomy_payload.
+        value_schema: Input parameter for _validate_taxonomy_payload.
+    """
+
     supports = _taxonomy_kind_or_error(kind)["supports"]
     if is_symmetric is not None and "is_symmetric" not in supports:
         raise ValueError("is_symmetric is only valid for relationship-types")
@@ -434,11 +588,29 @@ def _validate_taxonomy_payload(
 
 
 async def _refresh_enums_in_context(ctx: Context, pool: Pool) -> None:
+    """Handle refresh enums in context.
+
+    Args:
+        ctx: Input parameter for _refresh_enums_in_context.
+        pool: Input parameter for _refresh_enums_in_context.
+    """
+
     enums = await load_enums(pool)
     ctx.request_context.lifespan_context["enums"] = enums
 
 
 async def _taxonomy_usage_count(pool: Pool, cfg: dict[str, Any], item_id: str) -> int:
+    """Handle taxonomy usage count.
+
+    Args:
+        pool: Input parameter for _taxonomy_usage_count.
+        cfg: Input parameter for _taxonomy_usage_count.
+        item_id: Input parameter for _taxonomy_usage_count.
+
+    Returns:
+        Result value from the operation.
+    """
+
     value = await pool.fetchval(QUERIES[cfg["usage"]], item_id)
     if value is None:
         return 0
@@ -446,6 +618,16 @@ async def _taxonomy_usage_count(pool: Pool, cfg: dict[str, Any], item_id: str) -
 
 
 def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
+    """Handle has write scopes.
+
+    Args:
+        agent_scopes: Input parameter for _has_write_scopes.
+        node_scopes: Input parameter for _has_write_scopes.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not node_scopes:
         return True
     if not agent_scopes:
@@ -454,6 +636,16 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 
 
 async def _get_job_row(pool: Pool, job_id: str) -> dict:
+    """Handle get job row.
+
+    Args:
+        pool: Input parameter for _get_job_row.
+        job_id: Input parameter for _get_job_row.
+
+    Returns:
+        Result value from the operation.
+    """
+
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
     if not row:
         raise ValueError(f"Job '{job_id}' not found")
@@ -461,10 +653,26 @@ async def _get_job_row(pool: Pool, job_id: str) -> dict:
 
 
 def _require_job_owner(agent: dict, enums: Any, job: dict) -> None:
+    """Handle require job owner.
+
+    Args:
+        agent: Input parameter for _require_job_owner.
+        enums: Input parameter for _require_job_owner.
+        job: Input parameter for _require_job_owner.
+    """
+
     _require_job_write(agent, enums, job)
 
 
 def _require_job_read(agent: dict, enums: Any, job: dict) -> None:
+    """Handle require job read.
+
+    Args:
+        agent: Input parameter for _require_job_read.
+        enums: Input parameter for _require_job_read.
+        job: Input parameter for _require_job_read.
+    """
+
     if _is_admin(agent, enums):
         return
     job_scopes = job.get("privacy_scope_ids") or []
@@ -474,6 +682,14 @@ def _require_job_read(agent: dict, enums: Any, job: dict) -> None:
 
 
 def _require_job_write(agent: dict, enums: Any, job: dict) -> None:
+    """Handle require job write.
+
+    Args:
+        agent: Input parameter for _require_job_write.
+        enums: Input parameter for _require_job_write.
+        job: Input parameter for _require_job_write.
+    """
+
     if _is_admin(agent, enums):
         return
     _require_job_read(agent, enums, job)
@@ -484,6 +700,15 @@ def _require_job_write(agent: dict, enums: Any, job: dict) -> None:
 async def _require_entity_write_access(
     pool: Pool, enums: Any, agent: dict, entity_ids: list[str]
 ) -> None:
+    """Handle require entity write access.
+
+    Args:
+        pool: Input parameter for _require_entity_write_access.
+        enums: Input parameter for _require_entity_write_access.
+        agent: Input parameter for _require_entity_write_access.
+        entity_ids: Input parameter for _require_entity_write_access.
+    """
+
     for entity_id in entity_ids:
         _require_uuid(entity_id, "entity")
     if _is_admin(agent, enums):
@@ -502,6 +727,19 @@ async def _require_entity_write_access(
 async def _has_hidden_relationships(
     pool: Pool, enums: Any, agent: dict, node_type: str, node_id: str
 ) -> bool:
+    """Handle has hidden relationships.
+
+    Args:
+        pool: Input parameter for _has_hidden_relationships.
+        enums: Input parameter for _has_hidden_relationships.
+        agent: Input parameter for _has_hidden_relationships.
+        node_type: Input parameter for _has_hidden_relationships.
+        node_id: Input parameter for _has_hidden_relationships.
+
+    Returns:
+        Result value from the operation.
+    """
+
     node_id = str(node_id)
     if _is_admin(agent, enums):
         return False
@@ -563,6 +801,19 @@ async def _has_hidden_relationships(
 async def _node_allowed(
     pool: Pool, enums: Any, agent: dict, node_type: str, node_id: str
 ) -> bool:
+    """Handle node allowed.
+
+    Args:
+        pool: Input parameter for _node_allowed.
+        enums: Input parameter for _node_allowed.
+        agent: Input parameter for _node_allowed.
+        node_type: Input parameter for _node_allowed.
+        node_id: Input parameter for _node_allowed.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if _is_admin(agent, enums):
         return True
     if node_type == "entity":
@@ -602,6 +853,18 @@ async def _validate_relationship_node(
     label: str,
     require_write: bool = False,
 ) -> None:
+    """Handle validate relationship node.
+
+    Args:
+        pool: Input parameter for _validate_relationship_node.
+        enums: Input parameter for _validate_relationship_node.
+        agent: Input parameter for _validate_relationship_node.
+        node_type: Input parameter for _validate_relationship_node.
+        node_id: Input parameter for _validate_relationship_node.
+        label: Input parameter for _validate_relationship_node.
+        require_write: Input parameter for _validate_relationship_node.
+    """
+
     if node_type in {"entity", "context", "job", "file", "log"}:
         _require_node_id(node_type, node_id, label.lower())
     if node_type == "entity":
@@ -686,6 +949,7 @@ async def _run_bulk_import(
     Returns:
         Dict with created count, error list, and created items.
     """
+
     pool, enums, agent = await require_context(ctx)
     items = extract_items(payload.format, payload.data, payload.items)
     allowed_scopes = scope_names_from_ids(agent.get("scopes", []), enums)
@@ -693,6 +957,12 @@ async def _run_bulk_import(
     errors: list[dict] = []
 
     def _validate_taxonomy_before_approval(normalized: dict[str, Any]) -> None:
+        """Handle validate taxonomy before approval.
+
+        Args:
+            normalized: Input parameter for _validate_taxonomy_before_approval.
+        """
+
         if action == "bulk_import_entities":
             require_entity_type(str(normalized.get("type") or ""), enums)
             require_status(str(normalized.get("status") or ""), enums)
@@ -2137,6 +2407,7 @@ def _decode_graph_path(path: list[str] | None) -> list[dict]:
     Returns:
         A list of node dictionaries with "type" and "id".
     """
+
     if not path:
         return []
 
@@ -2467,6 +2738,7 @@ async def _attach_file(
     Returns:
         Relationship record or approval response payload.
     """
+
     pool, enums, agent = await require_context(ctx)
     try:
         UUID(str(payload.file_id))

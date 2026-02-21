@@ -65,7 +65,9 @@ async def test_login_ensures_admin_scope(api_no_auth, db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_login_existing_user_backfills_baseline_scopes(api_no_auth, db_pool, enums):
+async def test_login_existing_user_backfills_baseline_scopes(
+    api_no_auth, db_pool, enums
+):
     """Login should backfill baseline scopes for existing users."""
 
     status_id = enums.statuses.name_to_id["active"]
@@ -146,6 +148,7 @@ async def test_revoke_key(api, db_pool, auth_override):
 @pytest.mark.asyncio
 async def test_list_all_keys(api, db_pool, test_entity, auth_override, enums):
     """Test list all keys includes user and agent keys."""
+
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
 
     # Create a user key

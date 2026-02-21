@@ -13,11 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestFilesListViewRendersItemsAndSearchSuggestTabCompletes handles test files list view renders items and search suggest tab completes.
 func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/files":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "file-1",
@@ -31,12 +32,14 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "scope-1", "name": "public", "agent_count": 1},
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -70,6 +73,7 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 	assert.Equal(t, "Alpha.txt", model.searchBuf)
 }
 
+// TestFilesDetailViewRendersMetadataWhenExpanded handles test files detail view renders metadata when expanded.
 func TestFilesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	mime := "text/plain"
 	size := int64(2048)
@@ -100,6 +104,7 @@ func TestFilesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	assert.Contains(t, clean, "hello")
 }
 
+// TestFilesDetailViewRendersRelationshipsSection handles test files detail view renders relationships section.
 func TestFilesDetailViewRendersRelationshipsSection(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.width = 90
@@ -134,23 +139,27 @@ func TestFilesDetailViewRendersRelationshipsSection(t *testing.T) {
 	assert.Contains(t, out, "Bro")
 }
 
+// TestFilesAddFlowRendersAndResetsOnEscAfterSave handles test files add flow renders and resets on esc after save.
 func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 	createCalled := false
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.URL.Path == "/api/files" && r.Method == http.MethodGet:
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/files" && r.Method == http.MethodPost:
 			createCalled = true
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":        "file-1",
 					"filename":  "Alpha.txt",
 					"file_path": "/tmp/alpha.txt",
 				},
 			})
+			require.NoError(t, err)
 		case r.URL.Path == "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -169,12 +178,12 @@ func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 	assert.Contains(t, components.SanitizeText(model.View()), "Filename")
 
 	// Filename.
-	for _, r := range []rune("Alpha.txt") {
+	for _, r := range "Alpha.txt" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	// Path.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	for _, r := range []rune("/tmp/alpha.txt") {
+	for _, r := range "/tmp/alpha.txt" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	// Tags.
@@ -183,7 +192,7 @@ func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	for _, r := range []rune("docs") {
+	for _, r := range "docs" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // commit tag
@@ -205,6 +214,7 @@ func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 	assert.Empty(t, model.addPath)
 }
 
+// TestFilesEditViewCommitsTagsAndRenders handles test files edit view commits tags and renders.
 func TestFilesEditViewCommitsTagsAndRenders(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.width = 80
@@ -223,7 +233,7 @@ func TestFilesEditViewCommitsTagsAndRenders(t *testing.T) {
 
 	// Move focus to tags field.
 	model.editFocus = fileFieldTags
-	for _, r := range []rune("alpha") {
+	for _, r := range "alpha" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})

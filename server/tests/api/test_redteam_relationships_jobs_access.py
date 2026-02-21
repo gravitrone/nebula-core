@@ -202,7 +202,9 @@ async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_denies_private_entity_for_public_agent(db_pool, enums):
+async def test_create_relationship_denies_private_entity_for_public_agent(
+    db_pool, enums
+):
     """Public agents should not create links from private entities."""
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-private-entity")
@@ -232,7 +234,9 @@ async def test_create_relationship_denies_private_entity_for_public_agent(db_poo
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_denies_private_context_for_public_agent(db_pool, enums):
+async def test_create_relationship_denies_private_context_for_public_agent(
+    db_pool, enums
+):
     """Public agents should not create links from private context items."""
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-private-context")
@@ -262,7 +266,9 @@ async def test_create_relationship_denies_private_context_for_public_agent(db_po
 
 
 @pytest.mark.asyncio
-async def test_update_relationship_denies_private_source_for_public_agent(db_pool, enums):
+async def test_update_relationship_denies_private_source_for_public_agent(
+    db_pool, enums
+):
     """Public agents should not update links attached to private entities."""
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-update-private")
@@ -300,7 +306,9 @@ async def test_query_relationships_hides_foreign_job_links(db_pool, enums):
     owner = await _make_agent(db_pool, enums, "rel-owner-api-2")
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-2")
     entity = await _make_entity(db_pool, enums, "Public Node 2")
-    public_job = await _make_job(db_pool, enums, "Public Job 2", owner["id"], ["public"])
+    public_job = await _make_job(
+        db_pool, enums, "Public Job 2", owner["id"], ["public"]
+    )
     private_job = await _make_job(
         db_pool, enums, "Private Job 2", owner["id"], ["private"]
     )

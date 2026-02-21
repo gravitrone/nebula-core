@@ -23,4 +23,3 @@ async def test_get_schema_returns_taxonomy_and_constraints(mock_mcp_context):
         if row.get("is_builtin") is True
     }
     assert builtin_scopes == {"admin", "private", "public", "sensitive"}
-

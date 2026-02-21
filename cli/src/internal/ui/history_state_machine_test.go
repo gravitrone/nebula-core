@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestHistoryModelScopesAndActorsSelectionLoadsHistory handles test history model scopes and actors selection loads history.
 func TestHistoryModelScopesAndActorsSelectionLoadsHistory(t *testing.T) {
 	var lastPath string
 	var lastScopeID string
@@ -24,7 +25,7 @@ func TestHistoryModelScopesAndActorsSelectionLoadsHistory(t *testing.T) {
 			lastScopeID = r.URL.Query().Get("scope_id")
 			lastActorType = r.URL.Query().Get("actor_type")
 			lastActorID = r.URL.Query().Get("actor_id")
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "audit-1",
@@ -35,18 +36,21 @@ func TestHistoryModelScopesAndActorsSelectionLoadsHistory(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/audit/scopes":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "scope-1", "name": "public", "agent_count": 1},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/audit/actors":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"changed_by_type": "agent", "changed_by_id": "agent-1", "action_count": 2},
 				},
 			})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -95,6 +99,7 @@ func TestHistoryModelScopesAndActorsSelectionLoadsHistory(t *testing.T) {
 	assert.Equal(t, "agent-1", lastActorID)
 }
 
+// TestHistoryModelFilterPromptAppliesAndLoads handles test history model filter prompt applies and loads.
 func TestHistoryModelFilterPromptAppliesAndLoads(t *testing.T) {
 	var gotTable string
 	var gotAction string
@@ -104,7 +109,8 @@ func TestHistoryModelFilterPromptAppliesAndLoads(t *testing.T) {
 		case "/api/audit":
 			gotTable = r.URL.Query().Get("table")
 			gotAction = r.URL.Query().Get("action")
-			json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -118,7 +124,7 @@ func TestHistoryModelFilterPromptAppliesAndLoads(t *testing.T) {
 	assert.True(t, model.filtering)
 
 	// Type a filter and apply.
-	for _, r := range []rune("table:entities action:update") {
+	for _, r := range "table:entities action:update" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 	var cmd tea.Cmd
@@ -132,6 +138,7 @@ func TestHistoryModelFilterPromptAppliesAndLoads(t *testing.T) {
 	assert.Equal(t, "update", gotAction)
 }
 
+// TestHistoryDetailRevertFlowExecutesFromSelectedEntry handles test history detail revert flow executes from selected entry.
 func TestHistoryDetailRevertFlowExecutesFromSelectedEntry(t *testing.T) {
 	var revertEntityID string
 	var revertAuditID string
@@ -139,7 +146,7 @@ func TestHistoryDetailRevertFlowExecutesFromSelectedEntry(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/audit":
-			json.NewEncoder(w).Encode(map[string]any{
+			err := json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{
 						"id":         "audit-1",
@@ -152,12 +159,14 @@ func TestHistoryDetailRevertFlowExecutesFromSelectedEntry(t *testing.T) {
 					},
 				},
 			})
+			require.NoError(t, err)
 		case "/api/entities/ent-1/revert":
 			var payload map[string]string
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
 			revertEntityID = "ent-1"
 			revertAuditID = payload["audit_id"]
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-1"}})
+			err := json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-1"}})
+			require.NoError(t, err)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

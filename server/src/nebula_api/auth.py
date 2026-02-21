@@ -22,6 +22,7 @@ ph = PasswordHasher()
 
 def _merge_scopes(key_scopes: list | None, owner_scopes: list | None) -> list:
     """Return owner scopes narrowed by key scopes when provided."""
+
     key_scopes = key_scopes or []
     owner_scopes = owner_scopes or []
     if key_scopes:

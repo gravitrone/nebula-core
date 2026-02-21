@@ -16,6 +16,7 @@ def coerce_list(value: Any) -> list[str]:
     Returns:
         A list of non-empty, stripped strings.
     """
+
     if value is None:
         return []
     if isinstance(value, list):
@@ -34,6 +35,7 @@ def coerce_json(value: Any) -> dict[str, Any]:
     Returns:
         A dict representation of the input value.
     """
+
     if value is None or value == "":
         return {}
     if isinstance(value, dict):
@@ -52,6 +54,7 @@ def coerce_text(value: Any) -> str | None:
     Returns:
         A stripped string or None if empty.
     """
+
     if value is None:
         return None
     text = str(value).strip()
@@ -67,6 +70,7 @@ def parse_csv_rows(data: str) -> list[dict[str, Any]]:
     Returns:
         A list of dictionaries, one per non-empty row.
     """
+
     reader = csv.DictReader(io.StringIO(data))
     rows: list[dict[str, Any]] = []
     for row in reader:
@@ -92,6 +96,7 @@ def extract_items(
     Raises:
         ValueError: If format is invalid or required data is missing.
     """
+
     fmt = (fmt or "json").lower()
     if fmt not in {"json", "csv"}:
         raise ValueError("Format must be json or csv")
@@ -119,6 +124,7 @@ def merge_defaults(
     Returns:
         A new merged dictionary.
     """
+
     if not defaults:
         return dict(item)
     merged = dict(defaults)
@@ -139,6 +145,7 @@ def normalize_entity(item: dict[str, Any], defaults: dict[str, Any] | None) -> d
     Raises:
         ValueError: If required fields are missing.
     """
+
     merged = merge_defaults(item, defaults)
     name = coerce_text(merged.get("name"))
     entity_type = coerce_text(merged.get("type"))
@@ -173,6 +180,7 @@ def normalize_context(item: dict[str, Any], defaults: dict[str, Any] | None) -> 
     Raises:
         ValueError: If required fields are missing.
     """
+
     merged = merge_defaults(item, defaults)
     title = coerce_text(merged.get("title"))
     source_type = coerce_text(merged.get("source_type"))
@@ -214,6 +222,7 @@ def normalize_relationship(
     Raises:
         ValueError: If required fields are missing.
     """
+
     merged = merge_defaults(item, defaults)
     source_type = coerce_text(merged.get("source_type"))
     source_id = coerce_text(merged.get("source_id"))
@@ -245,6 +254,7 @@ def normalize_job(item: dict[str, Any], defaults: dict[str, Any] | None) -> dict
     Raises:
         ValueError: If required fields are missing.
     """
+
     merged = merge_defaults(item, defaults)
     title = coerce_text(merged.get("title"))
     if not title:

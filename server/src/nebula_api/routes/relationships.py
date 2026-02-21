@@ -23,11 +23,29 @@ QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
-RELATIONSHIP_NODE_TYPES = {"entity", "context", "log", "job", "agent", "file", "protocol"}
+RELATIONSHIP_NODE_TYPES = {
+    "entity",
+    "context",
+    "log",
+    "job",
+    "agent",
+    "file",
+    "protocol",
+}
 JOB_ID_PATTERN = re.compile(r"^\d{4}Q[1-4]-[A-Z2-9]{4}$")
 
 
 def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
+    """Handle is admin.
+
+    Args:
+        auth: Input parameter for _is_admin.
+        enums: Input parameter for _is_admin.
+
+    Returns:
+        Result value from the operation.
+    """
+
     scope_ids = set(auth.get("scopes", []))
     allowed_ids = {
         enums.scopes.name_to_id.get(name)
@@ -38,6 +56,16 @@ def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
 
 
 def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
+    """Handle has write scopes.
+
+    Args:
+        agent_scopes: Input parameter for _has_write_scopes.
+        node_scopes: Input parameter for _has_write_scopes.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if not node_scopes:
         return True
     if not agent_scopes:
@@ -46,6 +74,18 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
 
 
 async def _job_visible(pool: Any, auth: dict, enums: EnumRegistry, job_id: str) -> bool:
+    """Handle job visible.
+
+    Args:
+        pool: Input parameter for _job_visible.
+        auth: Input parameter for _job_visible.
+        enums: Input parameter for _job_visible.
+        job_id: Input parameter for _job_visible.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if _is_admin(auth, enums):
         return True
     row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
@@ -61,6 +101,16 @@ async def _job_visible(pool: Any, auth: dict, enums: EnumRegistry, job_id: str) 
 async def _validate_relationship_node(
     pool: Any, enums: EnumRegistry, auth: dict, node_type: str, node_id: str
 ) -> None:
+    """Handle validate relationship node.
+
+    Args:
+        pool: Input parameter for _validate_relationship_node.
+        enums: Input parameter for _validate_relationship_node.
+        auth: Input parameter for _validate_relationship_node.
+        node_type: Input parameter for _validate_relationship_node.
+        node_id: Input parameter for _validate_relationship_node.
+    """
+
     if _is_admin(auth, enums):
         return
     if node_type == "entity":
@@ -89,6 +139,16 @@ async def _validate_relationship_node(
 
 
 def _normalize_relationship_row(row: Any, scope_names: list[str]) -> dict[str, Any]:
+    """Handle normalize relationship row.
+
+    Args:
+        row: Input parameter for _normalize_relationship_row.
+        scope_names: Input parameter for _normalize_relationship_row.
+
+    Returns:
+        Result value from the operation.
+    """
+
     item = dict(row)
     item["properties"] = sanitize_relationship_properties(
         item.get("properties"), scope_names
@@ -97,6 +157,16 @@ def _normalize_relationship_row(row: Any, scope_names: list[str]) -> dict[str, A
 
 
 def _visible_scope_names(auth: dict, enums: EnumRegistry) -> list[str]:
+    """Handle visible scope names.
+
+    Args:
+        auth: Input parameter for _visible_scope_names.
+        enums: Input parameter for _visible_scope_names.
+
+    Returns:
+        Result value from the operation.
+    """
+
     if _is_admin(auth, enums):
         return sorted(getattr(enums.scopes, "name_to_id", {}).keys())
 
@@ -117,6 +187,16 @@ def _visible_scope_names(auth: dict, enums: EnumRegistry) -> list[str]:
 
 
 def _normalize_relationship_lookup(source_type: str, source_id: str) -> tuple[str, str]:
+    """Handle normalize relationship lookup.
+
+    Args:
+        source_type: Input parameter for _normalize_relationship_lookup.
+        source_id: Input parameter for _normalize_relationship_lookup.
+
+    Returns:
+        Result value from the operation.
+    """
+
     kind = str(source_type or "").strip().lower()
     raw_id = str(source_id or "").strip()
     if kind not in RELATIONSHIP_NODE_TYPES:
@@ -181,6 +261,7 @@ async def create_relationship(
     Returns:
         API response with created relationship or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
@@ -230,6 +311,7 @@ async def get_relationships(
     Returns:
         API response with relationships.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
@@ -284,6 +366,7 @@ async def query_relationships(
     Returns:
         API response with relationship list.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
     scope_ids = None if _is_admin(auth, enums) else auth.get("scopes", [])
@@ -332,6 +415,7 @@ async def update_relationship(
     Returns:
         API response with updated relationship or approval requirement.
     """
+
     pool = request.app.state.pool
     enums = request.app.state.enums
 
