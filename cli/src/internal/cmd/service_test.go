@@ -58,6 +58,21 @@ func TestRunLogsCmdWithoutLogFileShowsFriendlyMessage(t *testing.T) {
 	assert.Contains(t, out.String(), "No API logs yet")
 }
 
+// TestRunLogsCmdUsesDefaultTailWhenNonPositive ensures non-positive tail values
+// still render recent API logs.
+func TestRunLogsCmdUsesDefaultTailWhenNonPositive(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.WriteFile(apiLogPath(), []byte("first\nsecond\nthird\n"), 0o600))
+
+	var out bytes.Buffer
+	require.NoError(t, runLogsCmd(&out, true, 0))
+	text := out.String()
+	assert.Contains(t, text, "Nebula API Logs")
+	assert.Contains(t, text, "first")
+	assert.Contains(t, text, "third")
+}
+
 // TestRunStartCmdUsesLiveState verifies start reports already-running when a live
 // runtime state PID exists.
 func TestRunStartCmdUsesLiveState(t *testing.T) {
@@ -124,6 +139,38 @@ func TestAcquireAPILockRejectsLiveAPIPID(t *testing.T) {
 	require.NoError(t, updateAPILockPID(os.Getpid()))
 
 	err := acquireAPILock()
+	require.Error(t, err)
+	var held *apiLockHeldError
+	require.ErrorAs(t, err, &held)
+	assert.Equal(t, os.Getpid(), held.PID)
+}
+
+// TestAcquireAPILockRejectsLivePIDFromRuntimeState ensures stale lock metadata
+// without APIPID still blocks when runtime state tracks a live process.
+func TestAcquireAPILockRejectsLivePIDFromRuntimeState(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	lock := apiLockState{
+		OwnerPID:  11111,
+		APIPID:    0,
+		CreatedAt: time.Now().UTC(),
+	}
+	rawLock, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), rawLock, 0o600))
+	require.NoError(
+		t,
+		saveAPIState(&apiRuntimeState{
+			PID:       os.Getpid(),
+			Port:      api.DefaultAPIPort,
+			ServerDir: "/tmp/server",
+			LogPath:   "/tmp/log",
+			StartedAt: time.Now().UTC(),
+		}),
+	)
+
+	err = acquireAPILock()
 	require.Error(t, err)
 	var held *apiLockHeldError
 	require.ErrorAs(t, err, &held)
