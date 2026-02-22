@@ -267,6 +267,27 @@ func TestRenderMetadataSelectableBlockShowsSelectionColumnWhenSelectModeEnabled(
 	assert.NotContains(t, clean, ">[")
 }
 
+// TestRenderMetadataSelectableBlockShowsCursorMarkerWhenSelectModeDisabled handles test render metadata selectable block shows cursor marker when select mode disabled.
+func TestRenderMetadataSelectableBlockShowsCursorMarkerWhenSelectModeDisabled(t *testing.T) {
+	rows := []metadataDisplayRow{
+		{field: "owner", value: "alxx"},
+		{field: "timezone", value: "Europe/Warsaw"},
+	}
+	list := components.NewList(metadataPanelPageSize(false))
+	syncMetadataList(list, rows, metadataPanelPageSize(false))
+	list.Cursor = 1
+
+	out := renderMetadataSelectableBlockWithTitle("Metadata", rows, 80, list, map[int]bool{}, false)
+	clean := components.SanitizeText(out)
+
+	assert.Contains(t, clean, "Group")
+	assert.Contains(t, clean, "Field")
+	assert.Contains(t, clean, "Value")
+	assert.Contains(t, clean, "    * │")
+	assert.Contains(t, clean, "timezone")
+	assert.NotContains(t, clean, "[ ]")
+}
+
 // TestRenderMetadataSelectableBlockHumanizesContextSegmentField handles test render metadata selectable block humanizes context segment field.
 func TestRenderMetadataSelectableBlockHumanizesContextSegmentField(t *testing.T) {
 	rows := []metadataDisplayRow{

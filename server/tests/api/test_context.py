@@ -1,5 +1,8 @@
 """Context route tests."""
 
+# Standard Library
+import json
+
 # Third-Party
 from httpx import ASGITransport, AsyncClient
 import pytest
@@ -542,6 +545,44 @@ async def test_update_context_accepts_valid_url_and_null_tags(api):
     )
     assert resp.status_code == 200
     assert resp.json()["data"]["url"] == "https://example.com/new"
+
+
+@pytest.mark.asyncio
+async def test_update_context_metadata_patch_merges_nested_keys(api):
+    """Update should deep-merge context metadata patches."""
+
+    created = (
+        await api.post(
+            "/api/context",
+            json={
+                "title": "Ctx Metadata Merge",
+                "scopes": ["public"],
+                "metadata": {
+                    "owner": "alxx",
+                    "profile": {"timezone": "UTC", "language": "en"},
+                },
+            },
+        )
+    ).json()["data"]
+
+    update = await api.patch(
+        f"/api/context/{created['id']}",
+        json={
+            "metadata": {
+                "profile": {"timezone": "Europe/Warsaw"},
+                "private_notes": {"handoff_key": "bro-private-01"},
+            },
+        },
+    )
+
+    assert update.status_code == 200
+    merged = update.json()["data"]["metadata"]
+    if isinstance(merged, str):
+        merged = json.loads(merged)
+    assert merged["owner"] == "alxx"
+    assert merged["profile"]["timezone"] == "Europe/Warsaw"
+    assert merged["profile"]["language"] == "en"
+    assert merged["private_notes"]["handoff_key"] == "bro-private-01"
 
 
 @pytest.mark.asyncio
