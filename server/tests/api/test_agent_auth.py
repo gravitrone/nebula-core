@@ -156,6 +156,69 @@ async def test_untrusted_agent_write_returns_approval(
     assert r.json()["status"] == "approval_required"
 
 
+async def test_untrusted_agent_respects_runtime_trust_toggle(
+    db_pool, enums, untrusted_agent_row
+):
+    """Agent writes should switch to direct mode immediately after trust toggle."""
+
+    from httpx import ASGITransport, AsyncClient
+
+    from nebula_api.app import app
+    from nebula_api.auth import generate_api_key, require_auth
+
+    raw_key, prefix, key_hash = generate_api_key()
+    await db_pool.execute(
+        """
+        INSERT INTO api_keys (agent_id, key_hash, key_prefix, name)
+        VALUES ($1, $2, $3, $4)
+        """,
+        untrusted_agent_row["id"],
+        key_hash,
+        prefix,
+        "runtime-toggle-key",
+    )
+
+    app.dependency_overrides.pop(require_auth, None)
+    app.state.pool = db_pool
+    app.state.enums = enums
+
+    transport = ASGITransport(app=app)
+    headers = {"Authorization": f"Bearer {raw_key}"}
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+        headers=headers,
+    ) as client:
+        queued = await client.post(
+            "/api/entities/",
+            json={
+                "name": "Toggle Before",
+                "type": "project",
+                "status": "active",
+                "scopes": ["public"],
+            },
+        )
+        assert queued.status_code == 202, queued.text
+
+        await db_pool.execute(
+            "UPDATE agents SET requires_approval = FALSE WHERE id = $1::uuid",
+            untrusted_agent_row["id"],
+        )
+
+        direct = await client.post(
+            "/api/entities/",
+            json={
+                "name": "Toggle After",
+                "type": "project",
+                "status": "active",
+                "scopes": ["public"],
+            },
+        )
+
+    assert direct.status_code == 200, direct.text
+    assert direct.json()["data"]["id"]
+
+
 async def test_user_request_unchanged(api, auth_override):
     """User-authed request still works normally (regression)."""
 
