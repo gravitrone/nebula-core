@@ -1,12 +1,17 @@
 """Entity route tests."""
 
+# Standard Library
+import json
+
 # Third-Party
+from asyncpg import CheckViolationError
 from httpx import ASGITransport, AsyncClient
 import pytest
 
 # Local
 from nebula_api.app import app
 from nebula_api.auth import require_auth
+from nebula_api.routes.entities import _normalize_entity_metadata
 
 LEGACY_SCOPE_NAMES = ("work", "code", "vault-only", "blacklisted")
 
@@ -34,6 +39,121 @@ def _agent_auth_override(agent_row: dict, scope_ids: list[int]) -> callable:
         return auth_dict
 
     return mock_auth
+
+
+def test_normalize_entity_metadata_decodes_double_encoded_object():
+    """Metadata normalizer should decode legacy double-encoded JSON objects."""
+
+    entity = {
+        "id": "77777777-7777-7777-7777-777777777777",
+        "metadata": '"{\\"profile\\": {\\"timezone\\": \\"UTC\\"}}"',
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"]["profile"]["timezone"] == "UTC"
+
+
+def test_normalize_entity_metadata_coerces_invalid_string_to_empty_object():
+    """Metadata normalizer should coerce malformed strings into empty objects."""
+
+    entity = {
+        "id": "88888888-8888-8888-8888-888888888888",
+        "metadata": "not-json",
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
+
+
+def test_normalize_entity_metadata_coerces_json_non_object_to_empty_object():
+    """Metadata normalizer should coerce non-object JSON to empty objects."""
+
+    entity = {
+        "id": "99999999-9999-9999-9999-999999999999",
+        "metadata": "1",
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
+
+
+def test_normalize_entity_metadata_coerces_missing_to_empty_object():
+    """Metadata normalizer should coerce missing metadata to empty objects."""
+
+    entity = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
+
+
+def test_normalize_entity_metadata_keeps_object_values():
+    """Metadata normalizer should preserve already-valid object metadata."""
+
+    entity = {
+        "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "metadata": {"profile": {"timezone": "Europe/Warsaw"}},
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"]["profile"]["timezone"] == "Europe/Warsaw"
+
+
+def test_normalize_entity_metadata_preserves_non_metadata_fields():
+    """Metadata normalizer should keep non-metadata fields unchanged."""
+
+    entity = {
+        "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+        "name": "Bro",
+        "type": "person",
+        "metadata": '{"profile":{"timezone":"UTC"}}',
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["id"] == "cccccccc-cccc-cccc-cccc-cccccccccccc"
+    assert result["name"] == "Bro"
+    assert result["type"] == "person"
+    assert result["metadata"]["profile"]["timezone"] == "UTC"
+
+
+@pytest.mark.parametrize(
+    "raw_metadata",
+    (
+        [],
+        0,
+        False,
+    ),
+)
+def test_normalize_entity_metadata_coerces_non_object_values(raw_metadata):
+    """Metadata normalizer should coerce non-object runtime values to objects."""
+
+    entity = {
+        "id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+        "metadata": raw_metadata,
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
+
+
+def test_normalize_entity_metadata_is_idempotent():
+    """Metadata normalizer should be stable across repeated normalization passes."""
+
+    entity = {
+        "id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        "metadata": '{"profile":{"timezone":"UTC"}}',
+    }
+
+    once = _normalize_entity_metadata(entity)
+    twice = _normalize_entity_metadata(once)
+
+    assert once == twice
 
 
 @pytest.mark.asyncio
@@ -65,7 +185,6 @@ async def test_get_entity(api, test_entity):
     assert data["name"] == "api-test-user"
 
 
-@pytest.mark.asyncio
 async def test_get_entity_not_found(api):
     """Test get entity not found."""
 
@@ -83,6 +202,38 @@ async def test_get_entity_invalid_id_returns_400(api):
 
 
 @pytest.mark.asyncio
+async def test_get_entity_filters_context_segments_for_public_scope(
+    db_pool, enums, test_entity
+):
+    """Entity get should filter context segments by caller scope names."""
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+
+    public_scope_id = enums.scopes.name_to_id["public"]
+    app.dependency_overrides[require_auth] = _agent_auth_override(
+        {"id": "11111111-1111-1111-1111-111111111111"},
+        [public_scope_id],
+    )
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport, base_url="http://test", follow_redirects=True
+        ) as client:
+            response = await client.get(f"/api/entities/{test_entity['id']}")
+    finally:
+        app.dependency_overrides.pop(require_auth, None)
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["metadata"]["first_name"] == "API"
+    assert data["metadata"]["context_segments"] == [
+        {"text": "public info", "scopes": ["public"]}
+    ]
+
+
+@pytest.mark.asyncio
 async def test_query_entities(api):
     """Test query entities."""
 
@@ -94,6 +245,26 @@ async def test_query_entities(api):
     assert r.status_code == 200
     data = r.json()["data"]
     assert len(data) >= 1
+
+
+@pytest.mark.asyncio
+async def test_entities_metadata_constraint_rejects_stringified_payload(db_pool, enums):
+    """Database should reject stringified metadata payload storage."""
+
+    with pytest.raises(CheckViolationError):
+        await db_pool.fetchrow(
+            """
+            INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+            VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5, $6::jsonb)
+            RETURNING id
+            """,
+            "BadLegacyMeta",
+            enums.entity_types.name_to_id["person"],
+            enums.statuses.name_to_id["active"],
+            [enums.scopes.name_to_id["public"]],
+            [],
+            json.dumps(json.dumps({"profile": {"timezone": "UTC"}})),
+        )
 
 
 @pytest.mark.asyncio
@@ -170,6 +341,155 @@ async def test_create_entity_executor_value_error_returns_400(api, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_create_entity_normalizes_string_metadata_response(api, monkeypatch):
+    """Create route should normalize string metadata payloads in response."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload with string metadata."""
+
+        return {
+            "id": "11111111-1111-1111-1111-111111111111",
+            "name": "MetaString",
+            "metadata": '{"profile":{"timezone":"UTC"}}',
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "MetaString", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"]["profile"]["timezone"] == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_create_entity_normalizes_missing_metadata_response(api, monkeypatch):
+    """Create route should normalize missing metadata to an empty object."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload without metadata field."""
+
+        return {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "name": "NoMeta",
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "NoMeta", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_create_entity_normalizes_non_object_metadata_response(api, monkeypatch):
+    """Create route should coerce non-object metadata payloads to an empty object."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload with list metadata."""
+
+        return {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "name": "ListMeta",
+            "metadata": ["bad-shape"],
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "ListMeta", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_create_entity_normalizes_json_string_non_object_metadata(api, monkeypatch):
+    """Create route should coerce parsed non-object JSON metadata to an empty object."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload with list metadata encoded as JSON string."""
+
+        return {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "name": "JSONListMeta",
+            "metadata": '["bad-shape"]',
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "JSONListMeta", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_create_entity_normalizes_json_null_metadata(api, monkeypatch):
+    """Create route should coerce JSON null metadata to an empty object."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload with JSON null metadata."""
+
+        return {
+            "id": "55555555-5555-5555-5555-555555555555",
+            "name": "JSONNullMeta",
+            "metadata": "null",
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "JSONNullMeta", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_create_entity_normalizes_double_encoded_metadata(api, monkeypatch):
+    """Create route should decode double-encoded object metadata strings."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload with double-encoded metadata."""
+
+        return {
+            "id": "66666666-6666-6666-6666-666666666666",
+            "name": "DoubleEncodedMeta",
+            "metadata": '"{\\"profile\\": {\\"timezone\\": \\"UTC\\"}}"',
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "DoubleEncodedMeta", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"]["profile"]["timezone"] == "UTC"
+
+
+@pytest.mark.asyncio
 async def test_update_entity(api, test_entity):
     """Test update entity."""
 
@@ -181,6 +501,192 @@ async def test_update_entity(api, test_entity):
         },
     )
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_entity_normalizes_string_metadata_response(api, test_entity, monkeypatch):
+    """Update route should normalize malformed string metadata payloads."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with malformed string metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": "not-json",
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_update_entity_preserves_object_metadata_response(
+    api, test_entity, monkeypatch
+):
+    """Update route should keep already valid metadata object payloads."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with dict metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": {"profile": {"timezone": "Europe/Warsaw"}},
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"]["profile"]["timezone"] == "Europe/Warsaw"
+
+
+@pytest.mark.asyncio
+async def test_update_entity_parses_valid_json_object_metadata(
+    api, test_entity, monkeypatch
+):
+    """Update route should parse valid JSON object metadata strings."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with object JSON metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": '{"profile":{"timezone":"UTC"}}',
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"]["profile"]["timezone"] == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_update_entity_normalizes_double_encoded_metadata(
+    api, test_entity, monkeypatch
+):
+    """Update route should decode double-encoded object metadata strings."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with double-encoded metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": '"{\\"profile\\": {\\"timezone\\": \\"UTC\\"}}"',
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"]["profile"]["timezone"] == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_update_entity_normalizes_non_object_metadata_response(
+    api, test_entity, monkeypatch
+):
+    """Update route should coerce list metadata payloads to an empty object."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with list metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": ["bad-shape"],
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_update_entity_normalizes_missing_metadata_response(
+    api, test_entity, monkeypatch
+):
+    """Update route should normalize missing metadata field to an empty object."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload without metadata field."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_update_entity_normalizes_json_string_non_object_metadata(
+    api, test_entity, monkeypatch
+):
+    """Update route should coerce parsed non-object JSON metadata to an empty object."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with numeric JSON metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": "1",
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
 
 
 @pytest.mark.asyncio
@@ -216,6 +722,42 @@ async def test_update_entity_with_null_tags_is_allowed(api, test_entity):
         json={"tags": None},
     )
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_entity_metadata_patch_merges_nested_keys(api):
+    """Entity update should deep-merge metadata patch values."""
+
+    create = await api.post(
+        "/api/entities",
+        json={
+            "name": "Metadata Merge API Entity",
+            "type": "person",
+            "scopes": ["public"],
+            "metadata": {
+                "profile": {"timezone": "Europe/Warsaw", "alias": "bro"},
+                "flags": {"visible": True},
+            },
+        },
+    )
+    assert create.status_code == 200
+    entity_id = create.json()["data"]["id"]
+
+    update = await api.patch(
+        f"/api/entities/{entity_id}",
+        json={
+            "metadata": {
+                "profile": {"timezone": "UTC"},
+                "flags": {"trusted": True},
+            }
+        },
+    )
+    assert update.status_code == 200
+    merged = update.json()["data"]["metadata"]
+    assert merged["profile"]["timezone"] == "UTC"
+    assert merged["profile"]["alias"] == "bro"
+    assert merged["flags"]["visible"] is True
+    assert merged["flags"]["trusted"] is True
 
 
 @pytest.mark.asyncio
@@ -255,6 +797,125 @@ async def test_update_entity_untrusted_agent_returns_approval_required(
 
     assert r.status_code == 202
     assert r.json()["status"] == "approval_required"
+
+
+@pytest.mark.asyncio
+async def test_create_entity_allows_reuse_after_archive(api):
+    """Archiving should allow re-creating same name/type/scopes."""
+
+    create_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Reusable Entity Name",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    entity_id = create_resp.json()["data"]["id"]
+
+    archive_resp = await api.patch(
+        f"/api/entities/{entity_id}",
+        json={"status": "archived", "status_reason": "archive then reuse"},
+    )
+    assert archive_resp.status_code == 200, archive_resp.text
+
+    recreate_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Reusable Entity Name",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert recreate_resp.status_code == 200, recreate_resp.text
+    assert recreate_resp.json()["data"]["id"] != entity_id
+
+
+@pytest.mark.asyncio
+async def test_create_entity_still_blocks_duplicate_active_name_scope(api):
+    """Active entities should still enforce same name/type/scope uniqueness."""
+
+    first_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Duplicate Active Entity",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert first_resp.status_code == 200, first_resp.text
+
+    dup_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Duplicate Active Entity",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert dup_resp.status_code == 400, dup_resp.text
+    assert dup_resp.json()["detail"]["error"]["code"] == "INVALID_INPUT"
+
+
+@pytest.mark.asyncio
+async def test_create_entity_allows_same_name_with_different_scope_set(api):
+    """Same name/type should be allowed when scope set differs."""
+
+    first_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Scope Variant Entity",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert first_resp.status_code == 200, first_resp.text
+
+    second_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Scope Variant Entity",
+            "type": "project",
+            "status": "active",
+            "scopes": ["private"],
+        },
+    )
+    assert second_resp.status_code == 200, second_resp.text
+    assert second_resp.json()["data"]["id"] != first_resp.json()["data"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_create_entity_allows_same_name_with_different_type(api):
+    """Same name/scope should be allowed when type differs."""
+
+    first_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Type Variant Entity",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert first_resp.status_code == 200, first_resp.text
+
+    second_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Type Variant Entity",
+            "type": "tool",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert second_resp.status_code == 200, second_resp.text
+    assert second_resp.json()["data"]["id"] != first_resp.json()["data"]["id"]
 
 
 @pytest.mark.asyncio

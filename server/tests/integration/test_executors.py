@@ -11,6 +11,7 @@ from nebula_mcp.executors import (
     execute_create_job,
     execute_create_context,
     execute_create_relationship,
+    execute_update_context,
     execute_update_entity,
     execute_update_job_status,
 )
@@ -141,6 +142,43 @@ class TestCreateEntity:
                     "scopes": ["public"],
                 },
             )
+
+    async def test_name_type_scope_can_be_reused_after_archive(self, db_pool, enums):
+        """Archived entities should not block same name+type+scope re-creation."""
+
+        first = await execute_create_entity(
+            db_pool,
+            enums,
+            {
+                "name": "Reusable Name",
+                "type": "project",
+                "status": "active",
+                "scopes": ["public"],
+            },
+        )
+
+        archived = await execute_update_entity(
+            db_pool,
+            enums,
+            {
+                "entity_id": str(first["id"]),
+                "status": "archived",
+                "status_reason": "archive for reuse regression test",
+            },
+        )
+        assert archived["status_id"] != first["status_id"]
+
+        recreated = await execute_create_entity(
+            db_pool,
+            enums,
+            {
+                "name": "Reusable Name",
+                "type": "project",
+                "status": "active",
+                "scopes": ["public"],
+            },
+        )
+        assert recreated["id"] != first["id"]
 
     async def test_valid_metadata_works(self, db_pool, enums):
         """Valid person metadata with structured fields should succeed."""
@@ -518,5 +556,62 @@ class TestUpdateEntity:
                 {
                     "entity_id": "00000000-0000-0000-0000-000000000000",
                     "metadata": {"first_name": "Ghost"},
+                },
+            )
+
+
+# --- TestUpdateContext ---
+
+
+class TestUpdateContext:
+    """Tests for execute_update_context."""
+
+    async def test_metadata_change_merges_nested_values(self, db_pool, enums):
+        """Updating context metadata should merge with existing nested values."""
+
+        created = await execute_create_context(
+            db_pool,
+            enums,
+            {
+                "title": "Context Merge Test",
+                "source_type": "note",
+                "scopes": ["public"],
+                "metadata": {
+                    "owner": "alxx",
+                    "profile": {"timezone": "UTC", "language": "en"},
+                },
+            },
+        )
+
+        updated = await execute_update_context(
+            db_pool,
+            enums,
+            {
+                "context_id": str(created["id"]),
+                "metadata": {
+                    "profile": {"timezone": "Europe/Warsaw"},
+                    "private_notes": {"handoff_key": "bro-private-01"},
+                },
+            },
+        )
+
+        merged = updated["metadata"]
+        if isinstance(merged, str):
+            merged = json.loads(merged)
+        assert merged["owner"] == "alxx"
+        assert merged["profile"]["timezone"] == "Europe/Warsaw"
+        assert merged["profile"]["language"] == "en"
+        assert merged["private_notes"]["handoff_key"] == "bro-private-01"
+
+    async def test_nonexistent_context_raises(self, db_pool, enums):
+        """Updating a missing context row should raise ValueError."""
+
+        with pytest.raises(ValueError, match="Context not found"):
+            await execute_update_context(
+                db_pool,
+                enums,
+                {
+                    "context_id": "00000000-0000-0000-0000-000000000000",
+                    "metadata": {"owner": "ghost"},
                 },
             )

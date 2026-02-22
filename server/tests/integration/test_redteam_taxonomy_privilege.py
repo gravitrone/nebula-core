@@ -3,21 +3,36 @@
 # Third-Party
 import pytest
 from unittest.mock import MagicMock
+from uuid import uuid4
 
 # Local
 from nebula_mcp.models import CreateTaxonomyInput, ListTaxonomyInput
 from nebula_mcp.server import create_taxonomy, list_taxonomy
 
 
-def _make_context(pool, enums, scope_ids: list) -> MagicMock:
+async def _make_context(pool, enums, scope_ids: list) -> MagicMock:
     """Build MCP context with specific scope ids."""
+
+    agent_id = str(uuid4())
+    await pool.execute(
+        """
+        INSERT INTO agents (id, name, description, scopes, requires_approval, status_id)
+        VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid)
+        """,
+        agent_id,
+        "taxonomy-sensitive-agent",
+        "taxonomy privilege helper",
+        scope_ids,
+        False,
+        enums.statuses.name_to_id["active"],
+    )
 
     ctx = MagicMock()
     ctx.request_context.lifespan_context = {
         "pool": pool,
         "enums": enums,
         "agent": {
-            "id": "taxonomy-sensitive-agent",
+            "id": agent_id,
             "name": "taxonomy-sensitive-agent",
             "scopes": scope_ids,
             "requires_approval": False,
@@ -30,7 +45,7 @@ def _make_context(pool, enums, scope_ids: list) -> MagicMock:
 async def test_mcp_taxonomy_sensitive_scope_cannot_create(db_pool, enums):
     """A sensitive-only agent should not create taxonomy rows."""
 
-    ctx = _make_context(db_pool, enums, [enums.scopes.name_to_id["sensitive"]])
+    ctx = await _make_context(db_pool, enums, [enums.scopes.name_to_id["sensitive"]])
     created: dict | None = None
     try:
         created = await create_taxonomy(
@@ -59,6 +74,6 @@ async def test_mcp_taxonomy_sensitive_scope_cannot_create(db_pool, enums):
 async def test_mcp_taxonomy_sensitive_scope_cannot_list(db_pool, enums):
     """A sensitive-only agent should not list taxonomy rows."""
 
-    ctx = _make_context(db_pool, enums, [enums.scopes.name_to_id["sensitive"]])
+    ctx = await _make_context(db_pool, enums, [enums.scopes.name_to_id["sensitive"]])
     with pytest.raises(ValueError, match="Admin scope required"):
         await list_taxonomy(ListTaxonomyInput(kind="scopes"), ctx)

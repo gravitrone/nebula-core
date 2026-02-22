@@ -692,16 +692,21 @@ func renderMetadataSelectableBlockWithTitle(
 		}
 		selectedCount++
 	}
-	showSelectionColumn := showSelectors && selectedCount > 0
+	showSelectionColumn := showSelectors
+	showCursorColumn := !showSelectionColumn
 	columnBudget := contentWidth
 	if showSelectionColumn {
 		columnBudget -= 5
+	} else if showCursorColumn {
+		columnBudget -= 3
 	}
 	groupWidth, fieldWidth, valueWidth := metadataColumnWidths(columnBudget)
 
 	columns := make([]components.TableColumn, 0, 4)
 	if showSelectionColumn {
 		columns = append(columns, components.TableColumn{Header: "Sel", Width: 4, Align: lipgloss.Left})
+	} else if showCursorColumn {
+		columns = append(columns, components.TableColumn{Header: "", Width: 2, Align: lipgloss.Left})
 	}
 	columns = append(columns,
 		components.TableColumn{Header: "Group", Width: groupWidth, Align: lipgloss.Left},
@@ -728,6 +733,12 @@ func renderMetadataSelectableBlockWithTitle(
 				mark = "[X]"
 			}
 			cells = append(cells, mark)
+		} else if showCursorColumn {
+			mark := " "
+			if list.IsSelected(absIdx) {
+				mark = "*"
+			}
+			cells = append(cells, mark)
 		}
 		cells = append(cells, group, field, row.value)
 		gridRows = append(gridRows, cells)
@@ -750,7 +761,7 @@ func renderMetadataSelectableBlockWithTitle(
 		hintLine := "↑/↓ navigate · space select · b all · enter inspect · c copy selected"
 		content += "\n" + MutedStyle.Render(hintLine)
 	} else {
-		hintLine := "enter inspect · m metadata select mode"
+		hintLine := "↑/↓ navigate · enter inspect · m metadata select mode"
 		content += "\n" + MutedStyle.Render(hintLine)
 	}
 	return components.TitledBox(title, content, width)

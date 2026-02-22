@@ -107,6 +107,78 @@ async def test_login_existing_user_backfills_baseline_scopes(
 
 
 @pytest.mark.asyncio
+async def test_login_returns_service_unavailable_when_baseline_scope_missing(
+    api_no_auth, enums
+):
+    """Login returns 503 when required baseline scope is unavailable."""
+
+    removed_id = enums.scopes.name_to_id.pop("admin", None)
+    if removed_id is not None:
+        enums.scopes.id_to_name.pop(removed_id, None)
+
+    try:
+        r = await api_no_auth.post(
+            "/api/keys/login", json={"username": "missing-admin-scope-user"}
+        )
+        assert r.status_code == 503
+        err = r.json()["detail"]["error"]
+        assert err["code"] == "SERVICE_UNAVAILABLE"
+        assert "required baseline taxonomy is missing" in err["message"]
+    finally:
+        if removed_id is not None:
+            enums.scopes.name_to_id["admin"] = removed_id
+            enums.scopes.id_to_name[removed_id] = "admin"
+
+
+@pytest.mark.asyncio
+async def test_login_returns_service_unavailable_when_person_type_missing(
+    api_no_auth, enums
+):
+    """Login returns 503 when required person entity type is unavailable."""
+
+    removed_id = enums.entity_types.name_to_id.pop("person", None)
+    if removed_id is not None:
+        enums.entity_types.id_to_name.pop(removed_id, None)
+
+    try:
+        r = await api_no_auth.post(
+            "/api/keys/login", json={"username": "missing-person-type-user"}
+        )
+        assert r.status_code == 503
+        err = r.json()["detail"]["error"]
+        assert err["code"] == "SERVICE_UNAVAILABLE"
+        assert "required baseline taxonomy is missing" in err["message"]
+    finally:
+        if removed_id is not None:
+            enums.entity_types.name_to_id["person"] = removed_id
+            enums.entity_types.id_to_name[removed_id] = "person"
+
+
+@pytest.mark.asyncio
+async def test_login_returns_service_unavailable_when_active_status_missing(
+    api_no_auth, enums
+):
+    """Login returns 503 when required active status is unavailable."""
+
+    removed_id = enums.statuses.name_to_id.pop("active", None)
+    if removed_id is not None:
+        enums.statuses.id_to_name.pop(removed_id, None)
+
+    try:
+        r = await api_no_auth.post(
+            "/api/keys/login", json={"username": "missing-active-status-user"}
+        )
+        assert r.status_code == 503
+        err = r.json()["detail"]["error"]
+        assert err["code"] == "SERVICE_UNAVAILABLE"
+        assert "required baseline taxonomy is missing" in err["message"]
+    finally:
+        if removed_id is not None:
+            enums.statuses.name_to_id["active"] = removed_id
+            enums.statuses.id_to_name[removed_id] = "active"
+
+
+@pytest.mark.asyncio
 async def test_create_additional_key(api):
     """Test create additional key."""
 

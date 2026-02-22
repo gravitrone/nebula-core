@@ -62,6 +62,33 @@ def _append_scope(scope_ids: list[Any] | None, scope_id: Any) -> list[Any]:
     return current
 
 
+def _resolve_login_baseline(enums: Any) -> tuple[list[UUID], UUID, UUID]:
+    """Return baseline scope/type/status IDs required for first-run login.
+
+    Args:
+        enums: Loaded enum registry from app state.
+
+    Returns:
+        Tuple of (baseline_scope_ids, person_type_id, active_status_id).
+    """
+
+    try:
+        return (
+            require_scopes(["public", "private", "sensitive", "admin"], enums),
+            require_entity_type("person", enums),
+            require_status("active", enums),
+        )
+    except ValueError as exc:
+        api_error(
+            "SERVICE_UNAVAILABLE",
+            (
+                "Login unavailable: required baseline taxonomy is missing "
+                f"({exc}). Run migrations/seed and retry."
+            ),
+            503,
+        )
+
+
 class LoginInput(BaseModel):
     """Login payload used to create or fetch a user entity.
 
@@ -96,24 +123,21 @@ async def login(payload: LoginInput, request: Request) -> dict[str, Any]:
 
     pool = request.app.state.pool
     enums = request.app.state.enums
-    baseline_scope_ids = require_scopes(
-        ["public", "private", "sensitive", "admin"], enums
-    )
+    baseline_scope_ids, person_type_id, status_id = _resolve_login_baseline(enums)
 
     # Find existing entity by name + type person
     entity = await pool.fetchrow(
         QUERIES["entities/find_by_name_type"],
         payload.username,
-        require_entity_type("person", enums),
+        person_type_id,
     )
 
     if not entity:
-        status_id = require_status("active", enums)
         entity = await pool.fetchrow(
             QUERIES["entities/create"],
             baseline_scope_ids,
             payload.username,
-            require_entity_type("person", enums),
+            person_type_id,
             status_id,
             [],
             "{}",

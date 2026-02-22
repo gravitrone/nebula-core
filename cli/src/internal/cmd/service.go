@@ -24,6 +24,7 @@ const (
 	apiStateFilename = "api-runtime.json"
 	apiPIDFilename   = "api.pid"
 	apiLogFilename   = "api.log"
+	apiLockFilename  = "api.lock"
 )
 
 type apiRuntimeState struct {
@@ -32,6 +33,24 @@ type apiRuntimeState struct {
 	ServerDir string    `json:"server_dir"`
 	LogPath   string    `json:"log_path"`
 	StartedAt time.Time `json:"started_at"`
+}
+
+type apiLockState struct {
+	OwnerPID  int       `json:"owner_pid"`
+	APIPID    int       `json:"api_pid"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type apiLockHeldError struct {
+	PID int
+}
+
+// Error handles error.
+func (e *apiLockHeldError) Error() string {
+	if e == nil || e.PID <= 0 {
+		return "api lock is held"
+	}
+	return fmt.Sprintf("api lock is held by pid %d", e.PID)
 }
 
 // StartCmd starts the local Nebula API in background mode.
@@ -89,6 +108,27 @@ func runStartCmd(out io.Writer) error {
 		return nil
 	}
 
+	if err := acquireAPILock(); err != nil {
+		var held *apiLockHeldError
+		if errors.As(err, &held) {
+			renderCommandPanel(out, "Nebula API", []components.TableRow{
+				{Label: "status", Value: "already running"},
+				{Label: "pid", Value: strconv.Itoa(held.PID)},
+				{Label: "port", Value: strconv.Itoa(api.DefaultAPIPort)},
+				{Label: "log", Value: apiLogPath()},
+			})
+			return nil
+		}
+		return err
+	}
+
+	startSucceeded := false
+	defer func() {
+		if !startSucceeded {
+			_ = os.Remove(apiLockPath())
+		}
+	}()
+
 	serverDir, err := resolveServerDir()
 	if err != nil {
 		return err
@@ -135,6 +175,10 @@ func runStartCmd(out io.Writer) error {
 	if err := saveAPIState(state); err != nil {
 		return err
 	}
+	if err := updateAPILockPID(pid); err != nil {
+		return err
+	}
+	startSucceeded = true
 
 	ready := waitForAPIHealth(8 * time.Second)
 	status := "starting"
@@ -153,24 +197,45 @@ func runStartCmd(out io.Writer) error {
 
 // runStopCmd runs run stop cmd.
 func runStopCmd(out io.Writer) error {
+	lock, lockErr := loadAPILock()
+	if lockErr != nil && !os.IsNotExist(lockErr) {
+		return fmt.Errorf("read api lock: %w", lockErr)
+	}
 	state, _ := loadAPIState()
-	pid := 0
-	if state != nil {
+
+	if lock == nil {
+		if state == nil || state.PID <= 0 || !processAlive(state.PID) {
+			_ = cleanupAPIState()
+			renderCommandMessage(out, "Nebula API", "API is not running.")
+			return nil
+		}
+		renderCommandMessage(
+			out,
+			"Nebula API",
+			"refusing to stop unmanaged process (missing lock). clean stale state and run `nebula start`.",
+		)
+		return nil
+	}
+
+	pid := lock.APIPID
+	if pid <= 0 && state != nil {
 		pid = state.PID
 	}
 	if pid <= 0 {
-		if pidFromFile, ok := readPIDFile(); ok {
-			pid = pidFromFile
-		}
-	}
-	if pid <= 0 {
-		renderCommandMessage(out, "Nebula API", "API is not running.")
+		_ = cleanupAPIState()
+		_ = os.Remove(apiLockPath())
+		renderCommandMessage(out, "Nebula API", "stale lock cleaned.")
 		return nil
 	}
 
 	if !processAlive(pid) {
 		_ = cleanupAPIState()
-		renderCommandMessage(out, "Nebula API", "API was not running. cleaned stale runtime files.")
+		_ = os.Remove(apiLockPath())
+		renderCommandMessage(
+			out,
+			"Nebula API",
+			"API was not running. cleaned stale runtime files.",
+		)
 		return nil
 	}
 
@@ -194,6 +259,7 @@ func runStopCmd(out io.Writer) error {
 	if err := cleanupAPIState(); err != nil {
 		return err
 	}
+	_ = os.Remove(apiLockPath())
 
 	renderCommandPanel(out, "Nebula API", []components.TableRow{
 		{Label: "status", Value: "stopped"},
@@ -249,6 +315,11 @@ func apiLogPath() string {
 	return filepath.Join(runtimeDir(), apiLogFilename)
 }
 
+// apiLockPath handles api lock path.
+func apiLockPath() string {
+	return filepath.Join(runtimeDir(), apiLockFilename)
+}
+
 // saveAPIState handles save apistate.
 func saveAPIState(state *apiRuntimeState) error {
 	if state == nil {
@@ -280,17 +351,87 @@ func loadAPIState() (*apiRuntimeState, error) {
 	return &state, nil
 }
 
-// readPIDFile handles read pidfile.
-func readPIDFile() (int, bool) {
-	raw, err := os.ReadFile(apiPIDPath())
+// loadAPILock loads api lock.
+func loadAPILock() (*apiLockState, error) {
+	raw, err := os.ReadFile(apiLockPath())
 	if err != nil {
-		return 0, false
+		return nil, err
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
-	if err != nil || pid <= 0 {
-		return 0, false
+	var lock apiLockState
+	if err := json.Unmarshal(raw, &lock); err != nil {
+		return nil, fmt.Errorf("parse api lock: %w", err)
 	}
-	return pid, true
+	return &lock, nil
+}
+
+// acquireAPILock handles acquire api lock.
+func acquireAPILock() error {
+	if err := os.MkdirAll(runtimeDir(), 0o700); err != nil {
+		return fmt.Errorf("create runtime dir: %w", err)
+	}
+
+	for attempt := 0; attempt < 2; attempt++ {
+		fd, err := os.OpenFile(apiLockPath(), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			lock := apiLockState{
+				OwnerPID:  os.Getpid(),
+				CreatedAt: time.Now(),
+			}
+			raw, marshalErr := json.Marshal(lock)
+			if marshalErr != nil {
+				_ = fd.Close()
+				return fmt.Errorf("marshal api lock: %w", marshalErr)
+			}
+			if _, writeErr := fd.Write(raw); writeErr != nil {
+				_ = fd.Close()
+				return fmt.Errorf("write api lock: %w", writeErr)
+			}
+			if closeErr := fd.Close(); closeErr != nil {
+				return fmt.Errorf("close api lock: %w", closeErr)
+			}
+			return nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return fmt.Errorf("create api lock: %w", err)
+		}
+
+		lock, lockErr := loadAPILock()
+		pid := 0
+		if lockErr == nil && lock != nil {
+			pid = lock.APIPID
+		}
+		if pid <= 0 {
+			state, stateErr := loadAPIState()
+			if stateErr == nil && state != nil {
+				pid = state.PID
+			}
+		}
+		if pid > 0 && processAlive(pid) {
+			return &apiLockHeldError{PID: pid}
+		}
+
+		_ = cleanupAPIState()
+		_ = os.Remove(apiLockPath())
+	}
+
+	return fmt.Errorf("failed to acquire api lock")
+}
+
+// updateAPILockPID handles update api lock pid.
+func updateAPILockPID(pid int) error {
+	lock := apiLockState{
+		OwnerPID:  os.Getpid(),
+		APIPID:    pid,
+		CreatedAt: time.Now(),
+	}
+	raw, err := json.Marshal(lock)
+	if err != nil {
+		return fmt.Errorf("marshal api lock: %w", err)
+	}
+	if err := os.WriteFile(apiLockPath(), raw, 0o600); err != nil {
+		return fmt.Errorf("write api lock: %w", err)
+	}
+	return nil
 }
 
 // cleanupAPIState handles cleanup apistate.

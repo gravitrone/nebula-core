@@ -506,3 +506,29 @@ func TestRowHighlightEnabledDisabledWhenSettingsSectionFocused(t *testing.T) {
 
 	assert.False(t, app.rowHighlightEnabled())
 }
+
+// TestRowHighlightEnabledInEntityMetadataPanel handles test row highlight enabled in entity metadata panel.
+func TestRowHighlightEnabledInEntityMetadataPanel(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.tab = tabEntities
+	app.tabNav = false
+	app.entities.view = entitiesViewDetail
+	app.entities.metaExpanded = true
+	app.entities.metaRows = []metadataDisplayRow{
+		{field: "profile.timezone", value: "Europe/Warsaw"},
+	}
+	app.entities.metaInspect = false
+
+	assert.True(t, app.rowHighlightEnabled())
+}
+
+// TestRowHighlightEnabledInEntityMetadataEditor handles test row highlight enabled in entity metadata editor.
+func TestRowHighlightEnabledInEntityMetadataEditor(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.tab = tabEntities
+	app.tabNav = false
+	app.entities.modeFocus = false
+	app.entities.addMeta.Active = true
+
+	assert.True(t, app.rowHighlightEnabled())
+}

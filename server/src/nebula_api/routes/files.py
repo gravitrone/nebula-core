@@ -1,6 +1,7 @@
 """File API routes."""
 
 # Standard Library
+import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -21,6 +22,44 @@ QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
+
+
+def _coerce_json_value(value: Any, fallback: Any) -> Any:
+    """Coerce text JSON payloads returned by asyncpg into Python objects.
+
+    Args:
+        value: Raw value from database row.
+        fallback: Value returned when payload cannot be parsed.
+
+    Returns:
+        Parsed JSON object/array or fallback when parsing fails.
+    """
+
+    if value is None:
+        return fallback
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return fallback
+    return fallback
+
+
+def _normalize_file_payload(file_row: dict[str, Any]) -> dict[str, Any]:
+    """Normalize JSON fields in a file row for API responses.
+
+    Args:
+        file_row: File payload row converted to a dict.
+
+    Returns:
+        File payload with consistent JSON object metadata.
+    """
+
+    metadata = _coerce_json_value(file_row.get("metadata"), {})
+    file_row["metadata"] = metadata if isinstance(metadata, dict) else {}
+    return file_row
 
 
 def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
@@ -146,12 +185,12 @@ async def list_files(
         offset,
     )
     if _is_admin(auth, enums):
-        return success([dict(r) for r in rows])
+        return success([_normalize_file_payload(dict(r)) for r in rows])
     results = []
     for row in rows:
         if not await _file_visible(pool, enums, auth, row["id"]):
             continue
-        results.append(dict(row))
+        results.append(_normalize_file_payload(dict(row)))
     return success(results)
 
 
@@ -176,7 +215,7 @@ async def get_file(
         api_error("NOT_FOUND", f"File '{file_id}' not found", 404)
     if not await _file_visible(pool, enums, auth, file_id):
         api_error("FORBIDDEN", "File not in your scopes", 403)
-    return success(dict(row))
+    return success(_normalize_file_payload(dict(row)))
 
 
 @router.post("/")
@@ -215,7 +254,7 @@ async def create_file(
         result = await execute_create_file(pool, enums, data)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    return success(result)
+    return success(_normalize_file_payload(result))
 
 
 @router.patch("/{file_id}")
@@ -267,4 +306,4 @@ async def update_file(
         api_error("INVALID_INPUT", str(exc), 400)
     if not result:
         api_error("NOT_FOUND", f"File '{file_id}' not found", 404)
-    return success(result)
+    return success(_normalize_file_payload(result))

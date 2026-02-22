@@ -281,7 +281,7 @@ async def execute_update_context(
         Updated context row as dict.
     """
 
-    from .models import UpdateContextInput
+    from .models import UpdateContextInput, validate_metadata_payload
 
     if isinstance(change_details, str):
         change_details = json.loads(change_details)
@@ -296,6 +296,19 @@ async def execute_update_context(
     if payload.scopes is not None:
         scope_ids = require_scopes(payload.scopes, enums)
 
+    metadata = None
+    if payload.metadata is not None:
+        context_row = await pool.fetchrow(
+            QUERIES["context/get"],
+            payload.context_id,
+            None,
+        )
+        if not context_row:
+            raise ValueError("Context not found")
+        existing_metadata = _decode_json_object(context_row.get("metadata"))
+        merged_metadata = _deep_merge_dict(existing_metadata, payload.metadata)
+        metadata = validate_metadata_payload(merged_metadata) or {}
+
     row = await pool.fetchrow(
         QUERIES["context/update"],
         payload.context_id,
@@ -306,7 +319,7 @@ async def execute_update_context(
         status_id,
         payload.tags,
         scope_ids,
-        json.dumps(payload.metadata) if payload.metadata is not None else None,
+        json.dumps(metadata) if metadata is not None else None,
     )
 
     if not row:

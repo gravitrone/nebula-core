@@ -250,6 +250,44 @@ func TestRenderMetadataSelectableBlockShowsSelectionColumnWhenRowsSelected(t *te
 	assert.NotContains(t, clean, ">[")
 }
 
+// TestRenderMetadataSelectableBlockShowsSelectionColumnWhenSelectModeEnabled handles test render metadata selectable block shows selection column when select mode enabled.
+func TestRenderMetadataSelectableBlockShowsSelectionColumnWhenSelectModeEnabled(t *testing.T) {
+	rows := []metadataDisplayRow{
+		{field: "note", value: "hello"},
+	}
+	list := components.NewList(metadataPanelPageSize(false))
+	syncMetadataList(list, rows, metadataPanelPageSize(false))
+
+	out := renderMetadataSelectableBlockWithTitle("Metadata", rows, 80, list, map[int]bool{}, true)
+	clean := components.SanitizeText(out)
+
+	assert.Contains(t, clean, "Sel")
+	assert.Contains(t, clean, "[ ]")
+	assert.NotContains(t, clean, "›[")
+	assert.NotContains(t, clean, ">[")
+}
+
+// TestRenderMetadataSelectableBlockShowsCursorMarkerWhenSelectModeDisabled handles test render metadata selectable block shows cursor marker when select mode disabled.
+func TestRenderMetadataSelectableBlockShowsCursorMarkerWhenSelectModeDisabled(t *testing.T) {
+	rows := []metadataDisplayRow{
+		{field: "owner", value: "alxx"},
+		{field: "timezone", value: "Europe/Warsaw"},
+	}
+	list := components.NewList(metadataPanelPageSize(false))
+	syncMetadataList(list, rows, metadataPanelPageSize(false))
+	list.Cursor = 1
+
+	out := renderMetadataSelectableBlockWithTitle("Metadata", rows, 80, list, map[int]bool{}, false)
+	clean := components.SanitizeText(out)
+
+	assert.Contains(t, clean, "Group")
+	assert.Contains(t, clean, "Field")
+	assert.Contains(t, clean, "Value")
+	assert.Contains(t, clean, "    * │")
+	assert.Contains(t, clean, "timezone")
+	assert.NotContains(t, clean, "[ ]")
+}
+
 // TestRenderMetadataSelectableBlockHumanizesContextSegmentField handles test render metadata selectable block humanizes context segment field.
 func TestRenderMetadataSelectableBlockHumanizesContextSegmentField(t *testing.T) {
 	rows := []metadataDisplayRow{
@@ -280,4 +318,26 @@ func TestRenderMetadataSelectableBlockHumanizesNumericPathSegments(t *testing.T)
 	assert.Contains(t, clean, "profile")
 	assert.Contains(t, clean, "aliases.item 1")
 	assert.NotContains(t, clean, "aliases[0]")
+}
+
+// TestSyncMetadataListKeepsCursorVisible handles test sync metadata list keeps cursor visible.
+func TestSyncMetadataListKeepsCursorVisible(t *testing.T) {
+	rows := []metadataDisplayRow{
+		{field: "k1", value: "v1"},
+		{field: "k2", value: "v2"},
+		{field: "k3", value: "v3"},
+		{field: "k4", value: "v4"},
+		{field: "k5", value: "v5"},
+		{field: "k6", value: "v6"},
+		{field: "k7", value: "v7"},
+		{field: "k8", value: "v8"},
+	}
+	list := components.NewList(3)
+	list.Cursor = 6
+	list.Offset = 0
+
+	syncMetadataList(list, rows, 3)
+
+	assert.GreaterOrEqual(t, list.Cursor, list.Offset)
+	assert.Less(t, list.Cursor, list.Offset+list.PageSize)
 }

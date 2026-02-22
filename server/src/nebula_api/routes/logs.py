@@ -1,6 +1,7 @@
 """Log API routes."""
 
 # Standard Library
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,46 @@ QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
+
+
+def _coerce_json_value(value: Any, fallback: Any) -> Any:
+    """Coerce text JSON payloads returned by asyncpg into Python objects.
+
+    Args:
+        value: Raw value from database row.
+        fallback: Value returned when payload cannot be parsed.
+
+    Returns:
+        Parsed JSON object/array or fallback when parsing fails.
+    """
+
+    if value is None:
+        return fallback
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return fallback
+    return fallback
+
+
+def _normalize_log_payload(log: dict[str, Any]) -> dict[str, Any]:
+    """Normalize JSON fields in a log row for API responses.
+
+    Args:
+        log: Log payload row converted to a dict.
+
+    Returns:
+        Log payload with consistent JSON object fields.
+    """
+
+    value = _coerce_json_value(log.get("value"), {})
+    log["value"] = value if isinstance(value, dict) else {}
+    metadata = _coerce_json_value(log.get("metadata"), {})
+    log["metadata"] = metadata if isinstance(metadata, dict) else {}
+    return log
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
@@ -167,7 +208,7 @@ async def create_log(
         result = await execute_create_log(pool, enums, data)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    return success(result)
+    return success(_normalize_log_payload(result))
 
 
 @router.get("/{log_id}")
@@ -191,7 +232,7 @@ async def get_log(
         api_error("NOT_FOUND", f"Log '{log_id}' not found", 404)
     if not await _log_visible(pool, enums, auth, log_id):
         api_error("FORBIDDEN", "Log not in your scopes", 403)
-    return success(dict(row))
+    return success(_normalize_log_payload(dict(row)))
 
 
 @router.get("/")
@@ -223,12 +264,12 @@ async def query_logs(
         offset,
     )
     if _is_admin(auth, enums):
-        return success([dict(r) for r in rows])
+        return success([_normalize_log_payload(dict(r)) for r in rows])
     results = []
     for row in rows:
         if not await _log_visible(pool, enums, auth, row["id"]):
             continue
-        results.append(dict(row))
+        results.append(_normalize_log_payload(dict(row)))
     return success(results)
 
 
@@ -283,4 +324,4 @@ async def update_log(
         api_error("INVALID_INPUT", str(exc), 400)
     if not result:
         api_error("NOT_FOUND", f"Log '{log_id}' not found", 404)
-    return success(result)
+    return success(_normalize_log_payload(result))

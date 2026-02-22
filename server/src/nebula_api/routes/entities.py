@@ -46,6 +46,37 @@ router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
 
 
+def _normalize_entity_metadata(entity: dict[str, Any]) -> dict[str, Any]:
+    """Normalize entity metadata field to a JSON object.
+
+    Args:
+        entity: Entity payload returned from executor/query layers.
+
+    Returns:
+        Entity payload with metadata coerced to a dict.
+    """
+
+    metadata = entity.get("metadata")
+    if metadata is None:
+        entity["metadata"] = {}
+        return entity
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+        # Backward compatibility: legacy rows may be double-encoded JSON.
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+    if not isinstance(metadata, dict):
+        metadata = {}
+    entity["metadata"] = metadata
+    return entity
+
+
 def _is_admin(auth: dict, enums: Any) -> bool:
     """Handle is admin.
 
@@ -325,6 +356,7 @@ async def create_entity(
         result = await execute_create_entity(pool, enums, data)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
+    _normalize_entity_metadata(result)
     return success(result)
 
 
@@ -650,6 +682,7 @@ async def update_entity(
         result = await execute_update_entity(pool, enums, change)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
+    _normalize_entity_metadata(result)
     return success(result)
 
 

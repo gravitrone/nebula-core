@@ -32,10 +32,11 @@ class TestRequireContext:
     ):
         """Return (pool, enums, agent) tuple from a valid context."""
 
+        mock_pool.fetchrow.return_value = mock_agent
         pool, enums, agent = await require_context(mock_context)
         assert pool is mock_pool
         assert enums is mock_enums
-        assert agent is mock_agent
+        assert agent == mock_agent
 
     async def test_no_pool_raises(self, mock_enums, mock_agent):
         """Raise ValueError when pool is missing from lifespan context."""

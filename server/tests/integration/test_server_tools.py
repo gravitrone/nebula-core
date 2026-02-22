@@ -127,6 +127,31 @@ async def test_create_entity_respects_runtime_trust_toggle(
     assert result.get("status") != "approval_required"
 
 
+async def test_create_entity_respects_runtime_trust_toggle_to_untrusted(
+    db_pool, mock_mcp_context, test_agent
+):
+    """Runtime trust toggles to untrusted should queue writes immediately."""
+
+    await db_pool.execute(
+        """
+        UPDATE agents
+        SET requires_approval = TRUE, updated_at = NOW()
+        WHERE id = $1::uuid
+        """,
+        str(test_agent["id"]),
+    )
+
+    payload = CreateEntityInput(
+        name="Now Untrusted Entity",
+        type="project",
+        status="active",
+        scopes=["public"],
+    )
+
+    result = await create_entity(payload, mock_mcp_context)
+    assert result["status"] == "approval_required"
+
+
 async def test_get_entity_success(mock_mcp_context, test_agent, test_entity):
     """Getting an existing entity by ID should return it."""
 

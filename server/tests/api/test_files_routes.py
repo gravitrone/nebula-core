@@ -140,10 +140,14 @@ async def test_files_create_and_get_roundtrip(api):
     assert created.status_code == 200
     data = created.json()["data"]
     assert data["filename"] == "doc.md"
+    assert isinstance(data["metadata"], dict)
+    assert data["metadata"] == {"owner": "alxx"}
 
     fetched = await api.get(f"/api/files/{data['id']}")
     assert fetched.status_code == 200
     assert fetched.json()["data"]["id"] == data["id"]
+    assert isinstance(fetched.json()["data"]["metadata"], dict)
+    assert fetched.json()["data"]["metadata"] == {"owner": "alxx"}
 
 
 @pytest.mark.asyncio
@@ -276,3 +280,32 @@ async def test_files_agent_scope_checks_entity_context_job(
     for blocked in (file_entity, file_context, file_job):
         get_res = await api_agent_auth.get(f"/api/files/{blocked['id']}")
         assert get_res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_files_list_preserves_metadata_object_shape(api):
+    """List route should keep metadata as object payloads."""
+
+    created = await api.post(
+        "/api/files",
+        json={
+            "filename": "list-metadata.bin",
+            "uri": "path:list-metadata.bin",
+            "metadata": {"owner": "alxx", "profile": {"timezone": "Europe/Warsaw"}},
+        },
+    )
+    assert created.status_code == 200, created.text
+    file_id = str(created.json()["data"]["id"])
+
+    list_res = await api.get("/api/files")
+    assert list_res.status_code == 200, list_res.text
+    listed = next(
+        (item for item in list_res.json()["data"] if str(item.get("id")) == file_id),
+        None,
+    )
+    assert listed is not None
+    assert isinstance(listed["metadata"], dict)
+    assert listed["metadata"] == {
+        "owner": "alxx",
+        "profile": {"timezone": "Europe/Warsaw"},
+    }

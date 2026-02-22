@@ -34,6 +34,41 @@ def _untrusted_auth_override(agent_row: dict, enums: object, scopes: list[str]):
     return mock_auth
 
 
+async def _count_pending_approvals(
+    db_pool, agent_id: str, request_type: str, detail_key: str | None = None, detail_val: str | None = None
+) -> int:
+    """Count pending approvals for a specific request type (optionally narrowed by change_details key)."""
+
+    if detail_key is None:
+        count = await db_pool.fetchval(
+            """
+            SELECT COUNT(*)
+            FROM approval_requests
+            WHERE requested_by = $1::uuid
+              AND request_type = $2
+              AND status = 'pending'
+            """,
+            agent_id,
+            request_type,
+        )
+        return int(count or 0)
+
+    count = await db_pool.fetchval(
+        f"""
+        SELECT COUNT(*)
+        FROM approval_requests
+        WHERE requested_by = $1::uuid
+          AND request_type = $2
+          AND status = 'pending'
+          AND change_details->>'{detail_key}' = $3
+        """,
+        agent_id,
+        request_type,
+        detail_val,
+    )
+    return int(count or 0)
+
+
 @pytest.mark.asyncio
 async def test_update_job_status_invalid_status_rejected_before_approval(
     db_pool, enums, untrusted_agent_row
@@ -76,18 +111,14 @@ async def test_update_job_status_invalid_status_rejected_before_approval(
     body = resp.json()
     assert body["detail"]["error"]["code"] == "INVALID_INPUT"
 
-    count = await db_pool.fetchval(
-        """
-        SELECT COUNT(*)
-        FROM approval_requests
-        WHERE requested_by = $1::uuid
-          AND request_type = 'update_job_status'
-          AND change_details->>'job_id' = $2
-        """,
-        untrusted_agent_row["id"],
-        job_id,
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        "update_job_status",
+        detail_key="job_id",
+        detail_val=str(job_id),
     )
-    assert int(count or 0) == 0
+    assert count == 0
 
 
 @pytest.mark.asyncio
@@ -144,15 +175,354 @@ async def test_visibility_metadata_key_rejected_before_approval(
         message = str(detail)
     assert "visibility" in message.lower()
 
-    count = await db_pool.fetchval(
-        """
-        SELECT COUNT(*)
-        FROM approval_requests
-        WHERE requested_by = $1::uuid
-          AND request_type = $2
-          AND status = 'pending'
-        """,
-        untrusted_agent_row["id"],
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
         request_type,
     )
-    assert int(count or 0) == 0
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_entity_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row
+):
+    """Entity metadata updates should reject visibility keys before queuing approvals."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    public_scope_id = enums.scopes.name_to_id["public"]
+    entity = await db_pool.fetchrow(
+        """
+        INSERT INTO entities
+            (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES
+            ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
+        RETURNING id
+        """,
+        "visibility-update-entity",
+        type_id,
+        status_id,
+        [public_scope_id],
+        [],
+        "{}",
+    )
+    assert entity is not None
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/entities/{entity['id']}",
+            json={"metadata": {"visibility": "private"}},
+        )
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    body = resp.json()
+    detail = body.get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        "update_entity",
+    )
+    assert count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("path", "payload", "request_type"),
+    [
+        (
+            "/api/jobs/",
+            {
+                "title": "visibility-job",
+                "priority": "medium",
+                "status": "planning",
+                "metadata": {"visibility": "private"},
+            },
+            "create_job",
+        ),
+        (
+            "/api/logs/",
+            {
+                "log_type": "note",
+                "value": {"text": "visibility-log"},
+                "status": "active",
+                "metadata": {"visibility": "private"},
+            },
+            "create_log",
+        ),
+        (
+            "/api/files/",
+            {
+                "filename": "visibility-file.txt",
+                "uri": "path:visibility-file.txt",
+                "status": "active",
+                "metadata": {"visibility": "private"},
+            },
+            "create_file",
+        ),
+    ],
+)
+async def test_visibility_metadata_key_rejected_on_create_routes_before_approval(
+    db_pool, enums, untrusted_agent_row, path, payload, request_type
+):
+    """Create routes should reject visibility metadata keys before queueing approvals."""
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post(path, json=payload)
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    detail = resp.json().get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        request_type,
+    )
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_context_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row
+):
+    """Context metadata updates should reject visibility keys before queuing approvals."""
+
+    context = await db_pool.fetchrow(
+        """
+        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags, metadata)
+        VALUES ($1, $2, $3::uuid[], $4::uuid, $5, $6::jsonb)
+        RETURNING id
+        """,
+        "visibility-update-context",
+        "note",
+        [enums.scopes.name_to_id["public"]],
+        enums.statuses.name_to_id["active"],
+        [],
+        "{}",
+    )
+    assert context is not None
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/context/{context['id']}",
+            json={"metadata": {"visibility": "private"}},
+        )
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    detail = resp.json().get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        "update_context",
+    )
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_job_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row
+):
+    """Job metadata updates should reject visibility keys before queuing approvals."""
+
+    job = await db_pool.fetchrow(
+        """
+        INSERT INTO jobs (title, agent_id, status_id, priority, metadata, privacy_scope_ids)
+        VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb, $6::uuid[])
+        RETURNING id
+        """,
+        "visibility-update-job",
+        untrusted_agent_row["id"],
+        enums.statuses.name_to_id["in-progress"],
+        "medium",
+        "{}",
+        [enums.scopes.name_to_id["public"]],
+    )
+    assert job is not None
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/jobs/{job['id']}",
+            json={"metadata": {"visibility": "private"}},
+        )
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    detail = resp.json().get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        "update_job",
+    )
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_file_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row
+):
+    """File metadata updates should reject visibility keys before queuing approvals."""
+
+    file_row = await db_pool.fetchrow(
+        """
+        INSERT INTO files
+            (filename, uri, file_path, mime_type, size_bytes, checksum, status_id, tags, metadata)
+        VALUES
+            ($1, $2, $3, $4, $5, $6, $7::uuid, $8, $9::jsonb)
+        RETURNING id
+        """,
+        "visibility-update-file.txt",
+        "path:visibility-update-file.txt",
+        "path:visibility-update-file.txt",
+        "text/plain",
+        12,
+        "abc",
+        enums.statuses.name_to_id["active"],
+        [],
+        "{}",
+    )
+    assert file_row is not None
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/files/{file_row['id']}",
+            json={"metadata": {"visibility": "private"}},
+        )
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    detail = resp.json().get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        "update_file",
+    )
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_update_log_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row
+):
+    """Log metadata updates should reject visibility keys before queuing approvals."""
+
+    log_row = await db_pool.fetchrow(
+        """
+        INSERT INTO logs (log_type_id, timestamp, value, status_id, tags, metadata)
+        VALUES ($1::uuid, NOW(), $2::jsonb, $3::uuid, $4, $5::jsonb)
+        RETURNING id
+        """,
+        enums.log_types.name_to_id["note"],
+        json.dumps({"text": "visibility-update-log"}),
+        enums.statuses.name_to_id["active"],
+        [],
+        "{}",
+    )
+    assert log_row is not None
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/logs/{log_row['id']}",
+            json={"metadata": {"visibility": "private"}},
+        )
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    detail = resp.json().get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await _count_pending_approvals(
+        db_pool,
+        str(untrusted_agent_row["id"]),
+        "update_log",
+    )
+    assert count == 0
