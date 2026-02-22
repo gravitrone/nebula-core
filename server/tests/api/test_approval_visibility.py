@@ -915,3 +915,100 @@ async def test_queued_update_entity_preserves_metadata_after_approval(
         ]
     finally:
         app.dependency_overrides.pop(require_auth, None)
+
+
+@pytest.mark.asyncio
+async def test_queued_update_entity_merges_metadata_patch_after_approval(
+    db_pool, enums
+):
+    """Queued entity metadata patch should merge with existing metadata."""
+
+    public_scope = enums.scopes.name_to_id["public"]
+    private_scope = enums.scopes.name_to_id["private"]
+    status_id = enums.statuses.name_to_id["active"]
+    person_type_id = enums.entity_types.name_to_id["person"]
+    untrusted_agent = await _make_agent(
+        db_pool,
+        enums,
+        "approval-queue-agent-update-entity-merge",
+        True,
+        scopes=["public", "private"],
+    )
+    reviewer_id = await _make_reviewer(db_pool, enums)
+
+    existing_metadata = {
+        "owner": "alxx",
+        "profile": {"timezone": "Europe/Warsaw", "tone": "direct"},
+        "context_segments": [
+            {"text": "public summary", "scopes": ["public"]},
+            {"text": "private summary", "scopes": ["private"]},
+        ],
+    }
+    existing = await db_pool.fetchrow(
+        """
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
+        RETURNING id
+        """,
+        "Queued Update Entity Merge",
+        person_type_id,
+        status_id,
+        [public_scope, private_scope],
+        ["before"],
+        json.dumps(existing_metadata),
+    )
+    assert existing is not None
+    entity_id = str(existing["id"])
+
+    payload = {
+        "metadata": {
+            "profile": {"tone": "casual"},
+            "private_notes": {"runbook": "internal-only"},
+        }
+    }
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    transport = ASGITransport(app=app)
+    try:
+        app.dependency_overrides[require_auth] = await _agent_auth_override(
+            untrusted_agent,
+            [public_scope, private_scope],
+        )
+        async with AsyncClient(
+            transport=transport, base_url="http://test", follow_redirects=True
+        ) as client:
+            queued = await client.patch(f"/api/entities/{entity_id}", json=payload)
+        assert queued.status_code == 202, queued.text
+
+        approval = await db_pool.fetchrow(
+            """
+            SELECT id
+            FROM approval_requests
+            WHERE requested_by = $1::uuid
+              AND request_type = 'update_entity'
+              AND status = 'pending'
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            untrusted_agent["id"],
+        )
+        assert approval is not None
+        await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
+
+        row = await db_pool.fetchrow(
+            "SELECT metadata FROM entities WHERE id = $1::uuid",
+            entity_id,
+        )
+        assert row is not None
+        persisted_metadata = row["metadata"]
+        if isinstance(persisted_metadata, str):
+            persisted_metadata = json.loads(persisted_metadata)
+
+        assert persisted_metadata["owner"] == "alxx"
+        assert persisted_metadata["profile"]["timezone"] == "Europe/Warsaw"
+        assert persisted_metadata["profile"]["tone"] == "casual"
+        assert persisted_metadata["private_notes"]["runbook"] == "internal-only"
+        assert persisted_metadata["context_segments"] == existing_metadata["context_segments"]
+    finally:
+        app.dependency_overrides.pop(require_auth, None)
