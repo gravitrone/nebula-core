@@ -1,0 +1,85 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/*'
+
+jobs:
+  server-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: nebula
+          POSTGRES_PASSWORD: nebula-agent-database-pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nebula -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres
+      POSTGRES_USER: nebula
+      POSTGRES_PASSWORD: nebula-agent-database-pass
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: setup uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: run server tests
+        working-directory: server
+        run: uv run pytest -q
+
+  cli-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/src/go.mod
+
+      - name: run go tests
+        working-directory: cli/src
+        run: go test ./... -count=1
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/src/go.mod
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: setup uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: run lint script
+        run: ./scripts/lint.sh

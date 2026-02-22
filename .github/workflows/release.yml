@@ -1,0 +1,73 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: release version (example: v1.0.0)
+        required: true
+      channel:
+        description: release channel
+        required: false
+        default: stable
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event.inputs.channel || 'stable' }}
+      VERSION: ${{ github.event.inputs.version || github.ref_name }}
+      BASE_URL: https://nebula.gravitrone.com/channels/${{ github.event.inputs.channel || 'stable' }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/src/go.mod
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: build release bundle
+        run: |
+          ./scripts/release/build_release_bundle.sh "$VERSION" "$CHANNEL" "$BASE_URL"
+
+      - name: upload release artifacts
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          files: |
+            scripts/release/out/nebula-${{ env.VERSION }}-darwin_arm64.tar.gz
+            scripts/release/out/nebula-${{ env.VERSION }}-darwin_amd64.tar.gz
+            scripts/release/out/nebula-${{ env.VERSION }}-linux_amd64.tar.gz
+            scripts/release/out/nebula-${{ env.VERSION }}-linux_arm64.tar.gz
+            scripts/release/out/nebula-runtime-${{ env.VERSION }}.tar.gz
+            scripts/release/out/checksums-${{ env.VERSION }}.txt
+            scripts/release/out/manifest.json
+            scripts/release/out/manifest.previous.json
+
+      - name: upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nebula-release-${{ env.VERSION }}
+          path: scripts/release/out/
+
+      - name: publish server image to ghcr
+        if: hashFiles('server/Dockerfile') != ''
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          file: server/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/nebula-api:${{ env.VERSION }}

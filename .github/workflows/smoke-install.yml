@@ -1,0 +1,51 @@
+name: smoke-install
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: release version to smoke-test
+        required: false
+        default: v0.0.0-smoke
+
+jobs:
+  smoke-install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: setup go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/src/go.mod
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: build local release artifacts
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          mkdir -p /tmp/nebula-channel/stable
+          ./scripts/release/build_release_bundle.sh "$VERSION" stable "file:///tmp/nebula-channel/stable"
+          cp scripts/release/out/* /tmp/nebula-channel/stable/
+
+      - name: run installer against local channel
+        env:
+          HOME: /tmp/nebula-home
+          NEBULA_MANIFEST_ROOT: file:///tmp/nebula-channel
+          NEBULA_CHANNEL: stable
+          NEBULA_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          mkdir -p "$HOME"
+          ./scripts/install.sh
+          "$HOME/.nebula/bin/nebula" --help >/dev/null
+
+      - name: verify stack health
+        env:
+          HOME: /tmp/nebula-home
+        run: |
+          docker compose --project-name nebula -f "$HOME/.nebula/runtime/current/compose.yaml" --env-file "$HOME/.nebula/runtime/current/.env" ps
