@@ -434,19 +434,6 @@ func updateAPILockPID(pid int) error {
 	return nil
 }
 
-// readPIDFile handles read pidfile.
-func readPIDFile() (int, bool) {
-	raw, err := os.ReadFile(apiPIDPath())
-	if err != nil {
-		return 0, false
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(raw)))
-	if err != nil || pid <= 0 {
-		return 0, false
-	}
-	return pid, true
-}
-
 // cleanupAPIState handles cleanup apistate.
 func cleanupAPIState() error {
 	_ = os.Remove(apiPIDPath())
