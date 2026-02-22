@@ -156,3 +156,67 @@ async def test_visibility_metadata_key_rejected_before_approval(
         request_type,
     )
     assert int(count or 0) == 0
+
+
+@pytest.mark.asyncio
+async def test_update_entity_visibility_metadata_key_rejected_before_approval(
+    db_pool, enums, untrusted_agent_row
+):
+    """Entity metadata updates should reject visibility keys before queuing approvals."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    public_scope_id = enums.scopes.name_to_id["public"]
+    entity = await db_pool.fetchrow(
+        """
+        INSERT INTO entities
+            (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+        VALUES
+            ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
+        RETURNING id
+        """,
+        "visibility-update-entity",
+        type_id,
+        status_id,
+        [public_scope_id],
+        [],
+        "{}",
+    )
+    assert entity is not None
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+    app.dependency_overrides[require_auth] = _untrusted_auth_override(
+        untrusted_agent_row, enums, ["public"]
+    )
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.patch(
+            f"/api/entities/{entity['id']}",
+            json={"metadata": {"visibility": "private"}},
+        )
+
+    app.dependency_overrides.pop(require_auth, None)
+
+    assert resp.status_code == 400, resp.text
+    body = resp.json()
+    detail = body.get("detail")
+    if isinstance(detail, dict):
+        assert detail["error"]["code"] == "INVALID_INPUT"
+        message = detail["error"]["message"]
+    else:
+        message = str(detail)
+    assert "visibility" in message.lower()
+
+    count = await db_pool.fetchval(
+        """
+        SELECT COUNT(*)
+        FROM approval_requests
+        WHERE requested_by = $1::uuid
+          AND request_type = 'update_entity'
+          AND status = 'pending'
+        """,
+        untrusted_agent_row["id"],
+    )
+    assert int(count or 0) == 0

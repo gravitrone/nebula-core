@@ -179,6 +179,68 @@ async def test_approve_request(api, pending_approval, auth_override, enums):
 
 
 @pytest.mark.asyncio
+async def test_approve_bulk_scope_and_update_requests_do_not_raise_id_errors(
+    api,
+    db_pool,
+    auth_override,
+    enums,
+    test_entity,
+    untrusted_agent,
+):
+    """Bulk scope approvals and normal updates should approve without id-key crashes."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    bulk_scope = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        RETURNING id
+        """,
+        "bulk_update_entity_scopes",
+        str(untrusted_agent["id"]),
+        json.dumps(
+            {
+                "entity_ids": [str(test_entity["id"])],
+                "scopes": ["public", "admin"],
+                "op": "add",
+            }
+        ),
+        "pending",
+    )
+    update_entity = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        RETURNING id
+        """,
+        "update_entity",
+        str(untrusted_agent["id"]),
+        json.dumps(
+            {
+                "entity_id": str(test_entity["id"]),
+                "tags": ["bulk-safe"],
+                "status": "active",
+            }
+        ),
+        "pending",
+    )
+    assert bulk_scope is not None
+    assert update_entity is not None
+
+    first = await api.post(f"/api/approvals/{bulk_scope['id']}/approve")
+    assert first.status_code == 200, first.text
+    first_payload = first.json()["data"]["entity"]
+    assert first_payload["updated"] == 1
+    assert str(test_entity["id"]) in first_payload["entity_ids"]
+
+    second = await api.post(f"/api/approvals/{update_entity['id']}/approve")
+    assert second.status_code == 200, second.text
+    second_payload = second.json()["data"]["entity"]
+    assert str(second_payload["id"]) == str(test_entity["id"])
+
+
+@pytest.mark.asyncio
 async def test_approve_non_register_rejects_grant_fields(
     api, pending_approval, auth_override, enums
 ):
