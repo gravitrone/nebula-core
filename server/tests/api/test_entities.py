@@ -11,6 +11,7 @@ import pytest
 # Local
 from nebula_api.app import app
 from nebula_api.auth import require_auth
+from nebula_api.routes.entities import _normalize_entity_metadata
 
 LEGACY_SCOPE_NAMES = ("work", "code", "vault-only", "blacklisted")
 
@@ -38,6 +39,45 @@ def _agent_auth_override(agent_row: dict, scope_ids: list[int]) -> callable:
         return auth_dict
 
     return mock_auth
+
+
+def test_normalize_entity_metadata_decodes_double_encoded_object():
+    """Metadata normalizer should decode legacy double-encoded JSON objects."""
+
+    entity = {
+        "id": "77777777-7777-7777-7777-777777777777",
+        "metadata": '"{\\"profile\\": {\\"timezone\\": \\"UTC\\"}}"',
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"]["profile"]["timezone"] == "UTC"
+
+
+def test_normalize_entity_metadata_coerces_invalid_string_to_empty_object():
+    """Metadata normalizer should coerce malformed strings into empty objects."""
+
+    entity = {
+        "id": "88888888-8888-8888-8888-888888888888",
+        "metadata": "not-json",
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
+
+
+def test_normalize_entity_metadata_coerces_json_non_object_to_empty_object():
+    """Metadata normalizer should coerce non-object JSON to empty objects."""
+
+    entity = {
+        "id": "99999999-9999-9999-9999-999999999999",
+        "metadata": "1",
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
 
 
 @pytest.mark.asyncio
