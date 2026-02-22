@@ -272,3 +272,43 @@ async def test_logs_agent_scope_checks_entity_context_job(
     for blocked in (log_entity, log_context, log_job):
         get_res = await api_agent_auth.get(f"/api/logs/{blocked['id']}")
         assert get_res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_logs_get_and_query_preserve_object_payloads(api, db_pool, enums):
+    """Directly inserted object payloads should stay object-shaped via API responses."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    log_type_id = enums.log_types.name_to_id["note"]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO logs (log_type_id, timestamp, value, status_id, tags, metadata)
+        VALUES ($1, now(), $2::jsonb, $3, $4, $5::jsonb)
+        RETURNING id
+        """,
+        log_type_id,
+        json.dumps({"text": "legacy-value"}),
+        status_id,
+        ["legacy"],
+        json.dumps({"source": "legacy"}),
+    )
+    assert row is not None
+    log_id = str(row["id"])
+
+    get_res = await api.get(f"/api/logs/{log_id}")
+    assert get_res.status_code == 200, get_res.text
+    get_payload = get_res.json()["data"]
+    assert get_payload["value"] == {"text": "legacy-value"}
+    assert isinstance(get_payload["value"], dict)
+    assert get_payload["metadata"] == {"source": "legacy"}
+    assert isinstance(get_payload["metadata"], dict)
+
+    list_res = await api.get("/api/logs", params={"log_type": "note"})
+    assert list_res.status_code == 200, list_res.text
+    listed = next(
+        (item for item in list_res.json()["data"] if str(item.get("id")) == log_id),
+        None,
+    )
+    assert listed is not None
+    assert listed["value"] == {"text": "legacy-value"}
+    assert listed["metadata"] == {"source": "legacy"}
