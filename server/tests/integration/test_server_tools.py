@@ -79,10 +79,13 @@ async def test_create_entity_trusted(mock_mcp_context, test_agent):
         status="active",
         scopes=["public"],
         tags=["test"],
+        metadata={"met_at": "gym"},
     )
 
     result = await create_entity(payload, mock_mcp_context)
     assert "id" in result
+    assert isinstance(result["metadata"], dict)
+    assert result["metadata"]["met_at"] == "gym"
 
 
 async def test_create_entity_untrusted_returns_approval(

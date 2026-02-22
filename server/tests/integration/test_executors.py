@@ -43,6 +43,7 @@ class TestCreateEntity:
 
         assert "id" in result
         assert result["name"] == "Alpha Project"
+        assert result["metadata"]["description"] == "A test project"
 
     async def test_invalid_status_raises(self, db_pool, enums):
         """An unknown status name should raise ValueError."""
@@ -540,7 +541,7 @@ class TestUpdateEntity:
             },
         )
 
-        merged = json.loads(result["metadata"])
+        merged = result["metadata"]
         assert "id" in result
         assert merged["first_name"] == "Updated"
         assert merged["last_name"] == "Baseline"

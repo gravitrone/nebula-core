@@ -86,6 +86,12 @@ def _decode_json_object(value: object) -> dict:
             parsed = json.loads(value)
         except json.JSONDecodeError:
             return {}
+        if isinstance(parsed, str):
+            try:
+                reparsed = json.loads(parsed)
+            except json.JSONDecodeError:
+                return {}
+            return reparsed if isinstance(reparsed, dict) else {}
         if isinstance(parsed, dict):
             return parsed
     return {}
@@ -112,6 +118,23 @@ def _deep_merge_dict(base: dict, patch: dict) -> dict:
             continue
         merged[key] = value
     return merged
+
+
+def _normalize_entity_row(row: dict | None) -> dict:
+    """Normalize entity row metadata shape.
+
+    Args:
+        row: Raw entity row from asyncpg.
+
+    Returns:
+        Entity row with metadata always coerced to a dict.
+    """
+
+    if not row:
+        return {}
+    normalized = dict(row)
+    normalized["metadata"] = _decode_json_object(normalized.get("metadata"))
+    return normalized
 
 
 async def execute_create_entity(
@@ -202,7 +225,7 @@ async def execute_create_entity(
             payload.source_path,
         )
 
-        return dict(row) if row else {}
+        return _normalize_entity_row(dict(row) if row else {})
 
     if isinstance(pool, Pool):
         async with pool.acquire() as conn:
@@ -264,7 +287,7 @@ async def execute_create_context(
         json.dumps(payload.metadata) if payload.metadata else "{}",
     )
 
-    return dict(row) if row else {}
+    return _normalize_entity_row(dict(row) if row else {})
 
 
 async def execute_update_context(
@@ -388,7 +411,7 @@ async def execute_create_relationship(
             raise ValueError("Relationship already exists")
         raise
 
-    return dict(row) if row else {}
+    return _normalize_entity_row(dict(row) if row else {})
 
 
 async def execute_create_job(
@@ -797,7 +820,7 @@ async def execute_update_entity(
         payload.status_reason,
     )
 
-    return dict(row) if row else {}
+    return _normalize_entity_row(dict(row) if row else {})
 
 
 async def execute_bulk_update_entity_tags(
