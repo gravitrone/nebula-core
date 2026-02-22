@@ -72,6 +72,15 @@ async def require_context(
         raise ValueError("Agent not initialized")
 
     agent = lifespan_ctx.get("agent")
+    if agent is not None:
+        refreshed = await lifespan_ctx["pool"].fetchrow(
+            QUERIES["agents/get_by_id"], str(agent["id"])
+        )
+        if not refreshed:
+            raise ValueError("Agent not found or inactive")
+        agent = dict(refreshed)
+        lifespan_ctx["agent"] = agent
+
     if agent is None and not allow_bootstrap:
         raise enrollment_required_error()
 
