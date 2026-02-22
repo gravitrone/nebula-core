@@ -73,6 +73,24 @@ func TestRunLogsCmdUsesDefaultTailWhenNonPositive(t *testing.T) {
 	assert.Contains(t, text, "third")
 }
 
+// TestRunLogsCmdRespectsTailLimit ensures explicit tail limits only return the
+// most recent log lines.
+func TestRunLogsCmdRespectsTailLimit(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(
+		t,
+		os.WriteFile(apiLogPath(), []byte("line1\nline2\nline3\nline4\n"), 0o600),
+	)
+
+	var out bytes.Buffer
+	require.NoError(t, runLogsCmd(&out, true, 2))
+	text := out.String()
+	assert.Contains(t, text, "line3")
+	assert.Contains(t, text, "line4")
+	assert.NotContains(t, text, "line1")
+}
+
 // TestRunStartCmdUsesLiveState verifies start reports already-running when a live
 // runtime state PID exists.
 func TestRunStartCmdUsesLiveState(t *testing.T) {
