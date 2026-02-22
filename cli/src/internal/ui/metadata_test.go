@@ -281,3 +281,25 @@ func TestRenderMetadataSelectableBlockHumanizesNumericPathSegments(t *testing.T)
 	assert.Contains(t, clean, "aliases.item 1")
 	assert.NotContains(t, clean, "aliases[0]")
 }
+
+// TestSyncMetadataListKeepsCursorVisible handles test sync metadata list keeps cursor visible.
+func TestSyncMetadataListKeepsCursorVisible(t *testing.T) {
+	rows := []metadataDisplayRow{
+		{field: "k1", value: "v1"},
+		{field: "k2", value: "v2"},
+		{field: "k3", value: "v3"},
+		{field: "k4", value: "v4"},
+		{field: "k5", value: "v5"},
+		{field: "k6", value: "v6"},
+		{field: "k7", value: "v7"},
+		{field: "k8", value: "v8"},
+	}
+	list := components.NewList(3)
+	list.Cursor = 6
+	list.Offset = 0
+
+	syncMetadataList(list, rows, 3)
+
+	assert.GreaterOrEqual(t, list.Cursor, list.Offset)
+	assert.Less(t, list.Cursor, list.Offset+list.PageSize)
+}
