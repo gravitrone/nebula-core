@@ -3,6 +3,7 @@
 # Standard Library
 import json
 from unittest.mock import MagicMock
+from uuid import UUID, uuid4
 
 # Third-Party
 import pytest
@@ -12,14 +13,42 @@ from nebula_mcp.models import GetEntityHistoryInput
 from nebula_mcp.server import get_entity_history
 
 
-def _make_context(pool, enums, agent):
+async def _make_context(pool, enums, agent):
     """Build MCP context with a specific agent."""
+
+    normalized_agent = dict(agent)
+    try:
+        agent_id = str(UUID(str(normalized_agent.get("id", ""))))
+    except (TypeError, ValueError):
+        agent_id = str(uuid4())
+    normalized_agent["id"] = agent_id
+    normalized_agent.setdefault("name", f"rt-{agent_id[:8]}")
+    normalized_agent.setdefault("requires_approval", False)
+    normalized_agent.setdefault("scopes", [enums.scopes.name_to_id["public"]])
+
+    await pool.execute(
+        """
+        INSERT INTO agents (id, name, description, scopes, requires_approval, status_id)
+        VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid)
+        ON CONFLICT (id) DO UPDATE
+        SET name = EXCLUDED.name,
+            scopes = EXCLUDED.scopes,
+            requires_approval = EXCLUDED.requires_approval,
+            status_id = EXCLUDED.status_id
+        """,
+        agent_id,
+        normalized_agent["name"],
+        "test history helper",
+        normalized_agent["scopes"],
+        normalized_agent["requires_approval"],
+        enums.statuses.name_to_id["active"],
+    )
 
     ctx = MagicMock()
     ctx.request_context.lifespan_context = {
         "pool": pool,
         "enums": enums,
-        "agent": agent,
+        "agent": normalized_agent,
     }
     return ctx
 
@@ -62,7 +91,7 @@ async def test_get_entity_history_denies_private_entity(db_pool, enums):
         "id": "history-viewer",
         "scopes": [enums.scopes.name_to_id["public"]],
     }
-    ctx = _make_context(db_pool, enums, public_agent)
+    ctx = await _make_context(db_pool, enums, public_agent)
 
     payload = GetEntityHistoryInput(entity_id=str(private_entity["id"]))
 
