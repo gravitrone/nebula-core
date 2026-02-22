@@ -80,6 +80,29 @@ def test_normalize_entity_metadata_coerces_json_non_object_to_empty_object():
     assert result["metadata"] == {}
 
 
+def test_normalize_entity_metadata_coerces_missing_to_empty_object():
+    """Metadata normalizer should coerce missing metadata to empty objects."""
+
+    entity = {"id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"] == {}
+
+
+def test_normalize_entity_metadata_keeps_object_values():
+    """Metadata normalizer should preserve already-valid object metadata."""
+
+    entity = {
+        "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        "metadata": {"profile": {"timezone": "Europe/Warsaw"}},
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["metadata"]["profile"]["timezone"] == "Europe/Warsaw"
+
+
 @pytest.mark.asyncio
 async def test_create_entity(api):
     """Test create entity."""
