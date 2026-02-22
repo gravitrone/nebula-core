@@ -2,13 +2,18 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/gravitrone/nebula-core/cli/internal/api"
 )
 
 // TestTailLinesSkipsBlankAndLimits handles test tail lines skips blank and limits.
@@ -72,4 +77,96 @@ func TestAPIStateRoundTrip(t *testing.T) {
 	assert.Equal(t, state.ServerDir, loaded.ServerDir)
 	assert.Equal(t, state.LogPath, loaded.LogPath)
 	assert.True(t, loaded.StartedAt.Equal(state.StartedAt))
+}
+
+// TestAcquireAPILockRejectsLiveAPIPID ensures duplicate starts are blocked when the
+// lock is owned by a live API pid.
+func TestAcquireAPILockRejectsLiveAPIPID(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	require.NoError(t, acquireAPILock())
+	require.NoError(t, updateAPILockPID(os.Getpid()))
+
+	err := acquireAPILock()
+	require.Error(t, err)
+	var held *apiLockHeldError
+	require.ErrorAs(t, err, &held)
+	assert.Equal(t, os.Getpid(), held.PID)
+}
+
+// TestAcquireAPILockCleansStaleFiles ensures stale runtime files are removed and
+// lock acquisition still succeeds.
+func TestAcquireAPILockCleansStaleFiles(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	staleLock := apiLockState{
+		OwnerPID:  42,
+		APIPID:    999999,
+		CreatedAt: time.Now().UTC(),
+	}
+	rawLock, err := json.Marshal(staleLock)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.WriteFile(apiLockPath(), rawLock, 0o600))
+
+	staleState := &apiRuntimeState{
+		PID:       999999,
+		Port:      api.DefaultAPIPort,
+		ServerDir: "/tmp/stale",
+		LogPath:   "/tmp/stale.log",
+		StartedAt: time.Now().UTC(),
+	}
+	require.NoError(t, saveAPIState(staleState))
+
+	require.NoError(t, acquireAPILock())
+	lock, err := loadAPILock()
+	require.NoError(t, err)
+	assert.Equal(t, os.Getpid(), lock.OwnerPID)
+	assert.Zero(t, lock.APIPID)
+}
+
+// TestRunStopCmdRefusesUnmanagedRunningProcess ensures stop will not kill a process
+// that was not started by managed lock ownership.
+func TestRunStopCmdRefusesUnmanagedRunningProcess(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	state := &apiRuntimeState{
+		PID:       os.Getpid(),
+		Port:      api.DefaultAPIPort,
+		ServerDir: "/tmp/nebula/server",
+		LogPath:   "/tmp/nebula/api.log",
+		StartedAt: time.Now().UTC(),
+	}
+	require.NoError(t, saveAPIState(state))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	text := strings.ToLower(out.String())
+	assert.Contains(t, text, "refusing to stop unmanaged process")
+
+	_, err := loadAPIState()
+	require.NoError(t, err)
+}
+
+// TestRunStopCmdCleansStaleLock verifies stale lockfiles are cleaned when no live
+// target process can be found.
+func TestRunStopCmdCleansStaleLock(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	lock := apiLockState{
+		OwnerPID:  os.Getpid(),
+		APIPID:    999999,
+		CreatedAt: time.Now().UTC(),
+	}
+	rawLock, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), rawLock, 0o600))
+	require.NoError(t, os.WriteFile(apiPIDPath(), []byte(strconv.Itoa(lock.APIPID)), 0o600))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	assert.Contains(t, strings.ToLower(out.String()), "cleaned stale runtime files")
+	_, statErr := os.Stat(apiLockPath())
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
