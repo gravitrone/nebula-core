@@ -202,6 +202,38 @@ async def test_get_entity_invalid_id_returns_400(api):
 
 
 @pytest.mark.asyncio
+async def test_get_entity_filters_context_segments_for_public_scope(
+    db_pool, enums, test_entity
+):
+    """Entity get should filter context segments by caller scope names."""
+
+    app.state.pool = db_pool
+    app.state.enums = enums
+
+    public_scope_id = enums.scopes.name_to_id["public"]
+    app.dependency_overrides[require_auth] = _agent_auth_override(
+        {"id": "11111111-1111-1111-1111-111111111111"},
+        [public_scope_id],
+    )
+
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(
+            transport=transport, base_url="http://test", follow_redirects=True
+        ) as client:
+            response = await client.get(f"/api/entities/{test_entity['id']}")
+    finally:
+        app.dependency_overrides.pop(require_auth, None)
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["metadata"]["first_name"] == "API"
+    assert data["metadata"]["context_segments"] == [
+        {"text": "public info", "scopes": ["public"]}
+    ]
+
+
+@pytest.mark.asyncio
 async def test_query_entities(api):
     """Test query entities."""
 
