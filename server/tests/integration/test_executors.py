@@ -142,6 +142,43 @@ class TestCreateEntity:
                 },
             )
 
+    async def test_name_type_scope_can_be_reused_after_archive(self, db_pool, enums):
+        """Archived entities should not block same name+type+scope re-creation."""
+
+        first = await execute_create_entity(
+            db_pool,
+            enums,
+            {
+                "name": "Reusable Name",
+                "type": "project",
+                "status": "active",
+                "scopes": ["public"],
+            },
+        )
+
+        archived = await execute_update_entity(
+            db_pool,
+            enums,
+            {
+                "entity_id": str(first["id"]),
+                "status": "archived",
+                "status_reason": "archive for reuse regression test",
+            },
+        )
+        assert archived["status_id"] != first["status_id"]
+
+        recreated = await execute_create_entity(
+            db_pool,
+            enums,
+            {
+                "name": "Reusable Name",
+                "type": "project",
+                "status": "active",
+                "scopes": ["public"],
+            },
+        )
+        assert recreated["id"] != first["id"]
+
     async def test_valid_metadata_works(self, db_pool, enums):
         """Valid person metadata with structured fields should succeed."""
 
