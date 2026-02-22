@@ -258,6 +258,41 @@ async def test_update_entity_untrusted_agent_returns_approval_required(
 
 
 @pytest.mark.asyncio
+async def test_create_entity_allows_reuse_after_archive(api):
+    """Archiving should allow re-creating same name/type/scopes."""
+
+    create_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Reusable Entity Name",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    entity_id = create_resp.json()["data"]["id"]
+
+    archive_resp = await api.patch(
+        f"/api/entities/{entity_id}",
+        json={"status": "archived", "status_reason": "archive then reuse"},
+    )
+    assert archive_resp.status_code == 200, archive_resp.text
+
+    recreate_resp = await api.post(
+        "/api/entities",
+        json={
+            "name": "Reusable Entity Name",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+    assert recreate_resp.status_code == 200, recreate_resp.text
+    assert recreate_resp.json()["data"]["id"] != entity_id
+
+
+@pytest.mark.asyncio
 async def test_update_entity_executor_value_error_returns_400(
     api, test_entity, monkeypatch
 ):

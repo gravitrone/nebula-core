@@ -125,6 +125,19 @@ func TestAcquireAPILockCleansStaleFiles(t *testing.T) {
 	assert.Zero(t, lock.APIPID)
 }
 
+// TestAcquireAPILockRecoversFromCorruptLock ensures malformed lock content is
+// treated as stale state and replaced by a valid lock.
+func TestAcquireAPILockRecoversFromCorruptLock(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.WriteFile(apiLockPath(), []byte("{bad-json"), 0o600))
+
+	require.NoError(t, acquireAPILock())
+	lock, err := loadAPILock()
+	require.NoError(t, err)
+	assert.Equal(t, os.Getpid(), lock.OwnerPID)
+}
+
 // TestRunStopCmdRefusesUnmanagedRunningProcess ensures stop will not kill a process
 // that was not started by managed lock ownership.
 func TestRunStopCmdRefusesUnmanagedRunningProcess(t *testing.T) {
@@ -167,6 +180,28 @@ func TestRunStopCmdCleansStaleLock(t *testing.T) {
 	var out bytes.Buffer
 	require.NoError(t, runStopCmd(&out))
 	assert.Contains(t, strings.ToLower(out.String()), "cleaned stale runtime files")
+	_, statErr := os.Stat(apiLockPath())
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+// TestRunStopCmdCleansLockWithoutPID verifies stale lock records without a
+// usable pid are removed cleanly.
+func TestRunStopCmdCleansLockWithoutPID(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	lock := apiLockState{
+		OwnerPID:  os.Getpid(),
+		APIPID:    0,
+		CreatedAt: time.Now().UTC(),
+	}
+	rawLock, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), rawLock, 0o600))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	assert.Contains(t, strings.ToLower(out.String()), "stale lock cleaned")
 	_, statErr := os.Stat(apiLockPath())
 	assert.ErrorIs(t, statErr, os.ErrNotExist)
 }
