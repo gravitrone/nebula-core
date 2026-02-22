@@ -103,6 +103,24 @@ def test_normalize_entity_metadata_keeps_object_values():
     assert result["metadata"]["profile"]["timezone"] == "Europe/Warsaw"
 
 
+def test_normalize_entity_metadata_preserves_non_metadata_fields():
+    """Metadata normalizer should keep non-metadata fields unchanged."""
+
+    entity = {
+        "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+        "name": "Bro",
+        "type": "person",
+        "metadata": '{"profile":{"timezone":"UTC"}}',
+    }
+
+    result = _normalize_entity_metadata(entity)
+
+    assert result["id"] == "cccccccc-cccc-cccc-cccc-cccccccccccc"
+    assert result["name"] == "Bro"
+    assert result["type"] == "person"
+    assert result["metadata"]["profile"]["timezone"] == "UTC"
+
+
 @pytest.mark.asyncio
 async def test_create_entity(api):
     """Test create entity."""
