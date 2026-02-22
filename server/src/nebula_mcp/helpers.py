@@ -72,6 +72,14 @@ def _decode_json_object(value: Any) -> dict:
             parsed = json.loads(value)
         except json.JSONDecodeError:
             return {}
+        # Backward compatibility: older rows may contain double-encoded JSON.
+        # Example: "\"{\\\"key\\\":\\\"value\\\"}\"" should decode to dict.
+        if isinstance(parsed, str):
+            try:
+                reparsed = json.loads(parsed)
+            except json.JSONDecodeError:
+                return {}
+            return reparsed if isinstance(reparsed, dict) else {}
         return parsed if isinstance(parsed, dict) else {}
     return {}
 

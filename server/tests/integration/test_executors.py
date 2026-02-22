@@ -472,18 +472,41 @@ class TestUpdateEntity:
         assert result["status_id"] == enums.statuses.name_to_id["on-hold"]
 
     async def test_metadata_change(self, db_pool, enums, test_entity):
-        """Updating entity metadata should return the updated row."""
+        """Updating entity metadata should merge with existing metadata."""
+
+        await db_pool.execute(
+            """
+            UPDATE entities
+            SET metadata = $2::jsonb
+            WHERE id = $1::uuid
+            """,
+            str(test_entity["id"]),
+            json.dumps(
+                {
+                    "first_name": "Test",
+                    "last_name": "Baseline",
+                    "profile": {"timezone": "UTC"},
+                }
+            ),
+        )
 
         result = await execute_update_entity(
             db_pool,
             enums,
             {
                 "entity_id": str(test_entity["id"]),
-                "metadata": {"first_name": "Updated"},
+                "metadata": {
+                    "first_name": "Updated",
+                    "profile": {"timezone": "Europe/Warsaw"},
+                },
             },
         )
 
+        merged = json.loads(result["metadata"])
         assert "id" in result
+        assert merged["first_name"] == "Updated"
+        assert merged["last_name"] == "Baseline"
+        assert merged["profile"]["timezone"] == "Europe/Warsaw"
 
     async def test_nonexistent_raises(self, db_pool, enums):
         """Updating a nonexistent entity should raise ValueError."""

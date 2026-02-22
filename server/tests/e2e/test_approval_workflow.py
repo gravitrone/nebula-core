@@ -1,7 +1,7 @@
 """E2E test: full approval workflow."""
 
 # Standard Library
-
+import json
 import pytest
 
 from nebula_mcp.helpers import (
@@ -92,6 +92,9 @@ async def test_approve_creates_entity(db_pool, enums):
     )
     assert row is not None
     assert row["name"] == "Approved Entity"
+    decoded = json.loads(row["metadata"])
+    assert isinstance(decoded, dict)
+    assert decoded.get("description") == "Created via approval"
 
 
 @pytest.mark.asyncio

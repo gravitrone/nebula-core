@@ -146,6 +146,21 @@ class TestFilterContextSegments:
         result = filter_context_segments(str(payload).replace("'", '"'), ["public"])
         assert [s["text"] for s in result["context_segments"]] == ["public note"]
 
+    def test_double_encoded_json_metadata_is_supported(self):
+        """Double-encoded metadata should still decode into an object."""
+
+        payload = {
+            "context_segments": [
+                {"text": "public note", "scopes": ["public"]},
+                {"text": "private note", "scopes": ["private"]},
+            ]
+        }
+        encoded = json.dumps(payload)
+        double_encoded = json.dumps(encoded)
+        result = filter_context_segments(double_encoded, ["public"])
+        assert result is not None
+        assert [s["text"] for s in result["context_segments"]] == ["public note"]
+
 
 class TestPendingApprovalLimit:
     """Tests for pending queue cap normalization."""

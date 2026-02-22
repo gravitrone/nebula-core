@@ -67,6 +67,53 @@ def _advisory_lock_key(*parts: str) -> int:
     return int.from_bytes(digest[:8], "big", signed=True)
 
 
+def _decode_json_object(value: object) -> dict:
+    """Decode JSON object payloads from DB rows and request payloads.
+
+    Args:
+        value: Dict or JSON string value.
+
+    Returns:
+        Decoded dict when possible, otherwise empty dict.
+    """
+
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _deep_merge_dict(base: dict, patch: dict) -> dict:
+    """Recursively merge patch into base metadata dict.
+
+    Args:
+        base: Existing metadata object.
+        patch: Incoming metadata patch object.
+
+    Returns:
+        New merged metadata object.
+    """
+
+    merged = dict(base)
+    for key, value in patch.items():
+        if (
+            isinstance(value, dict)
+            and isinstance(merged.get(key), dict)
+        ):
+            merged[key] = _deep_merge_dict(merged[key], value)
+            continue
+        merged[key] = value
+    return merged
+
+
 async def execute_create_entity(
     pool: Pool, enums: EnumRegistry, change_details: dict
 ) -> dict:
@@ -714,15 +761,19 @@ async def execute_update_entity(
     if payload.status:
         status_id = require_status(payload.status, enums)
 
-    # Validate metadata if provided
+    # Validate metadata if provided.
     metadata = None
-    if payload.metadata:
-        entity = await pool.fetchrow(QUERIES["entities/get_type_id"], payload.entity_id)
+    if payload.metadata is not None:
+        entity = await pool.fetchrow(
+            QUERIES["entities/get_type_and_metadata"], payload.entity_id
+        )
         if not entity:
             raise ValueError("Entity not found")
 
         type_name = enums.entity_types.id_to_name[entity["type_id"]]
-        metadata = validate_entity_metadata(type_name, payload.metadata)
+        existing_metadata = _decode_json_object(entity.get("metadata"))
+        merged_metadata = _deep_merge_dict(existing_metadata, payload.metadata)
+        metadata = validate_entity_metadata(type_name, merged_metadata)
 
     row = await pool.fetchrow(
         QUERIES["entities/update"],

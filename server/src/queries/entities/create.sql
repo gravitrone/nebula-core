@@ -8,5 +8,5 @@ INSERT INTO entities (
   metadata,
   source_path
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
 RETURNING *;
