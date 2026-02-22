@@ -292,6 +292,31 @@ async def test_create_entity_normalizes_json_string_non_object_metadata(api, mon
 
 
 @pytest.mark.asyncio
+async def test_create_entity_normalizes_json_null_metadata(api, monkeypatch):
+    """Create route should coerce JSON null metadata to an empty object."""
+
+    async def _fake_create(*_args, **_kwargs):
+        """Return a create-entity payload with JSON null metadata."""
+
+        return {
+            "id": "55555555-5555-5555-5555-555555555555",
+            "name": "JSONNullMeta",
+            "metadata": "null",
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_create_entity",
+        _fake_create,
+    )
+    r = await api.post(
+        "/api/entities",
+        json={"name": "JSONNullMeta", "type": "person", "scopes": ["public"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
 async def test_update_entity(api, test_entity):
     """Test update entity."""
 
@@ -358,6 +383,33 @@ async def test_update_entity_preserves_object_metadata_response(
 
 
 @pytest.mark.asyncio
+async def test_update_entity_parses_valid_json_object_metadata(
+    api, test_entity, monkeypatch
+):
+    """Update route should parse valid JSON object metadata strings."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload with object JSON metadata."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
+            "metadata": '{"profile":{"timezone":"UTC"}}',
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"]["profile"]["timezone"] == "UTC"
+
+
+@pytest.mark.asyncio
 async def test_update_entity_normalizes_non_object_metadata_response(
     api, test_entity, monkeypatch
 ):
@@ -370,6 +422,32 @@ async def test_update_entity_normalizes_non_object_metadata_response(
             "id": str(test_entity["id"]),
             "name": test_entity["name"],
             "metadata": ["bad-shape"],
+        }
+
+    monkeypatch.setattr(
+        "nebula_api.routes.entities.execute_update_entity",
+        _fake_update,
+    )
+    r = await api.patch(
+        f"/api/entities/{test_entity['id']}",
+        json={"tags": ["updated"]},
+    )
+    assert r.status_code == 200
+    assert r.json()["data"]["metadata"] == {}
+
+
+@pytest.mark.asyncio
+async def test_update_entity_normalizes_missing_metadata_response(
+    api, test_entity, monkeypatch
+):
+    """Update route should normalize missing metadata field to an empty object."""
+
+    async def _fake_update(*_args, **_kwargs):
+        """Return an update-entity payload without metadata field."""
+
+        return {
+            "id": str(test_entity["id"]),
+            "name": test_entity["name"],
         }
 
     monkeypatch.setattr(
