@@ -321,6 +321,11 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.startup.Auth = "missing"
 			a.startup.Taxonomy = "failed"
 		}
+		if a.startup.Auth == "invalid" {
+			a.lastErrCode = "INVALID_API_KEY"
+			a.lastErrMsg = "Invalid API key"
+			a.showRecoveryHints = true
+		}
 		level, text := startupToastCopy(a.startup)
 		return a, a.setToast(level, text)
 	case importExportDoneMsg:
@@ -1741,11 +1746,22 @@ func parseErrorCodeAndMessage(errText string) (string, string) {
 
 // shouldShowRecoveryHints handles should show recovery hints.
 func shouldShowRecoveryHints(code, msg string) bool {
-	if !strings.EqualFold(strings.TrimSpace(code), "FORBIDDEN") {
-		return false
+	normalized := strings.ToUpper(strings.TrimSpace(code))
+	switch normalized {
+	case "FORBIDDEN":
+		lower := strings.ToLower(msg)
+		return strings.Contains(lower, "scope") || strings.Contains(lower, "admin")
+	case "INVALID_API_KEY", "AUTH_REQUIRED", "UNAUTHORIZED":
+		return true
 	}
 	lower := strings.ToLower(msg)
-	return strings.Contains(lower, "scope") || strings.Contains(lower, "admin")
+	if strings.Contains(lower, "invalid api key") || strings.Contains(lower, "not logged in") {
+		return true
+	}
+	if strings.Contains(lower, "missing or invalid authorization") || strings.Contains(lower, "http 401") {
+		return true
+	}
+	return false
 }
 
 // classifyStartupAPI handles classify startup api.

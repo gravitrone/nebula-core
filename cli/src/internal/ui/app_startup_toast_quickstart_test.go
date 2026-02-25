@@ -162,6 +162,8 @@ func TestStartupParsingHelpers(t *testing.T) {
 
 	assert.True(t, shouldShowRecoveryHints("FORBIDDEN", "scope missing"))
 	assert.True(t, shouldShowRecoveryHints("FORBIDDEN", "admin required"))
+	assert.True(t, shouldShowRecoveryHints("INVALID_API_KEY", "bad token"))
+	assert.True(t, shouldShowRecoveryHints("", "invalid api key"))
 	assert.False(t, shouldShowRecoveryHints("NOT_FOUND", "admin required"))
 
 	assert.Equal(t, "ok", classifyStartupAPI(""))
@@ -189,4 +191,19 @@ func TestStartupParsingHelpers(t *testing.T) {
 	level, copy = startupToastCopy(startupSummary{API: "ok", Auth: "missing", Taxonomy: "forbidden"})
 	assert.Equal(t, "warning", level)
 	assert.Contains(t, copy, "auth=missing")
+}
+
+// TestStartupCheckedMsgInvalidAuthEnablesRecoveryHints handles startup invalid auth recovery hints.
+func TestStartupCheckedMsgInvalidAuthEnablesRecoveryHints(t *testing.T) {
+	app := NewApp(nil, &config.Config{APIKey: "bad-key"})
+	app.startupChecking = true
+	model, cmd := app.Update(startupCheckedMsg{authErr: "HTTP 401: Unauthorized"})
+	updated := model.(App)
+
+	assert.False(t, updated.startupChecking)
+	assert.Equal(t, "invalid", updated.startup.Auth)
+	assert.Equal(t, "INVALID_API_KEY", updated.lastErrCode)
+	assert.Equal(t, "Invalid API key", updated.lastErrMsg)
+	assert.True(t, updated.showRecoveryHints)
+	require.NotNil(t, cmd)
 }
