@@ -1,5 +1,8 @@
 """Agent authentication and registration API tests."""
 
+# Standard Library
+import json
+
 # Third-Party
 import pytest
 
@@ -42,6 +45,48 @@ async def test_register_agent_returns_registration_and_enrollment_token(api_no_a
     assert data["status"] == "pending_approval"
     assert data["registration_id"]
     assert data["enrollment_token"].startswith("nbe_")
+
+
+async def test_register_agent_defaults_to_trusted_mode_false(api_no_auth, db_pool):
+    """Register defaults should keep requested requires_approval set to False."""
+
+    response = await api_no_auth.post(
+        "/api/agents/register",
+        json={
+            "name": "register-default-trust-false-agent",
+            "requested_scopes": ["public"],
+        },
+    )
+    assert response.status_code == 201, response.text
+    payload = response.json()["data"]
+
+    created_agent = await db_pool.fetchrow(
+        "SELECT requires_approval FROM agents WHERE id = $1::uuid",
+        payload["agent_id"],
+    )
+    assert created_agent is not None
+    assert created_agent["requires_approval"] is False
+
+    approval = await db_pool.fetchrow(
+        "SELECT change_details FROM approval_requests WHERE id = $1::uuid",
+        payload["approval_request_id"],
+    )
+    assert approval is not None
+    change_details = approval["change_details"]
+    if isinstance(change_details, str):
+        change_details = json.loads(change_details)
+    assert change_details["requested_requires_approval"] is False
+
+    enrollment = await db_pool.fetchrow(
+        """
+        SELECT requested_requires_approval
+        FROM agent_enrollment_sessions
+        WHERE id = $1::uuid
+        """,
+        payload["registration_id"],
+    )
+    assert enrollment is not None
+    assert enrollment["requested_requires_approval"] is False
 
 
 async def test_register_agent_invalid_scope_returns_4xx(api_no_auth):

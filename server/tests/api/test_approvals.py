@@ -336,6 +336,61 @@ async def test_approve_register_agent_accepts_grant_fields(
 
 
 @pytest.mark.asyncio
+async def test_approve_register_agent_preserves_existing_trusted_mode_without_override(
+    api, db_pool, auth_override, enums
+):
+    """Existing trusted agent should not be flipped back to requires_approval=True."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+    inactive_status_id = enums.statuses.name_to_id["inactive"]
+    active_status_id = enums.statuses.name_to_id["active"]
+
+    agent = await db_pool.fetchrow(
+        """
+        INSERT INTO agents (name, description, scopes, requires_approval, status_id)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+        """,
+        "approval-register-agent-trusted-preserve",
+        "already trusted before re-auth",
+        [enums.scopes.name_to_id["public"]],
+        False,
+        inactive_status_id,
+    )
+
+    approval = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2, $3::jsonb, $4)
+        RETURNING *
+        """,
+        "register_agent",
+        agent["id"],
+        json.dumps(
+            {
+                "agent_id": str(agent["id"]),
+                "name": "approval-register-agent-trusted-preserve",
+                "requested_scopes": ["public"],
+                "requested_requires_approval": True,
+                "capabilities": [],
+            }
+        ),
+        "pending",
+    )
+
+    response = await api.post(f"/api/approvals/{approval['id']}/approve")
+    assert response.status_code == 200, response.text
+
+    refreshed = await db_pool.fetchrow(
+        "SELECT status_id, scopes, requires_approval FROM agents WHERE id = $1::uuid",
+        agent["id"],
+    )
+    assert refreshed["status_id"] == active_status_id
+    assert refreshed["requires_approval"] is False
+    assert set(refreshed["scopes"]) == {enums.scopes.name_to_id["public"]}
+
+
+@pytest.mark.asyncio
 async def test_approve_register_agent_invalid_grant_scope_returns_4xx(
     api, db_pool, auth_override, enums
 ):

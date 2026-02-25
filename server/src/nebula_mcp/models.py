@@ -1863,7 +1863,7 @@ class AgentEnrollStartInput(BaseModel):
         default_factory=lambda: ["public"], description="Requested scope names"
     )
     requested_requires_approval: bool = Field(
-        default=True, description="Requested trust mode"
+        default=False, description="Requested trust mode"
     )
     capabilities: list[str] = Field(
         default_factory=list, description="Optional capability tags"

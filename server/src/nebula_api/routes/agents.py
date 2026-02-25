@@ -89,7 +89,7 @@ class RegisterAgentBody(BaseModel):
     name: str
     description: str | None = None
     requested_scopes: list[str] = ["public"]
-    requested_requires_approval: bool = True
+    requested_requires_approval: bool = False
     capabilities: list[str] = []
 
 

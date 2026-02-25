@@ -119,6 +119,32 @@ async def test_enroll_start_creates_pending_approval(bootstrap_mcp_context, db_p
     assert approval["request_type"] == "register_agent"
 
 
+async def test_enroll_start_defaults_requested_requires_approval_false(
+    bootstrap_mcp_context, db_pool
+):
+    """Enrollment start defaults requested trust mode to direct-write (False)."""
+
+    name = f"mcp-enroll-default-{uuid4().hex[:8]}"
+    started = await agent_enroll_start(
+        AgentEnrollStartInput(name=name, requested_scopes=["public"]),
+        bootstrap_mcp_context,
+    )
+    assert started["status"] == "pending_approval"
+
+    session = await _get_enrollment_row(db_pool, started["registration_id"])
+    assert session["requested_requires_approval"] is False
+
+    approval = await db_pool.fetchrow(
+        "SELECT change_details FROM approval_requests WHERE id = $1::uuid",
+        session["approval_request_id"],
+    )
+    assert approval is not None
+    change_details = approval["change_details"]
+    if isinstance(change_details, str):
+        change_details = json.loads(change_details)
+    assert change_details["requested_requires_approval"] is False
+
+
 async def test_enroll_start_rejects_invalid_scope_name(bootstrap_mcp_context):
     """Enrollment start should reject unknown scope names."""
 

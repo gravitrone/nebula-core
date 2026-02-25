@@ -1154,6 +1154,42 @@ class TestEnrollmentHelpers:
                 enrollment_token=raw_token,
             )
 
+    @pytest.mark.asyncio
+    async def test_redeem_enrollment_key_defaults_requires_approval_to_false(
+        self, monkeypatch
+    ):
+        """Redeem helper should default trust mode to False when session value is absent."""
+
+        raw_token, token_hash = generate_enrollment_token()
+        monkeypatch.setattr(
+            "nebula_api.auth.generate_api_key",
+            lambda: ("nebula-key-2", "nbk_2", "hash_2"),
+        )
+        conn = _EnrollmentConn(
+            fetchrow_results=[
+                {
+                    "status": "approved",
+                    "agent_id": "agent-2",
+                    "agent_name": "agent-two",
+                    "enrollment_token_hash": token_hash,
+                    "expires_at": datetime.now(UTC) + timedelta(hours=1),
+                    "requested_scope_ids": ["scope-public"],
+                    "granted_scope_ids": None,
+                    "requested_requires_approval": None,
+                    "granted_requires_approval": None,
+                },
+                {"id": "sess-2", "status": "redeemed"},
+            ]
+        )
+        redeemed = await redeem_enrollment_key(
+            _EnrollmentPool(conn=conn),
+            registration_id="sess-2",
+            enrollment_token=raw_token,
+        )
+
+        assert redeemed["api_key"] == "nebula-key-2"
+        assert redeemed["requires_approval"] is False
+
 
 class TestApprovalEnrichmentAndAuditHelpers:
     """Coverage for approval enrichment, bulk ops, and audit utilities."""

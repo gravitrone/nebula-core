@@ -913,8 +913,14 @@ async def execute_register_agent(
 
     agent_id = change_details["agent_id"]
     requested_scopes = change_details.get("requested_scopes") or ["public"]
-    requested_requires_approval = change_details.get(
-        "requested_requires_approval", True
+    existing_trust_row = await pool.fetchrow(
+        QUERIES["agents/get_requires_approval"], agent_id
+    )
+    existing_requires_approval = bool(
+        existing_trust_row["requires_approval"]
+    ) if existing_trust_row else False
+    requested_requires_approval = bool(
+        change_details.get("requested_requires_approval", existing_requires_approval)
     )
 
     granted_scopes = review_details.get("grant_scopes") or requested_scopes
@@ -924,6 +930,10 @@ async def execute_register_agent(
 
     if review_details.get("grant_requires_approval") is None:
         granted_requires_approval = requested_requires_approval
+        if not existing_requires_approval and granted_requires_approval:
+            # Preserve trusted agents during re-enroll unless reviewer explicitly
+            # asks to enable approval mode.
+            granted_requires_approval = False
     else:
         granted_requires_approval = bool(review_details["grant_requires_approval"])
 

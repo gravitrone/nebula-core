@@ -443,9 +443,11 @@ async def redeem_enrollment_key(
                 or session.get("requested_scope_ids")
                 or [],
                 "requires_approval": (
-                    session.get("granted_requires_approval")
+                    bool(session.get("granted_requires_approval"))
                     if session.get("granted_requires_approval") is not None
-                    else session.get("requested_requires_approval", True)
+                    else bool(session.get("requested_requires_approval"))
+                    if session.get("requested_requires_approval") is not None
+                    else False
                 ),
             }
 
