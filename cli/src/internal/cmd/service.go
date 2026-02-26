@@ -550,8 +550,15 @@ func resolveServerDir() (string, error) {
 		candidates := []string{
 			root,
 			filepath.Join(root, "server"),
-			filepath.Join(root, "00-The-Void", "Nebula", "nebula-core", "server"),
 			filepath.Join(root, "nebula-core", "server"),
+		}
+		for _, pattern := range []string{
+			filepath.Join(root, "*", "nebula-core", "server"),
+			filepath.Join(root, "*", "*", "nebula-core", "server"),
+		} {
+			if matches, err := filepath.Glob(pattern); err == nil {
+				candidates = append(candidates, matches...)
+			}
 		}
 		for _, candidate := range candidates {
 			if seen[candidate] {

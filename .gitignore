@@ -38,6 +38,9 @@ database/data/
 
 # Local artifacts
 [Aa]rtifacts/
+!artifacts/
+artifacts/*
+!artifacts/schema.sql
 
 # Node modules
 node_modules/

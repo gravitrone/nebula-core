@@ -647,7 +647,7 @@ async def test_create_get_list_file(mock_mcp_context, test_agent):
 
     payload = CreateFileInput(
         filename="spec.md",
-        file_path="/vault/00-The-Void/spec.md",
+        file_path="/vault/spec.md",
         mime_type="text/markdown",
         size_bytes=2048,
         checksum="sha256:test",

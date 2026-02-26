@@ -85,6 +85,31 @@ func TestResolveServerDirFindsServerUnderWorkingDir(t *testing.T) {
 	assert.Equal(t, normalizePathPrefix(expected), normalizePathPrefix(got))
 }
 
+// TestResolveServerDirFindsNestedNebulaCoreServer handles nested repo discovery without hardcoded vault paths.
+func TestResolveServerDirFindsNestedNebulaCoreServer(t *testing.T) {
+	root := t.TempDir()
+	serverDir := filepath.Join(root, "workspace", "project", "nebula-core", "server")
+	require.NoError(t, os.MkdirAll(filepath.Join(serverDir, "src", "nebula_api"), 0o755))
+	require.NoError(
+		t,
+		os.WriteFile(filepath.Join(serverDir, "src", "nebula_api", "app.py"), []byte("app = None\n"), 0o644),
+	)
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(root))
+	t.Cleanup(func() {
+		_ = os.Chdir(cwd)
+	})
+
+	t.Setenv("NEBULA_SERVER_DIR", "")
+	got, err := resolveServerDir()
+	require.NoError(t, err)
+	expected, err := filepath.Abs(serverDir)
+	require.NoError(t, err)
+	assert.Equal(t, normalizePathPrefix(expected), normalizePathPrefix(got))
+}
+
 // TestRunStartCmdRejectsInvalidServerEnv handles invalid server path failures before process launch.
 func TestRunStartCmdRejectsInvalidServerEnv(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
