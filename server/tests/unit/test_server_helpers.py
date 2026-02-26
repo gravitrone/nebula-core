@@ -18,11 +18,15 @@ from nebula_mcp.server import (
     _entity_semantic_candidate,
     _export_response_rows,
     _flatten_csv_value,
+    _get_job_row,
     _get_taxonomy_row,
+    _has_hidden_relationships,
     _has_write_scopes,
     _is_admin,
+    _node_allowed,
     _normalize_relationship_row,
     _require_admin,
+    _require_entity_write_access,
     _require_job_id,
     _require_job_read,
     _require_job_write,
@@ -33,6 +37,7 @@ from nebula_mcp.server import (
     _scope_filter_ids,
     _taxonomy_kind_or_error,
     _taxonomy_usage_count,
+    _validate_relationship_node,
     _validate_taxonomy_payload,
     _visible_scope_names,
 )
@@ -336,3 +341,464 @@ def test_require_admin_with_minimal_enums_shape():
     )
     enums = SimpleNamespace(scopes=scopes)
     _require_admin({"scopes": [admin_id]}, enums)
+
+
+class _ServerPoolStub:
+    """Async pool stub with queued fetch/fetchrow responses."""
+
+    def __init__(self, *, fetch_queue=None, fetchrow_map=None):
+        self.fetch_queue = list(fetch_queue or [])
+        self.fetchrow_map = dict(fetchrow_map or {})
+        self.fetch_calls = []
+        self.fetchrow_calls = []
+
+    async def fetch(self, query, *args):
+        self.fetch_calls.append((query, args))
+        if self.fetch_queue:
+            return self.fetch_queue.pop(0)
+        return []
+
+    async def fetchrow(self, query, *args):
+        self.fetchrow_calls.append((query, args))
+        key = args[0] if args else None
+        return self.fetchrow_map.get(key)
+
+
+@pytest.mark.asyncio
+async def test_get_job_row_success_and_not_found():
+    """_get_job_row returns row dict or raises clear not-found error."""
+
+    job_id = "2026Q1-ABCD"
+    pool = _ServerPoolStub(fetchrow_map={job_id: {"id": job_id, "privacy_scope_ids": []}})
+
+    row = await _get_job_row(pool, job_id)
+    assert row["id"] == job_id
+
+    with pytest.raises(ValueError, match="not found"):
+        await _get_job_row(_ServerPoolStub(), job_id)
+
+
+@pytest.mark.asyncio
+async def test_require_entity_write_access_matrix(mock_enums):
+    """Entity write access helper enforces id validity, existence, and scopes."""
+
+    public_id = mock_enums.scopes.name_to_id["public"]
+    private_id = mock_enums.scopes.name_to_id["private"]
+
+    admin = _agent_with_scopes(mock_enums, "admin")
+    user = _agent_with_scopes(mock_enums, "public")
+
+    # invalid UUID is rejected before DB calls
+    with pytest.raises(ValueError, match="Invalid entity id"):
+        await _require_entity_write_access(
+            _ServerPoolStub(),
+            mock_enums,
+            user,
+            ["not-a-uuid"],
+        )
+
+    # admin bypasses row scope checks
+    await _require_entity_write_access(_ServerPoolStub(), mock_enums, admin, [])
+
+    # non-admin missing rows => entity not found
+    entity_id = str(uuid4())
+    with pytest.raises(ValueError, match="Entity not found"):
+        await _require_entity_write_access(
+            _ServerPoolStub(fetch_queue=[[]]),
+            mock_enums,
+            user,
+            [entity_id],
+        )
+
+    # non-admin row outside scopes => access denied
+    with pytest.raises(ValueError, match="Access denied"):
+        await _require_entity_write_access(
+            _ServerPoolStub(
+                fetch_queue=[
+                    [{"id": str(uuid4()), "privacy_scope_ids": [private_id]}]
+                ]
+            ),
+            mock_enums,
+            user,
+            [str(uuid4())],
+        )
+
+    # happy path
+    await _require_entity_write_access(
+        _ServerPoolStub(
+            fetch_queue=[[{"id": str(uuid4()), "privacy_scope_ids": [public_id]}]]
+        ),
+        mock_enums,
+        user,
+        [str(uuid4())],
+    )
+
+
+@pytest.mark.asyncio
+async def test_has_hidden_relationships_non_file_log_branches(mock_enums):
+    """Non file/log node hidden-relationship checks cover count and job branches."""
+
+    public_id = mock_enums.scopes.name_to_id["public"]
+    private_id = mock_enums.scopes.name_to_id["private"]
+    user = _agent_with_scopes(mock_enums, "public")
+    admin = _agent_with_scopes(mock_enums, "admin")
+
+    # admin bypass
+    assert await _has_hidden_relationships(_ServerPoolStub(), mock_enums, admin, "entity", str(uuid4())) is False
+
+    # no rows
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(fetch_queue=[[]]),
+            mock_enums,
+            user,
+            "entity",
+            str(uuid4()),
+        )
+        is False
+    )
+
+    # scoped subset smaller than full set => hidden
+    all_rows = [{"source_type": "entity", "target_type": "entity"}]
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(fetch_queue=[all_rows, []]),
+            mock_enums,
+            user,
+            "entity",
+            str(uuid4()),
+        )
+        is True
+    )
+
+    # job relationship with missing job row => hidden
+    rels = [
+        {
+            "source_type": "job",
+            "source_id": "2026Q1-ABCD",
+            "target_type": "entity",
+            "target_id": str(uuid4()),
+        }
+    ]
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(fetch_queue=[rels, rels], fetchrow_map={}),
+            mock_enums,
+            user,
+            "entity",
+            str(uuid4()),
+        )
+        is True
+    )
+
+    # job relationship with out-of-scope job => hidden
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(
+                fetch_queue=[rels, rels],
+                fetchrow_map={
+                    "2026Q1-ABCD": {
+                        "id": "2026Q1-ABCD",
+                        "privacy_scope_ids": [private_id],
+                        "agent_id": user["id"],
+                    }
+                },
+            ),
+            mock_enums,
+            user,
+            "entity",
+            str(uuid4()),
+        )
+        is True
+    )
+
+    # no hidden relationships
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(
+                fetch_queue=[rels, rels],
+                fetchrow_map={
+                    "2026Q1-ABCD": {
+                        "id": "2026Q1-ABCD",
+                        "privacy_scope_ids": [public_id],
+                        "agent_id": user["id"],
+                    }
+                },
+            ),
+            mock_enums,
+            user,
+            "entity",
+            str(uuid4()),
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_has_hidden_relationships_file_log_branches(mock_enums):
+    """File/log branch checks entity/context/job visibility for linked nodes."""
+
+    public_id = mock_enums.scopes.name_to_id["public"]
+    private_id = mock_enums.scopes.name_to_id["private"]
+    user = _agent_with_scopes(mock_enums, "public")
+    file_id = str(uuid4())
+
+    rel = {
+        "source_type": "entity",
+        "source_id": str(uuid4()),
+        "target_type": "file",
+        "target_id": file_id,
+    }
+
+    # missing entity row => hidden
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(fetch_queue=[[rel], [rel]], fetchrow_map={}),
+            mock_enums,
+            user,
+            "file",
+            file_id,
+        )
+        is True
+    )
+
+    # entity row with private scope => hidden
+    entity_id = rel["source_id"]
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(
+                fetch_queue=[[rel], [rel]],
+                fetchrow_map={entity_id: {"privacy_scope_ids": [private_id]}},
+            ),
+            mock_enums,
+            user,
+            "file",
+            file_id,
+        )
+        is True
+    )
+
+    # fully visible entity link => not hidden
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(
+                fetch_queue=[[rel], [rel]],
+                fetchrow_map={entity_id: {"privacy_scope_ids": [public_id]}},
+            ),
+            mock_enums,
+            user,
+            "file",
+            file_id,
+        )
+        is False
+    )
+
+
+@pytest.mark.asyncio
+async def test_node_allowed_matrix(mock_enums):
+    """_node_allowed enforces per-node visibility semantics."""
+
+    public_id = mock_enums.scopes.name_to_id["public"]
+    private_id = mock_enums.scopes.name_to_id["private"]
+    user = _agent_with_scopes(mock_enums, "public")
+    admin = _agent_with_scopes(mock_enums, "admin")
+
+    assert await _node_allowed(_ServerPoolStub(), mock_enums, admin, "entity", str(uuid4()))
+
+    entity_id = str(uuid4())
+    assert not await _node_allowed(
+        _ServerPoolStub(fetchrow_map={}),
+        mock_enums,
+        user,
+        "entity",
+        entity_id,
+    )
+    assert await _node_allowed(
+        _ServerPoolStub(fetchrow_map={entity_id: {"privacy_scope_ids": []}}),
+        mock_enums,
+        user,
+        "entity",
+        entity_id,
+    )
+    assert await _node_allowed(
+        _ServerPoolStub(fetchrow_map={entity_id: {"privacy_scope_ids": [public_id]}}),
+        mock_enums,
+        user,
+        "entity",
+        entity_id,
+    )
+    assert not await _node_allowed(
+        _ServerPoolStub(fetchrow_map={entity_id: {"privacy_scope_ids": [private_id]}}),
+        mock_enums,
+        user,
+        "entity",
+        entity_id,
+    )
+
+    context_id = str(uuid4())
+    assert await _node_allowed(
+        _ServerPoolStub(fetchrow_map={context_id: {"id": context_id}}),
+        mock_enums,
+        user,
+        "context",
+        context_id,
+    )
+    assert not await _node_allowed(
+        _ServerPoolStub(fetchrow_map={}),
+        mock_enums,
+        user,
+        "context",
+        context_id,
+    )
+
+    job_id = "2026Q1-ABCD"
+    assert await _node_allowed(
+        _ServerPoolStub(
+            fetchrow_map={
+                job_id: {
+                    "id": job_id,
+                    "privacy_scope_ids": [public_id],
+                    "agent_id": user["id"],
+                }
+            }
+        ),
+        mock_enums,
+        user,
+        "job",
+        job_id,
+    )
+    assert not await _node_allowed(
+        _ServerPoolStub(fetchrow_map={}),
+        mock_enums,
+        user,
+        "job",
+        job_id,
+    )
+
+    # Unknown node types default allow (guarded at higher layers).
+    assert await _node_allowed(_ServerPoolStub(), mock_enums, user, "protocol", "x")
+
+
+@pytest.mark.asyncio
+async def test_validate_relationship_node_matrix(mock_enums):
+    """Relationship node validation covers entity/context/job error branches."""
+
+    public_id = mock_enums.scopes.name_to_id["public"]
+    private_id = mock_enums.scopes.name_to_id["private"]
+    user = _agent_with_scopes(mock_enums, "public")
+
+    entity_id = str(uuid4())
+    context_id = str(uuid4())
+    job_id = "2026Q1-ABCD"
+
+    with pytest.raises(ValueError, match="Unsupported source type"):
+        await _validate_relationship_node(
+            _ServerPoolStub(),
+            mock_enums,
+            user,
+            "protocol",
+            "x",
+            "Source",
+        )
+
+    with pytest.raises(ValueError, match="Source entity not found"):
+        await _validate_relationship_node(
+            _ServerPoolStub(fetchrow_map={}),
+            mock_enums,
+            user,
+            "entity",
+            entity_id,
+            "Source",
+        )
+
+    with pytest.raises(ValueError, match="Access denied"):
+        await _validate_relationship_node(
+            _ServerPoolStub(
+                fetchrow_map={entity_id: {"privacy_scope_ids": [private_id]}}
+            ),
+            mock_enums,
+            user,
+            "entity",
+            entity_id,
+            "Source",
+            require_write=True,
+        )
+
+    with pytest.raises(ValueError, match="Target context not found"):
+        await _validate_relationship_node(
+            _ServerPoolStub(fetchrow_map={}),
+            mock_enums,
+            user,
+            "context",
+            context_id,
+            "Target",
+        )
+
+    with pytest.raises(ValueError, match="Access denied"):
+        await _validate_relationship_node(
+            _ServerPoolStub(
+                fetchrow_map={context_id: {"privacy_scope_ids": [private_id]}}
+            ),
+            mock_enums,
+            user,
+            "context",
+            context_id,
+            "Target",
+            require_write=True,
+        )
+
+    with pytest.raises(ValueError, match="Target job not found"):
+        await _validate_relationship_node(
+            _ServerPoolStub(fetchrow_map={}),
+            mock_enums,
+            user,
+            "job",
+            job_id,
+            "Target",
+        )
+
+    with pytest.raises(ValueError, match="Job not in your scopes"):
+        await _validate_relationship_node(
+            _ServerPoolStub(
+                fetchrow_map={
+                    job_id: {"id": job_id, "privacy_scope_ids": [private_id], "agent_id": user["id"]}
+                }
+            ),
+            mock_enums,
+            user,
+            "job",
+            job_id,
+            "Target",
+        )
+
+    # happy path: writable entity + readable context + writable job
+    await _validate_relationship_node(
+        _ServerPoolStub(fetchrow_map={entity_id: {"privacy_scope_ids": [public_id]}}),
+        mock_enums,
+        user,
+        "entity",
+        entity_id,
+        "Source",
+        require_write=True,
+    )
+    await _validate_relationship_node(
+        _ServerPoolStub(fetchrow_map={context_id: {"privacy_scope_ids": [public_id]}}),
+        mock_enums,
+        user,
+        "context",
+        context_id,
+        "Target",
+    )
+    await _validate_relationship_node(
+        _ServerPoolStub(
+            fetchrow_map={
+                job_id: {"id": job_id, "privacy_scope_ids": [public_id], "agent_id": user["id"]}
+            }
+        ),
+        mock_enums,
+        user,
+        "job",
+        job_id,
+        "Target",
+        require_write=True,
+    )
