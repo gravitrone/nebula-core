@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,4 +56,28 @@ func TestMainHelpFlagDoesNotExit(t *testing.T) {
 
 	// main() should return normally for help (no os.Exit).
 	main()
+}
+
+// TestRunTUIReturnsConfigPermissionError ensures invalid config permissions fail fast.
+func TestRunTUIReturnsConfigPermissionError(t *testing.T) {
+	dir := t.TempDir()
+	oldHome := os.Getenv("HOME")
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() {
+		require.NoError(t, os.Setenv("HOME", oldHome))
+	}()
+
+	cfgDir := filepath.Join(dir, ".nebula")
+	require.NoError(t, os.MkdirAll(cfgDir, 0o700))
+	cfgPath := filepath.Join(cfgDir, "config")
+	require.NoError(t, os.WriteFile(cfgPath, []byte("api_key: nbl_test\n"), 0o644))
+
+	err := runTUI()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "config permissions too open")
+}
+
+// TestIsInteractiveTerminalHandlesNilFile ensures nil handles are treated as non-interactive.
+func TestIsInteractiveTerminalHandlesNilFile(t *testing.T) {
+	assert.False(t, isInteractiveTerminal(nil))
 }
