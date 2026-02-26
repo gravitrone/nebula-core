@@ -14,8 +14,11 @@ from nebula_mcp.helpers import (
     get_pending_approvals_all,
     reject_request,
 )
+from nebula_mcp.executors import EXECUTORS
 
 pytestmark = pytest.mark.integration
+
+EXECUTOR_REQUEST_TYPES = sorted(EXECUTORS.keys())
 
 
 # --- create_approval_request ---
@@ -320,6 +323,35 @@ async def test_approve_unknown_executor_type_raises(
             str(approval["id"]),
             str(test_entity["id"]),
         )
+
+
+@pytest.mark.parametrize("request_type", EXECUTOR_REQUEST_TYPES)
+async def test_approve_request_type_matrix_has_executor_mapping(
+    db_pool, enums, untrusted_agent, test_entity, request_type
+):
+    """All registered request types should resolve an executor in approve path."""
+
+    approval = await create_approval_request(
+        db_pool,
+        str(untrusted_agent["id"]),
+        request_type,
+        {},
+    )
+
+    with pytest.raises(Exception):  # noqa: BLE001 - matrix intentionally sends invalid payloads
+        await approve_request(
+            db_pool,
+            enums,
+            str(approval["id"]),
+            str(test_entity["id"]),
+        )
+
+    row = await db_pool.fetchrow(
+        "SELECT status, execution_error FROM approval_requests WHERE id = $1::uuid",
+        str(approval["id"]),
+    )
+    assert row["status"] == "approved-failed"
+    assert "No executor for" not in (row["execution_error"] or "")
 
 
 async def test_approve_with_bad_data_marks_failed(
