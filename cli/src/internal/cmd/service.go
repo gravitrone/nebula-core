@@ -32,6 +32,8 @@ var waitForAPIHealthProbe = func() (string, error) {
 	return client.Health()
 }
 
+var startHealthTimeout = 8 * time.Second
+
 type apiRuntimeState struct {
 	PID       int       `json:"pid"`
 	Port      int       `json:"port"`
@@ -185,7 +187,7 @@ func runStartCmd(out io.Writer) error {
 	}
 	startSucceeded = true
 
-	ready := waitForAPIHealth(8 * time.Second)
+	ready := waitForAPIHealth(startHealthTimeout)
 	status := "starting"
 	if ready {
 		status = "running"
