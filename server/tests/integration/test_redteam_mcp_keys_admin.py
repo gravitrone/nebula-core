@@ -179,6 +179,83 @@ async def test_list_all_api_keys_requires_admin(db_pool, enums):
         await list_all_api_keys(ListAllKeysInput(limit=10, offset=0), public_ctx)
 
 
+@pytest.mark.parametrize(
+    ("tool_name", "invoker"),
+    [
+        (
+            "list_all_api_keys",
+            lambda ctx, target: list_all_api_keys(
+                ListAllKeysInput(limit=1, offset=0),
+                ctx,
+            ),
+        ),
+        (
+            "list_audit_scopes",
+            lambda ctx, target: list_audit_scopes(ctx),
+        ),
+        (
+            "list_audit_actors",
+            lambda ctx, target: list_audit_actors(
+                ListAuditActorsInput(actor_type="agent"),
+                ctx,
+            ),
+        ),
+        (
+            "query_audit_log",
+            lambda ctx, target: query_audit_log(
+                QueryAuditLogInput(limit=1),
+                ctx,
+            ),
+        ),
+        (
+            "get_pending_approvals_all",
+            lambda ctx, target: get_pending_approvals_all(
+                PendingApprovalsInput(limit=1),
+                ctx,
+            ),
+        ),
+        (
+            "get_agent",
+            lambda ctx, target: get_agent(
+                GetAgentInput(agent_id=target),
+                ctx,
+            ),
+        ),
+        (
+            "update_agent",
+            lambda ctx, target: update_agent(
+                UpdateAgentInput(
+                    agent_id=target,
+                    description="forbidden update",
+                ),
+                ctx,
+            ),
+        ),
+    ],
+)
+async def test_admin_tools_forbidden_for_non_admin_matrix(
+    db_pool, enums, tool_name, invoker
+):
+    """All admin-only MCP tools should reject non-admin agents consistently."""
+
+    public_agent = await _create_agent(
+        db_pool,
+        enums,
+        name=f"matrix-public-{tool_name}",
+        scopes=["public"],
+    )
+    target_agent = await _create_agent(
+        db_pool,
+        enums,
+        name=f"matrix-target-{tool_name}",
+        scopes=["public"],
+    )
+    public_ctx = _mcp_ctx(db_pool, enums, public_agent)
+
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await invoker(public_ctx, str(target_agent["id"]))
+
+
 async def test_create_api_key_entity_path_requires_admin(db_pool, enums):
     """Non-admin agents should not be able to mint entity-owned API keys."""
 
