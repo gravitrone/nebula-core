@@ -182,6 +182,11 @@ func TestStartupParsingHelpers(t *testing.T) {
 		"multi_api_conflict",
 		classifyStartupAuth("HTTP 500: multiple api instances detected", &config.Config{APIKey: "key"}),
 	)
+	assert.Equal(
+		t,
+		"multi_api_conflict",
+		classifyStartupAuth("MULTIPLE_API_INSTANCES_DETECTED: duplicate processes", &config.Config{APIKey: "key"}),
+	)
 
 	assert.Equal(t, "ok", classifyStartupTaxonomy(""))
 	assert.Equal(t, "forbidden", classifyStartupTaxonomy("forbidden: scope"))
@@ -449,6 +454,23 @@ func TestStartupCheckedMsgMultiAPIConflictShowsActionableToast(t *testing.T) {
 	assert.Equal(t, "error", updated.toast.level)
 	assert.Contains(t, strings.ToLower(updated.toast.text), "multiple api instances detected")
 	assert.Contains(t, updated.toast.text, "nebula start")
+}
+
+// TestStartupCheckedMsgMultiAPIConflictCodeShowsActionableToast handles coded multi-api conflict startup messaging.
+func TestStartupCheckedMsgMultiAPIConflictCodeShowsActionableToast(t *testing.T) {
+	app := NewApp(nil, &config.Config{APIKey: "key"})
+	app.startupChecking = true
+
+	model, cmd := app.Update(startupCheckedMsg{authErr: "MULTIPLE_API_INSTANCES_DETECTED: duplicate processes"})
+	updated := model.(App)
+
+	assert.False(t, updated.startupChecking)
+	assert.Equal(t, "multi_api_conflict", updated.startup.Auth)
+	assert.False(t, updated.showRecoveryHints)
+	require.NotNil(t, cmd)
+	require.NotNil(t, updated.toast)
+	assert.Equal(t, "error", updated.toast.level)
+	assert.Contains(t, strings.ToLower(updated.toast.text), "multiple api instances detected")
 }
 
 // TestStartupCheckedMsgAuthCodeErrorEnablesRecoveryHints handles coded auth errors from API envelopes.
