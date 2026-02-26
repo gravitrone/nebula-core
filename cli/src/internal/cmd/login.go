@@ -29,7 +29,7 @@ func RunInteractiveLogin(in io.Reader, out io.Writer) error {
 		return fmt.Errorf("username is required")
 	}
 
-	client := api.NewDefaultClient("")
+	client := newDefaultClient("")
 	resp, err := client.Login(username)
 	if err != nil {
 		return fmt.Errorf("login failed: %w", err)

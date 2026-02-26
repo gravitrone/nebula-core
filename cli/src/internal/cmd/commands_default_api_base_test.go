@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"context"
+	"bytes"
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
@@ -21,22 +21,29 @@ import (
 func startDefaultAPIBaseServer(t *testing.T, handler http.Handler) func() {
 	t.Helper()
 
-	parsed, err := url.Parse(api.DefaultBaseURL)
+	srv := httptest.NewServer(handler)
+	parsed, err := url.Parse(srv.URL)
 	require.NoError(t, err)
-	ln, err := net.Listen("tcp", parsed.Host)
-	if err != nil {
-		t.Skip("default api port busy; skipping localhost happy-path cmd coverage")
-	}
-
-	srv := &http.Server{Handler: handler}
-	go func() {
-		_ = srv.Serve(ln)
-	}()
-
+	restore := setDefaultClientFactoryForTest(t, func(apiKey string, timeout ...time.Duration) *api.Client {
+		base := "http://" + parsed.Host
+		return api.NewClient(base, apiKey, timeout...)
+	})
 	return func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		_ = srv.Shutdown(ctx)
+		restore()
+		srv.Close()
+	}
+}
+
+// setDefaultClientFactoryForTest handles overriding command API client construction.
+func setDefaultClientFactoryForTest(
+	t *testing.T,
+	factory func(apiKey string, timeout ...time.Duration) *api.Client,
+) func() {
+	t.Helper()
+	previous := newDefaultClient
+	newDefaultClient = factory
+	return func() {
+		newDefaultClient = previous
 	}
 }
 
@@ -121,4 +128,135 @@ func TestKeysAndAgentListHappyPathsAgainstDefaultAPIBaseURL(t *testing.T) {
 	agents := AgentCmd()
 	agents.SetArgs([]string{"list"})
 	require.NoError(t, agents.Execute())
+}
+
+// TestKeysListAllFlagAgainstDefaultAPIBaseURL handles list-all key flows on default base URL.
+func TestKeysListAllFlagAgainstDefaultAPIBaseURL(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, (&config.Config{APIKey: "nbl_test", Username: "alxx"}).Save())
+
+	now := time.Now()
+	agentName := "cto-agent"
+	entityName := "alxx"
+
+	shutdown := startDefaultAPIBaseServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/keys/all" && r.Method == http.MethodGet:
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{
+						"id":         "k-agent",
+						"key_prefix": "nbl_agent",
+						"name":       "agent-key",
+						"owner_type": "agent",
+						"agent_name": agentName,
+						"created_at": now,
+					},
+					{
+						"id":          "k-user",
+						"key_prefix":  "nbl_user",
+						"name":        "user-key",
+						"owner_type":  "entity",
+						"entity_name": entityName,
+						"created_at":  now,
+					},
+				},
+			}))
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(shutdown)
+
+	keys := KeysCmd()
+	var out bytes.Buffer
+	keys.SetOut(&out)
+	keys.SetErr(&out)
+	keys.SetArgs([]string{"list", "--all"})
+	require.NoError(t, keys.Execute())
+
+	text := out.String()
+	assert.Contains(t, text, "agent-key")
+	assert.Contains(t, text, "user-key")
+	assert.Contains(t, text, "agent:cto-agent")
+	assert.Contains(t, text, "user:alxx")
+}
+
+// TestKeysCreateRevokeAndAgentRegisterAgainstDefaultAPIBaseURL handles success paths
+// for key creation/revocation and agent registration against the default local base URL.
+func TestKeysCreateRevokeAndAgentRegisterAgainstDefaultAPIBaseURL(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, (&config.Config{APIKey: "nbl_test", Username: "alxx"}).Save())
+
+	var (
+		createdKeyName   string
+		revokedKeyID     string
+		registeredAgent  string
+		registeredDesc   string
+		registeredScopes []string
+	)
+
+	shutdown := startDefaultAPIBaseServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/keys" && r.Method == http.MethodPost:
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			createdKeyName = body["name"].(string)
+			_, _ = io.WriteString(w, `{"data":{"api_key":"nbl_live_key","key_id":"key-123","prefix":"nbl_live","name":"demo-key"}}`)
+			return
+		case r.URL.Path == "/api/keys/key-123" && r.Method == http.MethodDelete:
+			revokedKeyID = "key-123"
+			w.WriteHeader(http.StatusOK)
+			_, _ = io.WriteString(w, `{"data":{"status":"ok"}}`)
+			return
+		case r.URL.Path == "/api/agents/register" && r.Method == http.MethodPost:
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			registeredAgent = body["name"].(string)
+			if desc, ok := body["description"].(string); ok {
+				registeredDesc = desc
+			}
+			for _, raw := range body["requested_scopes"].([]any) {
+				registeredScopes = append(registeredScopes, raw.(string))
+			}
+			_, _ = io.WriteString(w, `{"data":{"agent_id":"ag-1","approval_request_id":"apr-1","status":"pending"}}`)
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(shutdown)
+
+	keysCreate := KeysCmd()
+	var createOut bytes.Buffer
+	keysCreate.SetOut(&createOut)
+	keysCreate.SetErr(&createOut)
+	keysCreate.SetArgs([]string{"create", "demo-key"})
+	require.NoError(t, keysCreate.Execute())
+	assert.Equal(t, "demo-key", createdKeyName)
+	assert.Contains(t, createOut.String(), "API Key Created")
+	assert.Contains(t, createOut.String(), "nbl_live_key")
+
+	keysRevoke := KeysCmd()
+	var revokeOut bytes.Buffer
+	keysRevoke.SetOut(&revokeOut)
+	keysRevoke.SetErr(&revokeOut)
+	keysRevoke.SetArgs([]string{"revoke", "key-123"})
+	require.NoError(t, keysRevoke.Execute())
+	assert.Equal(t, "key-123", revokedKeyID)
+	assert.Contains(t, revokeOut.String(), "revoked")
+
+	agentsRegister := AgentCmd()
+	var registerOut bytes.Buffer
+	agentsRegister.SetOut(&registerOut)
+	agentsRegister.SetErr(&registerOut)
+	agentsRegister.SetArgs([]string{"register", "cto-agent", "--description", "overnight test agent"})
+	require.NoError(t, agentsRegister.Execute())
+	assert.Equal(t, "cto-agent", registeredAgent)
+	assert.Equal(t, "overnight test agent", registeredDesc)
+	assert.Equal(t, []string{"public"}, registeredScopes)
+	assert.Contains(t, registerOut.String(), "Agent Registered")
+	assert.Contains(t, registerOut.String(), "ag-1")
+	assert.Contains(t, registerOut.String(), "apr-1")
 }

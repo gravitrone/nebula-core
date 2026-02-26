@@ -28,7 +28,7 @@ const (
 )
 
 var waitForAPIHealthProbe = func() (string, error) {
-	client := api.NewDefaultClient("", 900*time.Millisecond)
+	client := newDefaultClient("", 900*time.Millisecond)
 	return client.Health()
 }
 
