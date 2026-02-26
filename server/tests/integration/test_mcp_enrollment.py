@@ -16,6 +16,10 @@ from nebula_mcp.models import (
     AgentEnrollRedeemInput,
     AgentEnrollStartInput,
     AgentEnrollWaitInput,
+    GetAgentInput,
+    ListAllKeysInput,
+    PendingApprovalsInput,
+    QueryAuditLogInput,
     QueryEntitiesInput,
 )
 from nebula_mcp.server import (
@@ -23,6 +27,13 @@ from nebula_mcp.server import (
     agent_enroll_redeem,
     agent_enroll_start,
     agent_enroll_wait,
+    get_agent,
+    get_pending_approvals,
+    get_pending_approvals_all,
+    list_all_api_keys,
+    list_api_keys,
+    list_audit_scopes,
+    query_audit_log,
     query_entities,
 )
 
@@ -61,6 +72,54 @@ async def test_bootstrap_blocks_non_enroll_tools(bootstrap_mcp_context):
         "agent_enroll_redeem",
         "agent_auth_attach",
     ]
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "invoker"),
+    [
+        (
+            "list_api_keys",
+            lambda ctx: list_api_keys(ctx),
+        ),
+        (
+            "get_pending_approvals",
+            lambda ctx: get_pending_approvals(ctx),
+        ),
+        (
+            "list_audit_scopes",
+            lambda ctx: list_audit_scopes(ctx),
+        ),
+        (
+            "query_audit_log",
+            lambda ctx: query_audit_log(QueryAuditLogInput(limit=1), ctx),
+        ),
+        (
+            "get_pending_approvals_all",
+            lambda ctx: get_pending_approvals_all(PendingApprovalsInput(limit=1), ctx),
+        ),
+        (
+            "list_all_api_keys",
+            lambda ctx: list_all_api_keys(ListAllKeysInput(limit=1, offset=0), ctx),
+        ),
+        (
+            "get_agent",
+            lambda ctx: get_agent(
+                GetAgentInput(agent_id="00000000-0000-0000-0000-000000000000"),
+                ctx,
+            ),
+        ),
+    ],
+)
+async def test_all_non_enroll_tools_require_auth_in_bootstrap(
+    bootstrap_mcp_context, tool_name, invoker
+):
+    """All non-enrollment tools should reject bootstrap callers consistently."""
+
+    with pytest.raises(ValueError) as exc:
+        await invoker(bootstrap_mcp_context)
+
+    payload = json.loads(str(exc.value))
+    assert payload["error"]["code"] == "ENROLLMENT_REQUIRED", tool_name
 
 
 async def test_enroll_tools_reject_authenticated_agent_context(mock_mcp_context):

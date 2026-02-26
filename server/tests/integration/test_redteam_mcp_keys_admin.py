@@ -21,6 +21,7 @@ from nebula_mcp.models import (
     PendingApprovalsInput,
     QueryAuditLogInput,
     QueryProtocolsInput,
+    RejectRequestInput,
     RevokeKeyInput,
     UpdateAgentInput,
 )
@@ -40,6 +41,7 @@ from nebula_mcp.server import (
     login_user,
     query_audit_log,
     query_protocols,
+    reject_request,
     revoke_api_key,
     update_agent,
 )
@@ -345,6 +347,46 @@ async def test_approve_request_rejects_grants_for_non_register_approval(db_pool,
                 grant_scopes=["public"],
             ),
             admin_ctx,
+        )
+
+
+async def test_approve_and_reject_tools_require_admin_scope(db_pool, enums):
+    """Non-admin callers should not approve or reject pending approvals."""
+
+    untrusted_agent = await _create_agent(
+        db_pool,
+        enums,
+        name="approve-reject-untrusted-agent",
+        scopes=["public"],
+        requires_approval=True,
+    )
+    untrusted_ctx = _mcp_ctx(db_pool, enums, untrusted_agent)
+
+    created = await create_entity(
+        CreateEntityInput(
+            name="approve-reject-target",
+            type="project",
+            status="active",
+            scopes=["public"],
+        ),
+        untrusted_ctx,
+    )
+    approval_id = created["approval_request_id"]
+    assert approval_id
+
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await approve_request(
+            ApproveRequestInput(approval_id=approval_id),
+            untrusted_ctx,
+        )
+
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await reject_request(
+            RejectRequestInput(
+                approval_id=approval_id,
+                review_notes="non-admin reject attempt",
+            ),
+            untrusted_ctx,
         )
 
 
