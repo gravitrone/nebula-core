@@ -175,6 +175,46 @@ async def test_approve_request_creates_entity_and_links_audit(
     assert "approval" in result
 
 
+@pytest.mark.parametrize(
+    "request_type",
+    [
+        "create-entity",
+        "CREATE_ENTITY",
+        "create entity",
+    ],
+)
+async def test_approve_request_normalizes_request_type_variants(
+    db_pool,
+    enums,
+    untrusted_agent,
+    test_entity,
+    request_type,
+):
+    """Executor lookup should normalize non-canonical request type variants."""
+
+    approval = await create_approval_request(
+        db_pool,
+        str(untrusted_agent["id"]),
+        request_type,
+        {
+            "name": f"Normalized {request_type}",
+            "type": "project",
+            "status": "active",
+            "scopes": ["public"],
+        },
+    )
+
+    result = await approve_request(
+        db_pool,
+        enums,
+        str(approval["id"]),
+        str(test_entity["id"]),
+    )
+
+    assert result["approval"]["status"] == "approved"
+    assert result["entity"]["name"] == f"Normalized {request_type}"
+
+
 async def test_approve_nonexistent_raises(db_pool, enums, test_entity):
     """Approving a nonexistent approval ID should raise ValueError."""
 
