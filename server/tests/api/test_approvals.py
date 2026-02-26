@@ -8,6 +8,9 @@ import pytest
 
 # Local
 import nebula_api.routes.approvals as approvals_route
+from nebula_mcp.executors import EXECUTORS
+
+EXECUTOR_REQUEST_TYPES = sorted(EXECUTORS.keys())
 
 
 @pytest.fixture
@@ -176,6 +179,49 @@ async def test_approve_request(api, pending_approval, auth_override, enums):
 
     r = await api.post(f"/api/approvals/{pending_approval['id']}/approve")
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_type", EXECUTOR_REQUEST_TYPES)
+async def test_approve_request_type_matrix_resolves_registered_executors(
+    api,
+    db_pool,
+    auth_override,
+    enums,
+    untrusted_agent,
+    request_type,
+):
+    """All registered request types should resolve an executor at API approve time."""
+
+    auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
+
+    approval = await db_pool.fetchrow(
+        """
+        INSERT INTO approval_requests (request_type, requested_by, change_details, status)
+        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        RETURNING id
+        """,
+        request_type,
+        str(untrusted_agent["id"]),
+        "{}",
+        "pending",
+    )
+    assert approval is not None
+
+    resp = await api.post(f"/api/approvals/{approval['id']}/approve")
+    assert resp.status_code in {200, 400, 409}
+
+    row = await db_pool.fetchrow(
+        "SELECT status, execution_error FROM approval_requests WHERE id = $1::uuid",
+        str(approval["id"]),
+    )
+    assert row is not None
+    assert row["status"] in {"approved", "approved-failed"}
+    assert "No executor for" not in str(row["execution_error"] or "")
+
+    if resp.status_code in {400, 409}:
+        body = resp.json()
+        assert body["detail"]["error"]["code"] == "EXECUTION_FAILED"
 
 
 @pytest.mark.asyncio
