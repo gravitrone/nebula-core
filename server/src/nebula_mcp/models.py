@@ -1820,7 +1820,21 @@ class GetAgentInfoInput(BaseModel):
 class GetAgentInput(BaseModel):
     """Input payload for retrieving a single agent."""
 
-    name: str = Field(..., description="Agent name to retrieve")
+    agent_id: str = Field(..., description="Agent UUID")
+
+    @field_validator("agent_id", mode="before")
+    @classmethod
+    def _clean_get_agent_id(cls, v: str | None) -> str | None:
+        """Handle clean get agent id.
+
+        Args:
+            v: Input parameter for _clean_get_agent_id.
+
+        Returns:
+            Result value from the operation.
+        """
+
+        return _sanitize_text(v)
 
 
 class ListAgentsInput(BaseModel):

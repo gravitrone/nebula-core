@@ -13,10 +13,13 @@ from nebula_mcp.models import (
     CreateAPIKeyInput,
     CreateEntityInput,
     CreateProtocolInput,
+    GetAgentInput,
     GetApprovalInput,
+    ListAuditActorsInput,
     ListAllKeysInput,
     LoginInput,
     PendingApprovalsInput,
+    QueryAuditLogInput,
     QueryProtocolsInput,
     RevokeKeyInput,
     UpdateAgentInput,
@@ -26,12 +29,16 @@ from nebula_mcp.server import (
     create_api_key,
     create_entity,
     create_protocol,
+    get_agent,
     get_approval,
     get_pending_approvals,
     get_pending_approvals_all,
+    list_audit_actors,
+    list_audit_scopes,
     list_all_api_keys,
     list_api_keys,
     login_user,
+    query_audit_log,
     query_protocols,
     revoke_api_key,
     update_agent,
@@ -479,3 +486,47 @@ async def test_update_agent_self_requires_approval_bypass_is_denied(db_pool, enu
             ),
             self_ctx,
         )
+
+
+async def test_admin_only_tools_enforce_admin_gate_matrix(db_pool, enums):
+    """Admin-only MCP tools should deny non-admin agents and allow admin callers."""
+
+    public_agent = await _create_agent(
+        db_pool,
+        enums,
+        name="admin-matrix-public-agent",
+        scopes=["public"],
+    )
+    public_ctx = _mcp_ctx(db_pool, enums, public_agent)
+
+    admin_agent = await _create_agent(
+        db_pool,
+        enums,
+        name="admin-matrix-admin-agent",
+        scopes=["public", "admin"],
+    )
+    admin_ctx = _mcp_ctx(db_pool, enums, admin_agent)
+
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await list_audit_scopes(public_ctx)
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await list_audit_actors(ListAuditActorsInput(actor_type="agent"), public_ctx)
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await query_audit_log(QueryAuditLogInput(limit=5), public_ctx)
+    with pytest.raises(ValueError, match="Admin scope required"):
+        await get_agent(GetAgentInput(agent_id=str(admin_agent["id"])), public_ctx)
+
+    scope_rows = await list_audit_scopes(admin_ctx)
+    assert isinstance(scope_rows, list)
+
+    actor_rows = await list_audit_actors(
+        ListAuditActorsInput(actor_type="agent"),
+        admin_ctx,
+    )
+    assert isinstance(actor_rows, list)
+
+    audit_rows = await query_audit_log(QueryAuditLogInput(limit=5), admin_ctx)
+    assert isinstance(audit_rows, list)
+
+    agent_row = await get_agent(GetAgentInput(agent_id=str(public_agent["id"])), admin_ctx)
+    assert str(agent_row["id"]) == str(public_agent["id"])
