@@ -359,6 +359,50 @@ func TestRecoveryHintsReloginKeyFlowHandlesEndToEnd(t *testing.T) {
 	assert.Equal(t, "success", recovered.toast.level)
 }
 
+// TestInvalidAPIKeyRecoveryReauthFlow handles startup invalid-key -> relogin -> recovered state.
+func TestInvalidAPIKeyRecoveryReauthFlow(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/keys/login" && r.Method == http.MethodPost {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"api_key":   "nbl_reauth_key",
+					"entity_id": "ent-1",
+					"username":  "alxx",
+				},
+			}))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	cfg := &config.Config{APIKey: "bad-key", Username: "alxx"}
+	app := NewApp(api.NewClient(srv.URL, "bad-key"), cfg)
+	app.startupChecking = true
+
+	model, _ := app.Update(startupCheckedMsg{authErr: "HTTP 401: Unauthorized"})
+	invalid := model.(App)
+	assert.Equal(t, "invalid", invalid.startup.Auth)
+	assert.True(t, invalid.showRecoveryHints)
+	assert.Equal(t, "INVALID_API_KEY", invalid.lastErrCode)
+
+	model, cmd := invalid.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	require.NotNil(t, cmd)
+
+	reloginMsg := cmd()
+	model, _ = model.(App).Update(reloginMsg)
+	recovered := model.(App)
+
+	assert.Equal(t, "nbl_reauth_key", recovered.config.APIKey)
+	assert.False(t, recovered.showRecoveryHints)
+	assert.Equal(t, "", recovered.lastErrCode)
+	assert.Equal(t, "", recovered.lastErrMsg)
+	require.NotNil(t, recovered.toast)
+	assert.Equal(t, "success", recovered.toast.level)
+}
+
 // TestRecoveryHintsSettingsShortcutSwitchesToSettingsTab handles recovery shortcut routing to settings/profile.
 func TestRecoveryHintsSettingsShortcutSwitchesToSettingsTab(t *testing.T) {
 	app := NewApp(nil, &config.Config{APIKey: "bad-key"})
