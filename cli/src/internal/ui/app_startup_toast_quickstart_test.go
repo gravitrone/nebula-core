@@ -345,3 +345,59 @@ func TestRecoveryHintsReloginKeyFlowHandlesEndToEnd(t *testing.T) {
 	require.NotNil(t, recovered.toast)
 	assert.Equal(t, "success", recovered.toast.level)
 }
+
+// TestRecoveryHintsSettingsShortcutSwitchesToSettingsTab handles recovery shortcut routing to settings/profile.
+func TestRecoveryHintsSettingsShortcutSwitchesToSettingsTab(t *testing.T) {
+	app := NewApp(nil, &config.Config{APIKey: "bad-key"})
+	app.tab = tabEntities
+	app.tabNav = false
+	app.showRecoveryHints = true
+	app.lastErrCode = "INVALID_API_KEY"
+	app.lastErrMsg = "Invalid API key"
+
+	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated := model.(App)
+
+	assert.Equal(t, tabProfile, updated.tab)
+	assert.True(t, updated.tabNav)
+	assert.NotNil(t, cmd)
+}
+
+// TestRecoveryHintsCopyShortcutShowsRecoveryCommand handles recovery shortcut exposing the command to run.
+func TestRecoveryHintsCopyShortcutShowsRecoveryCommand(t *testing.T) {
+	app := NewApp(nil, &config.Config{APIKey: "bad-key"})
+	app.recoveryCommand = "nebula login"
+	app.showRecoveryHints = true
+	app.lastErrCode = "INVALID_API_KEY"
+	app.lastErrMsg = "Invalid API key"
+
+	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	updated := model.(App)
+
+	require.NotNil(t, cmd)
+	assert.True(t, updated.showRecoveryHints)
+	require.NotNil(t, updated.toast)
+	assert.Equal(t, "info", updated.toast.level)
+	assert.Equal(t, "nebula login", updated.toast.text)
+}
+
+// TestStartupCheckedMsgAPIDownClearsStaleRecoveryHints handles stale hint cleanup when startup API is unavailable.
+func TestStartupCheckedMsgAPIDownClearsStaleRecoveryHints(t *testing.T) {
+	app := NewApp(nil, &config.Config{APIKey: "bad-key"})
+	app.startupChecking = true
+	app.showRecoveryHints = true
+	app.lastErrCode = "INVALID_API_KEY"
+	app.lastErrMsg = "Invalid API key"
+
+	model, cmd := app.Update(startupCheckedMsg{apiErr: "connection refused"})
+	updated := model.(App)
+
+	assert.False(t, updated.startupChecking)
+	assert.Equal(t, "down", updated.startup.API)
+	assert.Equal(t, "missing", updated.startup.Auth)
+	assert.Equal(t, "failed", updated.startup.Taxonomy)
+	assert.False(t, updated.showRecoveryHints)
+	assert.Equal(t, "", updated.lastErrCode)
+	assert.Equal(t, "", updated.lastErrMsg)
+	require.NotNil(t, cmd)
+}
