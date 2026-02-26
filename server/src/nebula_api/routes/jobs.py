@@ -407,7 +407,7 @@ async def update_job(
     if not row:
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
     _require_job_write(auth, enums, dict(row))
-    data = payload.model_dump()
+    data = payload.model_dump(exclude_unset=True)
     if data.get("status"):
         try:
             require_status(data["status"], enums)

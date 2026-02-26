@@ -13,6 +13,7 @@ from nebula_mcp.executors import (
     execute_create_relationship,
     execute_update_context,
     execute_update_entity,
+    execute_update_job,
     execute_update_job_status,
 )
 
@@ -487,6 +488,34 @@ class TestUpdateJobStatus:
         )
 
         assert updated["completed_at"] is not None
+
+
+class TestUpdateJob:
+    """Tests for execute_update_job."""
+
+    async def test_due_at_null_clears_existing_value(self, db_pool, enums):
+        """Explicit due_at null in approval payload should clear due_at."""
+
+        created = await execute_create_job(
+            db_pool,
+            enums,
+            {
+                "title": "Executor Due Clear",
+                "priority": "medium",
+                "due_at": "2026-02-18T18:00:00Z",
+            },
+        )
+        assert created["due_at"] is not None
+
+        updated = await execute_update_job(
+            db_pool,
+            enums,
+            {
+                "job_id": created["id"],
+                "due_at": None,
+            },
+        )
+        assert updated["due_at"] is None
 
 
 # --- TestUpdateEntity ---

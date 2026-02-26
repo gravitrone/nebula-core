@@ -475,6 +475,7 @@ async def execute_update_job(
     if isinstance(change_details, str):
         change_details = json.loads(change_details)
 
+    due_at_supplied = "due_at" in change_details
     payload = UpdateJobInput(**change_details)
 
     status_id = None
@@ -492,6 +493,7 @@ async def execute_update_job(
         json.dumps(payload.metadata) if payload.metadata is not None else None,
         payload.assigned_to,
         due_at,
+        due_at_supplied,
     )
 
     if not row:

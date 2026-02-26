@@ -30,6 +30,7 @@ from nebula_mcp.models import (
     QueryRelationshipsInput,
     SearchEntitiesByMetadataInput,
     UpdateEntityInput,
+    UpdateJobInput,
     UpdateJobStatusInput,
 )
 from nebula_mcp.server import (
@@ -61,6 +62,7 @@ from nebula_mcp.server import (
     reload_enums,
     search_entities_by_metadata,
     update_entity,
+    update_job,
     update_job_status,
 )
 
@@ -535,6 +537,56 @@ async def test_update_job_status_accepts_iso_completed_at(
     result = await update_job_status(payload, mock_mcp_context)
     assert "id" in result
     assert result["completed_at"] is not None
+
+
+async def test_update_job_due_at_omitted_preserves_existing_value(
+    mock_mcp_context, test_agent
+):
+    """MCP update_job should not clear due_at when due_at is omitted."""
+
+    job = await create_job(
+        CreateJobInput(
+            title="Due Preserve MCP",
+            priority="medium",
+            due_at="2026-02-18T18:00:00Z",
+        ),
+        mock_mcp_context,
+    )
+    assert job["due_at"] is not None
+
+    updated = await update_job(
+        UpdateJobInput(
+            job_id=job["id"],
+            title="Due Preserve MCP Patched",
+        ),
+        mock_mcp_context,
+    )
+    assert updated["due_at"] is not None
+
+
+async def test_update_job_due_at_null_clears_existing_value(
+    mock_mcp_context, test_agent
+):
+    """MCP update_job should clear due_at when explicitly set to null."""
+
+    job = await create_job(
+        CreateJobInput(
+            title="Due Clear MCP",
+            priority="medium",
+            due_at="2026-02-18T18:00:00Z",
+        ),
+        mock_mcp_context,
+    )
+    assert job["due_at"] is not None
+
+    updated = await update_job(
+        UpdateJobInput(
+            job_id=job["id"],
+            due_at=None,
+        ),
+        mock_mcp_context,
+    )
+    assert updated["due_at"] is None
 
 
 async def test_create_subtask(mock_mcp_context, test_agent):

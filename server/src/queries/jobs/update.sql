@@ -8,7 +8,10 @@ WITH updated AS (
         priority = COALESCE($5, priority),
         metadata = COALESCE($6::jsonb, metadata),
         assigned_to = COALESCE($7::uuid, assigned_to),
-        due_at = COALESCE($8::timestamptz, due_at)
+        due_at = CASE
+            WHEN $9::boolean THEN $8::timestamptz
+            ELSE due_at
+        END
     WHERE id = $1
     RETURNING *
 )

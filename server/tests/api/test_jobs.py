@@ -250,6 +250,44 @@ async def test_update_job_invalid_due_at_returns_400(api):
 
 
 @pytest.mark.asyncio
+async def test_update_job_due_at_omitted_preserves_existing_value(api):
+    """Patching other fields should keep due_at when due_at is omitted."""
+
+    created = await api.post(
+        "/api/jobs",
+        json={
+            "title": "Due Preserve",
+            "due_at": "2026-02-18T18:00:00Z",
+        },
+    )
+    assert created.status_code == 200
+    job_id = created.json()["data"]["id"]
+
+    patched = await api.patch(f"/api/jobs/{job_id}", json={"title": "Due Preserve Patched"})
+    assert patched.status_code == 200
+    assert patched.json()["data"]["due_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_update_job_due_at_null_clears_existing_value(api):
+    """Explicit due_at null should clear an existing due date."""
+
+    created = await api.post(
+        "/api/jobs",
+        json={
+            "title": "Due Clear",
+            "due_at": "2026-02-18T18:00:00Z",
+        },
+    )
+    assert created.status_code == 200
+    job_id = created.json()["data"]["id"]
+
+    patched = await api.patch(f"/api/jobs/{job_id}", json={"due_at": None})
+    assert patched.status_code == 200
+    assert patched.json()["data"]["due_at"] is None
+
+
+@pytest.mark.asyncio
 async def test_create_subtask(api):
     """Test create subtask."""
 

@@ -2563,7 +2563,7 @@ async def update_job(payload: UpdateJobInput, ctx: Context) -> dict:
     job = await _get_job_row(pool, payload.job_id)
     _require_job_owner(agent, enums, job)
 
-    data = payload.model_dump()
+    data = payload.model_dump(exclude_unset=True)
     if data.get("status"):
         require_status(str(data["status"]), enums)
     if data.get("priority") and str(data["priority"]) not in JOB_PRIORITY_VALUES:
