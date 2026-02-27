@@ -649,3 +649,60 @@ async def test_admin_only_tools_enforce_admin_gate_matrix(db_pool, enums):
 
     agent_row = await get_agent(GetAgentInput(agent_id=str(public_agent["id"])), admin_ctx)
     assert str(agent_row["id"]) == str(public_agent["id"])
+
+
+async def test_query_audit_log_rejects_invalid_uuid_filters(db_pool, enums):
+    """query_audit_log should validate uuid-like filter ids for admin callers."""
+
+    admin_agent = await _create_agent(
+        db_pool,
+        enums,
+        name="audit-uuid-admin-agent",
+        scopes=["public", "admin"],
+    )
+    admin_ctx = _mcp_ctx(db_pool, enums, admin_agent)
+
+    with pytest.raises(ValueError, match="Invalid actor id"):
+        await query_audit_log(
+            QueryAuditLogInput(limit=5, actor_id="not-a-uuid"),
+            admin_ctx,
+        )
+
+    with pytest.raises(ValueError, match="Invalid record id"):
+        await query_audit_log(
+            QueryAuditLogInput(limit=5, record_id="not-a-uuid"),
+            admin_ctx,
+        )
+
+    with pytest.raises(ValueError, match="Invalid scope id"):
+        await query_audit_log(
+            QueryAuditLogInput(limit=5, scope_id="not-a-uuid"),
+            admin_ctx,
+        )
+
+
+async def test_query_audit_log_accepts_valid_uuid_filters(db_pool, enums):
+    """query_audit_log should allow valid uuid filters for admin callers."""
+
+    admin_agent = await _create_agent(
+        db_pool,
+        enums,
+        name="audit-valid-admin-agent",
+        scopes=["public", "admin"],
+    )
+    admin_ctx = _mcp_ctx(db_pool, enums, admin_agent)
+    target = await _create_person_entity(db_pool, enums, name="audit-filter-target")
+
+    rows = await query_audit_log(
+        QueryAuditLogInput(
+            table_name="entities",
+            actor_id=str(admin_agent["id"]),
+            record_id=str(target["id"]),
+            scope_id=str(enums.scopes.name_to_id["public"]),
+            limit=1,
+            offset=0,
+        ),
+        admin_ctx,
+    )
+
+    assert isinstance(rows, list)
