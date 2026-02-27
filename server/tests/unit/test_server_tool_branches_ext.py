@@ -19,14 +19,18 @@ from nebula_mcp.models import (
     CreateContextInput,
     CreateAPIKeyInput,
     CreateLogInput,
+    CreateRelationshipInput,
     CreateTaxonomyInput,
     GetLogInput,
+    GetRelationshipsInput,
     GetApprovalDiffInput,
     ListAllKeysInput,
+    QueryRelationshipsInput,
     QueryLogsInput,
     RejectRequestInput,
     RevertEntityInput,
     RevokeKeyInput,
+    UpdateRelationshipInput,
     UpdateLogInput,
     UpdateContextInput,
     UpdateTaxonomyInput,
@@ -39,16 +43,20 @@ from nebula_mcp.server import (
     create_api_key,
     create_context,
     create_log,
+    create_relationship,
     create_taxonomy,
     get_log,
+    get_relationships,
     get_approval_diff,
     lifespan,
     list_all_api_keys,
     query_logs,
+    query_relationships,
     register_agent,
     reject_request,
     revert_entity,
     revoke_api_key,
+    update_relationship,
     update_log,
     update_context,
     update_taxonomy,
@@ -939,6 +947,158 @@ async def test_update_log_approval_short_circuit(monkeypatch, mock_enums):
     result = await update_log(payload, _ctx(pool, mock_enums, agent))
 
     assert result["status"] == "approval_required"
+
+
+@pytest.mark.asyncio
+async def test_create_relationship_approval_short_circuit(monkeypatch, mock_enums):
+    """create_relationship should return approval payload before executor call."""
+
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = CreateRelationshipInput(
+        source_type="entity",
+        source_id=str(uuid4()),
+        target_type="entity",
+        target_id=str(uuid4()),
+        relationship_type="related-to",
+        properties={},
+    )
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
+    monkeypatch.setattr(
+        "nebula_mcp.server.maybe_require_approval",
+        AsyncMock(return_value={"status": "approval_required", "approval_request_id": "r1"}),
+    )
+    monkeypatch.setattr("nebula_mcp.server.execute_create_relationship", AsyncMock())
+
+    result = await create_relationship(payload, _ctx(pool, mock_enums, agent))
+
+    assert result["status"] == "approval_required"
+
+
+@pytest.mark.asyncio
+async def test_get_relationships_filters_job_rows_by_node_allowed(monkeypatch, mock_enums):
+    """get_relationships should filter blocked source/target job rows."""
+
+    blocked_job = "2026Q1-ABCD"
+    allowed_job = "2026Q1-ABCE"
+    entity_id = str(uuid4())
+    rows = [
+        {"source_type": "job", "source_id": blocked_job, "target_type": "entity", "target_id": entity_id},
+        {"source_type": "entity", "source_id": entity_id, "target_type": "job", "target_id": allowed_job},
+        {"source_type": "entity", "source_id": entity_id, "target_type": "entity", "target_id": str(uuid4())},
+    ]
+    pool = _PoolStub(fetch_rows=[rows])
+    agent = _public_agent(mock_enums)
+    payload = GetRelationshipsInput(
+        source_type="entity",
+        source_id=entity_id,
+        direction="both",
+        relationship_type=None,
+    )
+
+    async def _allowed(_pool, _enums, _agent, _node_type, node_id):
+        return node_id != blocked_job
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._node_allowed", _allowed)
+    monkeypatch.setattr(
+        "nebula_mcp.server._normalize_relationship_row",
+        lambda row, _scopes: {"source_id": row["source_id"], "target_id": row["target_id"]},
+    )
+
+    result = await get_relationships(payload, _ctx(pool, mock_enums, agent))
+
+    assert len(result) == 2
+    assert all(item["source_id"] != blocked_job for item in result)
+
+
+@pytest.mark.asyncio
+async def test_query_relationships_filters_blocked_target_jobs(monkeypatch, mock_enums):
+    """query_relationships should skip rows whose target job is not visible."""
+
+    blocked_job = "2026Q2-ABCD"
+    rows = [
+        {"source_type": "entity", "source_id": str(uuid4()), "target_type": "job", "target_id": blocked_job},
+        {"source_type": "entity", "source_id": str(uuid4()), "target_type": "entity", "target_id": str(uuid4())},
+    ]
+    pool = _PoolStub(fetch_rows=[rows])
+    agent = _public_agent(mock_enums)
+    payload = QueryRelationshipsInput(limit=50)
+
+    async def _allowed(_pool, _enums, _agent, _node_type, node_id):
+        return node_id != blocked_job
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._node_allowed", _allowed)
+    monkeypatch.setattr(
+        "nebula_mcp.server._normalize_relationship_row",
+        lambda row, _scopes: {"target_id": row["target_id"]},
+    )
+
+    result = await query_relationships(payload, _ctx(pool, mock_enums, agent))
+
+    assert len(result) == 1
+    assert result[0]["target_id"] != blocked_job
+
+
+@pytest.mark.asyncio
+async def test_update_relationship_not_found_raises(monkeypatch, mock_enums):
+    """update_relationship should raise clear not-found for missing id."""
+
+    pool = _PoolStub(fetchrow_rows=[None])
+    agent = _public_agent(mock_enums)
+    payload = UpdateRelationshipInput(relationship_id=str(uuid4()), status=None, properties=None)
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+
+    with pytest.raises(ValueError, match="Relationship not found"):
+        await update_relationship(payload, _ctx(pool, mock_enums, agent))
+
+
+@pytest.mark.asyncio
+async def test_update_relationship_direct_update_returns_empty_when_no_row(
+    monkeypatch, mock_enums
+):
+    """update_relationship should return empty dict when update query returns no row."""
+
+    relationship_row = {
+        "source_type": "entity",
+        "source_id": str(uuid4()),
+        "target_type": "entity",
+        "target_id": str(uuid4()),
+    }
+    pool = _PoolStub(fetchrow_rows=[relationship_row, None])
+    agent = _public_agent(mock_enums)
+    payload = UpdateRelationshipInput(
+        relationship_id=str(uuid4()),
+        status="active",
+        properties={"x": 1},
+    )
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
+    monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
+
+    result = await update_relationship(payload, _ctx(pool, mock_enums, agent))
+
+    assert result == {}
 
 
 @pytest.mark.asyncio
