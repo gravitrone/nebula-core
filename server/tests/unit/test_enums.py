@@ -1,11 +1,13 @@
 """Unit tests for enum registry and validators."""
 
 # Standard Library
+from unittest.mock import AsyncMock
 from uuid import UUID
 
 import pytest
 
 from nebula_mcp.enums import (
+    _load_section,
     load_enums,
     require_entity_type,
     require_log_type,
@@ -69,6 +71,29 @@ class TestRequireStatus:
             "on-hold",
         }
 
+    def test_status_normalizes_case_and_whitespace(self, mock_enums):
+        """Status lookup should normalize whitespace and casing."""
+
+        assert require_status(" Active ", mock_enums) == require_status(
+            "active", mock_enums
+        )
+
+    def test_archived_alias_without_terminal_candidates_raises(self, mock_enums):
+        """Archived alias should error when no terminal status exists."""
+
+        for candidate in (
+            "inactive",
+            "completed",
+            "abandoned",
+            "deleted",
+            "replaced",
+            "on-hold",
+        ):
+            mock_enums.statuses.name_to_id.pop(candidate, None)
+
+        with pytest.raises(ValueError, match="Unknown status: archived"):
+            require_status("archived", mock_enums)
+
 
 # --- require_entity_type ---
 
@@ -93,6 +118,12 @@ class TestRequireEntityType:
 
         with pytest.raises(ValueError, match="Entity type required"):
             require_entity_type("", mock_enums)
+
+    def test_entity_type_case_sensitive_unknown_raises(self, mock_enums):
+        """Entity type validator should reject mismatched case."""
+
+        with pytest.raises(ValueError, match="Unknown entity type"):
+            require_entity_type("Person", mock_enums)
 
 
 # --- require_relationship_type ---
@@ -145,6 +176,22 @@ class TestRequireScopes:
         with pytest.raises(ValueError, match="Unknown scope"):
             require_scopes(["public", "galactic"], mock_enums)
 
+    def test_scope_list_preserves_order_and_duplicates(self, mock_enums):
+        """Scope list should preserve caller order exactly."""
+
+        result = require_scopes(["private", "public", "private"], mock_enums)
+        assert result == [
+            mock_enums.scopes.name_to_id["private"],
+            mock_enums.scopes.name_to_id["public"],
+            mock_enums.scopes.name_to_id["private"],
+        ]
+
+    def test_scope_values_are_not_trimmed(self, mock_enums):
+        """Whitespace-padded scopes should fail without implicit trimming."""
+
+        with pytest.raises(ValueError, match="Unknown scope"):
+            require_scopes([" public "], mock_enums)
+
 
 # --- require_log_type ---
 
@@ -164,9 +211,35 @@ class TestRequireLogType:
         with pytest.raises(ValueError, match="Log type required"):
             require_log_type("", mock_enums)
 
+    def test_unknown_log_type_raises(self, mock_enums):
+        """Unknown log type values should raise clear validation errors."""
+
+        with pytest.raises(ValueError, match="Unknown log type"):
+            require_log_type("incident", mock_enums)
+
 
 class TestLoadEnums:
     """Tests for async enum registry loading."""
+
+    @pytest.mark.asyncio
+    async def test_load_section_builds_bidirectional_maps(self):
+        """_load_section should build name and id maps from query rows."""
+
+        active_id = UUID(int=11)
+        inactive_id = UUID(int=12)
+        pool = AsyncMock()
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"name": "active", "id": active_id},
+                {"name": "inactive", "id": inactive_id},
+            ]
+        )
+
+        section = await _load_section(pool, "enums/statuses")
+
+        assert section.name_to_id == {"active": active_id, "inactive": inactive_id}
+        assert section.id_to_name == {active_id: "active", inactive_id: "inactive"}
+        pool.fetch.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_load_enums_calls_all_sections_in_order(self, monkeypatch):

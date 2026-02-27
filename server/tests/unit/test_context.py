@@ -43,6 +43,24 @@ class TestRequireContext:
         assert enums is mock_enums
         assert agent == mock_agent
 
+    async def test_valid_refreshes_agent_in_lifespan_context(
+        self, mock_context, mock_pool, mock_enums
+    ):
+        """Valid context should refresh agent row and write it back."""
+
+        refreshed = {"id": uuid4(), "name": "fresh-agent", "requires_approval": False}
+        mock_context.request_context.lifespan_context["agent"] = {"id": refreshed["id"]}
+        mock_pool.fetchrow.return_value = refreshed
+
+        _, _, agent = await require_context(mock_context)
+
+        assert agent == refreshed
+        assert (
+            mock_context.request_context.lifespan_context["agent"]["name"]
+            == "fresh-agent"
+        )
+        assert mock_pool.fetchrow.await_args.args[1] == str(refreshed["id"])
+
     async def test_no_pool_raises(self, mock_enums, mock_agent):
         """Raise ValueError when pool is missing from lifespan context."""
 
@@ -149,6 +167,22 @@ class TestRequireContext:
             await require_context(ctx, allow_bootstrap=False)
         payload = json.loads(str(exc.value))
         assert payload["error"]["code"] == "ENROLLMENT_REQUIRED"
+
+    async def test_allow_bootstrap_true_without_bootstrap_mode_returns_none_agent(
+        self, mock_pool, mock_enums
+    ):
+        """Explicit bootstrap opt-in should allow unauthenticated contexts."""
+
+        ctx = MagicMock()
+        ctx.request_context.lifespan_context = {
+            "pool": mock_pool,
+            "enums": mock_enums,
+            "agent": None,
+            "bootstrap_mode": False,
+        }
+
+        _, _, agent = await require_context(ctx, allow_bootstrap=True)
+        assert agent is None
 
     async def test_agent_refresh_missing_row_raises(self, mock_pool, mock_enums):
         """A stale lifespan agent id should fail with not-found error."""
@@ -266,6 +300,14 @@ class TestAuthenticateAgentWithKey:
         with pytest.raises(ValueError, match="too short"):
             await authenticate_agent_with_key(mock_pool, "short")
 
+    async def test_rejects_short_key_uses_custom_key_name(self, mock_pool):
+        """Short-key validation should include provided key label."""
+
+        with pytest.raises(ValueError, match="Custom key is too short"):
+            await authenticate_agent_with_key(
+                mock_pool, "short", key_name="Custom key"
+            )
+
     async def test_rejects_unknown_prefix(self, mock_pool):
         """Unknown key prefix should return invalid or revoked."""
 
@@ -329,6 +371,22 @@ class TestAuthenticateAgentWithKey:
         agent = await authenticate_agent_with_key(mock_pool, "nbl_abcdef123456")
         assert agent["name"] == "agent-1"
 
+    @patch("argon2.PasswordHasher.verify")
+    async def test_exact_min_length_key_uses_full_prefix(self, _verify, mock_pool):
+        """Keys with length 8 should still run lookup using 8-char prefix."""
+
+        key = "nbl_1234"
+        agent_id = str(uuid4())
+        mock_pool.fetchrow.side_effect = [
+            {"key_hash": "hash", "agent_id": agent_id},
+            {"id": agent_id, "name": "agent-8", "requires_approval": False},
+        ]
+
+        agent = await authenticate_agent_with_key(mock_pool, key)
+
+        assert agent["name"] == "agent-8"
+        assert mock_pool.fetchrow.await_args_list[0].args[1] == key
+
 
 class TestAuthenticateAgent:
     """Tests for environment-based agent authentication wrapper."""
@@ -386,6 +444,12 @@ class TestLocalInsecureHelpers:
 
         assert _env_truthy("NEBULA_MCP_LOCAL_INSECURE") is False
 
+    @patch.dict("os.environ", {}, clear=True)
+    def test_env_truthy_missing_var_is_false(self):
+        """Missing env values should default to false."""
+
+        assert _env_truthy("NEBULA_MCP_LOCAL_INSECURE") is False
+
     @patch.dict("os.environ", {"NEBULA_MCP_LOCAL_AGENT_NAME": " custom-agent "}, clear=True)
     def test_local_insecure_agent_name_uses_env_value(self):
         """Agent-name helper should trim and use override values."""
@@ -395,6 +459,12 @@ class TestLocalInsecureHelpers:
     @patch.dict("os.environ", {}, clear=True)
     def test_local_insecure_agent_name_defaults(self):
         """Agent-name helper should fallback to default when unset."""
+
+        assert _local_insecure_agent_name() == "local-dev-agent"
+
+    @patch.dict("os.environ", {"NEBULA_MCP_LOCAL_AGENT_NAME": "   "}, clear=True)
+    def test_local_insecure_agent_name_whitespace_defaults(self):
+        """Whitespace-only overrides should fallback to default agent name."""
 
         assert _local_insecure_agent_name() == "local-dev-agent"
 
@@ -489,3 +559,20 @@ class TestMaybeRequireApproval:
         assert result["status"] == "approval_required"
         assert result["approval_request_id"] == str(approval_id)
         assert result["requested_action"] == "create_entity"
+
+    @patch("nebula_mcp.helpers.create_approval_request", return_value=None)
+    async def test_untrusted_with_missing_approval_id_returns_none_id(
+        self, _mock_create_approval, mock_pool, mock_untrusted_agent
+    ):
+        """Approval response should tolerate missing helper return rows."""
+
+        result = await maybe_require_approval(
+            mock_pool,
+            mock_untrusted_agent,
+            "update_entity",
+            {"name": "x"},
+        )
+
+        assert result is not None
+        assert result["approval_request_id"] is None
+        assert result["requested_action"] == "update_entity"
