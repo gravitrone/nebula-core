@@ -14,6 +14,7 @@ from nebula_mcp.models import (
     AgentEnrollStartInput,
     ApproveRequestInput,
     BulkImportInput,
+    CreateContextInput,
     CreateAPIKeyInput,
     CreateTaxonomyInput,
     GetApprovalDiffInput,
@@ -27,6 +28,7 @@ from nebula_mcp.server import (
     _run_bulk_import,
     approve_request,
     create_api_key,
+    create_context,
     create_taxonomy,
     get_approval_diff,
     lifespan,
@@ -535,6 +537,131 @@ async def test_update_context_missing_row_raises(monkeypatch, mock_enums):
 
     with pytest.raises(ValueError, match="Context not found"):
         await update_context(payload, _ctx(pool, mock_enums, agent))
+
+
+@pytest.mark.asyncio
+async def test_create_context_invalid_url_guard_via_model_construct(
+    monkeypatch, mock_enums
+):
+    """Server-level URL guard should catch invalid urls when model validation is bypassed."""
+
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = CreateContextInput.model_construct(
+        title="ctx",
+        source_type="note",
+        scopes=["public"],
+        tags=[],
+        metadata={},
+        content=None,
+        url="javascript:alert(1)",
+    )
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+
+    with pytest.raises(ValueError, match="URL must start with http:// or https://"):
+        await create_context(payload, _ctx(pool, mock_enums, agent))
+
+
+@pytest.mark.asyncio
+async def test_create_context_approval_short_circuit(monkeypatch, mock_enums):
+    """create_context should return approval payload without calling executor."""
+
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = CreateContextInput(
+        title="ctx",
+        source_type="note",
+        scopes=["public"],
+    )
+    execute_create = AsyncMock()
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr(
+        "nebula_mcp.server.maybe_require_approval",
+        AsyncMock(return_value={"status": "approval_required", "approval_request_id": "a1"}),
+    )
+    monkeypatch.setattr("nebula_mcp.server.execute_create_context", execute_create)
+
+    result = await create_context(payload, _ctx(pool, mock_enums, agent))
+
+    assert result["status"] == "approval_required"
+    execute_create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_context_invalid_url_guard_via_model_construct(
+    monkeypatch, mock_enums
+):
+    """Server-level update URL guard should reject invalid protocols."""
+
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = UpdateContextInput.model_construct(
+        context_id=str(uuid4()),
+        url="file:///tmp/x",
+        status=None,
+        scopes=None,
+        title=None,
+        source_type=None,
+        content=None,
+        tags=None,
+        metadata=None,
+    )
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
+    monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
+    monkeypatch.setattr("nebula_mcp.server.execute_update_context", AsyncMock(return_value={"id": payload.context_id}))
+
+    with pytest.raises(ValueError, match="URL must start with http:// or https://"):
+        await update_context(payload, _ctx(pool, mock_enums, agent))
+
+
+@pytest.mark.asyncio
+async def test_update_context_status_scope_and_approval_short_circuit(
+    monkeypatch, mock_enums
+):
+    """update_context should run status/scope checks and return approval payload."""
+
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = UpdateContextInput.model_construct(
+        context_id=str(uuid4()),
+        status="active",
+        scopes=["public"],
+        title=None,
+        source_type=None,
+        content=None,
+        tags=None,
+        metadata=None,
+        url=None,
+    )
+    maybe_approval = AsyncMock(return_value={"status": "approval_required", "approval_request_id": "x"})
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
+    monkeypatch.setattr("nebula_mcp.server.require_status", lambda name, enums: name)
+    monkeypatch.setattr("nebula_mcp.server.enforce_scope_subset", lambda scopes, allowed: scopes)
+    monkeypatch.setattr("nebula_mcp.server.require_scopes", lambda scopes, enums: scopes)
+    monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", maybe_approval)
+    monkeypatch.setattr("nebula_mcp.server.execute_update_context", AsyncMock())
+
+    result = await update_context(payload, _ctx(pool, mock_enums, agent))
+
+    assert result["status"] == "approval_required"
 
 
 @pytest.mark.asyncio
