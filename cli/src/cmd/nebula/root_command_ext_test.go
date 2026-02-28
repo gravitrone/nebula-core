@@ -109,6 +109,40 @@ func TestRunTUIWithValidConfigNonTTYReturnsTUIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "tui error")
 }
 
+func TestRunTUIMissingConfigWithCharDevicesAttemptsTUI(t *testing.T) {
+	dir := t.TempDir()
+	oldHome := os.Getenv("HOME")
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() { require.NoError(t, os.Setenv("HOME", oldHome)) }()
+
+	oldStdin := os.Stdin
+	oldStdout := os.Stdout
+	defer func() {
+		os.Stdin = oldStdin
+		os.Stdout = oldStdout
+	}()
+
+	in, err := os.Open("/dev/null")
+	if err != nil {
+		t.Skip("dev null unavailable:", err)
+	}
+	defer func() { _ = in.Close() }()
+	out, err := os.OpenFile("/dev/null", os.O_WRONLY, 0)
+	if err != nil {
+		t.Skip("dev null unavailable:", err)
+	}
+	defer func() { _ = out.Close() }()
+
+	// /dev/null is a char device, so runTUI should follow the interactive branch.
+	os.Stdin = in
+	os.Stdout = out
+
+	err = runTUI()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tui error")
+	assert.NotContains(t, err.Error(), "config not found")
+}
+
 func TestIsInteractiveTerminalReturnsFalseForRegularFile(t *testing.T) {
 	f, err := os.CreateTemp(t.TempDir(), "regular-*")
 	require.NoError(t, err)
