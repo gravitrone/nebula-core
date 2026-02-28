@@ -86,3 +86,9 @@ def test_app_has_expected_api_prefixes():
     paths = [route.path for route in app_mod.app.routes]
     for prefix in expected_prefixes:
         assert any(path.startswith(prefix) for path in paths), prefix
+
+
+def test_app_version_locked():
+    """App metadata version should match the current public beta contract."""
+
+    assert app_mod.app.version == "0.1.0"

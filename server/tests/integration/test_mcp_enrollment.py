@@ -10,6 +10,8 @@ import pytest
 
 # Local
 from nebula_mcp.helpers import approve_request as do_approve
+from nebula_mcp.helpers import create_approval_request
+from nebula_mcp.helpers import create_enrollment_session
 from nebula_mcp.helpers import reject_request as do_reject
 from nebula_mcp.models import (
     AgentAuthAttachInput,
@@ -439,6 +441,76 @@ async def test_enroll_approve_with_grants_applies_final_scope_and_trust(
         enums.scopes.name_to_id["public"],
         enums.scopes.name_to_id["private"],
     }
+
+
+async def test_reenroll_preserves_existing_trusted_mode_without_override(
+    bootstrap_mcp_context, db_pool, enums, test_entity
+):
+    """Trusted agents should remain trusted across re-enroll + redeem without explicit trust override."""
+
+    inactive_status_id = enums.statuses.name_to_id["inactive"]
+    trusted_agent = await db_pool.fetchrow(
+        """
+        INSERT INTO agents (name, description, scopes, capabilities, status_id, requires_approval)
+        VALUES ($1, $2, $3, $4::text[], $5, $6)
+        RETURNING *
+        """,
+        f"mcp-reenroll-{uuid4().hex[:8]}",
+        "trusted agent re-enroll regression",
+        [enums.scopes.name_to_id["public"]],
+        [],
+        inactive_status_id,
+        False,
+    )
+    assert trusted_agent is not None
+
+    requested_scopes = ["public"]
+    approval = await create_approval_request(
+        db_pool,
+        str(trusted_agent["id"]),
+        "register_agent",
+        {
+            "agent_id": str(trusted_agent["id"]),
+            "name": trusted_agent["name"],
+            "description": trusted_agent["description"],
+            "requested_scopes": requested_scopes,
+            "requested_requires_approval": True,
+            "capabilities": [],
+        },
+    )
+    assert approval is not None
+
+    enrollment = await create_enrollment_session(
+        db_pool,
+        agent_id=str(trusted_agent["id"]),
+        approval_request_id=str(approval["id"]),
+        requested_scope_ids=[enums.scopes.name_to_id["public"]],
+        requested_requires_approval=True,
+    )
+    assert enrollment is not None
+
+    await do_approve(
+        db_pool,
+        enums,
+        str(approval["id"]),
+        str(test_entity["id"]),
+    )
+
+    refreshed_agent = await db_pool.fetchrow(
+        "SELECT requires_approval FROM agents WHERE id = $1::uuid",
+        trusted_agent["id"],
+    )
+    assert refreshed_agent is not None
+    assert refreshed_agent["requires_approval"] is False
+
+    redeemed = await agent_enroll_redeem(
+        AgentEnrollRedeemInput(
+            registration_id=str(enrollment["id"]),
+            enrollment_token=enrollment["enrollment_token"],
+        ),
+        bootstrap_mcp_context,
+    )
+    assert redeemed["requires_approval"] is False
 
 
 async def test_enroll_reject_returns_reason(

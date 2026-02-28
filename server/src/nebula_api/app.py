@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="Nebula API",
-    version="1.0.0",
+    version="0.1.0",
     description="REST API for Nebula - Agent Context Control",
     lifespan=lifespan,
 )
