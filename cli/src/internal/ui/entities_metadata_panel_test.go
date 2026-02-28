@@ -43,6 +43,8 @@ func TestEntitiesDetailMetadataPanelHidesSelectionColumnUntilAnyRowSelected(t *t
 	assert.NotContains(t, clean, "[ ]")
 	assert.NotContains(t, clean, ">[")
 	assert.Contains(t, clean, "enter inspect")
+	assert.Contains(t, clean, "copy row")
+	assert.Contains(t, clean, "mode row")
 }
 
 // TestEntitiesDetailMetadataPanelHidesSelectorsWhenNotInSelectMode handles test entities detail metadata panel hides selectors when not in select mode.
@@ -69,6 +71,35 @@ func TestEntitiesDetailMetadataPanelHidesSelectorsWhenNotInSelectMode(t *testing
 
 	assert.NotContains(t, clean, "Sel")
 	assert.NotContains(t, clean, "[X]")
+}
+
+// TestEntitiesDetailMetadataPanelSelectModeHintsFollowSelection handles select-mode hint copy target text.
+func TestEntitiesDetailMetadataPanelSelectModeHintsFollowSelection(t *testing.T) {
+	model := NewEntitiesModel(nil)
+	model.width = 100
+	model.view = entitiesViewDetail
+	model.metaExpanded = true
+	model.detail = &api.Entity{
+		ID:     "ent-1",
+		Name:   "Alpha",
+		Type:   "person",
+		Status: "active",
+		Metadata: api.JSONMap{
+			"note":  "hello",
+			"owner": "alxx",
+		},
+	}
+	model.syncDetailMetadataRows()
+	model.metaSelectMode = true
+	model.metaSelected[0] = true
+
+	out := model.renderDetail()
+	clean := components.SanitizeText(out)
+
+	assert.Contains(t, clean, "Sel")
+	assert.Contains(t, clean, "[X]")
+	assert.Contains(t, clean, "copy selected")
+	assert.Contains(t, clean, "mode select")
 }
 
 // TestEntitiesDetailMetadataCopyCurrentRow handles test entities detail metadata copy current row.

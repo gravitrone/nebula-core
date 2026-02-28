@@ -331,26 +331,34 @@ func Table(title string, rows []TableRow, width int) string {
 		}
 	}
 
-	var b strings.Builder
-	for i, r := range safeRows {
+	lines := make([]string, 0, len(safeRows))
+	for _, r := range safeRows {
 		labelText := ClampTextWidth(r.Label, labelWidth)
-		valueText := ClampTextWidth(r.Value, valueWidth)
+		valueLines := wrapTableValue(r.Value, valueWidth)
+		if len(valueLines) == 0 {
+			valueLines = []string{""}
+		}
 		label := boxLabelStyle.Render(padRight(labelText, labelWidth))
 		valueStyle := boxValueStyle
 		if strings.TrimSpace(r.ValueColor) != "" {
 			// Only allow internal callers to apply styling; user-provided content is sanitized above.
 			valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(r.ValueColor)).Bold(true)
 		}
-		b.WriteString(label + "  " + valueStyle.Render(valueText))
-		if i < len(safeRows)-1 {
-			b.WriteString("\n")
+		for idx, valueLine := range valueLines {
+			currentLabel := label
+			if idx > 0 {
+				currentLabel = boxLabelStyle.Render(strings.Repeat(" ", labelWidth))
+			}
+			valueText := ClampTextWidth(valueLine, valueWidth)
+			lines = append(lines, currentLabel+"  "+valueStyle.Render(valueText))
 		}
 	}
+	content := strings.Join(lines, "\n")
 
 	if title != "" {
-		return TitledBox(title, b.String(), width)
+		return TitledBox(title, content, width)
 	}
-	return Box(b.String(), width)
+	return Box(content, width)
 }
 
 // TableRow is a single row in a key-value table.
@@ -360,6 +368,69 @@ type TableRow struct {
 	// ValueColor overrides the default value color for this row.
 	// It must be a lipgloss-compatible color string (e.g. "#RRGGBB").
 	ValueColor string
+}
+
+// wrapTableValue handles wrap table value.
+func wrapTableValue(value string, width int) []string {
+	value = SanitizeText(value)
+	if width <= 0 {
+		return []string{value}
+	}
+	if strings.TrimSpace(value) == "" {
+		return []string{""}
+	}
+	rawLines := strings.Split(value, "\n")
+	out := make([]string, 0, len(rawLines))
+	for _, line := range rawLines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			out = append(out, "")
+			continue
+		}
+		if lipgloss.Width(line) <= width {
+			out = append(out, line)
+			continue
+		}
+		out = append(out, wrapTableWords(line, width)...)
+	}
+	return out
+}
+
+// wrapTableWords handles wrap table words.
+func wrapTableWords(text string, width int) []string {
+	text = strings.TrimSpace(SanitizeOneLine(text))
+	if text == "" || width <= 0 {
+		return []string{text}
+	}
+	if lipgloss.Width(text) <= width {
+		return []string{text}
+	}
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{ClampTextWidthEllipsis(text, width)}
+	}
+	out := make([]string, 0, len(words))
+	current := ""
+	for _, word := range words {
+		if lipgloss.Width(word) > width {
+			word = ClampTextWidthEllipsis(word, width)
+		}
+		if current == "" {
+			current = word
+			continue
+		}
+		candidate := current + " " + word
+		if lipgloss.Width(candidate) <= width {
+			current = candidate
+			continue
+		}
+		out = append(out, current)
+		current = word
+	}
+	if current != "" {
+		out = append(out, current)
+	}
+	return out
 }
 
 // Indent adds left padding to every line of a multi-line string.

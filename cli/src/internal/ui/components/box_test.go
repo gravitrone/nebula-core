@@ -80,6 +80,23 @@ func TestTableClampsLongValues(t *testing.T) {
 	}
 }
 
+// TestWrapTableValueWrapsLongText handles test wrap table value wraps long text.
+func TestWrapTableValueWrapsLongText(t *testing.T) {
+	lines := wrapTableValue("alpha beta gamma delta epsilon zeta", 12)
+	assert.GreaterOrEqual(t, len(lines), 3)
+	assert.Equal(t, "alpha beta", lines[0])
+	assert.Equal(t, "gamma delta", lines[1])
+	assert.Equal(t, "epsilon zeta", lines[2])
+}
+
+// TestWrapTableWordsHandlesOversizedToken handles test wrap table words handles oversized token.
+func TestWrapTableWordsHandlesOversizedToken(t *testing.T) {
+	lines := wrapTableWords("supercalifragilisticexpialidocious test", 10)
+	assert.Len(t, lines, 2)
+	assert.Equal(t, "superca...", lines[0])
+	assert.Equal(t, "test", lines[1])
+}
+
 // TestActiveBoxClampsWidth handles test active box clamps width.
 func TestActiveBoxClampsWidth(t *testing.T) {
 	out := ActiveBox("hello\nworld", 40)

@@ -584,7 +584,10 @@ func renderMetadataBlockWithTitle(title string, data map[string]any, width int, 
 	gridRows := make([][]string, 0, len(rows))
 	for _, row := range rows {
 		group, field := metadataGroupAndField(row.field)
-		gridRows = append(gridRows, []string{group, field, row.value})
+		gridRows = append(
+			gridRows,
+			metadataGridRowsWrapped(group, field, row.value, groupWidth, fieldWidth, valueWidth)...,
+		)
 	}
 	rendered := components.TableGrid(columns, gridRows, contentWidth)
 	return components.TitledBox(title, colorizeScopeBadges(rendered), width)
@@ -726,45 +729,135 @@ func renderMetadataSelectableBlockWithTitle(
 			activeVisible = len(gridRows)
 		}
 		group, field := metadataGroupAndField(row.field)
-		cells := make([]string, 0, 4)
-		if showSelectionColumn {
-			mark := "[ ]"
-			if selected != nil && selected[absIdx] {
-				mark = "[X]"
+		wrapped := metadataGridRowsWrapped(group, field, row.value, groupWidth, fieldWidth, valueWidth)
+		for lineIdx, rowCells := range wrapped {
+			cells := make([]string, 0, 4)
+			if showSelectionColumn {
+				mark := " "
+				if lineIdx == 0 {
+					mark = "[ ]"
+					if selected != nil && selected[absIdx] {
+						mark = "[X]"
+					}
+				}
+				cells = append(cells, mark)
+			} else if showCursorColumn {
+				mark := " "
+				if lineIdx == 0 && list.IsSelected(absIdx) {
+					mark = "*"
+				}
+				cells = append(cells, mark)
 			}
-			cells = append(cells, mark)
-		} else if showCursorColumn {
-			mark := " "
-			if list.IsSelected(absIdx) {
-				mark = "*"
-			}
-			cells = append(cells, mark)
+			cells = append(cells, rowCells...)
+			gridRows = append(gridRows, cells)
 		}
-		cells = append(cells, group, field, row.value)
-		gridRows = append(gridRows, cells)
 	}
 	rendered := colorizeScopeBadges(
 		components.TableGridWithActiveRow(columns, gridRows, contentWidth, activeVisible),
 	)
 
 	start := list.Offset + 1
-	end := list.Offset + len(gridRows)
+	end := list.Offset + len(visible)
 	if start < 1 {
 		start = 1
 	}
-	metaLine := fmt.Sprintf("Rows %d-%d of %d", start, end, len(rows))
+	if end < start {
+		end = start
+	}
+	modeLabel := "row"
+	if showSelectionColumn {
+		modeLabel = "select"
+	}
+	metaLine := fmt.Sprintf("Rows %d-%d of %d · mode %s", start, end, len(rows), modeLabel)
 	if selectedCount > 0 {
 		metaLine += fmt.Sprintf(" · selected %d", selectedCount)
 	}
 	content := rendered + "\n\n" + MutedStyle.Render(metaLine)
 	if showSelectionColumn {
-		hintLine := "↑/↓ navigate · space select · b all · enter inspect · c copy selected"
+		hintLine := "↑/↓ navigate · space toggle · b all · enter inspect · c copy row"
+		if selectedCount > 0 {
+			hintLine = "↑/↓ navigate · space toggle · b all · enter inspect · c copy selected"
+		}
 		content += "\n" + MutedStyle.Render(hintLine)
 	} else {
-		hintLine := "↑/↓ navigate · enter inspect · m metadata select mode"
+		hintLine := "↑/↓ navigate · enter inspect · c copy row · m metadata select mode"
 		content += "\n" + MutedStyle.Render(hintLine)
 	}
 	return components.TitledBox(title, content, width)
+}
+
+// metadataGridRowsWrapped handles metadata grid rows wrapped.
+func metadataGridRowsWrapped(
+	group string,
+	field string,
+	value string,
+	groupWidth int,
+	fieldWidth int,
+	valueWidth int,
+) [][]string {
+	groupLines := wrapMetadataWords(group, groupWidth)
+	if len(groupLines) == 0 {
+		groupLines = []string{"-"}
+	}
+	fieldLines := wrapMetadataWords(field, fieldWidth)
+	if len(fieldLines) == 0 {
+		fieldLines = []string{"-"}
+	}
+	valueLines := metadataValueWrappedLines(value, valueWidth)
+	if len(valueLines) == 0 {
+		valueLines = []string{"None"}
+	}
+
+	lineCount := len(valueLines)
+	if len(groupLines) > lineCount {
+		lineCount = len(groupLines)
+	}
+	if len(fieldLines) > lineCount {
+		lineCount = len(fieldLines)
+	}
+
+	out := make([][]string, 0, lineCount)
+	for i := 0; i < lineCount; i++ {
+		g := ""
+		f := ""
+		v := ""
+		if i < len(groupLines) {
+			g = groupLines[i]
+		}
+		if i < len(fieldLines) {
+			f = fieldLines[i]
+		}
+		if i < len(valueLines) {
+			v = valueLines[i]
+		}
+		out = append(out, []string{g, f, v})
+	}
+	return out
+}
+
+// metadataValueWrappedLines handles metadata value wrapped lines.
+func metadataValueWrappedLines(value string, width int) []string {
+	value = strings.TrimSpace(components.SanitizeText(value))
+	if value == "" {
+		return []string{"None"}
+	}
+	if width <= 0 {
+		return []string{value}
+	}
+	raw := strings.Split(value, "\n")
+	out := make([]string, 0, len(raw))
+	for _, line := range raw {
+		wrapped := wrapMetadataDisplayLine(line, width)
+		if len(wrapped) == 0 {
+			out = append(out, "")
+			continue
+		}
+		out = append(out, wrapped...)
+	}
+	if len(out) == 0 {
+		return []string{"None"}
+	}
+	return out
 }
 
 // metadataDisplayRows handles metadata display rows.
