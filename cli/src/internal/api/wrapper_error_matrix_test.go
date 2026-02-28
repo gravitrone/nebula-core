@@ -230,6 +230,10 @@ func TestClientWrappersReturnErrorsOnNon2xx(t *testing.T) {
 			call: func(c *Client) error { _, err := c.CreateTaxonomy("status", CreateTaxonomyInput{}); return err },
 		},
 		{
+			name: "taxonomy/list",
+			call: func(c *Client) error { _, err := c.ListTaxonomy("status", false, "", 0, 0); return err },
+		},
+		{
 			name: "taxonomy/update",
 			call: func(c *Client) error { _, err := c.UpdateTaxonomy("status", "id-1", UpdateTaxonomyInput{}); return err },
 		},

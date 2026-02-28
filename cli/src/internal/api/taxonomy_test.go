@@ -32,6 +32,28 @@ func TestListTaxonomy(t *testing.T) {
 	assert.Equal(t, "public", items[0].Name)
 }
 
+// TestListTaxonomyMinimalParams handles list taxonomy path when optional params are omitted.
+func TestListTaxonomyMinimalParams(t *testing.T) {
+	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/api/taxonomy/statuses", r.URL.Path)
+		assert.Equal(t, "", r.URL.Query().Get("include_inactive"))
+		assert.Equal(t, "", r.URL.Query().Get("search"))
+		assert.Equal(t, "", r.URL.Query().Get("limit"))
+		assert.Equal(t, "", r.URL.Query().Get("offset"))
+
+		_, err := w.Write(jsonResponse([]map[string]any{
+			{"id": "status-1", "name": "active", "is_active": true, "is_builtin": true},
+		}))
+		require.NoError(t, err)
+	})
+
+	items, err := client.ListTaxonomy("statuses", false, "", 0, 0)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Equal(t, "status-1", items[0].ID)
+}
+
 // TestCreateTaxonomy handles test create taxonomy.
 func TestCreateTaxonomy(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
