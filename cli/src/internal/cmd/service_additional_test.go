@@ -215,6 +215,51 @@ func TestRunStartCmdDetectsMultiAPIConflictMessage(t *testing.T) {
 	assert.True(t, os.IsNotExist(lockErr))
 }
 
+// TestRunStartCmdDetectsMultiAPIConflictMessageAfterDelayedLog handles delayed conflict logs from startup races.
+func TestRunStartCmdDetectsMultiAPIConflictMessageAfterDelayedLog(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	serverDir := createFakeServerDirWithUvicornScript(
+		t,
+		"#!/bin/sh\nsleep 0.35\necho 'ERROR: [Errno 98] Address already in use' >&2\nexit 1\n",
+	)
+	t.Setenv("NEBULA_SERVER_DIR", serverDir)
+	setWaitForAPIProbe(t, func() (string, error) { return "", assert.AnError })
+	setStartHealthTimeout(t, 100*time.Millisecond)
+
+	var out bytes.Buffer
+	err := runStartCmd(&out)
+	require.Error(t, err)
+	assert.Contains(t, strings.ToLower(err.Error()), "multiple api instances detected")
+
+	_, stateErr := loadAPIState()
+	assert.True(t, os.IsNotExist(stateErr))
+	_, lockErr := loadAPILock()
+	assert.True(t, os.IsNotExist(lockErr))
+}
+
+// TestDetectStartupFailureDetectsConflictFromLog handles conflict detection when log marker is already present.
+func TestDetectStartupFailureDetectsConflictFromLog(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "api.log")
+	require.NoError(
+		t,
+		os.WriteFile(logPath, []byte("ERROR: [Errno 98] Address already in use"), 0o600),
+	)
+
+	conflict, exited := detectStartupFailure(logPath, os.Getpid(), 80*time.Millisecond)
+	assert.True(t, conflict)
+	assert.True(t, exited)
+}
+
+// TestDetectStartupFailureReturnsNoFailureWhenProcessAlive handles no-failure result while process stays alive.
+func TestDetectStartupFailureReturnsNoFailureWhenProcessAlive(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "api.log")
+	require.NoError(t, os.WriteFile(logPath, []byte(""), 0o600))
+
+	conflict, exited := detectStartupFailure(logPath, os.Getpid(), 80*time.Millisecond)
+	assert.False(t, conflict)
+	assert.False(t, exited)
+}
+
 // TestRunStopCmdReturnsErrorOnCorruptLock handles invalid lock-file parse failures.
 func TestRunStopCmdReturnsErrorOnCorruptLock(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())

@@ -189,16 +189,15 @@ func runStartCmd(out io.Writer) error {
 
 	ready := waitForAPIHealth(startHealthTimeout)
 	if !ready {
-		logBytes, _ := os.ReadFile(logPath)
-		logText := string(logBytes)
-		if isPortConflictLog(logText) {
+		portConflict, processExited := detectStartupFailure(logPath, pid, 900*time.Millisecond)
+		if portConflict {
 			_ = cleanupAPIState()
 			_ = os.Remove(apiLockPath())
 			return fmt.Errorf(
 				"multiple api instances detected: stop duplicate API processes and restart with `nebula start`",
 			)
 		}
-		if !processAlive(pid) {
+		if processExited {
 			_ = cleanupAPIState()
 			_ = os.Remove(apiLockPath())
 			return fmt.Errorf("api failed to start; check log at %s", logPath)
@@ -504,6 +503,27 @@ func isPortConflictLog(logText string) bool {
 		strings.Contains(lower, "errno 98") ||
 		strings.Contains(lower, "errno 48") ||
 		strings.Contains(lower, "eaddrinuse")
+}
+
+// detectStartupFailure handles post-start checks for delayed conflict logs and exit races.
+func detectStartupFailure(logPath string, pid int, timeout time.Duration) (bool, bool) {
+	if timeout <= 0 {
+		timeout = 900 * time.Millisecond
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		logBytes, _ := os.ReadFile(logPath)
+		if isPortConflictLog(string(logBytes)) {
+			return true, true
+		}
+		if !processAlive(pid) {
+			return false, true
+		}
+		if time.Now().After(deadline) {
+			return false, false
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 // resolveServerDir handles resolve server dir.
