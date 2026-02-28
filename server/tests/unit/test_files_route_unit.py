@@ -116,6 +116,19 @@ async def test_file_visible_false_when_related_job_missing(mock_enums):
 
 
 @pytest.mark.asyncio
+async def test_file_visible_admin_short_circuits(mock_enums):
+    """Admin callers should bypass relationship visibility checks."""
+
+    pool = SimpleNamespace(fetch=AsyncMock(), fetchrow=AsyncMock())
+    auth = {"scopes": [mock_enums.scopes.name_to_id["admin"]]}
+
+    visible = await _file_visible(pool, mock_enums, auth, str(uuid4()))
+
+    assert visible is True
+    pool.fetch.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_file_visible_false_when_related_entity_scope_denied(mock_enums):
     """Entity relationship scopes should deny access when no scope overlap exists."""
 
