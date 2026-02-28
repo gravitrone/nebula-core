@@ -116,3 +116,59 @@ func TestIsInteractiveTerminalReturnsFalseForRegularFile(t *testing.T) {
 
 	assert.False(t, isInteractiveTerminal(f))
 }
+
+func TestRootCommandRunEDelegatesToRunTUI(t *testing.T) {
+	dir := t.TempDir()
+	oldHome := os.Getenv("HOME")
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() { require.NoError(t, os.Setenv("HOME", oldHome)) }()
+
+	oldStdin := os.Stdin
+	oldStdout := os.Stdout
+	defer func() {
+		os.Stdin = oldStdin
+		os.Stdout = oldStdout
+	}()
+
+	inR, inW, err := os.Pipe()
+	require.NoError(t, err)
+	outR, outW, err := os.Pipe()
+	require.NoError(t, err)
+	defer func() {
+		_ = inR.Close()
+		_ = inW.Close()
+		_ = outR.Close()
+		_ = outW.Close()
+	}()
+
+	_ = inW.Close()
+	os.Stdin = inR
+	os.Stdout = outW
+
+	root := newRootCommand()
+	root.SetArgs([]string{})
+	err = root.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "config not found")
+}
+
+func TestIsInteractiveTerminalReturnsFalseForClosedFile(t *testing.T) {
+	f, err := os.CreateTemp(t.TempDir(), "closed-*")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	assert.False(t, isInteractiveTerminal(f))
+}
+
+func TestIsInteractiveTerminalMatchesDeviceBitForDevNull(t *testing.T) {
+	f, err := os.Open("/dev/null")
+	if err != nil {
+		t.Skip("dev null unavailable:", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	info, err := f.Stat()
+	require.NoError(t, err)
+	expected := info.Mode()&os.ModeCharDevice != 0
+	assert.Equal(t, expected, isInteractiveTerminal(f))
+}
