@@ -2,6 +2,7 @@
 
 # Standard Library
 from types import SimpleNamespace
+from uuid import uuid4
 
 # Third-Party
 from fastapi import HTTPException
@@ -177,6 +178,15 @@ def test_normalize_relationship_lookup_handles_job_ids():
     with pytest.raises(HTTPException) as exc:
         _normalize_relationship_lookup("job", "bad-job-id")
     assert exc.value.status_code == 400
+
+
+def test_normalize_relationship_lookup_rejects_invalid_uuid_non_job():
+    """Non-job sources should reject malformed UUID values."""
+
+    with pytest.raises(HTTPException) as exc:
+        _normalize_relationship_lookup("entity", "not-a-uuid")
+    assert exc.value.status_code == 400
+    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
 
 
 @pytest.mark.asyncio
@@ -691,6 +701,32 @@ async def test_get_and_query_relationships_filter_hidden_jobs_for_agents(enums):
 
 
 @pytest.mark.asyncio
+async def test_get_relationships_admin_returns_without_job_filtering(enums):
+    """Admin callers should bypass per-row job visibility checks."""
+
+    row = {
+        "id": "rel-admin-list",
+        "source_type": "job",
+        "source_id": "job-private",
+        "target_type": "entity",
+        "target_id": str(uuid4()),
+        "properties": {"context_segments": [{"text": "x", "scopes": ["public"]}]},
+    }
+    pool = _RoutePool(fetch_rows=[[row]])
+    req = _request(pool, enums)
+
+    result = await get_relationships(
+        "entity",
+        str(uuid4()),
+        req,
+        auth=_auth(scopes=["scope-admin"]),
+    )
+
+    assert [item["id"] for item in result["data"]] == ["rel-admin-list"]
+    assert pool.fetchrow_calls == []
+
+
+@pytest.mark.asyncio
 async def test_query_relationships_filters_hidden_jobs_for_user(enums):
     """User callers should also be filtered from out-of-scope job links."""
 
@@ -725,3 +761,40 @@ async def test_query_relationships_filters_hidden_target_job(enums):
     req = _request(pool, enums)
     result = await query_relationships(req, auth=_auth(scopes=["scope-public"]))
     assert result["data"] == []
+
+
+@pytest.mark.asyncio
+async def test_query_relationships_admin_returns_without_job_filtering(enums):
+    """Admin callers should bypass per-row job visibility checks in query."""
+
+    row = {
+        "id": "rel-admin-query",
+        "source_type": "entity",
+        "source_id": str(uuid4()),
+        "target_type": "job",
+        "target_id": "job-private",
+        "properties": {"k": "v"},
+    }
+    pool = _RoutePool(fetch_rows=[[row]])
+    req = _request(pool, enums)
+
+    result = await query_relationships(req, auth=_auth(scopes=["scope-admin"]))
+
+    assert [item["id"] for item in result["data"]] == ["rel-admin-query"]
+    assert pool.fetchrow_calls == []
+
+
+@pytest.mark.asyncio
+async def test_update_relationship_rejects_invalid_uuid_input(enums):
+    """Malformed relationship ids should fail fast."""
+
+    req = _request(_RoutePool(), enums)
+    with pytest.raises(HTTPException) as exc:
+        await update_relationship(
+            "bad-relationship-id",
+            UpdateRelationshipBody(status="active"),
+            req,
+            auth=_auth(scopes=["scope-public"]),
+        )
+    assert exc.value.status_code == 400
+    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
