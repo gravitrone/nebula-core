@@ -1,0 +1,190 @@
+package ui
+
+import (
+	"encoding/json"
+	"net/http"
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/gravitrone/nebula-core/cli/internal/api"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestCanRevertAuditEntryGuardMatrix(t *testing.T) {
+	assert.False(t, canRevertAuditEntry(nil))
+	assert.False(t, canRevertAuditEntry(&api.AuditEntry{ID: "audit-1", TableName: "entities"}))
+	assert.False(t, canRevertAuditEntry(&api.AuditEntry{RecordID: "ent-1", TableName: "entities"}))
+	assert.False(t, canRevertAuditEntry(&api.AuditEntry{ID: "audit-1", RecordID: "ent-1", TableName: "jobs"}))
+	assert.True(t, canRevertAuditEntry(&api.AuditEntry{ID: "audit-1", RecordID: "ent-1", TableName: "Entities"}))
+}
+
+func TestHistoryConfirmRevertGuardBranches(t *testing.T) {
+	model := NewHistoryModel(nil)
+	model.reverting = true
+
+	updated, cmd := model.confirmRevert()
+	assert.False(t, updated.reverting)
+	assert.Nil(t, cmd)
+
+	model.detail = &api.AuditEntry{ID: "audit-1", RecordID: " "}
+	model.reverting = true
+	updated, cmd = model.confirmRevert()
+	assert.False(t, updated.reverting)
+	assert.Nil(t, cmd)
+
+	model.detail = &api.AuditEntry{ID: " ", RecordID: "ent-1"}
+	model.reverting = true
+	updated, cmd = model.confirmRevert()
+	assert.False(t, updated.reverting)
+	assert.Nil(t, cmd)
+}
+
+func TestHistoryConfirmRevertSuccessReturnsRevertedMsg(t *testing.T) {
+	var gotEntityID string
+	var gotAuditID string
+
+	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/entities/ent-1/revert" {
+			var body map[string]string
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+			gotEntityID = "ent-1"
+			gotAuditID = body["audit_id"]
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "ent-1"}})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	model := NewHistoryModel(client)
+	model.detail = &api.AuditEntry{ID: "audit-1", RecordID: "ent-1"}
+
+	updated, cmd := model.confirmRevert()
+	require.NotNil(t, cmd)
+	assert.False(t, updated.reverting)
+
+	msg := cmd().(historyRevertedMsg)
+	assert.Equal(t, "ent-1", msg.entityID)
+	assert.Equal(t, "audit-1", msg.auditID)
+	assert.Equal(t, "ent-1", gotEntityID)
+	assert.Equal(t, "audit-1", gotAuditID)
+}
+
+func TestHistoryHandleFilterKeysBranchMatrix(t *testing.T) {
+	model := NewHistoryModel(nil)
+	model.filtering = true
+	model.filterBuf = "table:entities"
+
+	updated, cmd := model.handleFilterKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	assert.Nil(t, cmd)
+	assert.Equal(t, "table:entitie", updated.filterBuf)
+
+	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	assert.Nil(t, cmd)
+	assert.Equal(t, "table:entities", updated.filterBuf)
+
+	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	assert.False(t, updated.filtering)
+	assert.Equal(t, "entities", updated.filter.tableName)
+	assert.True(t, updated.loading)
+
+	updated.filtering = true
+	updated.filterBuf = "actor:alxx"
+	updated.filter = auditFilter{tableName: "entities"}
+	updated.loading = false
+	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	require.NotNil(t, cmd)
+	assert.False(t, updated.filtering)
+	assert.Equal(t, "", updated.filterBuf)
+	assert.Equal(t, auditFilter{}, updated.filter)
+	assert.True(t, updated.loading)
+
+	updated.filterBuf = ""
+	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	assert.Nil(t, cmd)
+	assert.Equal(t, "", updated.filterBuf)
+}
+
+func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
+	model := NewHistoryModel(nil)
+	model.view = historyViewScopes
+	model.scopes = []api.AuditScope{{ID: "scope-1", Name: "public"}}
+	model.scopeList.SetItems([]string{"public"})
+
+	updated, cmd := model.handleScopeKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	assert.Equal(t, "scope-1", updated.filter.scopeID)
+	assert.Equal(t, historyViewList, updated.view)
+	assert.True(t, updated.loading)
+
+	updated.view = historyViewScopes
+	updated.scopeList.Cursor = 9
+	updated.loading = false
+	updated, cmd = updated.handleScopeKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	assert.Nil(t, cmd)
+	assert.Equal(t, historyViewScopes, updated.view)
+	assert.False(t, updated.loading)
+
+	updated, cmd = updated.handleScopeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	assert.Nil(t, cmd)
+	assert.Equal(t, historyViewList, updated.view)
+
+	updated.view = historyViewActors
+	updated.actors = []api.AuditActor{{ActorType: "agent", ActorID: "agent-1"}}
+	updated.actorList.SetItems([]string{"agent:agent-1"})
+	updated.loading = false
+	updated, cmd = updated.handleActorKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	assert.Equal(t, "agent", updated.filter.actorType)
+	assert.Equal(t, "agent-1", updated.filter.actorID)
+	assert.Equal(t, historyViewList, updated.view)
+	assert.True(t, updated.loading)
+
+	updated.view = historyViewActors
+	updated.actorList.Cursor = 9
+	updated.loading = false
+	updated, cmd = updated.handleActorKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	assert.Nil(t, cmd)
+	assert.Equal(t, historyViewActors, updated.view)
+	assert.False(t, updated.loading)
+
+	updated, cmd = updated.handleActorKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	assert.Nil(t, cmd)
+	assert.Equal(t, historyViewList, updated.view)
+}
+
+func TestHistoryHandleListKeysBranchMatrix(t *testing.T) {
+	model := NewHistoryModel(nil)
+	model.items = []api.AuditEntry{{ID: "audit-1", RecordID: "ent-1", TableName: "entities"}}
+	model.list.SetItems([]string{"audit-1"})
+
+	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	assert.Nil(t, cmd)
+	assert.Equal(t, 0, updated.list.Cursor)
+
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	assert.Nil(t, cmd)
+	assert.Equal(t, 0, updated.list.Cursor)
+
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	assert.Nil(t, cmd)
+	assert.Equal(t, historyViewDetail, updated.view)
+	require.NotNil(t, updated.detail)
+	assert.Equal(t, "audit-1", updated.detail.ID)
+
+	model = NewHistoryModel(nil)
+	updated, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	assert.Nil(t, cmd)
+	assert.True(t, updated.filtering)
+
+	updated, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	require.NotNil(t, cmd)
+	assert.Equal(t, historyViewScopes, updated.view)
+	assert.True(t, updated.loading)
+
+	updated, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	require.NotNil(t, cmd)
+	assert.Equal(t, historyViewActors, updated.view)
+	assert.True(t, updated.loading)
+}
