@@ -13,3 +13,9 @@ func TestDividerRendersHorizontalLine(t *testing.T) {
 	assert.NotEmpty(t, strings.TrimSpace(got))
 	assert.GreaterOrEqual(t, len(strings.TrimSpace(got)), 10)
 }
+
+// TestDividerReturnsEmptyForNonPositiveWidths handles zero/negative divider guards.
+func TestDividerReturnsEmptyForNonPositiveWidths(t *testing.T) {
+	assert.Equal(t, "", Divider(0))
+	assert.Equal(t, "", Divider(-4))
+}
