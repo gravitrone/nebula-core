@@ -51,6 +51,25 @@ func TestWaitForAPIHealthReturnsFalseOnTimeout(t *testing.T) {
 	assert.Greater(t, attempts, 0)
 }
 
+// TestWaitForAPIHealthUsesDefaultTimeoutWhenNonPositive handles the fallback timeout branch.
+func TestWaitForAPIHealthUsesDefaultTimeoutWhenNonPositive(t *testing.T) {
+	previousProbe := waitForAPIHealthProbe
+	t.Cleanup(func() {
+		waitForAPIHealthProbe = previousProbe
+	})
+	attempts := 0
+	waitForAPIHealthProbe = func() (string, error) {
+		attempts++
+		if attempts >= 2 {
+			return "ok", nil
+		}
+		return "", assert.AnError
+	}
+
+	assert.True(t, waitForAPIHealth(0))
+	assert.GreaterOrEqual(t, attempts, 2)
+}
+
 // TestResolveServerDirRejectsInvalidEnv handles invalid explicit server-dir overrides.
 func TestResolveServerDirRejectsInvalidEnv(t *testing.T) {
 	t.Setenv("NEBULA_SERVER_DIR", t.TempDir())
@@ -258,6 +277,89 @@ func TestDetectStartupFailureReturnsNoFailureWhenProcessAlive(t *testing.T) {
 	conflict, exited := detectStartupFailure(logPath, os.Getpid(), 80*time.Millisecond)
 	assert.False(t, conflict)
 	assert.False(t, exited)
+}
+
+// TestDetectStartupFailureReturnsExitedWhenProcessDies handles process-exit detection without conflict marker.
+func TestDetectStartupFailureReturnsExitedWhenProcessDies(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "api.log")
+	require.NoError(t, os.WriteFile(logPath, []byte("regular startup logs"), 0o600))
+
+	conflict, exited := detectStartupFailure(logPath, 999999, 80*time.Millisecond)
+	assert.False(t, conflict)
+	assert.True(t, exited)
+}
+
+// TestSaveAPIStateRejectsNilState handles nil input validation branch.
+func TestSaveAPIStateRejectsNilState(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	err := saveAPIState(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "api runtime state is nil")
+}
+
+// TestSaveAPIStateReturnsRuntimeDirError handles runtime-dir creation errors.
+func TestSaveAPIStateReturnsRuntimeDirError(t *testing.T) {
+	homeFile := filepath.Join(t.TempDir(), "home-file")
+	require.NoError(t, os.WriteFile(homeFile, []byte("x"), 0o600))
+	t.Setenv("HOME", homeFile)
+
+	err := saveAPIState(&apiRuntimeState{PID: 1})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create runtime dir")
+}
+
+// TestLoadAPIStateReturnsParseErrorOnInvalidJSON handles runtime-state parse failures.
+func TestLoadAPIStateReturnsParseErrorOnInvalidJSON(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.WriteFile(apiStatePath(), []byte("{bad-json"), 0o600))
+
+	_, err := loadAPIState()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "parse runtime state")
+}
+
+// TestUpdateAPILockPIDReturnsWriteErrorWhenPathIsDir handles lock write failures.
+func TestUpdateAPILockPIDReturnsWriteErrorWhenPathIsDir(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(apiLockPath(), 0o700))
+
+	err := updateAPILockPID(os.Getpid())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write api lock")
+}
+
+// TestAcquireAPILockRecoversWhenLockPathIsDir handles stale lock-directory recovery.
+func TestAcquireAPILockRecoversWhenLockPathIsDir(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(apiLockPath(), 0o700))
+
+	require.NoError(t, acquireAPILock())
+	lock, err := loadAPILock()
+	require.NoError(t, err)
+	assert.Equal(t, os.Getpid(), lock.OwnerPID)
+}
+
+// TestAcquireAPILockReturnsRuntimeDirErrorWhenHomeIsFile handles mkdir failures for runtime dir.
+func TestAcquireAPILockReturnsRuntimeDirErrorWhenHomeIsFile(t *testing.T) {
+	homeFile := filepath.Join(t.TempDir(), "home-file")
+	require.NoError(t, os.WriteFile(homeFile, []byte("x"), 0o600))
+	t.Setenv("HOME", homeFile)
+
+	err := acquireAPILock()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create runtime dir")
+}
+
+// TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory handles non-file log path errors.
+func TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(apiLogPath(), 0o700))
+
+	var out bytes.Buffer
+	err := runLogsCmd(&out, true, 50)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "read api log")
 }
 
 // TestRunStopCmdReturnsErrorOnCorruptLock handles invalid lock-file parse failures.
