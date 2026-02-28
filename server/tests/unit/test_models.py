@@ -1,15 +1,23 @@
 """Unit tests for pydantic models (no DB needed)."""
 
+# Standard Library
+from datetime import date, datetime, timezone
+
 # Third-Party
 import pytest
 from pydantic import ValidationError
 
 from nebula_mcp.models import (
+    AgentEnrollStartInput,
     BaseMetadata,
     ContextSegment,
     CreateJobInput,
+    CreateFileInput,
     CourseMetadata,
     CreateEntityInput,
+    CreateRelationshipInput,
+    CreateTaxonomyInput,
+    ExportDataInput,
     FrameworkMetadata,
     IdeaMetadata,
     ListAgentsInput,
@@ -17,13 +25,24 @@ from nebula_mcp.models import (
     PaperMetadata,
     PersonMetadata,
     ProjectMetadata,
+    QueryContextInput,
     QueryEntitiesInput,
     QueryJobsInput,
+    QueryLogsInput,
     RejectRequestInput,
+    SemanticSearchInput,
     ToolMetadata,
     UniversityMetadata,
+    UpdateContextInput,
     UpdateEntityInput,
+    UpdateFileInput,
+    UpdateJobInput,
+    UpdateTaxonomyInput,
+    _strip_control,
+    _validate_taxonomy_kind,
+    parse_optional_datetime,
     validate_entity_metadata,
+    validate_metadata_payload,
 )
 
 pytestmark = pytest.mark.unit
@@ -353,4 +372,213 @@ class TestApprovalModels:
             RejectRequestInput(
                 approval_id="some-uuid",
                 reviewed_by="reviewer-uuid",
+            )
+
+
+# --- Helper + Edge Branch Models ---
+
+
+class TestModelSanitizerHelpers:
+    """Direct helper branch coverage for model sanitizers."""
+
+    def test_strip_control_removes_bidi_and_control_chars(self):
+        """Bidi and generic control chars should be dropped from text."""
+
+        cleaned = _strip_control("ab\u202ecd\x00ef")
+        assert cleaned == "abcdef"
+
+    def test_validate_metadata_payload_rejects_non_object(self):
+        """Metadata payload must be a dict object."""
+
+        with pytest.raises(ValueError, match="Metadata must be an object"):
+            validate_metadata_payload(["bad"])  # type: ignore[arg-type]
+
+    def test_validate_metadata_payload_rejects_nested_visibility_key(self):
+        """Nested visibility keys should be rejected as unsupported."""
+
+        with pytest.raises(ValueError, match="Metadata key 'visibility' is not supported"):
+            validate_metadata_payload({"nested": {"visibility": "private"}})
+
+    def test_validate_taxonomy_kind_none_raises_required_error(self):
+        """Taxonomy validator should reject missing kind values."""
+
+        with pytest.raises(ValueError, match="Taxonomy kind is required"):
+            _validate_taxonomy_kind(None)
+
+    def test_validate_taxonomy_kind_rejects_unknown_value(self):
+        """Taxonomy validator should reject unsupported kind names."""
+
+        with pytest.raises(ValueError, match="Invalid taxonomy kind"):
+            _validate_taxonomy_kind("bad-kind")
+
+    def test_parse_optional_datetime_handles_datetime_date_and_empty_text(self):
+        """Datetime parser should accept datetime/date and blank text."""
+
+        now = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+        assert parse_optional_datetime(now, "ts") == now
+        assert parse_optional_datetime(date(2026, 1, 1), "ts") == datetime(
+            2026, 1, 1, 0, 0, tzinfo=timezone.utc
+        )
+        assert parse_optional_datetime("   ", "ts") is None
+
+    def test_person_metadata_month_and_day_none_branches(self):
+        """Month/day validators should return None when value is None."""
+
+        assert PersonMetadata._month_range(None) is None
+        assert PersonMetadata._day_range(None) is None
+
+
+class TestModelEdgeInputs:
+    """Coverage tests for low-hit input model branches."""
+
+    def test_query_entities_cleans_type_text_and_tags(self):
+        """Entity query should sanitize text fields and tag list inputs."""
+
+        query = QueryEntitiesInput(
+            type=" person\u202e ",
+            search_text="\x00notes",
+            tags=["a", "", "b"],
+        )
+        assert query.type == "person"
+        assert query.search_text == "notes"
+        assert query.tags == ["a", "b"]
+
+    def test_query_entities_rejects_too_many_tags(self):
+        """Entity query should reject payloads that exceed tag limit."""
+
+        with pytest.raises(ValidationError, match="Too many tags"):
+            QueryEntitiesInput(tags=[f"t{i}" for i in range(51)])
+
+    def test_query_entities_rejects_oversized_tag(self):
+        """Entity query should reject overly long tag strings."""
+
+        with pytest.raises(ValidationError, match="Tag too long"):
+            QueryEntitiesInput(tags=["x" * 65])
+
+    def test_create_relationship_rejects_invalid_node_type(self):
+        """Relationship input should reject unsupported node types."""
+
+        with pytest.raises(ValidationError, match="Invalid node type"):
+            CreateRelationshipInput(
+                source_type="bad-node",
+                source_id="s1",
+                target_type="entity",
+                target_id="t1",
+                relationship_type="related-to",
+            )
+
+    def test_create_entity_blank_source_path_normalizes_to_none(self):
+        """Blank source_path should normalize to None."""
+
+        model = CreateEntityInput(
+            name="Alice",
+            type="person",
+            status="active",
+            scopes=["public"],
+            source_path=" \u202e ",
+        )
+        assert model.source_path is None
+
+    def test_update_context_rejects_non_http_url(self):
+        """Update context should enforce http/https URL prefix."""
+
+        with pytest.raises(ValidationError, match="URL must start with http:// or https://"):
+            UpdateContextInput(context_id="ctx-1", url="ftp://example.com")
+
+    def test_query_context_sanitizes_tags(self):
+        """Context query should sanitize and keep non-empty tags."""
+
+        query = QueryContextInput(tags=["alpha", "", "beta"])
+        assert query.tags == ["alpha", "beta"]
+
+    def test_query_logs_sanitizes_tags(self):
+        """Log query should sanitize and keep non-empty tags."""
+
+        query = QueryLogsInput(tags=["ops", "", "infra"])
+        assert query.tags == ["ops", "infra"]
+
+    def test_update_job_accepts_sanitized_metadata(self):
+        """Update job should pass metadata through sanitizer."""
+
+        model = UpdateJobInput(job_id="job-1", metadata={"ok": True})
+        assert model.metadata == {"ok": True}
+
+    def test_create_file_requires_uri_or_file_path(self):
+        """Create file should fail when both location fields are missing."""
+
+        with pytest.raises(ValidationError, match="uri or file_path is required"):
+            CreateFileInput(filename="x.txt")
+
+    def test_update_file_syncs_uri_from_file_path(self):
+        """Update file should mirror file_path into uri when uri is missing."""
+
+        model = UpdateFileInput(file_id="f1", file_path="/tmp/a.txt")
+        assert model.uri == "/tmp/a.txt"
+        assert model.file_path == "/tmp/a.txt"
+
+    def test_update_file_syncs_file_path_from_uri(self):
+        """Update file should mirror uri into file_path when file_path is missing."""
+
+        model = UpdateFileInput(file_id="f1", uri="file:///tmp/a.txt")
+        assert model.uri == "file:///tmp/a.txt"
+        assert model.file_path == "file:///tmp/a.txt"
+
+    def test_agent_enroll_start_sanitizes_capabilities(self):
+        """Enroll input should sanitize capabilities through tag sanitizer."""
+
+        model = AgentEnrollStartInput(name="agent-x", capabilities=["a", "", "b"])
+        assert model.capabilities == ["a", "b"]
+
+    def test_semantic_search_defaults_kinds_when_none(self):
+        """Semantic search should fall back to default kinds for null input."""
+
+        model = SemanticSearchInput(query="agent memory", kinds=None)
+        assert model.kinds == ["entity", "context"]
+
+    def test_export_data_rejects_invalid_resource(self):
+        """Export model should reject unknown resources."""
+
+        with pytest.raises(ValidationError, match="Invalid export resource"):
+            ExportDataInput(resource="files")
+
+    def test_export_data_rejects_invalid_format(self):
+        """Export model should reject non json/csv format values."""
+
+        with pytest.raises(ValidationError, match="Format must be json or csv"):
+            ExportDataInput(resource="entities", format="yaml")
+
+    def test_create_taxonomy_rejects_is_symmetric_for_non_relationship_kind(self):
+        """Create taxonomy should gate is_symmetric to relationship-types."""
+
+        with pytest.raises(
+            ValidationError, match="is_symmetric is only valid for relationship-types"
+        ):
+            CreateTaxonomyInput(kind="scopes", name="public", is_symmetric=True)
+
+    def test_create_taxonomy_rejects_value_schema_for_non_log_type(self):
+        """Create taxonomy should gate value_schema to log-types."""
+
+        with pytest.raises(ValidationError, match="value_schema is only valid for log-types"):
+            CreateTaxonomyInput(kind="scopes", name="public", value_schema={"a": "b"})
+
+    def test_update_taxonomy_rejects_is_symmetric_for_non_relationship_kind(self):
+        """Update taxonomy should gate is_symmetric to relationship-types."""
+
+        with pytest.raises(
+            ValidationError, match="is_symmetric is only valid for relationship-types"
+        ):
+            UpdateTaxonomyInput(
+                kind="scopes",
+                item_id="scope-1",
+                is_symmetric=True,
+            )
+
+    def test_update_taxonomy_rejects_value_schema_for_non_log_type(self):
+        """Update taxonomy should gate value_schema to log-types."""
+
+        with pytest.raises(ValidationError, match="value_schema is only valid for log-types"):
+            UpdateTaxonomyInput(
+                kind="scopes",
+                item_id="scope-1",
+                value_schema={"type": "object"},
             )

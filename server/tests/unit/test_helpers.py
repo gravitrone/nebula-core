@@ -8,6 +8,7 @@ import json
 import pytest
 
 from nebula_mcp.helpers import (
+    _decode_json_object,
     _extract_string_list,
     _enrich_approval_rows,
     _normalize_diff_value,
@@ -36,6 +37,7 @@ from nebula_mcp.helpers import (
     reject_request,
     redeem_enrollment_key,
     revert_entity,
+    sanitize_relationship_properties,
     scope_names_from_ids,
     wait_for_enrollment_status,
     generate_enrollment_token,
@@ -160,6 +162,66 @@ class TestFilterContextSegments:
         result = filter_context_segments(double_encoded, ["public"])
         assert result is not None
         assert [s["text"] for s in result["context_segments"]] == ["public note"]
+
+    def test_invalid_json_metadata_returns_empty_object(self):
+        """Invalid JSON strings should decode to an empty object."""
+
+        result = filter_context_segments("{bad-json", ["public"])
+        assert result == {}
+
+    def test_double_encoded_invalid_json_returns_empty_object(self):
+        """Invalid nested JSON strings should decode to an empty object."""
+
+        result = filter_context_segments(json.dumps("{bad-json"), ["public"])
+        assert result == {}
+
+    def test_non_string_non_dict_metadata_returns_empty_object(self):
+        """Unexpected metadata types should normalize to empty object."""
+
+        result = filter_context_segments(12345, ["public"])  # type: ignore[arg-type]
+        assert result == {}
+
+    def test_non_dict_context_segment_rows_are_ignored(self):
+        """Only dict-shaped context segments should be considered."""
+
+        meta = {
+            "context_segments": [
+                "bad-segment",
+                {"text": "public note", "scopes": ["public"]},
+            ]
+        }
+        result = filter_context_segments(meta, ["public"])
+        assert [s["text"] for s in result["context_segments"]] == ["public note"]
+
+
+class TestJsonDecodingHelpers:
+    """Direct coverage for JSON decode helper branches."""
+
+    def test_decode_json_object_handles_none(self):
+        """None payloads should normalize to empty dict."""
+
+        assert _decode_json_object(None) == {}
+
+
+class TestRelationshipPropertySanitization:
+    """Tests for relationship property normalization helper."""
+
+    def test_sanitize_relationship_properties_returns_empty_for_invalid_payload(self):
+        """Invalid property payloads should return an empty object."""
+
+        assert sanitize_relationship_properties("{bad-json", ["public"]) == {}
+
+    def test_sanitize_relationship_properties_filters_context_segments(self):
+        """Valid properties should apply context-segment filtering."""
+
+        props = {
+            "context_segments": [
+                {"text": "public", "scopes": ["public"]},
+                {"text": "private", "scopes": ["private"]},
+            ]
+        }
+        result = sanitize_relationship_properties(props, ["public"])
+        assert [s["text"] for s in result["context_segments"]] == ["public"]
 
 
 class TestPendingApprovalLimit:
