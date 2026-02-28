@@ -72,3 +72,36 @@ func TestEmptyStateBoxSkipsWhitespaceActions(t *testing.T) {
 	assert.Contains(t, clean, "Try:")
 	assert.Equal(t, 1, strings.Count(clean, "run /help"))
 }
+
+func TestTitledBoxLongTitleOnNarrowWidthStillRenders(t *testing.T) {
+	out := TitledBox(strings.Repeat("very-long-title-", 6), "body", 30)
+	clean := SanitizeText(out)
+	assert.Contains(t, clean, "body")
+
+	lines := strings.Split(out, "\n")
+	assert.NotEmpty(t, lines)
+	assert.LessOrEqual(t, lipgloss.Width(lines[0]), 30)
+}
+
+func TestTableHandlesTightWidthsAndWrappedRows(t *testing.T) {
+	out := Table("Tiny", []TableRow{
+		{
+			Label: strings.Repeat("label", 8),
+			Value: "alpha beta gamma delta epsilon zeta",
+		},
+	}, 10)
+
+	clean := SanitizeText(out)
+	assert.Contains(t, clean, "Tiny")
+	assert.Contains(t, clean, "a...")
+	assert.Contains(t, clean, "g...")
+	assert.Contains(t, clean, "zeta")
+}
+
+func TestWrapDiffLineLongWordFlushesCurrentSegment(t *testing.T) {
+	lines := wrapDiffLine("alpha supercalifragilisticexpialidocious beta", 8)
+	assert.GreaterOrEqual(t, len(lines), 3)
+	assert.Equal(t, "alpha", lines[0])
+	assert.Contains(t, lines[1], "...")
+	assert.Equal(t, "beta", lines[len(lines)-1])
+}
