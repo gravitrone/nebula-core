@@ -111,7 +111,7 @@ func TestParseErrorValueMapMatrix(t *testing.T) {
 		},
 		{
 			name: "unsupported type",
-			raw: 123,
+			raw:  123,
 			want: "",
 			ok:   false,
 		},
@@ -208,4 +208,44 @@ func TestExtractAPIErrorBodyRejectsEmptyAndInvalidJSON(t *testing.T) {
 	got, ok = extractAPIErrorBody([]byte("{not-json"))
 	assert.False(t, ok)
 	assert.Equal(t, "", got)
+}
+
+func TestNormalizeAPIErrorMatrix(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		msg    string
+		want   string
+	}{
+		{
+			name:   "401 normalizes to invalid key",
+			status: 401,
+			msg:    "UNAUTHORIZED: token expired",
+			want:   "INVALID_API_KEY: token expired",
+		},
+		{
+			name:   "403 auth detail normalizes to invalid key",
+			status: 403,
+			msg:    "FORBIDDEN: missing or invalid authorization",
+			want:   "INVALID_API_KEY: missing or invalid authorization",
+		},
+		{
+			name:   "403 admin scope stays forbidden",
+			status: 403,
+			msg:    "FORBIDDEN: Admin scope required",
+			want:   "FORBIDDEN: Admin scope required",
+		},
+		{
+			name:   "multi api marker normalizes to conflict code",
+			status: 500,
+			msg:    "HTTP 500: Address already in use",
+			want:   "MULTIPLE_API_INSTANCES_DETECTED: multiple api instances detected",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, normalizeAPIError(tc.status, tc.msg))
+		})
+	}
 }

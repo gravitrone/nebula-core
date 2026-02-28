@@ -79,12 +79,111 @@ func (c *Client) do(method, path string, body any) ([]byte, int, error) {
 
 	if resp.StatusCode >= 400 {
 		if msg, ok := extractAPIErrorBody(respBody); ok {
-			return nil, resp.StatusCode, fmt.Errorf("%s", msg)
+			return nil, resp.StatusCode, fmt.Errorf(
+				"%s",
+				normalizeAPIError(resp.StatusCode, msg),
+			)
 		}
-		return nil, resp.StatusCode, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(respBody))
+		return nil, resp.StatusCode, fmt.Errorf(
+			"%s",
+			normalizeAPIError(
+				resp.StatusCode,
+				fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(respBody)),
+			),
+		)
 	}
 
 	return respBody, resp.StatusCode, nil
+}
+
+// normalizeAPIError keeps auth/multi-api recovery branches consistent across all callers.
+func normalizeAPIError(statusCode int, msg string) string {
+	trimmed := strings.TrimSpace(msg)
+	if trimmed == "" {
+		return msg
+	}
+	lower := strings.ToLower(trimmed)
+	if isMultiAPIConflictText(lower) {
+		return "MULTIPLE_API_INSTANCES_DETECTED: multiple api instances detected"
+	}
+	if shouldNormalizeInvalidAPIKey(statusCode, lower) {
+		detail := normalizedAuthDetail(trimmed)
+		if detail == "" {
+			detail = "invalid api key"
+		}
+		return fmt.Sprintf("INVALID_API_KEY: %s", detail)
+	}
+	return trimmed
+}
+
+// shouldNormalizeInvalidAPIKey handles should normalize invalid apikey.
+func shouldNormalizeInvalidAPIKey(statusCode int, lowerMsg string) bool {
+	if statusCode == http.StatusUnauthorized {
+		return true
+	}
+	if strings.Contains(lowerMsg, "invalid api key") ||
+		strings.Contains(lowerMsg, "invalid_api_key") ||
+		strings.Contains(lowerMsg, "auth_required") ||
+		strings.Contains(lowerMsg, "missing or invalid authorization") ||
+		strings.Contains(lowerMsg, "not logged in") ||
+		strings.Contains(lowerMsg, "unauthorized") {
+		return true
+	}
+	if statusCode == http.StatusForbidden {
+		return strings.Contains(lowerMsg, "authorization") ||
+			strings.Contains(lowerMsg, "auth") ||
+			strings.Contains(lowerMsg, "api key")
+	}
+	return false
+}
+
+// normalizedAuthDetail handles normalized auth detail.
+func normalizedAuthDetail(text string) string {
+	detail := strings.TrimSpace(text)
+	if code, parsed := parseErrorCode(detail); code != "" {
+		detail = parsed
+	}
+	lower := strings.ToLower(detail)
+	if strings.HasPrefix(lower, "http ") {
+		if idx := strings.Index(detail, ":"); idx >= 0 {
+			detail = strings.TrimSpace(detail[idx+1:])
+		}
+	}
+	detail = strings.TrimSpace(detail)
+	switch strings.ToLower(detail) {
+	case "", "forbidden", "unauthorized", "invalid_api_key", "invalid api key":
+		return "invalid api key"
+	default:
+		return detail
+	}
+}
+
+// parseErrorCode handles parse error code.
+func parseErrorCode(text string) (string, string) {
+	parts := strings.SplitN(text, ":", 2)
+	if len(parts) != 2 {
+		return "", text
+	}
+	code := strings.TrimSpace(parts[0])
+	if code == "" || strings.HasPrefix(strings.ToUpper(code), "HTTP ") {
+		return "", text
+	}
+	for _, r := range code {
+		if (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' {
+			return "", text
+		}
+	}
+	return code, strings.TrimSpace(parts[1])
+}
+
+// isMultiAPIConflictText handles is multi apiconflict text.
+func isMultiAPIConflictText(lowerMsg string) bool {
+	return strings.Contains(lowerMsg, "multiple api instances detected") ||
+		strings.Contains(lowerMsg, "multiple_api_instances_detected") ||
+		strings.Contains(lowerMsg, "address already in use") ||
+		strings.Contains(lowerMsg, "eaddrinuse") ||
+		strings.Contains(lowerMsg, "errno 98") ||
+		strings.Contains(lowerMsg, "errno 48")
 }
 
 // get performs a GET request.

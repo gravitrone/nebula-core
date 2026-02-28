@@ -267,6 +267,60 @@ func TestHTTPErrorNestedDetailFormat(t *testing.T) {
 	assert.Equal(t, "FORBIDDEN: Admin scope required", err.Error())
 }
 
+// TestDoNormalizesInvalidKeyRecoveryHints handles auth normalization for regular API requests.
+func TestDoNormalizesInvalidKeyRecoveryHints(t *testing.T) {
+	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"detail": map[string]any{
+				"error": map[string]any{
+					"code":    "UNAUTHORIZED",
+					"message": "token expired",
+				},
+			},
+		})
+	})
+
+	_, err := client.QueryEntities(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "INVALID_API_KEY")
+	assert.Contains(t, err.Error(), "token expired")
+}
+
+// TestDoPreservesForbiddenScopeErrors handles non-auth 403 payloads without invalid-key coercion.
+func TestDoPreservesForbiddenScopeErrors(t *testing.T) {
+	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]any{
+				"code":    "FORBIDDEN",
+				"message": "Admin scope required",
+			},
+		})
+	})
+
+	_, err := client.QueryEntities(nil)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "INVALID_API_KEY")
+	assert.Contains(t, err.Error(), "FORBIDDEN")
+	assert.Contains(t, err.Error(), "Admin scope required")
+}
+
+// TestDoNormalizesMultiAPIConflict handles startup-style 500 collisions for user-facing recovery.
+func TestDoNormalizesMultiAPIConflict(t *testing.T) {
+	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"detail": "Address already in use",
+		})
+	})
+
+	_, err := client.QueryEntities(nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "MULTIPLE_API_INSTANCES_DETECTED")
+	assert.Contains(t, err.Error(), "multiple api instances detected")
+}
+
 // TestHealth handles test health.
 func TestHealth(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
