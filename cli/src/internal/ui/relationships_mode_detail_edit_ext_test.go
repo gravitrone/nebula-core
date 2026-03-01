@@ -220,3 +220,74 @@ func TestFormatCreateCandidateLineFallbacks(t *testing.T) {
 	})
 	assert.Equal(t, "alpha · entity/person · active", line)
 }
+
+func TestRelationshipsHandleFilterInputBranchMatrix(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+	model.filtering = true
+	model.names["ent-1"] = "alpha"
+	model.names["ent-2"] = "beta"
+	model.allItems = []api.Relationship{
+		{ID: "rel-1", Type: "depends-on", Status: "active", SourceID: "ent-1", TargetID: "ent-2"},
+	}
+	model.applyListFilter()
+
+	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, "a", updated.filterBuf)
+
+	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+	require.Nil(t, cmd)
+	assert.Equal(t, "a ", updated.filterBuf)
+
+	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	require.Nil(t, cmd)
+	assert.Equal(t, "a", updated.filterBuf)
+
+	updated.filterBuf = ""
+	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+	require.Nil(t, cmd)
+	assert.Equal(t, "", updated.filterBuf)
+
+	updated.filterBuf = ""
+	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyTab})
+	require.Nil(t, cmd)
+	assert.Equal(t, "", updated.filterBuf)
+
+	updated.filterBuf = "dep"
+	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	require.Nil(t, cmd)
+	assert.False(t, updated.filtering)
+	assert.Equal(t, "", updated.filterBuf)
+	require.Len(t, updated.items, 1)
+
+	updated.filtering = true
+	updated.filterBuf = "x"
+	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	require.Nil(t, cmd)
+	assert.False(t, updated.filtering)
+	assert.Equal(t, "x", updated.filterBuf)
+}
+
+func TestRelationshipsRenderModeLineStateVariants(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+
+	model.view = relsViewList
+	listLine := model.renderModeLine()
+	assert.Contains(t, listLine, "Add")
+	assert.Contains(t, listLine, "Library")
+
+	model.view = relsViewCreateType
+	addLine := model.renderModeLine()
+	assert.Contains(t, addLine, "Add")
+	assert.Contains(t, addLine, "Library")
+
+	model.modeFocus = true
+	addFocusLine := model.renderModeLine()
+	assert.Contains(t, addFocusLine, "Add")
+	assert.Contains(t, addFocusLine, "Library")
+
+	model.view = relsViewList
+	listFocusLine := model.renderModeLine()
+	assert.Contains(t, listFocusLine, "Add")
+	assert.Contains(t, listFocusLine, "Library")
+}
