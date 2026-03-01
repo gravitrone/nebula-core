@@ -114,6 +114,25 @@ func TestContextLoadContextListAndDetailBranches(t *testing.T) {
 	assert.Nil(t, detailLoaded.relationships)
 }
 
+func TestContextLoadContextListErrorBranch(t *testing.T) {
+	_, client := contextTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/context" {
+			http.Error(w, `{"error":{"code":"CTX_FAIL","message":"context query failed"}}`, http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	model := NewContextModel(client)
+	cmd := model.loadContextList()
+	require.NotNil(t, cmd)
+
+	msg := cmd()
+	errOut, ok := msg.(errMsg)
+	require.True(t, ok)
+	assert.ErrorContains(t, errOut.err, "CTX_FAIL")
+}
+
 func TestContextRenderContextPreviewWidthAndURLFallbackBranches(t *testing.T) {
 	model := NewContextModel(nil)
 	assert.Equal(t, "", model.renderContextPreview(api.Context{}, 0))
