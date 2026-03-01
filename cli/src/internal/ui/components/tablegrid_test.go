@@ -155,3 +155,21 @@ func TestRenderGridRuleAndCellFallbackBranches(t *testing.T) {
 	// no marker branch in highlighter
 	assert.Equal(t, "plain text", highlightSelectionMarkers("plain text"))
 }
+
+// TestFitGridColumnsExpandAndTinyWidthBranches covers remaining width-fit branches.
+func TestFitGridColumnsExpandAndTinyWidthBranches(t *testing.T) {
+	cols := []TableColumn{
+		{Header: "Name", Width: 8, Align: lipgloss.Left},
+		{Header: "Type", Width: 5, Align: lipgloss.Left},
+	}
+
+	// sep="" exercises sep width fallback and positive delta expansion.
+	fitted := fitGridColumns(cols, "", 40)
+	assert.Greater(t, fitted[0].Width+fitted[1].Width, cols[0].Width+cols[1].Width)
+	assert.GreaterOrEqual(t, fitted[0].Width, fitted[1].Width)
+
+	// Tiny width forces contentWidth<len(columns) fallback branch.
+	tiny := fitGridColumns(cols, "|", 1)
+	assert.GreaterOrEqual(t, tiny[0].Width, 1)
+	assert.GreaterOrEqual(t, tiny[1].Width, 1)
+}
