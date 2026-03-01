@@ -249,3 +249,45 @@ func TestNormalizeAPIErrorMatrix(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeAPIErrorFallbacks(t *testing.T) {
+	assert.Equal(t, "", normalizeAPIError(401, ""))
+	assert.Equal(t, "raw-error", normalizeAPIError(500, "raw-error"))
+	assert.Equal(t, "INVALID_API_KEY: invalid api key", normalizeAPIError(401, "FORBIDDEN"))
+}
+
+func TestParseErrorCodeAndAuthDetailMatrix(t *testing.T) {
+	code, msg := parseErrorCode("INVALID_API_KEY: token expired")
+	assert.Equal(t, "INVALID_API_KEY", code)
+	assert.Equal(t, "token expired", msg)
+
+	code, msg = parseErrorCode("HTTP 500: server exploded")
+	assert.Equal(t, "", code)
+	assert.Equal(t, "HTTP 500: server exploded", msg)
+
+	code, msg = parseErrorCode("bad-code: nope")
+	assert.Equal(t, "", code)
+	assert.Equal(t, "bad-code: nope", msg)
+
+	code, msg = parseErrorCode("lowercase: nope")
+	assert.Equal(t, "", code)
+	assert.Equal(t, "lowercase: nope", msg)
+
+	assert.Equal(t, "invalid api key", normalizedAuthDetail("HTTP 401: Unauthorized"))
+	assert.Equal(t, "invalid api key", normalizedAuthDetail("FORBIDDEN"))
+	assert.Equal(t, "token revoked", normalizedAuthDetail("INVALID_API_KEY: token revoked"))
+}
+
+func TestShouldNormalizeInvalidAPIKeyMatrix(t *testing.T) {
+	assert.True(t, shouldNormalizeInvalidAPIKey(401, "anything"))
+	assert.True(t, shouldNormalizeInvalidAPIKey(403, "missing or invalid authorization"))
+	assert.True(t, shouldNormalizeInvalidAPIKey(403, "invalid api key"))
+	assert.False(t, shouldNormalizeInvalidAPIKey(403, "admin scope required"))
+	assert.False(t, shouldNormalizeInvalidAPIKey(500, "internal server error"))
+}
+
+func TestDecodeListErrorPath(t *testing.T) {
+	_, err := decodeList[map[string]any]([]byte("{bad-json"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decode response")
+}
