@@ -210,6 +210,74 @@ func TestProtocolsTagAndApplyInputHelpers(t *testing.T) {
 	assert.Equal(t, []string{"job"}, updated.editApplies)
 }
 
+func TestProtocolsCommitTagEmptyAndNormalizeBranches(t *testing.T) {
+	model := NewProtocolsModel(nil)
+
+	model.addTagBuf = "   "
+	model.commitTag(true)
+	assert.Empty(t, model.addTags)
+	assert.Equal(t, "   ", model.addTagBuf)
+
+	model.addTagBuf = "#"
+	model.commitTag(true)
+	assert.Empty(t, model.addTags)
+	assert.Equal(t, "", model.addTagBuf)
+
+	model.editTagBuf = "  Mixed Case Tag  "
+	model.commitTag(false)
+	assert.Equal(t, []string{"mixed-case-tag"}, model.editTags)
+	assert.Equal(t, "", model.editTagBuf)
+
+	model.editTagBuf = "#"
+	model.commitTag(false)
+	assert.Equal(t, []string{"mixed-case-tag"}, model.editTags)
+	assert.Equal(t, "", model.editTagBuf)
+}
+
+func TestProtocolsHandleEditKeysAdditionalBranches(t *testing.T) {
+	content := "hello"
+	model := NewProtocolsModel(nil)
+	model.detail = &api.Protocol{ID: "proto-1", Name: "p1", Title: "Protocol", Content: &content, Status: "active"}
+	model.startEdit()
+	model.view = protocolsViewEdit
+
+	model.editSaving = true
+	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, model, updated)
+
+	model.editSaving = false
+	model.editMeta.Active = true
+	updated, cmd = model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	require.Nil(t, cmd)
+	assert.True(t, updated.editMeta.Active)
+
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	require.Nil(t, cmd)
+	assert.False(t, updated.editMeta.Active)
+
+	updated.editFocus = protoEditFieldStatus
+	updated.editStatusIdx = 0
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	require.Nil(t, cmd)
+	assert.Equal(t, len(protocolStatusOptions)-1, updated.editStatusIdx)
+
+	updated.editFocus = protoEditFieldTitle
+	updated.editFields[protoEditFieldTitle].value = ""
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, "a", updated.editFields[protoEditFieldTitle].value)
+
+	updated.editFields[protoEditFieldTitle].value = ""
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	require.Nil(t, cmd)
+	assert.Equal(t, "", updated.editFields[protoEditFieldTitle].value)
+
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	require.NotNil(t, cmd)
+	assert.True(t, updated.editSaving)
+}
+
 func TestProtocolsSaveAddValidationAndMetadataError(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	updated, cmd := model.saveAdd()
