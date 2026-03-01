@@ -49,3 +49,23 @@ func TestConfirmPreviewDialogIncludesSummaryAndChanges(t *testing.T) {
 	assert.Equal(t, 1, strings.Count(clean, "╭"))
 	assert.Equal(t, 1, strings.Count(clean, "╮"))
 }
+
+func TestRenderSummaryRowsBranchMatrix(t *testing.T) {
+	assert.Equal(t, "", renderSummaryRows(nil, 80))
+
+	rows := []TableRow{
+		{Label: strings.Repeat("label-", 8), Value: strings.Repeat("value-", 8)},
+		{Label: "short", Value: "ok"},
+	}
+
+	wide := renderSummaryRows(rows, 80)
+	wideClean := SanitizeText(wide)
+	assert.Contains(t, wideClean, "label-label")
+	assert.Contains(t, wideClean, "short")
+
+	tight := renderSummaryRows(rows, 10)
+	tightClean := SanitizeText(tight)
+	assert.Contains(t, tightClean, "labe")
+	assert.Contains(t, tightClean, "ok")
+	assert.NotContains(t, tightClean, "label-label-label-label-label-label-label-label-")
+}

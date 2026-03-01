@@ -35,6 +35,15 @@ func TestPadRightReturnsInputWhenAlreadyWideEnough(t *testing.T) {
 	assert.Equal(t, "abcd", padRight("abcd", 4))
 }
 
+func TestPadRightPadsUsingDisplayWidth(t *testing.T) {
+	assert.Equal(t, "ab  ", padRight("ab", 4))
+
+	styled := lipgloss.NewStyle().Bold(true).Render("ab")
+	padded := padRight(styled, 4)
+	assert.Equal(t, 4, lipgloss.Width(padded))
+	assert.Contains(t, SanitizeText(padded), "ab")
+}
+
 func TestTableSupportsUntitledValueColorRows(t *testing.T) {
 	out := Table("", []TableRow{
 		{Label: "status", Value: "ok", ValueColor: "#3f866b"},
