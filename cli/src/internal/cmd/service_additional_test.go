@@ -217,7 +217,7 @@ func TestRunStartCmdDetectsMultiAPIConflictMessage(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	serverDir := createFakeServerDirWithUvicornScript(
 		t,
-		"#!/bin/sh\necho 'ERROR: [Errno 98] Address already in use' >&2\nexit 1\n",
+		"#!/bin/sh\necho 'ERROR: [Errno 98] Address already in use' >&2\nsleep 2\n",
 	)
 	t.Setenv("NEBULA_SERVER_DIR", serverDir)
 	setWaitForAPIProbe(t, func() (string, error) { return "", assert.AnError })
@@ -239,7 +239,7 @@ func TestRunStartCmdDetectsMultiAPIConflictMessageAfterDelayedLog(t *testing.T) 
 	t.Setenv("HOME", t.TempDir())
 	serverDir := createFakeServerDirWithUvicornScript(
 		t,
-		"#!/bin/sh\nsleep 0.35\necho 'ERROR: [Errno 98] Address already in use' >&2\nexit 1\n",
+		"#!/bin/sh\nsleep 0.35\necho 'ERROR: [Errno 98] Address already in use' >&2\nsleep 2\n",
 	)
 	t.Setenv("NEBULA_SERVER_DIR", serverDir)
 	setWaitForAPIProbe(t, func() (string, error) { return "", assert.AnError })
