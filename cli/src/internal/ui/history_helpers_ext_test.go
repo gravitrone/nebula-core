@@ -160,3 +160,24 @@ func TestHumanizeAuditFieldMatrix(t *testing.T) {
 	assert.Equal(t, "ID", humanizeAuditField("id"))
 	assert.Equal(t, "Weird Field", humanizeAuditField("___weird_field___"))
 }
+
+func TestFormatScopeLineMatrix(t *testing.T) {
+	desc := "public-safe"
+	scope := api.AuditScope{
+		Name:        "public",
+		AgentCount:  2,
+		EntityCount: 3,
+		ContextCount: 1,
+		Description: &desc,
+	}
+	line := formatScopeLine(scope)
+	assert.Contains(t, line, "public")
+	assert.Contains(t, line, "agents:2")
+	assert.Contains(t, line, "entities:3")
+	assert.Contains(t, line, "context:1")
+	assert.Contains(t, line, "public-safe")
+
+	scope.Description = nil
+	line = formatScopeLine(scope)
+	assert.NotContains(t, line, "public-safe")
+}

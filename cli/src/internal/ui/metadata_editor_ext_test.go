@@ -229,3 +229,26 @@ func TestMetadataEditorInspectValueAndLinesGuardBranches(t *testing.T) {
 	assert.NotEmpty(t, lines)
 	assert.Contains(t, lines[len(lines)-1], "None")
 }
+
+func TestMetadataEditorRenderInspectModeBranchMatrix(t *testing.T) {
+	var ed MetadataEditor
+	ed.Open(map[string]any{
+		"note": "line 01\nline 02\nline 03\nline 04\nline 05\nline 06\nline 07\nline 08\nline 09\nline 10\nline 11\nline 12\nline 13\nline 14\nline 15",
+	})
+	ed.inspectMode = true
+	ed.inspectRowIdx = 0
+	ed.inspectOffset = 2
+	ed.notice = "copied"
+
+	out := components.SanitizeText(ed.Render(90))
+	assert.Contains(t, out, "Metadata Value")
+	assert.Contains(t, out, "... ↑ more")
+	assert.Contains(t, out, "... ↓ more")
+	assert.Contains(t, out, "Lines")
+	assert.Contains(t, out, "copied")
+	assert.Contains(t, out, "enter copy value")
+
+	ed.inspectRowIdx = 99
+	out = components.SanitizeText(ed.Render(90))
+	assert.Contains(t, out, "No value")
+}
