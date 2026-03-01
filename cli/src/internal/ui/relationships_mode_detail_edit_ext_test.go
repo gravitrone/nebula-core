@@ -1,11 +1,14 @@
 package ui
 
 import (
+	"encoding/json"
+	"net/http"
 	"testing"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
+	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -290,4 +293,152 @@ func TestRelationshipsRenderModeLineStateVariants(t *testing.T) {
 	listFocusLine := model.renderModeLine()
 	assert.Contains(t, listFocusLine, "Add")
 	assert.Contains(t, listFocusLine, "Library")
+}
+
+func TestRelationshipsHandleConfirmKeysBranchMatrix(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+	model.view = relsViewConfirm
+	model.detail = &api.Relationship{ID: "rel-1"}
+
+	updated, cmd := model.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, relsViewDetail, updated.view)
+
+	updated.view = relsViewConfirm
+	updated, cmd = updated.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	require.Nil(t, cmd)
+	assert.Equal(t, relsViewDetail, updated.view)
+
+	_, okClient := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPatch && r.URL.Path == "/api/relationships/rel-1" {
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"id":                "rel-1",
+					"source_id":         "ent-1",
+					"target_id":         "ent-2",
+					"relationship_type": "uses",
+					"status":            "inactive",
+					"created_at":        time.Now(),
+				},
+			}))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+	model = NewRelationshipsModel(okClient)
+	model.view = relsViewConfirm
+	model.detail = &api.Relationship{ID: "rel-1"}
+
+	updated, cmd = model.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	require.NotNil(t, cmd)
+	msg := cmd()
+	_, ok := msg.(relTabSavedMsg)
+	require.True(t, ok)
+	assert.Equal(t, relsViewDetail, updated.view)
+
+	_, errClient := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"error":{"code":"PATCH_FAILED","message":"patch failed"}}`, http.StatusInternalServerError)
+	})
+	errModel := NewRelationshipsModel(errClient)
+	errModel.view = relsViewConfirm
+	errModel.detail = &api.Relationship{ID: "rel-1"}
+
+	_, cmd = errModel.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	require.NotNil(t, cmd)
+	errOut, ok := cmd().(errMsg)
+	require.True(t, ok)
+	assert.ErrorContains(t, errOut.err, "PATCH_FAILED")
+}
+
+func TestRelationshipsRenderConfirmBranches(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+	out := components.SanitizeText(model.renderConfirm())
+	assert.Contains(t, out, "Archive this relationship")
+
+	model.width = 90
+	model.detail = &api.Relationship{
+		ID:         "rel-1",
+		Type:       "depends-on",
+		Status:     "",
+		SourceType: "entity",
+		SourceID:   "ent-1",
+		TargetType: "context",
+		TargetID:   "ctx-1",
+	}
+
+	out = components.SanitizeText(model.renderConfirm())
+	assert.Contains(t, out, "Archive Relationship")
+	assert.Contains(t, out, "depends-on")
+	assert.Contains(t, out, "unknown entity")
+	assert.Contains(t, out, "unknown context")
+	assert.Contains(t, out, "inactive")
+}
+
+func TestRelationshipsLoadRelationshipNamesMatrix(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+	assert.Nil(t, model.loadRelationshipNames(nil))
+
+	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/entities/ent-2":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"id":   "ent-2",
+					"name": "Entity Two",
+				},
+			}))
+			return
+		case "/api/context/ctx-1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"id":    "ctx-1",
+					"title": "Context One",
+				},
+			}))
+			return
+		case "/api/jobs/job-1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"id":    "job-1",
+					"title": "Job One",
+				},
+			}))
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	model = NewRelationshipsModel(client)
+	cmd := model.loadRelationshipNames([]api.Relationship{
+		{
+			SourceID:   "ent-1",
+			SourceType: "entity",
+			SourceName: "Entity One",
+			TargetID:   "ctx-1",
+			TargetType: "context",
+		},
+		{
+			SourceID:   "job-1",
+			SourceType: "job",
+			TargetID:   "ent-2",
+			TargetType: "entity",
+		},
+		{
+			SourceID:   "file-1",
+			SourceType: "file",
+			TargetID:   "file-2",
+			TargetType: "file",
+		},
+	})
+	require.NotNil(t, cmd)
+	msg := cmd()
+	namesMsg, ok := msg.(relTabNamesLoadedMsg)
+	require.True(t, ok)
+	assert.Equal(t, "Entity One", namesMsg.names["ent-1"])
+	assert.Equal(t, "Context One", namesMsg.names["ctx-1"])
+	assert.Equal(t, "Job One", namesMsg.names["job-1"])
+	assert.Equal(t, "Entity Two", namesMsg.names["ent-2"])
+	assert.NotContains(t, namesMsg.names, "file-1")
+	assert.NotContains(t, namesMsg.names, "file-2")
 }
