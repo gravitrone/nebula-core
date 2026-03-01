@@ -119,6 +119,51 @@ func TestHistoryViewRendersFilterDialogAndErrorBox(t *testing.T) {
 	assert.Contains(t, out, "boom")
 }
 
+func TestHistoryViewLoadingAndRevertBranches(t *testing.T) {
+	now := time.Now()
+	model := NewHistoryModel(nil)
+	model.width = 82
+
+	model.loading = true
+	model.view = historyViewList
+	out := components.SanitizeText(model.View())
+	assert.Contains(t, out, "Loading history...")
+
+	model.view = historyViewScopes
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Loading scopes...")
+
+	model.view = historyViewActors
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Loading actors...")
+
+	model.loading = false
+	model.view = historyViewDetail
+	model.detail = &api.AuditEntry{
+		ID:        "audit-1",
+		TableName: "entities",
+		RecordID:  "ent-1",
+		Action:    "update",
+		OldData:   api.JSONMap{"status": "inactive"},
+		NewData:   api.JSONMap{"status": "active"},
+		ChangedAt: now,
+	}
+	model.reverting = true
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Revert Entity")
+	assert.Contains(t, out, "Audit Entry")
+
+	model.reverting = false
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Audit Entry")
+	assert.Contains(t, out, "Changes")
+
+	// Detail view without selected entry falls back to list rendering branch.
+	model.detail = nil
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "No audit entries yet.")
+}
+
 // TestHistoryDetailMetadataDiffRendersStructuredRows handles test history detail metadata diff renders structured rows.
 func TestHistoryDetailMetadataDiffRendersStructuredRows(t *testing.T) {
 	now := time.Now()

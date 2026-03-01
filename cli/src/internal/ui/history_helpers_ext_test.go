@@ -92,17 +92,34 @@ func TestFormatAuditFiltersMatrix(t *testing.T) {
 func TestFormatAuditValueMatrix(t *testing.T) {
 	assert.Equal(t, "None", formatAuditValue(nil))
 	assert.Equal(t, "None", formatAuditValue("  "))
+	assert.Equal(t, "None", formatAuditValue("<nil>"))
+	assert.Equal(t, "None", formatAuditValue("-"))
+	assert.Equal(t, "None", formatAuditValue("--"))
 
 	structured := formatAuditValue(`{"owner":"alxx"}`)
 	assert.Contains(t, structured, "owner")
 	assert.Contains(t, structured, "alxx")
 
+	asMap := formatAuditValue(map[string]any{})
+	assert.Equal(t, "None", asMap)
+
 	timestamp := time.Date(2026, 2, 26, 7, 8, 9, 0, time.UTC)
 	assert.Contains(t, formatAuditValue(timestamp), "2026")
+
+	asEmptyList := formatAuditValue([]any{})
+	assert.Equal(t, "None", asEmptyList)
 
 	asList := formatAuditValue([]any{"a", "b"})
 	assert.Contains(t, asList, "a")
 	assert.Contains(t, asList, "b")
+
+	// Non-JSON string branch should still produce sanitized text.
+	asRaw := formatAuditValue("map[owner:alxx status:active]")
+	assert.Contains(t, strings.ToLower(asRaw), "owner")
+
+	// Marshal fallback branch.
+	asFallback := formatAuditValue(func() {})
+	assert.NotEqual(t, "None", asFallback)
 }
 
 func TestBuildAuditDiffRowsUsesUnionWhenChangedFieldsMissing(t *testing.T) {
