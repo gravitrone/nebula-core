@@ -442,3 +442,142 @@ func TestRelationshipsLoadRelationshipNamesMatrix(t *testing.T) {
 	assert.NotContains(t, namesMsg.names, "file-1")
 	assert.NotContains(t, namesMsg.names, "file-2")
 }
+
+func TestRelationshipsLoadRelationshipsSuccessAndError(t *testing.T) {
+	_, okClient := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/relationships", r.URL.Path)
+		assert.Equal(t, "active", r.URL.Query().Get("status_category"))
+		assert.Equal(t, "50", r.URL.Query().Get("limit"))
+		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{
+					"id":                "rel-1",
+					"source_type":       "entity",
+					"source_id":         "ent-1",
+					"target_type":       "entity",
+					"target_id":         "ent-2",
+					"relationship_type": "depends-on",
+					"status":            "active",
+					"created_at":        time.Now(),
+				},
+			},
+		}))
+	})
+
+	model := NewRelationshipsModel(okClient)
+	cmd := model.loadRelationships()
+	require.NotNil(t, cmd)
+	msg := cmd()
+	loaded, ok := msg.(relTabLoadedMsg)
+	require.True(t, ok)
+	require.Len(t, loaded.items, 1)
+	assert.Equal(t, "rel-1", loaded.items[0].ID)
+
+	_, errClient := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"error":{"code":"REL_FAILED","message":"relationships failed"}}`, http.StatusInternalServerError)
+	})
+	errModel := NewRelationshipsModel(errClient)
+	cmd = errModel.loadRelationships()
+	require.NotNil(t, cmd)
+	errOut, ok := cmd().(errMsg)
+	require.True(t, ok)
+	assert.ErrorContains(t, errOut.err, "REL_FAILED")
+}
+
+func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+	model.view = relsViewList
+	model.list.SetItems([]string{"a", "b"})
+	model.items = []api.Relationship{
+		{ID: "rel-1"},
+		{ID: "rel-2"},
+	}
+
+	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	require.Nil(t, cmd)
+	assert.Equal(t, 1, updated.list.Selected())
+
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.Equal(t, 0, updated.list.Selected())
+
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.True(t, updated.modeFocus)
+
+	updated.modeFocus = false
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	require.Nil(t, cmd)
+	assert.Equal(t, relsViewDetail, updated.view)
+	require.NotNil(t, updated.detail)
+
+	updated.view = relsViewList
+	updated.detail = nil
+	updated.list.Cursor = 99
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+	require.Nil(t, cmd)
+	assert.Nil(t, updated.detail)
+
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	require.Nil(t, cmd)
+	assert.True(t, updated.filtering)
+
+	updated.filtering = false
+	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
+	assert.Equal(t, "", updated.createQuery)
+}
+
+func TestRelationshipsViewBranchMatrix(t *testing.T) {
+	now := time.Now().UTC()
+	model := NewRelationshipsModel(nil)
+	model.width = 90
+	model.loading = false
+	model.items = []api.Relationship{
+		{
+			ID:         "rel-1",
+			Type:       "depends-on",
+			Status:     "active",
+			SourceType: "entity",
+			SourceID:   "ent-1",
+			TargetType: "entity",
+			TargetID:   "ent-2",
+			CreatedAt:  now,
+		},
+	}
+	model.list.SetItems([]string{"depends-on · unknown entity -> unknown entity"})
+
+	model.editMeta.Active = true
+	out := components.SanitizeText(model.View())
+	assert.Contains(t, out, "Metadata")
+
+	model.editMeta.Active = false
+	model.filtering = true
+	model.view = relsViewList
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Filter Relationships")
+
+	model.filtering = false
+	model.view = relsViewList
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Library")
+	assert.Contains(t, out, "Relationships")
+
+	model.view = relsViewConfirm
+	model.detail = &api.Relationship{
+		ID:         "rel-1",
+		Type:       "depends-on",
+		Status:     "active",
+		SourceType: "entity",
+		SourceID:   "ent-1",
+		TargetType: "entity",
+		TargetID:   "ent-2",
+	}
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Archive Relationship")
+
+	model.view = relsViewCreateSourceSearch
+	out = components.SanitizeText(model.View())
+	assert.Contains(t, out, "Source Node")
+}

@@ -607,3 +607,66 @@ func TestRelationshipsSearchCreateNodesErrorBranches(t *testing.T) {
 		assert.True(t, ok)
 	})
 }
+
+func TestRelationshipsUpdateCreateSearchBranchMatrix(t *testing.T) {
+	model := NewRelationshipsModel(nil)
+
+	model.createQuery = "   "
+	model.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
+	model.createList.SetItems([]string{"ent-1"})
+	model.createLoading = true
+	cmd := model.updateCreateSearch()
+	assert.Nil(t, cmd)
+	assert.False(t, model.createLoading)
+	assert.Nil(t, model.createResults)
+	assert.Empty(t, model.createList.Items)
+
+	model.entityCache = []api.Entity{{ID: "ent-1", Name: "alpha", Type: "person", Status: "active"}}
+	model.contextCache = []api.Context{{ID: "ctx-1", Title: "alpha context", SourceType: "note", Status: "active"}}
+	model.jobCache = []api.Job{{ID: "job-1", Title: "alpha job", Status: "active"}}
+	model.createQuery = "alpha"
+	cmd = model.updateCreateSearch()
+	assert.Nil(t, cmd)
+	assert.False(t, model.createLoading)
+	require.NotEmpty(t, model.createResults)
+	require.NotEmpty(t, model.createList.Items)
+
+	model = NewRelationshipsModel(nil)
+	model.createQuery = "alpha"
+	cmd = model.updateCreateSearch()
+	require.NotNil(t, cmd)
+	assert.True(t, model.createLoading)
+}
+
+func TestRelationshipsUpdateCreateSearchRemoteCmdResult(t *testing.T) {
+	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/entities":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "ent-1", "name": "alpha", "type": "person", "status": "active"},
+				},
+			}))
+			return
+		case "/api/context":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
+			return
+		case "/api/jobs":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	model := NewRelationshipsModel(client)
+	model.createQuery = "alpha"
+	cmd := model.updateCreateSearch()
+	require.NotNil(t, cmd)
+	msg := cmd()
+	results, ok := msg.(relTabResultsMsg)
+	require.True(t, ok)
+	assert.Equal(t, "alpha", results.query)
+	require.Len(t, results.items, 1)
+	assert.Equal(t, "ent-1", results.items[0].ID)
+}
