@@ -68,12 +68,15 @@ func TestApprovalRequestedByAndWhoLabelMatrix(t *testing.T) {
 	assert.Equal(t, "alxx", approvalWhoLabel(approval))
 
 	approval = api.Approval{AgentName: "agent-bot"}
+	assert.Equal(t, "agent-bot", approvalRequestedBy(approval))
 	assert.Equal(t, "agent-bot", approvalWhoLabel(approval))
 
 	approval = api.Approval{RequestedBy: "entity-123456789"}
+	assert.Equal(t, shortID("entity-123456789"), approvalRequestedBy(approval))
 	assert.Equal(t, shortID("entity-123456789"), approvalWhoLabel(approval))
 
 	approval = api.Approval{}
+	assert.Equal(t, "None", approvalRequestedBy(approval))
 	assert.Equal(t, "system", approvalWhoLabel(approval))
 }
 
