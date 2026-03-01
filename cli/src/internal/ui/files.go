@@ -876,7 +876,7 @@ func (m FilesModel) renderAddTags(focused bool) string {
 
 // --- Edit View ---
 
-func (m FilesModel) startEdit() {
+func (m *FilesModel) startEdit() {
 	if m.detail == nil {
 		return
 	}
