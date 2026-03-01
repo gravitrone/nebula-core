@@ -296,6 +296,116 @@ func TestRelationshipsLoadCachesNilAndErrorPaths(t *testing.T) {
 	assert.True(t, ok)
 }
 
+func TestRelationshipsLoadCachesSuccessPaths(t *testing.T) {
+	_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/context":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "ctx-1", "title": "runbook", "source_type": "note", "status": "active"},
+				},
+			}))
+		case "/api/jobs":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "job-1", "title": "ship", "status": "planning", "priority": "high"},
+				},
+			}))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+	model := NewRelationshipsModel(client)
+
+	ctxCmd := model.loadContextCache()
+	require.NotNil(t, ctxCmd)
+	ctxMsg := ctxCmd()
+	ctxLoaded, ok := ctxMsg.(relTabContextCacheLoadedMsg)
+	require.True(t, ok)
+	require.Len(t, ctxLoaded.items, 1)
+	assert.Equal(t, "ctx-1", ctxLoaded.items[0].ID)
+	model, _ = model.Update(ctxMsg)
+	require.Len(t, model.contextCache, 1)
+
+	jobCmd := model.loadJobCache()
+	require.NotNil(t, jobCmd)
+	jobMsg := jobCmd()
+	jobLoaded, ok := jobMsg.(relTabJobCacheLoadedMsg)
+	require.True(t, ok)
+	require.Len(t, jobLoaded.items, 1)
+	assert.Equal(t, "job-1", jobLoaded.items[0].ID)
+	model, _ = model.Update(jobMsg)
+	require.Len(t, model.jobCache, 1)
+}
+
+func TestUniqueRelationshipTypesAndCandidateCombinerBranches(t *testing.T) {
+	types := uniqueRelationshipTypes([]api.Relationship{
+		{Type: " Uses "},
+		{Type: "uses"},
+		{Type: "BLOCKS"},
+		{Type: "  "},
+		{Type: ""},
+	})
+	assert.Equal(t, []string{"uses", "blocks"}, types)
+
+	priority := " high "
+	candidates := combineCreateCandidates(
+		[]api.Entity{
+			{ID: "ent-1", Name: " ", Type: " ", Status: " ", Tags: []string{"t1"}, Metadata: api.JSONMap{"ek": "ev"}},
+			{ID: "ent-2", Name: "alpha", Type: "person", Status: "active"},
+		},
+		[]api.Context{
+			{ID: "ctx-1", Title: " ", Name: "fallback", SourceType: " ", Status: " ", Tags: []string{"ct"}, Metadata: api.JSONMap{"ck": "cv"}},
+			{ID: "ctx-2", Title: "", Name: "", SourceType: "doc", Status: "archived"},
+		},
+		[]api.Job{
+			{ID: "job-1", Title: " ", Priority: &priority, Status: " ", Metadata: api.JSONMap{"jk": "jv"}},
+			{ID: "job-2", Title: "deliver", Status: "running"},
+		},
+	)
+	require.Len(t, candidates, 6)
+	assert.Equal(t, relationshipCreateCandidate{
+		ID:       "ent-1",
+		NodeType: "entity",
+		Name:     "entity",
+		Kind:     "entity/entity",
+		Status:   "-",
+		Tags:     []string{"t1"},
+		Metadata: map[string]any{"ek": "ev"},
+	}, candidates[0])
+	assert.Equal(t, "entity/person", candidates[1].Kind)
+	assert.Equal(t, "fallback", candidates[2].Name)
+	assert.Equal(t, "context/note", candidates[2].Kind)
+	assert.Equal(t, "context", candidates[3].Name)
+	assert.Equal(t, "context/doc", candidates[3].Kind)
+	assert.Equal(t, relationshipCreateCandidate{
+		ID:       "job-1",
+		NodeType: "job",
+		Name:     "job",
+		Kind:     "job/high",
+		Status:   "-",
+		Metadata: map[string]any{"jk": "jv"},
+	}, candidates[4])
+	assert.Equal(t, "job", candidates[5].Kind)
+}
+
+func TestFilterCreateCandidatesByQueryCopyAndNoMatch(t *testing.T) {
+	base := []relationshipCreateCandidate{
+		{Name: "Alpha", Kind: "entity/person", Status: "active", NodeType: "entity", Tags: []string{"blue"}},
+	}
+	copyFiltered := filterCreateCandidatesByQuery(base, "")
+	require.Len(t, copyFiltered, 1)
+	copyFiltered[0].Name = "changed"
+	assert.Equal(t, "Alpha", base[0].Name)
+
+	tagMatch := filterCreateCandidatesByQuery(base, "blue")
+	require.Len(t, tagMatch, 1)
+	assert.Equal(t, "Alpha", tagMatch[0].Name)
+
+	none := filterCreateCandidatesByQuery(base, "missing")
+	assert.Empty(t, none)
+}
+
 func TestRelationshipsSearchCreateNodesErrorBranches(t *testing.T) {
 	t.Run("entity query fails", func(t *testing.T) {
 		_, client := relTestClient(t, func(w http.ResponseWriter, r *http.Request) {

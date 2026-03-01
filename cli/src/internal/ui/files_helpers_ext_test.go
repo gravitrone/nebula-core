@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -196,4 +197,39 @@ func TestRenderFilePreviewAndLineFallbacks(t *testing.T) {
 	line := formatFileLine(api.File{Filename: "Alpha.txt", Status: "active", CreatedAt: now, UpdatedAt: now})
 	assert.Contains(t, line, "Alpha.txt")
 	assert.Contains(t, line, "active")
+}
+
+func TestFormatFileLineBranchMatrix(t *testing.T) {
+	mime := "text/plain"
+	size := int64(2048)
+	line := formatFileLine(api.File{
+		Filename: "Alpha.txt",
+		MimeType: &mime,
+		SizeBytes: &size,
+		Status:   "active",
+		Metadata: api.JSONMap{"group": map[string]any{"field": "value"}},
+	})
+	assert.Contains(t, line, "Alpha.txt")
+	assert.Contains(t, line, "text/plain")
+	assert.Contains(t, line, "2.0 KB")
+	assert.Contains(t, line, "active")
+	assert.Contains(t, strings.ToLower(line), "field")
+	assert.Contains(t, strings.ToLower(line), "value")
+
+	emptyMime := ""
+	line = formatFileLine(api.File{
+		Filename: "",
+		MimeType: &emptyMime,
+		Status:   "",
+		Metadata: api.JSONMap{},
+	})
+	assert.Equal(t, "file", line)
+
+	line = formatFileLine(api.File{
+		Filename: "Name",
+		Metadata: api.JSONMap{"k": "v"},
+	})
+	assert.Contains(t, line, "Name")
+	assert.Contains(t, strings.ToLower(line), "v")
+	assert.NotContains(t, line, " ·  · ")
 }
