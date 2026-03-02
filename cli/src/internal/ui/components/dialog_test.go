@@ -110,3 +110,37 @@ func TestRenderDiffValuePlaceholderAndMultilineBranches(t *testing.T) {
 	assert.Contains(t, multi, "+ line1")
 	assert.Contains(t, multi, "\n    line2")
 }
+
+func TestRenderSummaryRowsWidthFallbackAndTinyLabelBranch(t *testing.T) {
+	rows := []TableRow{
+		{Label: "id", Value: "alpha"},
+		{Label: "ok", Value: "beta"},
+	}
+
+	// width=0 forces BoxContentWidth fallback path and keeps labels <4 chars.
+	out := renderSummaryRows(rows, 0)
+	clean := SanitizeText(out)
+
+	assert.Contains(t, clean, "id")
+	assert.Contains(t, clean, "alpha")
+	assert.Contains(t, clean, "ok")
+	assert.Contains(t, clean, "beta")
+}
+
+func TestRenderDiffRowsMinimumValueWidthBranch(t *testing.T) {
+	rows := []DiffRow{
+		{
+			Label: "status",
+			From:  "active with a long suffix",
+			To:    "archived with a long suffix",
+		},
+	}
+
+	// width=10 => content width is positive but tiny, so valueWidth clamps to 8.
+	out := renderDiffRows(rows, 10)
+	clean := SanitizeText(out)
+
+	assert.Contains(t, clean, "status")
+	assert.Contains(t, clean, "- active")
+	assert.Contains(t, clean, "+ archive")
+}

@@ -173,3 +173,16 @@ func TestFitGridColumnsExpandAndTinyWidthBranches(t *testing.T) {
 	assert.GreaterOrEqual(t, tiny[0].Width, 1)
 	assert.GreaterOrEqual(t, tiny[1].Width, 1)
 }
+
+func TestFitGridColumnsDeficitWithEmptyHeaderMinFloor(t *testing.T) {
+	cols := []TableColumn{
+		{Header: "", Width: 3, Align: lipgloss.Left},
+		{Header: "Type", Width: 3, Align: lipgloss.Left},
+	}
+
+	// Tight width forces deficit path and exercises headerMin<2 floor branch.
+	fitted := fitGridColumns(cols, "|", 4)
+	assert.Len(t, fitted, 2)
+	assert.GreaterOrEqual(t, fitted[0].Width, 2)
+	assert.GreaterOrEqual(t, fitted[1].Width, 2)
+}
