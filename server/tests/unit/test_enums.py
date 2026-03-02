@@ -114,6 +114,12 @@ class TestRequireStatus:
         result = require_status("archived", mock_enums)
         assert result == mock_enums.statuses.name_to_id["completed"]
 
+    def test_archived_alias_is_case_insensitive(self, mock_enums):
+        """Archived alias mapping should work for uppercase variants."""
+
+        result = require_status("ARCHIVED", mock_enums)
+        assert result in mock_enums.statuses.id_to_name
+
 
 # --- require_entity_type ---
 

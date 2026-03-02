@@ -495,6 +495,12 @@ class TestModelSanitizerHelpers:
         with pytest.raises(ValueError, match="Metadata key 'prototype' is not allowed"):
             validate_metadata_payload({"items": [{"prototype": "bad"}]})
 
+    def test_validate_metadata_payload_rejects_top_level_prototype_key(self):
+        """Top-level banned keys should be rejected with a clear error."""
+
+        with pytest.raises(ValueError, match="Metadata key 'prototype' is not allowed"):
+            validate_metadata_payload({"prototype": "bad"})
+
     def test_private_sanitizers_return_none_for_none_inputs(self):
         """Private sanitizer helpers should preserve None values."""
 

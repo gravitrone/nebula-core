@@ -219,3 +219,23 @@ func TestUpdateQuitConfirmCancelsOnNoAndBack(t *testing.T) {
 	assert.False(t, updated.quitConfirm)
 	assert.Nil(t, cmd)
 }
+
+func TestShouldShowMultiAPIRecoveryHintMatrix(t *testing.T) {
+	assert.True(t, shouldShowMultiAPIRecoveryHint("MULTIPLE_API_INSTANCES_DETECTED", "", ""))
+	assert.True(t, shouldShowMultiAPIRecoveryHint("", "address already in use", ""))
+	assert.True(t, shouldShowMultiAPIRecoveryHint("", "", "ERROR: [Errno 98] Address already in use"))
+	assert.True(t, shouldShowMultiAPIRecoveryHint("", "listen failed", "EADDRINUSE"))
+	assert.False(t, shouldShowMultiAPIRecoveryHint("", "unauthorized", "invalid api key"))
+}
+
+func TestViewAddsMultiAPIRecoveryHintForConflictPattern(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.width = 100
+	app.height = 34
+	app.err = "HTTP 500: address already in use"
+	app.lastErrCode = ""
+	app.lastErrMsg = ""
+
+	view := app.View()
+	assert.Contains(t, view, "stop duplicate API processes and restart with `nebula start`")
+}
