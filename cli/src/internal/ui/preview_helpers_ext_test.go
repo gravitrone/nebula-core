@@ -75,12 +75,22 @@ func TestRenderPreviewRowScopeVariants(t *testing.T) {
 	assert.Contains(t, clean, "Scopes:")
 	assert.Contains(t, clean, "...")
 
+	// Scope tiny-budget fallback after first badge is dropped for ellipsis fit.
+	row = renderPreviewRow("Scope", "a b", 10)
+	clean = components.SanitizeText(row)
+	assert.Contains(t, clean, "Scope:")
+	assert.Contains(t, clean, "...")
+
 	valueRow := renderPreviewRow("Status", "active", 20)
 	assert.Contains(t, components.SanitizeText(valueRow), "Status: active")
 
 	// Non-scope value clamp path with tiny width.
 	valueRow = renderPreviewRow("Status", "very-long-status-value", 3)
 	assert.Contains(t, components.SanitizeText(valueRow), "Status:")
+
+	// Prefix-pressure branch keeps minimum clamp budget of 4 chars.
+	valueRow = renderPreviewRow("VeryLongLabel", "abcdef", 4)
+	assert.Contains(t, components.SanitizeText(valueRow), "VeryLongLabel:")
 }
 
 func TestParseScopePreviewTokensAndFormatScopePreviewEdgeCases(t *testing.T) {
