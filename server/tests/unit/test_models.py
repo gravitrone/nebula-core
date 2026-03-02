@@ -460,6 +460,12 @@ class TestModelSanitizerHelpers:
         with pytest.raises(ValueError, match="Invalid ts: expected ISO8601 datetime"):
             parse_optional_datetime("not-a-timestamp", "ts")
 
+    def test_parse_optional_datetime_rejects_invalid_offset_values(self):
+        """Datetime parser should reject malformed timezone offsets."""
+
+        with pytest.raises(ValueError, match="Invalid ts: expected ISO8601 datetime"):
+            parse_optional_datetime("2026-01-01T12:00:00+25:00", "ts")
+
     def test_parse_optional_datetime_handles_iso_date_and_offset_datetime(self):
         """Datetime parser should accept date-only strings and explicit offsets."""
 
@@ -474,6 +480,12 @@ class TestModelSanitizerHelpers:
 
         assert _sanitize_source_path(" \u202e\x00 ") is None
         assert _validate_node_type(" entity\u202e ") == "entity"
+
+    def test_private_sanitizers_keep_clean_source_path_and_strip_control_tags(self):
+        """Source-path and tag sanitizers should keep clean values and drop empty tags."""
+
+        assert _sanitize_source_path(" /tmp/nebula.log ") == "/tmp/nebula.log"
+        assert _sanitize_tags(["\u202e", "alpha", ""]) == ["alpha"]
 
     def test_validate_metadata_payload_rejects_other_banned_keys(self):
         """Metadata payload should reject __proto__ and prototype keys recursively."""

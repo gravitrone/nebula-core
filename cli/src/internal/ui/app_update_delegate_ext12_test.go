@@ -187,3 +187,35 @@ func TestUpdateHelpOpenIgnoresUnrelatedKeys(t *testing.T) {
 	assert.True(t, updated.helpOpen)
 	assert.Nil(t, cmd)
 }
+
+func TestUpdateHelpOpenClosesOnQuestionAndBackKeys(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.helpOpen = true
+
+	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	updated := model.(App)
+	assert.False(t, updated.helpOpen)
+	assert.Nil(t, cmd)
+
+	updated.helpOpen = true
+	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated = model.(App)
+	assert.False(t, updated.helpOpen)
+	assert.Nil(t, cmd)
+}
+
+func TestUpdateQuitConfirmCancelsOnNoAndBack(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.quitConfirm = true
+
+	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated := model.(App)
+	assert.False(t, updated.quitConfirm)
+	assert.Nil(t, cmd)
+
+	updated.quitConfirm = true
+	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated = model.(App)
+	assert.False(t, updated.quitConfirm)
+	assert.Nil(t, cmd)
+}

@@ -84,6 +84,12 @@ class TestRequireStatus:
             "active", mock_enums
         )
 
+    def test_whitespace_only_status_raises_unknown_status(self, mock_enums):
+        """Whitespace-only status strings should fail with unknown-status error."""
+
+        with pytest.raises(ValueError, match="Unknown status"):
+            require_status("   ", mock_enums)
+
     def test_archived_alias_without_terminal_candidates_raises(self, mock_enums):
         """Archived alias should error when no terminal status exists."""
 
@@ -217,6 +223,12 @@ class TestRequireScopes:
 
         with pytest.raises(ValueError, match="Unknown scope"):
             require_scopes([" public "], mock_enums)
+
+    def test_empty_scope_value_raises_unknown_scope(self, mock_enums):
+        """Empty scope values should fail with a clear unknown-scope error."""
+
+        with pytest.raises(ValueError, match="Unknown scope"):
+            require_scopes([""], mock_enums)
 
     def test_none_scope_value_raises_unknown_scope(self, mock_enums):
         """None values should fail scope lookup with clear unknown-scope error."""

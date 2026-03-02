@@ -136,6 +136,20 @@ func TestTableGridWithActiveRowGuardBranches(t *testing.T) {
 	assert.Equal(t, "     ", TableGridWithActiveRow(nil, rows, 5, 0))
 }
 
+func TestTableGridWithActiveRowRendersHeaderAndRuleWithNoRows(t *testing.T) {
+	columns := []TableColumn{
+		{Header: "Name", Width: 12, Align: lipgloss.Left},
+		{Header: "Status", Width: 10, Align: lipgloss.Left},
+	}
+
+	table := TableGridWithActiveRow(columns, nil, 40, 0)
+	lines := strings.Split(table, "\n")
+	assert.Len(t, lines, 2)
+	for _, line := range lines {
+		assert.LessOrEqual(t, lipgloss.Width(line), 40)
+	}
+}
+
 // TestRenderGridRuleAndCellFallbackBranches covers remaining fallback paths.
 func TestRenderGridRuleAndCellFallbackBranches(t *testing.T) {
 	cols := []TableColumn{
