@@ -7,6 +7,7 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPreferredPreviewWidthAndContentWidthBounds(t *testing.T) {
@@ -21,6 +22,7 @@ func TestPreferredPreviewWidthAndContentWidthBounds(t *testing.T) {
 
 func TestRenderPreviewBoxWrapAndPadHelpers(t *testing.T) {
 	assert.Equal(t, "", renderPreviewBox("hello", 0))
+	assert.NotEmpty(t, renderPreviewBox("x", 1))
 
 	boxed := renderPreviewBox("hello", 24)
 	assert.NotEmpty(t, boxed)
@@ -37,6 +39,14 @@ func TestRenderPreviewBoxWrapAndPadHelpers(t *testing.T) {
 	assert.Len(t, lines, 2)
 	assert.Equal(t, 4, len(lines[0]))
 	assert.Equal(t, 4, len(lines[1]))
+
+	assert.Equal(t, "", padPreviewLines(nil, 4))
+	assert.Equal(t, "", padPreviewLines([]string{"abc"}, 0))
+
+	clamped := padPreviewLines([]string{"\x1b[31mabcdef\x1b[0m"}, 4)
+	clampedLines := strings.Split(clamped, "\n")
+	require.Len(t, clampedLines, 1)
+	assert.Equal(t, 4, len(clampedLines[0]))
 }
 
 func TestRenderPreviewRowScopeVariants(t *testing.T) {
@@ -53,8 +63,24 @@ func TestRenderPreviewRowScopeVariants(t *testing.T) {
 	assert.Contains(t, clean, "Scope:")
 	assert.NotEmpty(t, strings.TrimSpace(clean))
 
+	// Scope fallback branch when the first token cannot fit.
+	row = renderPreviewRow("Scope", "verylongscope", 8)
+	clean = components.SanitizeText(row)
+	assert.Contains(t, clean, "Scope:")
+	assert.Contains(t, clean, "...")
+
+	// Scope ellipsis branch when one token fits but the next does not.
+	row = renderPreviewRow("Scopes", "public admin private", 18)
+	clean = components.SanitizeText(row)
+	assert.Contains(t, clean, "Scopes:")
+	assert.Contains(t, clean, "...")
+
 	valueRow := renderPreviewRow("Status", "active", 20)
 	assert.Contains(t, components.SanitizeText(valueRow), "Status: active")
+
+	// Non-scope value clamp path with tiny width.
+	valueRow = renderPreviewRow("Status", "very-long-status-value", 3)
+	assert.Contains(t, components.SanitizeText(valueRow), "Status:")
 }
 
 func TestParseScopePreviewTokensAndFormatScopePreviewEdgeCases(t *testing.T) {
@@ -68,6 +94,14 @@ func TestParseScopePreviewTokensAndFormatScopePreviewEdgeCases(t *testing.T) {
 
 	assert.Equal(t, "-", formatScopePreview([]string{"", "  "}))
 	assert.Equal(t, "[public] [admin]", formatScopePreview([]string{" public ", "admin"}))
+}
+
+func TestWrapPreviewTextSkipsLeadingSpaceOnWrappedLine(t *testing.T) {
+	wrapped := wrapPreviewText("aa bb cc", 2)
+	require.GreaterOrEqual(t, len(wrapped), 3)
+	for _, line := range wrapped {
+		assert.False(t, strings.HasPrefix(line, " "))
+	}
 }
 
 func TestPreviewStringAndListValueMatrix(t *testing.T) {
