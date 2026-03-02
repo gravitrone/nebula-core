@@ -94,6 +94,14 @@ class TestRequireStatus:
         with pytest.raises(ValueError, match="Unknown status: archived"):
             require_status("archived", mock_enums)
 
+    def test_archived_alias_falls_back_to_next_available_terminal(self, mock_enums):
+        """Archived alias should use the next available terminal candidate."""
+
+        mock_enums.statuses.name_to_id.pop("inactive", None)
+
+        result = require_status("archived", mock_enums)
+        assert result == mock_enums.statuses.name_to_id["completed"]
+
 
 # --- require_entity_type ---
 
@@ -242,6 +250,26 @@ class TestLoadEnums:
         pool.fetch.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_load_section_last_row_wins_on_duplicate_name_and_id(self):
+        """Duplicate names or IDs should resolve to the last seen row."""
+
+        first_id = UUID(int=21)
+        second_id = UUID(int=22)
+        pool = AsyncMock()
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"name": "active", "id": first_id},
+                {"name": "active", "id": second_id},
+                {"name": "inactive", "id": second_id},
+            ]
+        )
+
+        section = await _load_section(pool, "enums/statuses")
+
+        assert section.name_to_id["active"] == second_id
+        assert section.id_to_name[second_id] == "inactive"
+
+    @pytest.mark.asyncio
     async def test_load_enums_calls_all_sections_in_order(self, monkeypatch):
         """load_enums should request all five enum sections."""
 
@@ -272,3 +300,26 @@ class TestLoadEnums:
             "enums/entity_types",
             "enums/log_types",
         ]
+
+    @pytest.mark.asyncio
+    async def test_load_enums_propagates_section_loading_error(self, monkeypatch):
+        """load_enums should bubble errors from _load_section immediately."""
+
+        calls = []
+
+        async def _fake_load_section(_pool, query_name):
+            calls.append(query_name)
+            if query_name == "enums/scopes":
+                raise RuntimeError("boom")
+            return type(
+                "Section",
+                (),
+                {"name_to_id": {"x": UUID(int=1)}, "id_to_name": {UUID(int=1): "x"}},
+            )()
+
+        monkeypatch.setattr("nebula_mcp.enums._load_section", _fake_load_section)
+
+        with pytest.raises(RuntimeError, match="boom"):
+            await load_enums(object())
+
+        assert calls == ["enums/statuses", "enums/scopes"]
