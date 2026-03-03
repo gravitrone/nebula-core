@@ -852,7 +852,11 @@ class CreateContextInput(BaseModel):
             Result value from the operation.
         """
 
-        if not v:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("URL must be a string")
+        if v == "":
             return v
         v = v.strip()
         if not (v.startswith("http://") or v.startswith("https://")):
@@ -927,7 +931,11 @@ class UpdateContextInput(BaseModel):
             Result value from the operation.
         """
 
-        if not v:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("URL must be a string")
+        if v == "":
             return v
         v = v.strip()
         if not (v.startswith("http://") or v.startswith("https://")):

@@ -689,6 +689,23 @@ class TestModelEdgeInputs:
         model = UpdateContextInput(context_id="ctx-1", url=" https://example.com/path ")
         assert model.url == "https://example.com/path"
 
+    def test_create_context_rejects_non_string_url_payload(self):
+        """Create context should reject non-string URL payloads without crashing."""
+
+        with pytest.raises(ValidationError, match="URL must be a string"):
+            CreateContextInput(
+                title="x",
+                source_type="article",
+                scopes=["public"],
+                url=123,  # type: ignore[arg-type]
+            )
+
+    def test_update_context_rejects_non_string_url_payload(self):
+        """Update context should reject non-string URL payloads without crashing."""
+
+        with pytest.raises(ValidationError, match="URL must be a string"):
+            UpdateContextInput(context_id="ctx-1", url=123)  # type: ignore[arg-type]
+
     def test_query_context_sanitizes_tags(self):
         """Context query should sanitize and keep non-empty tags."""
 
