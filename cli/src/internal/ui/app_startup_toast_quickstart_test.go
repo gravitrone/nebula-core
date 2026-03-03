@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -230,6 +231,8 @@ func TestStartupParsingHelpers(t *testing.T) {
 	assert.True(t, shouldShowRecoveryHints("FORBIDDEN", "admin required"))
 	assert.True(t, shouldShowRecoveryHints("INVALID_API_KEY", "bad token"))
 	assert.True(t, shouldShowRecoveryHints("", "invalid api key"))
+	assert.True(t, shouldShowRecoveryHints("", "invalid_api_key: token expired"))
+	assert.True(t, shouldShowRecoveryHints("", "auth_required: login required"))
 	assert.False(t, shouldShowRecoveryHints("NOT_FOUND", "admin required"))
 
 	assert.Equal(t, "ok", classifyStartupAPI(""))
@@ -671,6 +674,17 @@ func TestStartupCheckedMsgAuthCodeErrorEnablesRecoveryHints(t *testing.T) {
 	require.NotNil(t, cmd)
 	require.NotNil(t, updated.toast)
 	assert.Equal(t, "warning", updated.toast.level)
+}
+
+// TestReloginDoneMsgUnderscoreInvalidKeyEnablesRecoveryHints locks recovery hints on underscore auth errors.
+func TestReloginDoneMsgUnderscoreInvalidKeyEnablesRecoveryHints(t *testing.T) {
+	app := NewApp(nil, &config.Config{APIKey: "bad-key", Username: "alxx"})
+
+	model, _ := app.Update(reloginDoneMsg{err: errors.New("invalid_api_key: token expired")})
+	updated := model.(App)
+
+	assert.Contains(t, strings.ToLower(updated.err), "invalid_api_key")
+	assert.True(t, updated.showRecoveryHints)
 }
 
 // TestErrorBoxShowsMultiAPIRecoveryHint handles persistent UI guidance for multi-API conflicts.

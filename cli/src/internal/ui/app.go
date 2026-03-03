@@ -1755,7 +1755,10 @@ func shouldShowRecoveryHints(code, msg string) bool {
 		return true
 	}
 	lower := strings.ToLower(msg)
-	if strings.Contains(lower, "invalid api key") || strings.Contains(lower, "not logged in") {
+	if strings.Contains(lower, "invalid api key") ||
+		strings.Contains(lower, "invalid_api_key") ||
+		strings.Contains(lower, "auth_required") ||
+		strings.Contains(lower, "not logged in") {
 		return true
 	}
 	if strings.Contains(lower, "missing or invalid authorization") || strings.Contains(lower, "http 401") {
