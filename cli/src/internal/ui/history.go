@@ -396,10 +396,6 @@ func (m HistoryModel) renderList() string {
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
-		if tableWidth < 60 {
-			sideBySide = false
-			tableWidth = contentWidth
-		}
 	}
 
 	sepWidth := 1
@@ -561,10 +557,6 @@ func (m HistoryModel) renderScopes() string {
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
-		if tableWidth < 60 {
-			sideBySide = false
-			tableWidth = contentWidth
-		}
 	}
 
 	sepWidth := 1
@@ -682,10 +674,6 @@ func (m HistoryModel) renderActors() string {
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
 		tableWidth = contentWidth - previewWidth - gap
-		if tableWidth < 60 {
-			sideBySide = false
-			tableWidth = contentWidth
-		}
 	}
 
 	sepWidth := 1
