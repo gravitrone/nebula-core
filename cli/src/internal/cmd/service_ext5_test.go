@@ -113,3 +113,51 @@ func TestProcessZombieReturnsFalseWhenPIDNotFound(t *testing.T) {
 	}
 	assert.False(t, processZombie(2147483647))
 }
+
+func TestProcessZombieReturnsFalseForNonPositivePID(t *testing.T) {
+	assert.False(t, processZombie(0))
+	assert.False(t, processZombie(-42))
+}
+
+func TestProcessZombieReturnsFalseForLiveProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix ps behavior required")
+	}
+
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	require.NoError(t, cmd.Start())
+	pid := cmd.Process.Pid
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
+
+	require.Eventually(t, func() bool {
+		return processAlive(pid)
+	}, time.Second, 20*time.Millisecond)
+	assert.False(t, processZombie(pid))
+}
+
+func TestStopProcessIfAliveEscalatesToKillWhenProcessIgnoresTerm(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("signal semantics required")
+	}
+
+	cmd := exec.Command("sh", "-c", "trap '' TERM; sleep 30")
+	require.NoError(t, cmd.Start())
+	pid := cmd.Process.Pid
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
+
+	require.Eventually(t, func() bool {
+		return processAlive(pid)
+	}, time.Second, 20*time.Millisecond)
+
+	stopProcessIfAlive(pid)
+
+	require.Eventually(t, func() bool {
+		return !processAlive(pid)
+	}, 3*time.Second, 20*time.Millisecond)
+}
