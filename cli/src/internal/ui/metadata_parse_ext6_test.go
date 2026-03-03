@@ -102,6 +102,7 @@ func TestParseMetadataInputPipeRowsAndDedentSuccess(t *testing.T) {
 	input := strings.Join([]string{
 		"profile:",
 		"  name: alxx",
+		"  note: alpha | beta",
 		"owner: founder",
 		"profile | timezone | Europe/Warsaw",
 		"profile | tags | [ai, ml]",
@@ -114,6 +115,7 @@ func TestParseMetadataInputPipeRowsAndDedentSuccess(t *testing.T) {
 	profile, ok := got["profile"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, "alxx", profile["name"])
+	assert.Equal(t, "alpha | beta", profile["note"])
 	assert.Equal(t, "Europe/Warsaw", profile["timezone"])
 	assert.Equal(t, []any{"ai", "ml"}, profile["tags"])
 }

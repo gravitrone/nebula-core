@@ -42,7 +42,7 @@ func parseMetadataInput(input string) (map[string]any, error) {
 		if strings.HasPrefix(content, "- ") {
 			return nil, fmt.Errorf("line %d: list items not supported, use key: [a, b]", lineNum)
 		}
-		if strings.Contains(content, "|") {
+		if isMetadataPipeRow(content) {
 			keyPath, valueRaw, err := parseMetadataPipeLine(content, lineNum)
 			if err != nil {
 				return nil, err
@@ -81,6 +81,17 @@ func parseMetadataInput(input string) (map[string]any, error) {
 		current[key] = value
 	}
 	return root, nil
+}
+
+// isMetadataPipeRow returns true when a line should be parsed as "group | field | value".
+func isMetadataPipeRow(content string) bool {
+	firstPipe := strings.Index(content, "|")
+	if firstPipe < 0 {
+		return false
+	}
+	firstColon := strings.Index(content, ":")
+	// Plain key/value rows may contain "|" inside the value.
+	return firstColon < 0 || firstPipe < firstColon
 }
 
 // parseMetadataValue parses parse metadata value.
