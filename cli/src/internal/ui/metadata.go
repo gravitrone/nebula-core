@@ -1432,6 +1432,13 @@ func parseStringSlice(value any) []string {
 			}
 			return nil
 		}
+		// Handle JSON-quoted scalar strings, e.g. "\"public,private\"".
+		if strings.HasPrefix(trimmed, "\"") && strings.HasSuffix(trimmed, "\"") {
+			var unquoted string
+			if err := json.Unmarshal([]byte(trimmed), &unquoted); err == nil {
+				return parseStringSlice(unquoted)
+			}
+		}
 		parts := strings.Split(trimmed, ",")
 		out := make([]string, 0, len(parts))
 		for _, part := range parts {

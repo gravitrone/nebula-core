@@ -180,6 +180,15 @@ func TestParseStringSliceRejectsJSONObjectStringPayloads(t *testing.T) {
 	assert.Nil(t, parseStringSlice(`"{\"scope\":\"public\"}"`))
 }
 
+func TestParseStringSliceParsesQuotedScalarStringPayloads(t *testing.T) {
+	assert.Equal(
+		t,
+		[]string{"public", "private"},
+		parseStringSlice(`"public, #private"`),
+	)
+	assert.Equal(t, []string{"public"}, parseStringSlice(`"public"`))
+}
+
 func TestScopeBadgesTextSkipsBlankEntries(t *testing.T) {
 	assert.Equal(
 		t,
