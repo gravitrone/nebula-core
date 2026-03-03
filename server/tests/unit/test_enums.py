@@ -163,6 +163,12 @@ class TestRequireEntityType:
         with pytest.raises(ValueError, match="Unknown entity type"):
             require_entity_type("Person", mock_enums)
 
+    def test_unhashable_entity_type_raises_value_error(self, mock_enums):
+        """Unhashable entity type payloads should be normalized to ValueError."""
+
+        with pytest.raises(ValueError, match=r"Unknown entity type: \{.*\}"):
+            require_entity_type({"bad": "type"}, mock_enums)  # type: ignore[arg-type]
+
 
 # --- require_relationship_type ---
 
@@ -247,6 +253,12 @@ class TestRequireScopes:
 
         with pytest.raises(ValueError, match="Unknown scope: None"):
             require_scopes(["public", None], mock_enums)  # type: ignore[list-item]
+
+    def test_unhashable_scope_value_raises_value_error(self, mock_enums):
+        """Unhashable scope values should return clear ValueError instead of TypeError."""
+
+        with pytest.raises(ValueError, match=r"Unknown scope: \[\]"):
+            require_scopes([[]], mock_enums)  # type: ignore[list-item]
 
 
 # --- require_log_type ---

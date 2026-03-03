@@ -60,7 +60,7 @@ def _require(name: str, mapping: dict[str, UUID], label: str) -> UUID:
 
     try:
         return mapping[name]
-    except KeyError:
+    except (KeyError, TypeError):
         raise ValueError(f"Unknown {label}: {name}")
 
 
