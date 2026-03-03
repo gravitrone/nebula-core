@@ -82,3 +82,12 @@ func TestExtractMetadataScopesBranchMatrix(t *testing.T) {
 	)
 	assert.Equal(t, []string{}, extractMetadataScopes(map[string]any{"scopes": "   "}))
 }
+
+func TestNormalizeScopeListEdgeCases(t *testing.T) {
+	assert.Equal(t, []string{}, normalizeScopeList(nil))
+	assert.Equal(
+		t,
+		[]string{"##admin", "public"},
+		normalizeScopeList([]string{"###ADMIN", " public ", "PUBLIC"}),
+	)
+}
