@@ -40,6 +40,18 @@ func TestFilesCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
 	assert.Contains(t, blurred, "pending")
 }
 
+func TestFilesRenderAddTagsFocusedMultiTagAndBufferBranches(t *testing.T) {
+	model := NewFilesModel(nil)
+	model.addTags = []string{"alpha", "beta"}
+	model.addTagBuf = "tail"
+
+	out := stripANSI(model.renderAddTags(true))
+	assert.Contains(t, out, "[alpha]")
+	assert.Contains(t, out, "[beta]")
+	assert.Contains(t, out, "tail")
+	assert.Contains(t, out, "█")
+}
+
 func TestFilesCommitEditTagAndRenderEditTagsMatrix(t *testing.T) {
 	model := NewFilesModel(nil)
 
@@ -183,6 +195,60 @@ func TestFilesSaveEditValidationAndUpdateCommandPaths(t *testing.T) {
 	require.NotNil(t, cmd)
 	_, isErr := cmd().(errMsg)
 	assert.True(t, isErr)
+}
+
+func TestFilesSaveEditIncludesOptionalMimeSizeChecksumFields(t *testing.T) {
+	now := time.Now()
+	var patchBody map[string]any
+
+	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/files/file-1" && r.Method == http.MethodPatch:
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&patchBody))
+			err := json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"id":         "file-1",
+					"filename":   "Alpha.txt",
+					"file_path":  "/tmp/alpha.txt",
+					"uri":        "file:///tmp/alpha.txt",
+					"status":     "active",
+					"metadata":   map[string]any{},
+					"created_at": now,
+					"updated_at": now,
+				},
+			})
+			require.NoError(t, err)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	model := NewFilesModel(client)
+	model.detail = &api.File{
+		ID:       "file-1",
+		Filename: "Alpha.txt",
+		FilePath: "/tmp/alpha.txt",
+		Status:   "active",
+	}
+	model.startEdit()
+	model.editName = "   "
+	model.editPath = " "
+	model.editMime = "application/pdf"
+	model.editSize = "7"
+	model.editChecksum = "abc123"
+
+	updated, cmd := model.saveEdit()
+	require.NotNil(t, cmd)
+	assert.True(t, updated.editSaving)
+	_, ok := cmd().(fileUpdatedMsg)
+	assert.True(t, ok)
+
+	require.NotNil(t, patchBody)
+	assert.NotContains(t, patchBody, "filename")
+	assert.NotContains(t, patchBody, "file_path")
+	assert.Equal(t, "application/pdf", patchBody["mime_type"])
+	assert.Equal(t, "abc123", patchBody["checksum"])
+	assert.Equal(t, float64(7), patchBody["size_bytes"])
 }
 
 func TestFilesLoadScopeOptionsAndEditMetaBranches(t *testing.T) {
