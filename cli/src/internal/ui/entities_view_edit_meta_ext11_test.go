@@ -123,6 +123,23 @@ func TestEntitiesSyncDetailMetadataRowsAndMetaInspectBranches(t *testing.T) {
 	assert.Equal(t, "", model.renderMetaInspect())
 }
 
+func TestEntitiesSyncDetailMetadataRowsInitializesListAndSelectionMap(t *testing.T) {
+	model := NewEntitiesModel(nil)
+	model.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Metadata: api.JSONMap{}}
+	model.metaList = nil
+	model.metaSelected = nil
+	model.metaExpanded = false
+	model.metaInspect = true
+	model.metaInspectI = 0
+
+	model.syncDetailMetadataRows()
+
+	require.NotNil(t, model.metaList)
+	require.NotNil(t, model.metaSelected)
+	assert.Empty(t, model.metaRows)
+	assert.False(t, model.metaInspect)
+}
+
 func TestEntitiesViewBranchMatrix(t *testing.T) {
 	now := time.Now()
 	base := NewEntitiesModel(nil)
