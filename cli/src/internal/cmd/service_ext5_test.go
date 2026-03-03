@@ -217,6 +217,23 @@ func TestStopProcessIfAliveNoopForNonPositivePID(t *testing.T) {
 	stopProcessIfAlive(-7)
 }
 
+func TestStopProcessIfAliveReturnsWhenFindProcessFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("signal semantics required")
+	}
+
+	prevFind := findProcessForStop
+	t.Cleanup(func() {
+		findProcessForStop = prevFind
+	})
+	findProcessForStop = func(int) (*os.Process, error) {
+		return nil, errors.New("find failed")
+	}
+
+	// Current process is alive and safe here because the hook returns before any signal.
+	stopProcessIfAlive(os.Getpid())
+}
+
 func TestStopProcessIfAliveNoopWhenProcessAlreadyExited(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("signal semantics required")
@@ -383,6 +400,24 @@ func TestResolveServerDirSkipsDuplicateCandidatesWhenRootsOverlap(t *testing.T) 
 }
 
 func TestNormalizeServerDirCandidateReturnsFalseWhenAbsFails(t *testing.T) {
+	prevAbs := absPath
+	t.Cleanup(func() {
+		absPath = prevAbs
+	})
+	absPath = func(string) (string, error) {
+		return "", errors.New("abs failed")
+	}
+
+	_, ok := normalizeServerDirCandidate("server")
+	assert.False(t, ok)
+}
+
+func TestNormalizeServerDirCandidateReturnsFalseWhenCandidateOnlyWhitespace(t *testing.T) {
+	_, ok := normalizeServerDirCandidate("   ")
+	assert.False(t, ok)
+}
+
+func TestNormalizeServerDirCandidateReturnsFalseWhenDeletedWorkingDir(t *testing.T) {
 	tmp := t.TempDir()
 	cwd, err := os.Getwd()
 	require.NoError(t, err)

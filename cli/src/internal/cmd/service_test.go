@@ -43,6 +43,10 @@ func TestNormalizeServerDirCandidate(t *testing.T) {
 	dir, ok := normalizeServerDirCandidate(valid)
 	assert.True(t, ok)
 	assert.Equal(t, valid, dir)
+
+	dir, ok = normalizeServerDirCandidate("  " + valid + "  ")
+	assert.True(t, ok)
+	assert.Equal(t, valid, dir)
 }
 
 // TestNormalizeServerDirCandidateRejectsAppPathDirectory handles false-positive server dir detection.

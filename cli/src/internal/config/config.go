@@ -8,6 +8,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var marshalConfigYAML = yaml.Marshal
+
 // Config holds CLI configuration stored at ~/.nebula/config.
 type Config struct {
 	APIKey            string `yaml:"api_key"`
@@ -71,7 +73,7 @@ func (c *Config) Save() error {
 		return fmt.Errorf("create config dir: %w", err)
 	}
 
-	data, err := yaml.Marshal(c)
+	data, err := marshalConfigYAML(c)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
 	}

@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -280,7 +281,7 @@ func TestRunStartCmdDetectsMultiAPIConflictMessageAfterDelayedLog(t *testing.T) 
 	t.Setenv("HOME", t.TempDir())
 	serverDir := createFakeServerDirWithUvicornScript(
 		t,
-		"#!/bin/sh\nsleep 0.35\necho 'ERROR: [Errno 98] Address already in use' >&2\nsleep 2\n",
+		"#!/bin/sh\nsleep 0.25\necho 'ERROR: [Errno 98] Address already in use' >&2\nsleep 0.25\necho 'ERROR: [Errno 98] Address already in use' >&2\nsleep 2\n",
 	)
 	t.Setenv("NEBULA_SERVER_DIR", serverDir)
 	setWaitForAPIProbe(t, func() (string, error) { return "", assert.AnError })
@@ -362,6 +363,21 @@ func TestSaveAPIStateReturnsRuntimeDirError(t *testing.T) {
 	err := saveAPIState(&apiRuntimeState{PID: 1})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create runtime dir")
+}
+
+func TestSaveAPIStateReturnsMarshalRuntimeStateError(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	prevMarshal := marshalRuntimeStateJSON
+	t.Cleanup(func() {
+		marshalRuntimeStateJSON = prevMarshal
+	})
+	marshalRuntimeStateJSON = func(_ *apiRuntimeState) ([]byte, error) {
+		return nil, errors.New("boom")
+	}
+
+	err := saveAPIState(&apiRuntimeState{PID: 1})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "marshal runtime state")
 }
 
 func TestSaveAPIStateReturnsWriteStateErrorWhenStatePathIsDirectory(t *testing.T) {

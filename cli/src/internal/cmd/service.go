@@ -47,6 +47,13 @@ var openAPILockForCreate = func() (apiLockWriter, error) {
 }
 
 var findProcessByPID = os.FindProcess
+var findProcessForStop = os.FindProcess
+
+var marshalRuntimeStateJSON = func(state *apiRuntimeState) ([]byte, error) {
+	return json.MarshalIndent(state, "", "  ")
+}
+
+var absPath = filepath.Abs
 
 type apiRuntimeState struct {
 	PID       int       `json:"pid"`
@@ -389,7 +396,7 @@ func saveAPIState(state *apiRuntimeState) error {
 	if err := os.MkdirAll(runtimeDir(), 0o700); err != nil {
 		return fmt.Errorf("create runtime dir: %w", err)
 	}
-	raw, err := json.MarshalIndent(state, "", "  ")
+	raw, err := marshalRuntimeStateJSON(state)
 	if err != nil {
 		return fmt.Errorf("marshal runtime state: %w", err)
 	}
@@ -553,7 +560,7 @@ func stopProcessIfAlive(pid int) {
 	if pid <= 0 || !processAlive(pid) {
 		return
 	}
-	proc, err := os.FindProcess(pid)
+	proc, err := findProcessForStop(pid)
 	if err != nil {
 		return
 	}
@@ -688,7 +695,7 @@ func normalizeServerDirCandidate(candidate string) (string, bool) {
 	if candidate == "" {
 		return "", false
 	}
-	abs, err := filepath.Abs(candidate)
+	abs, err := absPath(candidate)
 	if err != nil {
 		return "", false
 	}

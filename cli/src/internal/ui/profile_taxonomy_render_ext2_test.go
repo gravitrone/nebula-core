@@ -75,5 +75,51 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		assert.Contains(t, out, "Selected")
 		assert.Contains(t, out, "inactive")
 	})
-}
 
+	t.Run("narrow layout with preview stacks table and preview", func(t *testing.T) {
+		model := NewProfileModel(nil, &config.Config{})
+		model.width = 92
+		model.taxKind = 0
+		model.taxLoading = false
+		model.taxIncludeInactive = false
+		model.taxSearch = "scope"
+		model.taxItems = []api.TaxonomyEntry{{
+			ID:        "scope-2",
+			Name:      "private",
+			IsBuiltin: false,
+			IsActive:  true,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}}
+		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
+		model.taxList.Cursor = 0
+
+		out := model.renderTaxonomy()
+		assert.Contains(t, out, "Scopes Taxonomy")
+		assert.Contains(t, out, "Selected")
+		assert.Contains(t, out, "filter: scope")
+	})
+
+	t.Run("wide layout without preview when selection is out of range", func(t *testing.T) {
+		model := NewProfileModel(nil, &config.Config{})
+		model.width = 180
+		model.taxKind = 3
+		model.taxLoading = false
+		model.taxIncludeInactive = true
+		model.taxSearch = ""
+		model.taxItems = []api.TaxonomyEntry{{
+			ID:        "log-1",
+			Name:      "journal",
+			IsBuiltin: true,
+			IsActive:  true,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}}
+		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
+		model.taxList.Cursor = 99
+
+		out := model.renderTaxonomy()
+		assert.Contains(t, out, "Log Types Taxonomy")
+		assert.NotContains(t, out, "Selected")
+	})
+}

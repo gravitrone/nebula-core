@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -63,4 +64,22 @@ func TestSaveConfigReturnsWriteErrorWhenConfigPathIsDirectory(t *testing.T) {
 	err := cfg.Save()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "is a directory")
+}
+
+func TestSaveConfigReturnsMarshalErrorFromHook(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	prevMarshal := marshalConfigYAML
+	t.Cleanup(func() {
+		marshalConfigYAML = prevMarshal
+	})
+	marshalConfigYAML = func(any) ([]byte, error) {
+		return nil, errors.New("marshal failed")
+	}
+
+	cfg := &Config{APIKey: "nbl_test"}
+	err := cfg.Save()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "marshal config")
 }
