@@ -563,9 +563,6 @@ func wrapDiffLine(line string, width int) []string {
 	if strings.TrimSpace(current) != "" {
 		out = append(out, strings.TrimSpace(current))
 	}
-	if len(out) == 0 {
-		return []string{ClampTextWidthEllipsis(line, width)}
-	}
 	return out
 }
 
@@ -576,9 +573,6 @@ func MetadataTable(data map[string]any, width int) string {
 	}
 
 	lines := renderMetadataLines(data, 0)
-	if len(lines) == 0 {
-		return ""
-	}
 	return TitledBox("Metadata", strings.Join(lines, "\n"), width)
 }
 
@@ -595,10 +589,6 @@ func renderMetadataLines(data map[string]any, indent int) []string {
 	for _, k := range keys {
 		key := SanitizeOneLine(k)
 		rendered := renderMetadataValueLines(data[k], indent+2)
-		if len(rendered) == 0 {
-			lines = append(lines, fmt.Sprintf("%s%s: None", pad, key))
-			continue
-		}
 		if len(rendered) == 1 {
 			lines = append(lines, fmt.Sprintf("%s%s: %s", pad, key, strings.TrimSpace(rendered[0])))
 			continue
