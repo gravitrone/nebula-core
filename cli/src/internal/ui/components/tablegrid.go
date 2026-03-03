@@ -71,17 +71,8 @@ func TableGridWithActiveRow(columns []TableColumn, rows [][]string, tableWidth i
 
 	border := lipgloss.RoundedBorder()
 	v := border.Left
-	if v == "" {
-		v = "|"
-	}
 	h := border.Top
-	if h == "" {
-		h = "-"
-	}
 	cross := border.Middle
-	if cross == "" {
-		cross = "+"
-	}
 
 	cols := fitGridColumns(columns, v, tableWidth)
 
