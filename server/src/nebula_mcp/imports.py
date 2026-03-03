@@ -41,7 +41,10 @@ def coerce_json(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     if isinstance(value, str):
-        return json.loads(value)
+        parsed = json.loads(value)
+        if isinstance(parsed, dict):
+            return parsed
+        return {}
     return {}
 
 

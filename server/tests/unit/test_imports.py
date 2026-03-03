@@ -56,6 +56,13 @@ def test_coerce_json_handles_dict_and_json_string():
     assert coerce_json('{"b": 2}') == {"b": 2}
 
 
+def test_coerce_json_non_object_json_string_returns_empty_object():
+    """JSON strings that decode to non-objects should normalize to empty objects."""
+
+    assert coerce_json('["a", "b"]') == {}
+    assert coerce_json('"text"') == {}
+
+
 def test_coerce_json_non_string_non_dict_returns_empty_object():
     """Unsupported input types should normalize to empty object."""
 
