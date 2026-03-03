@@ -491,6 +491,22 @@ class TestLoadEnums:
             await _load_section(pool, "enums/statuses")
 
     @pytest.mark.asyncio
+    async def test_load_section_trims_whitespace_around_names(self):
+        """Enum names should be normalized by trimming surrounding whitespace."""
+
+        active_id = UUID(int=63)
+        pool = AsyncMock()
+        pool.fetch = AsyncMock(
+            return_value=[
+                {"name": "  active  ", "id": active_id},
+            ]
+        )
+
+        section = await _load_section(pool, "enums/statuses")
+        assert section.name_to_id == {"active": active_id}
+        assert section.id_to_name == {active_id: "active"}
+
+    @pytest.mark.asyncio
     async def test_load_enums_calls_all_sections_in_order(self, monkeypatch):
         """load_enums should request all five enum sections."""
 
@@ -544,3 +560,30 @@ class TestLoadEnums:
             await load_enums(object())
 
         assert calls == ["enums/statuses", "enums/scopes"]
+
+    @pytest.mark.asyncio
+    async def test_load_enums_propagates_value_error_from_section(self, monkeypatch):
+        """load_enums should bubble validation errors from section loading."""
+
+        calls = []
+
+        async def _fake_load_section(_pool, query_name):
+            calls.append(query_name)
+            if query_name == "enums/relationship_types":
+                raise ValueError("duplicate enum name in enums/relationship_types: friend")
+            return type(
+                "Section",
+                (),
+                {"name_to_id": {"x": UUID(int=1)}, "id_to_name": {UUID(int=1): "x"}},
+            )()
+
+        monkeypatch.setattr("nebula_mcp.enums._load_section", _fake_load_section)
+
+        with pytest.raises(ValueError, match="duplicate enum name"):
+            await load_enums(object())
+
+        assert calls == [
+            "enums/statuses",
+            "enums/scopes",
+            "enums/relationship_types",
+        ]
