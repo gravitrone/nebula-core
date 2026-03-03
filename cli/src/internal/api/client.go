@@ -144,6 +144,15 @@ func normalizedAuthDetail(text string) string {
 		detail = parsed
 	}
 	lower := strings.ToLower(detail)
+	if strings.HasPrefix(lower, "invalid_api_key:") ||
+		strings.HasPrefix(lower, "invalid api key:") ||
+		strings.HasPrefix(lower, "auth_required:") ||
+		strings.HasPrefix(lower, "auth required:") {
+		if idx := strings.Index(detail, ":"); idx >= 0 {
+			detail = strings.TrimSpace(detail[idx+1:])
+			lower = strings.ToLower(detail)
+		}
+	}
 	if strings.HasPrefix(lower, "http ") {
 		if idx := strings.Index(detail, ":"); idx >= 0 {
 			detail = strings.TrimSpace(detail[idx+1:])
@@ -151,7 +160,7 @@ func normalizedAuthDetail(text string) string {
 	}
 	detail = strings.TrimSpace(detail)
 	switch strings.ToLower(detail) {
-	case "", "forbidden", "unauthorized", "invalid_api_key", "invalid api key":
+	case "", "forbidden", "unauthorized", "invalid_api_key", "invalid api key", "auth_required", "auth required":
 		return "invalid api key"
 	default:
 		return detail

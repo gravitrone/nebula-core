@@ -265,6 +265,16 @@ func TestNormalizeAPIErrorFallbacks(t *testing.T) {
 	assert.Equal(t, "raw-error", normalizeAPIError(500, "raw-error"))
 	assert.Equal(t, "INVALID_API_KEY: invalid api key", normalizeAPIError(401, "FORBIDDEN"))
 	assert.Equal(t, "INVALID_API_KEY: invalid api key", normalizeAPIError(500, "INVALID_API_KEY"))
+	assert.Equal(
+		t,
+		"INVALID_API_KEY: token expired",
+		normalizeAPIError(500, "invalid_api_key: token expired"),
+	)
+	assert.Equal(
+		t,
+		"INVALID_API_KEY: token expired",
+		normalizeAPIError(500, "auth_required: token expired"),
+	)
 }
 
 func TestParseErrorCodeAndAuthDetailMatrix(t *testing.T) {
@@ -287,6 +297,8 @@ func TestParseErrorCodeAndAuthDetailMatrix(t *testing.T) {
 	assert.Equal(t, "invalid api key", normalizedAuthDetail("HTTP 401: Unauthorized"))
 	assert.Equal(t, "invalid api key", normalizedAuthDetail("FORBIDDEN"))
 	assert.Equal(t, "token revoked", normalizedAuthDetail("INVALID_API_KEY: token revoked"))
+	assert.Equal(t, "token expired", normalizedAuthDetail("invalid_api_key: token expired"))
+	assert.Equal(t, "token expired", normalizedAuthDetail("auth_required: token expired"))
 }
 
 func TestShouldNormalizeInvalidAPIKeyMatrix(t *testing.T) {
