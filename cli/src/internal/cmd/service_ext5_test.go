@@ -2,13 +2,15 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
-	"os/exec"
-	"runtime"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"syscall"
 	"testing"
 	"time"
@@ -121,6 +123,14 @@ func TestProcessZombieReturnsFalseForNonPositivePID(t *testing.T) {
 	assert.False(t, processZombie(-42))
 }
 
+func TestProcessZombieReturnsFalseWhenPSUnavailable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix ps behavior required")
+	}
+	t.Setenv("PATH", "")
+	assert.False(t, processZombie(os.Getpid()))
+}
+
 func TestProcessZombieReturnsFalseForLiveProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix ps behavior required")
@@ -221,4 +231,49 @@ func TestProcessAliveTreatsEPERMAsAlive(t *testing.T) {
 	}
 
 	assert.True(t, processAlive(1))
+}
+
+func TestRunStopCmdKeepsLockPIDWhenRuntimeStatePIDIsDead(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("signal semantics required")
+	}
+
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	require.NoError(t, cmd.Start())
+	lockPID := cmd.Process.Pid
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
+	require.Eventually(t, func() bool {
+		return processAlive(lockPID)
+	}, time.Second, 20*time.Millisecond)
+
+	lock := apiLockState{
+		OwnerPID:  os.Getpid(),
+		APIPID:    lockPID,
+		CreatedAt: time.Now().UTC(),
+	}
+	raw, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), raw, 0o600))
+
+	require.NoError(t, saveAPIState(&apiRuntimeState{
+		PID:       999999,
+		Port:      api.DefaultAPIPort,
+		ServerDir: "/tmp/server",
+		LogPath:   "/tmp/log",
+		StartedAt: time.Now().UTC(),
+	}))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	assert.Contains(t, out.String(), "stopped")
+	assert.Contains(t, out.String(), strconv.Itoa(lockPID))
+	require.Eventually(t, func() bool {
+		return !processAlive(lockPID)
+	}, 2*time.Second, 20*time.Millisecond)
 }
