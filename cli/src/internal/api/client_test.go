@@ -386,6 +386,15 @@ func TestBuildQueryEmpty(t *testing.T) {
 	assert.Equal(t, "/api/entities", result)
 }
 
+// TestBuildQuerySkipsEmptyParams ensures no trailing question mark when params normalize to empty.
+func TestBuildQuerySkipsEmptyParams(t *testing.T) {
+	result := buildQuery("/api/entities", QueryParams{
+		"status": "",
+		"type":   "",
+	})
+	assert.Equal(t, "/api/entities", result)
+}
+
 // TestNewClientCustomTimeout handles test new client custom timeout.
 func TestNewClientCustomTimeout(t *testing.T) {
 	client := NewClient("http://example.com", "nbl_testkey", 5*time.Second)

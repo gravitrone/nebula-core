@@ -247,6 +247,9 @@ func buildQuery(path string, params QueryParams) string {
 			q.Set(k, v)
 		}
 	}
+	if len(q) == 0 {
+		return path
+	}
 	return path + "?" + q.Encode()
 }
 
