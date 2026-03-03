@@ -969,9 +969,6 @@ func isUnknownLabel(value string) bool {
 // formatActorRef handles format actor ref.
 func formatActorRef(actor api.AuditActor) string {
 	actorType := normalizeActorType(actor.ActorType)
-	if actorType == "" {
-		actorType = "system"
-	}
 	actorID := strings.TrimSpace(strings.TrimSuffix(actor.ActorID, ":"))
 	if actorType == "system" {
 		if inferred := inferActorTypeFromID(actorID); inferred != "" {

@@ -1514,9 +1514,6 @@ func wrapMetadataDisplayLine(line string, width int) []string {
 	if strings.HasPrefix(trimmed, "- ") {
 		bulletPrefix := prefix + "- "
 		chunks := wrapMetadataWords(strings.TrimSpace(strings.TrimPrefix(trimmed, "- ")), width-lipgloss.Width(bulletPrefix))
-		if len(chunks) == 0 {
-			return []string{components.ClampTextWidthEllipsis(clean, width)}
-		}
 		out := make([]string, 0, len(chunks))
 		out = append(out, bulletPrefix+chunks[0])
 		contPrefix := prefix + "  "
@@ -1527,9 +1524,6 @@ func wrapMetadataDisplayLine(line string, width int) []string {
 	}
 
 	chunks := wrapMetadataWords(trimmed, width-lipgloss.Width(prefix))
-	if len(chunks) == 0 {
-		return []string{components.ClampTextWidthEllipsis(clean, width)}
-	}
 	out := make([]string, 0, len(chunks))
 	for _, chunk := range chunks {
 		out = append(out, prefix+chunk)

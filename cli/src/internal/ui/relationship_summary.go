@@ -116,11 +116,6 @@ func relationshipSummaryColumnWidths(contentWidth int) (int, int, int) {
 		dir = 9
 		node = usable - rel - dir
 	}
-
-	used := rel + dir + node
-	if used != usable {
-		node += usable - used
-	}
 	return rel, dir, node
 }
 
