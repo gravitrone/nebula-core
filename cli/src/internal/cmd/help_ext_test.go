@@ -65,3 +65,21 @@ func TestVisibleFlagsDedupesInheritedAndLocalByName(t *testing.T) {
 	}
 	assert.Equal(t, 1, configCount)
 }
+
+func TestVisibleFlagsSkipsDuplicateWhenPresentInBothFlagSets(t *testing.T) {
+	cmd := &cobra.Command{Use: "cmd"}
+	cmd.Flags().String("dup", "", "duplicate guard")
+
+	dup := cmd.Flags().Lookup("dup")
+	require.NotNil(t, dup)
+	cmd.InheritedFlags().AddFlag(dup)
+
+	rows := visibleFlags(cmd)
+	dupCount := 0
+	for _, row := range rows {
+		if row.Label == "  --dup" {
+			dupCount++
+		}
+	}
+	assert.Equal(t, 1, dupCount)
+}
