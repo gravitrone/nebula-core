@@ -106,6 +106,8 @@ def require_scopes(names: list[str], enums: EnumRegistry) -> list[UUID]:
 
     if not names:
         raise ValueError("Scopes required")
+    if not isinstance(names, list):
+        raise ValueError("Scopes must be a list")
     ids: list[UUID] = []
     for n in names:
         ids.append(_require(n, enums.scopes.name_to_id, "scope"))

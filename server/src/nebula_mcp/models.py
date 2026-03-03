@@ -109,6 +109,8 @@ def _sanitize_tags(tags: list[str] | None) -> list[str] | None:
 
     if tags is None:
         return None
+    if not isinstance(tags, list):
+        raise ValueError("Tags must be a list")
     cleaned = [_strip_control(t) for t in tags]
     cleaned = [t for t in cleaned if t]
     if len(cleaned) > MAX_TAGS:

@@ -220,6 +220,12 @@ class TestRequireScopes:
         with pytest.raises(ValueError, match="Scopes required"):
             require_scopes([], mock_enums)
 
+    def test_non_list_scopes_payload_raises(self, mock_enums):
+        """Non-list scope payloads should return a clear validation error."""
+
+        with pytest.raises(ValueError, match="Scopes must be a list"):
+            require_scopes("public", mock_enums)  # type: ignore[arg-type]
+
     def test_one_unknown_in_list_raises(self, mock_enums):
         """Raise ValueError when one scope in the list is unknown."""
 

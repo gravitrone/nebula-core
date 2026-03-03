@@ -545,6 +545,12 @@ class TestModelEdgeInputs:
         with pytest.raises(ValidationError, match="Too many tags"):
             QueryEntitiesInput(tags=[f"t{i}" for i in range(51)])
 
+    def test_query_entities_rejects_non_list_tags_payload(self):
+        """Entity query should reject non-list tag payloads."""
+
+        with pytest.raises(ValidationError, match="Tags must be a list"):
+            QueryEntitiesInput(tags="alpha")  # type: ignore[arg-type]
+
     def test_query_entities_rejects_oversized_tag(self):
         """Entity query should reject overly long tag strings."""
 
@@ -598,6 +604,18 @@ class TestModelEdgeInputs:
             tags=["alpha", "", "beta"],
         )
         assert model.tags == ["alpha", "beta"]
+
+    def test_create_entity_rejects_non_list_tags_payload(self):
+        """Create entity should reject non-list tag payloads."""
+
+        with pytest.raises(ValidationError, match="Tags must be a list"):
+            CreateEntityInput(
+                name="Alice",
+                type="person",
+                status="active",
+                scopes=["public"],
+                tags="alpha",  # type: ignore[arg-type]
+            )
 
     def test_create_entity_rejects_non_string_tag_items(self):
         """Create entity should reject tag lists with non-string entries."""
