@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -228,6 +229,27 @@ func TestMetadataEditorInspectValueAndLinesGuardBranches(t *testing.T) {
 	lines := ed.inspectLines()
 	assert.NotEmpty(t, lines)
 	assert.Contains(t, lines[len(lines)-1], "None")
+}
+
+func TestMetadataEditorInspectLinesPreservesBlankRowsFromMultilineValues(t *testing.T) {
+	ed := MetadataEditor{
+		rows: []metadataEditorRow{{
+			path:  "profile.notes",
+			value: "line one\n\nline two",
+		}},
+		inspectRowIdx: 0,
+	}
+
+	lines := ed.inspectLines()
+	require.NotEmpty(t, lines)
+
+	blankRows := 0
+	for _, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			blankRows++
+		}
+	}
+	assert.GreaterOrEqual(t, blankRows, 2)
 }
 
 func TestMetadataEditorRenderInspectModeBranchMatrix(t *testing.T) {

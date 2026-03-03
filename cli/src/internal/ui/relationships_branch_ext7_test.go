@@ -13,6 +13,7 @@ import (
 
 func TestRelationshipsUpdateAdditionalBranches(t *testing.T) {
 	model := NewRelationshipsModel(nil)
+	model.names = nil
 
 	updated, cmd := model.Update(relTabNamesLoadedMsg{
 		names: map[string]string{"ent-1": "Alpha"},
@@ -203,4 +204,3 @@ func TestRelationshipsCreatePreviewAndNameLoadBranches(t *testing.T) {
 	assert.Equal(t, "Alpha", namesMsg.names["ent-1"])
 	assert.Equal(t, 0, entityCalls)
 }
-
