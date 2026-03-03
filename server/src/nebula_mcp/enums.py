@@ -67,7 +67,7 @@ def _require(name: str, mapping: dict[str, UUID], label: str) -> UUID:
 def require_status(name: str, enums: EnumRegistry) -> UUID:
     """Validate and return a status ID from a name."""
 
-    if not name:
+    if not isinstance(name, str) or not name:
         raise ValueError("Status required")
     key = name.strip().lower()
     if key == "archived":

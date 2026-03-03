@@ -63,6 +63,12 @@ class TestRequireStatus:
         with pytest.raises(ValueError, match="Status required"):
             require_status(None, mock_enums)  # type: ignore[arg-type]
 
+    def test_non_string_status_raises(self, mock_enums):
+        """Non-string status inputs should return a clear validation error."""
+
+        with pytest.raises(ValueError, match="Status required"):
+            require_status(123, mock_enums)  # type: ignore[arg-type]
+
     def test_archived_alias_maps_to_terminal_status(self, mock_enums):
         """Map archived alias to a known terminal status UUID."""
 

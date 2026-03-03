@@ -412,6 +412,12 @@ class TestModelSanitizerHelpers:
         cleaned = _strip_control("ab\u202ecd\x00ef")
         assert cleaned == "abcdef"
 
+    def test_strip_control_rejects_non_string_values(self):
+        """Strip helper should fail fast on non-string payloads."""
+
+        with pytest.raises(ValueError, match="Expected string"):
+            _strip_control(123)  # type: ignore[arg-type]
+
     def test_validate_metadata_payload_rejects_non_object(self):
         """Metadata payload must be a dict object."""
 
@@ -557,6 +563,18 @@ class TestModelEdgeInputs:
                 relationship_type="related-to",
             )
 
+    def test_create_relationship_rejects_non_string_node_type(self):
+        """Relationship input should reject non-string node type payloads."""
+
+        with pytest.raises(ValidationError, match="Expected string"):
+            CreateRelationshipInput(
+                source_type=1,  # type: ignore[arg-type]
+                source_id="s1",
+                target_type="entity",
+                target_id="t1",
+                relationship_type="related-to",
+            )
+
     def test_create_entity_blank_source_path_normalizes_to_none(self):
         """Blank source_path should normalize to None."""
 
@@ -580,6 +598,29 @@ class TestModelEdgeInputs:
             tags=["alpha", "", "beta"],
         )
         assert model.tags == ["alpha", "beta"]
+
+    def test_create_entity_rejects_non_string_tag_items(self):
+        """Create entity should reject tag lists with non-string entries."""
+
+        with pytest.raises(ValidationError, match="Expected string"):
+            CreateEntityInput(
+                name="Alice",
+                type="person",
+                status="active",
+                scopes=["public"],
+                tags=["alpha", None],  # type: ignore[list-item]
+            )
+
+    def test_create_entity_rejects_non_string_name(self):
+        """Create entity should reject non-string name payloads."""
+
+        with pytest.raises(ValidationError, match="Expected string"):
+            CreateEntityInput(
+                name=123,  # type: ignore[arg-type]
+                type="person",
+                status="active",
+                scopes=["public"],
+            )
 
     def test_create_context_url_validator_handles_empty_and_invalid_values(self):
         """Create context URL validator should allow empty values and reject non-http."""

@@ -69,6 +69,9 @@ def _strip_control(text: str) -> str:
         Result value from the operation.
     """
 
+    if not isinstance(text, str):
+        raise ValueError("Expected string")
+
     cleaned: list[str] = []
     for ch in text:
         if ch in BIDI_CONTROLS:
