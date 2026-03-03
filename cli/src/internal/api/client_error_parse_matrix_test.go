@@ -245,6 +245,12 @@ func TestNormalizeAPIErrorMatrix(t *testing.T) {
 			want:   "FORBIDDEN: Admin scope required",
 		},
 		{
+			name:   "403 authz scope message is not coerced to invalid key",
+			status: 403,
+			msg:    "FORBIDDEN: authorization scope denied",
+			want:   "FORBIDDEN: authorization scope denied",
+		},
+		{
 			name:   "multi api marker normalizes to conflict code",
 			status: 500,
 			msg:    "HTTP 500: Address already in use",
@@ -305,6 +311,7 @@ func TestShouldNormalizeInvalidAPIKeyMatrix(t *testing.T) {
 	assert.True(t, shouldNormalizeInvalidAPIKey(401, "anything"))
 	assert.True(t, shouldNormalizeInvalidAPIKey(403, "missing or invalid authorization"))
 	assert.True(t, shouldNormalizeInvalidAPIKey(403, "invalid api key"))
+	assert.False(t, shouldNormalizeInvalidAPIKey(403, "authorization scope denied"))
 	assert.False(t, shouldNormalizeInvalidAPIKey(403, "admin scope required"))
 	assert.False(t, shouldNormalizeInvalidAPIKey(500, "internal server error"))
 }

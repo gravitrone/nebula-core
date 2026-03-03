@@ -130,8 +130,10 @@ func shouldNormalizeInvalidAPIKey(statusCode int, lowerMsg string) bool {
 		return true
 	}
 	if statusCode == http.StatusForbidden {
-		return strings.Contains(lowerMsg, "authorization") ||
-			strings.Contains(lowerMsg, "auth") ||
+		return strings.Contains(lowerMsg, "missing or invalid authorization") ||
+			strings.Contains(lowerMsg, "invalid authorization") ||
+			strings.Contains(lowerMsg, "invalid api key") ||
+			strings.Contains(lowerMsg, "invalid_api_key") ||
 			strings.Contains(lowerMsg, "api key")
 	}
 	return false

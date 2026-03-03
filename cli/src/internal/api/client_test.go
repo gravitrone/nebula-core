@@ -306,6 +306,25 @@ func TestDoPreservesForbiddenScopeErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "Admin scope required")
 }
 
+// TestDoDoesNotNormalizeAuthorizationScopeDenied handles authz errors that mention authorization.
+func TestDoDoesNotNormalizeAuthorizationScopeDenied(t *testing.T) {
+	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"error": map[string]any{
+				"code":    "FORBIDDEN",
+				"message": "authorization scope denied",
+			},
+		})
+	})
+
+	_, err := client.QueryEntities(nil)
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "INVALID_API_KEY")
+	assert.Contains(t, err.Error(), "FORBIDDEN")
+	assert.Contains(t, err.Error(), "authorization scope denied")
+}
+
 // TestDoNormalizesMultiAPIConflict handles startup-style 500 collisions for user-facing recovery.
 func TestDoNormalizesMultiAPIConflict(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
