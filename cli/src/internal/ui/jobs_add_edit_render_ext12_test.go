@@ -2,6 +2,7 @@ package ui
 
 import (
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -127,4 +128,56 @@ func TestJobsRenderEditWithLoadedDetailMetadata(t *testing.T) {
 	out := components.SanitizeText(model.renderEdit())
 	assert.Contains(t, out, "owner")
 	assert.Contains(t, out, "alxx")
+}
+
+func TestJobsRenderEditDescriptionFocusAndMetaFallbackBranches(t *testing.T) {
+	model := NewJobsModel(nil)
+	model.width = 90
+	model.detail = &api.Job{ID: "job-1", Status: "pending"}
+	model.startEdit()
+
+	model.editFocus = jobEditFieldDescription
+	model.editDesc = "ship this"
+	model.editMeta.Buffer = ""
+	model.editMeta.Scopes = nil
+
+	out := components.SanitizeText(model.renderEdit())
+	assert.Contains(t, out, "Description:")
+	assert.Contains(t, out, "ship this")
+	assert.Contains(t, out, "█")
+	assert.Contains(t, out, "Metadata:")
+	assert.Contains(t, out, "  -")
+}
+
+func TestJobsHandleEditKeysDownUpNavigationBranches(t *testing.T) {
+	model := NewJobsModel(nil)
+	model.view = jobsViewEdit
+	model.detail = &api.Job{ID: "job-1", Status: "pending"}
+	model.startEdit()
+
+	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	require.Nil(t, cmd)
+	assert.Equal(t, jobEditFieldDescription, updated.editFocus)
+
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.Equal(t, jobEditFieldStatus, updated.editFocus)
+}
+
+func TestJobsSaveAddCommandReturnsErrMsgOnCreateFailure(t *testing.T) {
+	client := api.NewClient("http://127.0.0.1:9", "test-key", 20*time.Millisecond)
+	model := NewJobsModel(client)
+	model.addFields[jobFieldTitle].value = "Ship tests"
+	model.addFields[jobFieldDescription].value = "desc"
+	model.addStatusIdx = 0
+	model.addPriorityIdx = 1
+	model.addMeta.Buffer = "profile | owner | alxx"
+
+	updated, cmd := model.saveAdd()
+	require.NotNil(t, cmd)
+	assert.True(t, updated.addSaving)
+
+	msg := cmd()
+	_, ok := msg.(errMsg)
+	assert.True(t, ok)
 }
