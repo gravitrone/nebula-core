@@ -108,9 +108,6 @@ func normalizeAPIError(statusCode int, msg string) string {
 	}
 	if shouldNormalizeInvalidAPIKey(statusCode, lower) {
 		detail := normalizedAuthDetail(trimmed)
-		if detail == "" {
-			detail = "invalid api key"
-		}
 		return fmt.Sprintf("INVALID_API_KEY: %s", detail)
 	}
 	return trimmed
