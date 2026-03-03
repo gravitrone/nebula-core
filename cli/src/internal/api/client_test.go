@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -393,6 +394,25 @@ func TestBuildQuerySkipsEmptyParams(t *testing.T) {
 		"type":   "",
 	})
 	assert.Equal(t, "/api/entities", result)
+}
+
+// TestBuildQueryMergesWithExistingQuery keeps existing query params and appends new ones.
+func TestBuildQueryMergesWithExistingQuery(t *testing.T) {
+	result := buildQuery("/api/entities?scope=public", QueryParams{
+		"status": "active",
+	})
+	parsed, err := url.Parse(result)
+	require.NoError(t, err)
+	assert.Equal(t, "/api/entities", parsed.Path)
+	assert.Equal(t, "public", parsed.Query().Get("scope"))
+	assert.Equal(t, "active", parsed.Query().Get("status"))
+}
+
+// TestBuildQueryInvalidPathFallsBackToRawInput ensures parse failures do not rewrite caller paths.
+func TestBuildQueryInvalidPathFallsBackToRawInput(t *testing.T) {
+	input := "http://[::1"
+	result := buildQuery(input, QueryParams{"status": "active"})
+	assert.Equal(t, input, result)
 }
 
 // TestNewClientCustomTimeout handles test new client custom timeout.

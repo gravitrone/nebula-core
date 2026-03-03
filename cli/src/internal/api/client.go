@@ -241,16 +241,22 @@ func buildQuery(path string, params QueryParams) string {
 	if len(params) == 0 {
 		return path
 	}
-	q := url.Values{}
-	for k, v := range params {
-		if v != "" {
-			q.Set(k, v)
+	parsed, err := url.Parse(path)
+	if err != nil {
+		// Fall back to the raw path when parse fails.
+		return path
+	}
+	q := parsed.Query()
+	for key, value := range params {
+		if value != "" {
+			q.Set(key, value)
 		}
 	}
 	if len(q) == 0 {
-		return path
+		return parsed.String()
 	}
-	return path + "?" + q.Encode()
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
 }
 
 // extractAPIErrorBody handles extract apierror body.
