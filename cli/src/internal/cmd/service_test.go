@@ -23,6 +23,13 @@ func TestTailLinesSkipsBlankAndLimits(t *testing.T) {
 	assert.Equal(t, []string{"b", "c"}, out)
 }
 
+// TestTailLinesHandlesNonPositiveTailWithoutPanic handles defensive tail clamping.
+func TestTailLinesHandlesNonPositiveTailWithoutPanic(t *testing.T) {
+	lines := []string{"", "a", " ", "b"}
+	assert.Equal(t, []string{"a", "b"}, tailLines(lines, 0))
+	assert.Equal(t, []string{"a", "b"}, tailLines(lines, -3))
+}
+
 // TestNormalizeServerDirCandidate handles test normalize server dir candidate.
 func TestNormalizeServerDirCandidate(t *testing.T) {
 	tmp := t.TempDir()
@@ -36,6 +43,16 @@ func TestNormalizeServerDirCandidate(t *testing.T) {
 	dir, ok := normalizeServerDirCandidate(valid)
 	assert.True(t, ok)
 	assert.Equal(t, valid, dir)
+}
+
+// TestNormalizeServerDirCandidateRejectsAppPathDirectory handles false-positive server dir detection.
+func TestNormalizeServerDirCandidateRejectsAppPathDirectory(t *testing.T) {
+	tmp := t.TempDir()
+	invalid := filepath.Join(tmp, "server")
+	require.NoError(t, os.MkdirAll(filepath.Join(invalid, "src", "nebula_api", "app.py"), 0o755))
+
+	_, ok := normalizeServerDirCandidate(invalid)
+	assert.False(t, ok)
 }
 
 // TestResolveServerDirUsesEnv handles test resolve server dir uses env.

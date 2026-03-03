@@ -605,7 +605,8 @@ func normalizeServerDirCandidate(candidate string) (string, bool) {
 		return "", false
 	}
 	appPath := filepath.Join(abs, "src", "nebula_api", "app.py")
-	if _, err := os.Stat(appPath); err != nil {
+	info, err := os.Stat(appPath)
+	if err != nil || info.IsDir() {
 		return "", false
 	}
 	return abs, true
@@ -619,6 +620,9 @@ func tailLines(lines []string, tail int) []string {
 			continue
 		}
 		clean = append(clean, line)
+	}
+	if tail <= 0 {
+		return clean
 	}
 	if len(clean) <= tail {
 		return clean
