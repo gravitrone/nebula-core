@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -329,6 +330,19 @@ func TestUpdateAPILockPIDReturnsWriteErrorWhenPathIsDir(t *testing.T) {
 	assert.Contains(t, err.Error(), "write api lock")
 }
 
+// TestUpdateAPILockPIDWritesValidLockState covers the successful lock-file write branch.
+func TestUpdateAPILockPIDWritesValidLockState(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	require.NoError(t, updateAPILockPID(4242))
+	lock, err := loadAPILock()
+	require.NoError(t, err)
+	assert.Equal(t, 4242, lock.APIPID)
+	assert.Equal(t, os.Getpid(), lock.OwnerPID)
+	assert.False(t, lock.CreatedAt.IsZero())
+}
+
 // TestAcquireAPILockRecoversWhenLockPathIsDir handles stale lock-directory recovery.
 func TestAcquireAPILockRecoversWhenLockPathIsDir(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
@@ -349,6 +363,28 @@ func TestAcquireAPILockReturnsRuntimeDirErrorWhenHomeIsFile(t *testing.T) {
 	err := acquireAPILock()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create runtime dir")
+}
+
+// TestAcquireAPILockRecoversFromCorruptStateWhenLockHasNoPID covers stale lock + unreadable state recovery.
+func TestAcquireAPILockRecoversFromCorruptStateWhenLockHasNoPID(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	lock := apiLockState{
+		OwnerPID:  11111,
+		APIPID:    0,
+		CreatedAt: time.Now().UTC(),
+	}
+	raw, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), raw, 0o600))
+	require.NoError(t, os.WriteFile(apiStatePath(), []byte("{broken"), 0o600))
+
+	require.NoError(t, acquireAPILock())
+	loaded, err := loadAPILock()
+	require.NoError(t, err)
+	assert.Equal(t, os.Getpid(), loaded.OwnerPID)
+	assert.Zero(t, loaded.APIPID)
 }
 
 // TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory handles non-file log path errors.
