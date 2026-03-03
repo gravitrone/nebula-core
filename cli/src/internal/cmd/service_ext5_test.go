@@ -338,3 +338,37 @@ func TestRunStopCmdEscalatesToKillForTermIgnoredProcess(t *testing.T) {
 	_, lockErr := os.Stat(apiLockPath())
 	assert.True(t, os.IsNotExist(lockErr))
 }
+
+func TestResolveServerDirSkipsDuplicateCandidatesWhenRootsOverlap(t *testing.T) {
+	t.Setenv("NEBULA_SERVER_DIR", "")
+
+	exePath, err := os.Executable()
+	require.NoError(t, err)
+	exeDir := filepath.Dir(exePath)
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(exeDir))
+	t.Cleanup(func() {
+		_ = os.Chdir(cwd)
+	})
+
+	_, err = resolveServerDir()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "could not locate server dir")
+}
+
+func TestNormalizeServerDirCandidateReturnsFalseWhenAbsFails(t *testing.T) {
+	tmp := t.TempDir()
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	require.NoError(t, os.Chdir(tmp))
+	require.NoError(t, os.RemoveAll(tmp))
+	t.Cleanup(func() {
+		_ = os.Chdir(cwd)
+	})
+
+	_, ok := normalizeServerDirCandidate("server")
+	assert.False(t, ok)
+}
