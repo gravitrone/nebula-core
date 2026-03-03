@@ -147,6 +147,19 @@ func TestParseStringSliceSkipsNonStringEntriesInAnySlice(t *testing.T) {
 	)
 }
 
+func TestParseStringSliceParsesJSONArrayStringPayloads(t *testing.T) {
+	assert.Equal(
+		t,
+		[]string{"public", "admin"},
+		parseStringSlice(`[" Public ", "#admin", 1, null, ""]`),
+	)
+	assert.Equal(
+		t,
+		[]string{"public", "private"},
+		parseStringSlice(`"[\"Public\", \"private\"]"`),
+	)
+}
+
 func TestScopeBadgesTextSkipsBlankEntries(t *testing.T) {
 	assert.Equal(
 		t,

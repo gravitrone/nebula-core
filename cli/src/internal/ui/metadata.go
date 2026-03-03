@@ -1438,7 +1438,13 @@ func parseStringSlice(value any) []string {
 		}
 		return normalizeScopeList(out)
 	case string:
-		parts := strings.Split(typed, ",")
+		trimmed := strings.TrimSpace(typed)
+		if parsed, ok := parseJSONStructuredString(trimmed); ok {
+			if list, isList := parsed.([]any); isList {
+				return parseStringSlice(list)
+			}
+		}
+		parts := strings.Split(trimmed, ",")
 		out := make([]string, 0, len(parts))
 		for _, part := range parts {
 			text := strings.TrimSpace(part)
