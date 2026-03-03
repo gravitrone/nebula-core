@@ -1443,6 +1443,7 @@ func parseStringSlice(value any) []string {
 			if list, isList := parsed.([]any); isList {
 				return parseStringSlice(list)
 			}
+			return nil
 		}
 		parts := strings.Split(trimmed, ",")
 		out := make([]string, 0, len(parts))

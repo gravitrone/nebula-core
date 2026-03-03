@@ -175,6 +175,11 @@ func TestParseStringSliceParsesJSONArrayStringPayloads(t *testing.T) {
 	)
 }
 
+func TestParseStringSliceRejectsJSONObjectStringPayloads(t *testing.T) {
+	assert.Nil(t, parseStringSlice(`{"scope":"public"}`))
+	assert.Nil(t, parseStringSlice(`"{\"scope\":\"public\"}"`))
+}
+
 func TestScopeBadgesTextSkipsBlankEntries(t *testing.T) {
 	assert.Equal(
 		t,
