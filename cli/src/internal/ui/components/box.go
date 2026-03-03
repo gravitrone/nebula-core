@@ -197,9 +197,6 @@ func titledBoxWithStyle(title, content string, width int, boxStyle, headerStyle 
 	}
 	boxed := renderBox(boxStyle, width, content)
 	lines := strings.Split(boxed, "\n")
-	if len(lines) == 0 {
-		return boxed
-	}
 
 	lineWidth := lipgloss.Width(lines[0])
 	if lineWidth < 4 {
@@ -215,13 +212,7 @@ func titledBoxWithStyle(title, content string, width int, boxStyle, headerStyle 
 
 	titleWidth := lipgloss.Width(titleText)
 	left := (middleLen - titleWidth) / 2
-	if left < 0 {
-		left = 0
-	}
 	right := middleLen - titleWidth - left
-	if right < 0 {
-		right = 0
-	}
 
 	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
 	leftSeg := borderStyle.Render(border.TopLeft + strings.Repeat(border.Top, left))
@@ -335,9 +326,6 @@ func Table(title string, rows []TableRow, width int) string {
 	for _, r := range safeRows {
 		labelText := ClampTextWidth(r.Label, labelWidth)
 		valueLines := wrapTableValue(r.Value, valueWidth)
-		if len(valueLines) == 0 {
-			valueLines = []string{""}
-		}
 		label := boxLabelStyle.Render(padRight(labelText, labelWidth))
 		valueStyle := boxValueStyle
 		if strings.TrimSpace(r.ValueColor) != "" {
@@ -406,9 +394,6 @@ func wrapTableWords(text string, width int) []string {
 		return []string{text}
 	}
 	words := strings.Fields(text)
-	if len(words) == 0 {
-		return []string{ClampTextWidthEllipsis(text, width)}
-	}
 	out := make([]string, 0, len(words))
 	current := ""
 	for _, word := range words {
@@ -534,9 +519,6 @@ func wrapDiffLine(line string, width int) []string {
 		return []string{line}
 	}
 	words := strings.Fields(line)
-	if len(words) == 0 {
-		return []string{ClampTextWidthEllipsis(line, width)}
-	}
 	out := make([]string, 0, len(words))
 	current := ""
 	for _, word := range words {
