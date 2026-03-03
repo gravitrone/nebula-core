@@ -831,6 +831,41 @@ async def test_create_context_valid_url_trim_direct_path(monkeypatch, mock_enums
 
 
 @pytest.mark.asyncio
+async def test_create_context_empty_url_allowed_via_model_construct(
+    monkeypatch, mock_enums
+):
+    """create_context should allow explicit empty URL to clear/omit link."""
+
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = CreateContextInput.model_construct(
+        title="ctx",
+        source_type="note",
+        scopes=["public"],
+        url="",
+        tags=[],
+        metadata={},
+        content=None,
+    )
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr(
+        "nebula_mcp.server.maybe_require_approval",
+        AsyncMock(return_value=None),
+    )
+    execute_create = AsyncMock(return_value={"id": str(uuid4()), "url": ""})
+    monkeypatch.setattr("nebula_mcp.server.execute_create_context", execute_create)
+
+    result = await create_context(payload, _ctx(pool, mock_enums, agent))
+
+    assert result["url"] == ""
+    assert execute_create.await_args.args[2]["url"] == ""
+
+
+@pytest.mark.asyncio
 async def test_create_context_whitespace_url_rejected_via_model_construct(
     monkeypatch, mock_enums
 ):
@@ -889,6 +924,45 @@ async def test_update_context_valid_url_trim_direct_path(monkeypatch, mock_enums
     result = await update_context(payload, _ctx(pool, mock_enums, agent))
 
     assert result["url"] == "https://example.com/u"
+
+
+@pytest.mark.asyncio
+async def test_update_context_empty_url_allowed_via_model_construct(
+    monkeypatch, mock_enums
+):
+    """update_context should allow explicit empty URL for clearing."""
+
+    context_id = str(uuid4())
+    pool = _PoolStub()
+    agent = _public_agent(mock_enums)
+    payload = UpdateContextInput.model_construct(
+        context_id=context_id,
+        url="",
+        status=None,
+        scopes=None,
+        title=None,
+        source_type=None,
+        content=None,
+        tags=None,
+        metadata=None,
+    )
+
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_context",
+        AsyncMock(return_value=(pool, mock_enums, agent)),
+    )
+    monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
+    monkeypatch.setattr(
+        "nebula_mcp.server.maybe_require_approval",
+        AsyncMock(return_value=None),
+    )
+    execute_update = AsyncMock(return_value={"id": context_id, "url": ""})
+    monkeypatch.setattr("nebula_mcp.server.execute_update_context", execute_update)
+
+    result = await update_context(payload, _ctx(pool, mock_enums, agent))
+
+    assert result["url"] == ""
+    assert execute_update.await_args.args[2]["url"] == ""
 
 
 @pytest.mark.asyncio

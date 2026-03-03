@@ -666,6 +666,21 @@ class TestModelEdgeInputs:
         with pytest.raises(ValidationError, match="URL must start with http:// or https://"):
             UpdateContextInput(context_id="ctx-1", url="ftp://example.com")
 
+    def test_context_models_reject_whitespace_only_url(self):
+        """Context create/update models should reject whitespace-only URL values."""
+
+        with pytest.raises(ValidationError, match="URL must start with http:// or https://"):
+            CreateContextInput(
+                title="Notes",
+                source_type="article",
+                content="body",
+                scopes=["public"],
+                url="   ",
+            )
+
+        with pytest.raises(ValidationError, match="URL must start with http:// or https://"):
+            UpdateContextInput(context_id="ctx-1", url="   ")
+
     def test_update_context_sanitizes_title_tags_metadata_and_accepts_empty_url(self):
         """Update context should sanitize optional fields and preserve empty URL values."""
 
