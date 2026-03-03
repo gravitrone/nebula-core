@@ -41,7 +41,10 @@ def coerce_json(value: Any) -> dict[str, Any]:
     if isinstance(value, dict):
         return value
     if isinstance(value, str):
-        parsed = json.loads(value)
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Invalid JSON object") from exc
         if isinstance(parsed, dict):
             return parsed
         return {}

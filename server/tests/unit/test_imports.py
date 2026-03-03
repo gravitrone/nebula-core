@@ -63,6 +63,13 @@ def test_coerce_json_non_object_json_string_returns_empty_object():
     assert coerce_json('"text"') == {}
 
 
+def test_coerce_json_rejects_malformed_json_string():
+    """Malformed JSON input should fail with a deterministic validation error."""
+
+    with pytest.raises(ValueError, match="Invalid JSON object"):
+        coerce_json("{bad")
+
+
 def test_coerce_json_non_string_non_dict_returns_empty_object():
     """Unsupported input types should normalize to empty object."""
 
