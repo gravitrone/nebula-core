@@ -681,10 +681,12 @@ class SemanticSearchInput(BaseModel):
             Result value from the operation.
         """
 
-        if not v:
+        if v is None:
             return ["entity", "context"]
         if not isinstance(v, list):
             raise ValueError("Kinds must be a list")
+        if len(v) == 0:
+            return ["entity", "context"]
         out: list[str] = []
         for item in v:
             name = str(item or "").strip().lower()

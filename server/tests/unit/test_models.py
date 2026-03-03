@@ -752,6 +752,24 @@ class TestModelEdgeInputs:
         with pytest.raises(ValidationError, match="Kinds must be a list"):
             SemanticSearchInput(query="agent memory", kinds="entity")  # type: ignore[arg-type]
 
+    def test_semantic_search_rejects_empty_string_kinds_payload(self):
+        """Semantic search should reject falsy non-list kinds payloads."""
+
+        with pytest.raises(ValidationError, match="Kinds must be a list"):
+            SemanticSearchInput(query="agent memory", kinds="")  # type: ignore[arg-type]
+
+    def test_semantic_search_rejects_boolean_kinds_payload(self):
+        """Semantic search should reject boolean kinds payloads."""
+
+        with pytest.raises(ValidationError, match="Kinds must be a list"):
+            SemanticSearchInput(query="agent memory", kinds=False)  # type: ignore[arg-type]
+
+    def test_semantic_search_rejects_object_kinds_payload(self):
+        """Semantic search should reject object kinds payloads."""
+
+        with pytest.raises(ValidationError, match="Kinds must be a list"):
+            SemanticSearchInput(query="agent memory", kinds={"kind": "entity"})  # type: ignore[arg-type]
+
     def test_semantic_search_defaults_kinds_when_empty_list(self):
         """Semantic search should restore default kinds for empty-list input."""
 
