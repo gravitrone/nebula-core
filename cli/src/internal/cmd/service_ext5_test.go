@@ -2,12 +2,14 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"os/exec"
 	"runtime"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -181,4 +183,42 @@ func TestStopProcessIfAliveNoopWhenProcessAlreadyExited(t *testing.T) {
 
 	stopProcessIfAlive(pid)
 	assert.False(t, processAlive(pid))
+}
+
+func TestRunStopCmdNoLockWithDeadRuntimeStateCleansState(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	require.NoError(t, saveAPIState(&apiRuntimeState{
+		PID:       999999,
+		Port:      api.DefaultAPIPort,
+		ServerDir: "/tmp/server",
+		LogPath:   "/tmp/log",
+		StartedAt: time.Now().UTC(),
+	}))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	assert.Contains(t, out.String(), "API is not running")
+
+	_, err := os.Stat(apiStatePath())
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestProcessAliveTreatsEPERMAsAlive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix permission semantics required")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("EPERM branch not expected when running as root")
+	}
+
+	proc, err := os.FindProcess(1)
+	require.NoError(t, err)
+	sigErr := proc.Signal(syscall.Signal(0))
+	if !errors.Is(sigErr, syscall.EPERM) {
+		t.Skip("host did not return EPERM for pid 1 signal 0")
+	}
+
+	assert.True(t, processAlive(1))
 }
