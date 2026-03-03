@@ -187,6 +187,30 @@ func TestStopProcessIfAliveEscalatesToKillWhenProcessIgnoresTerm(t *testing.T) {
 	}, 3*time.Second, 20*time.Millisecond)
 }
 
+func TestStopProcessIfAliveGracefulTerminateBranch(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("signal semantics required")
+	}
+
+	cmd := exec.Command("sh", "-c", "sleep 30")
+	require.NoError(t, cmd.Start())
+	pid := cmd.Process.Pid
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
+
+	require.Eventually(t, func() bool {
+		return processAlive(pid)
+	}, time.Second, 20*time.Millisecond)
+
+	stopProcessIfAlive(pid)
+
+	require.Eventually(t, func() bool {
+		return !processAlive(pid)
+	}, 2*time.Second, 20*time.Millisecond)
+}
+
 func TestStopProcessIfAliveNoopForNonPositivePID(t *testing.T) {
 	// Should not panic or do any work on invalid pids.
 	stopProcessIfAlive(0)
@@ -370,5 +394,14 @@ func TestNormalizeServerDirCandidateReturnsFalseWhenAbsFails(t *testing.T) {
 	})
 
 	_, ok := normalizeServerDirCandidate("server")
+	assert.False(t, ok)
+}
+
+func TestNormalizeServerDirCandidateRejectsDirectoryAtAppPath(t *testing.T) {
+	root := t.TempDir()
+	appPath := filepath.Join(root, "src", "nebula_api", "app.py")
+	require.NoError(t, os.MkdirAll(appPath, 0o700))
+
+	_, ok := normalizeServerDirCandidate(root)
 	assert.False(t, ok)
 }

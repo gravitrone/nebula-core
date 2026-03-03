@@ -32,6 +32,7 @@ func TestFormatAnyInlineAndFormatAnyMatrix(t *testing.T) {
 	assert.Equal(t, "None", formatAny("<nil>"))
 	assert.Equal(t, "1, two", formatAny([]any{1, "two"}))
 	assert.Equal(t, "None", formatAny([]string{}))
+	assert.Equal(t, "None", formatAny(map[string]any{}))
 	assert.Contains(t, formatAny(map[string]any{"k": "v"}), "k")
 }
 

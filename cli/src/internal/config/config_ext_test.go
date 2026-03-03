@@ -50,3 +50,17 @@ func TestSaveConfigSetsDefaultPendingLimitWhenMissing(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 500, loaded.PendingLimit)
 }
+
+func TestSaveConfigReturnsWriteErrorWhenConfigPathIsDirectory(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cfgDir := filepath.Join(home, ".nebula")
+	require.NoError(t, os.MkdirAll(cfgDir, 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(cfgDir, "config"), 0o700))
+
+	cfg := &Config{APIKey: "nbl_test"}
+	err := cfg.Save()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is a directory")
+}

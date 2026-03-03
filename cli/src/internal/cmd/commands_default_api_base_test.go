@@ -130,6 +130,112 @@ func TestKeysAndAgentListHappyPathsAgainstDefaultAPIBaseURL(t *testing.T) {
 	require.NoError(t, agents.Execute())
 }
 
+// TestAgentListCmdCoversEmptyAndTrustDescriptionBranches handles list rendering
+// for empty responses plus trusted/untrusted row formatting branches.
+func TestAgentListCmdCoversEmptyAndTrustDescriptionBranches(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, (&config.Config{APIKey: "nbl_test", Username: "alxx"}).Save())
+
+	now := time.Now()
+	requests := 0
+	shutdown := startDefaultAPIBaseServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/agents/" && r.Method == http.MethodGet:
+			require.Equal(t, "active", r.URL.Query().Get("status_category"))
+			requests++
+			if requests == 1 {
+				require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
+				return
+			}
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{
+				{
+					"id":                "agent-1",
+					"name":              "trusted-bot",
+					"description":       "handles ops",
+					"status":            "active",
+					"requires_approval": false,
+					"scopes":            []string{"public"},
+					"capabilities":      []string{"read"},
+					"created_at":        now,
+					"updated_at":        now,
+				},
+				{
+					"id":                "agent-2",
+					"name":              "review-bot",
+					"status":            "active",
+					"requires_approval": true,
+					"scopes":            []string{"public"},
+					"capabilities":      []string{"read"},
+					"created_at":        now,
+					"updated_at":        now,
+				},
+			}}))
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(shutdown)
+
+	var firstOut bytes.Buffer
+	first := AgentCmd()
+	first.SetOut(&firstOut)
+	first.SetErr(&firstOut)
+	first.SetArgs([]string{"list"})
+	require.NoError(t, first.Execute())
+	assert.Contains(t, firstOut.String(), "No agents found.")
+
+	var secondOut bytes.Buffer
+	second := AgentCmd()
+	second.SetOut(&secondOut)
+	second.SetErr(&secondOut)
+	second.SetArgs([]string{"list"})
+	require.NoError(t, second.Execute())
+	assert.Contains(t, secondOut.String(), "trusted-bot")
+	assert.Contains(t, secondOut.String(), "trusted - handles ops")
+	assert.Contains(t, secondOut.String(), "review-bot")
+	assert.Contains(t, secondOut.String(), "untrusted")
+}
+
+func TestAgentListCmdReturnsNotLoggedInWhenConfigMissing(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	cmd := agentListCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not logged in")
+}
+
+func TestAgentListCmdReturnsListErrorOnAPIFailure(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, (&config.Config{APIKey: "nbl_test", Username: "alxx"}).Save())
+
+	shutdown := startDefaultAPIBaseServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/agents/" && r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = io.WriteString(w, `{"error":"boom"}`)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(shutdown)
+
+	cmd := agentListCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "list agents")
+}
+
 // TestKeysListAllFlagAgainstDefaultAPIBaseURL handles list-all key flows on default base URL.
 func TestKeysListAllFlagAgainstDefaultAPIBaseURL(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())

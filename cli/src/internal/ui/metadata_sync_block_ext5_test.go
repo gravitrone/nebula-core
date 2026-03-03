@@ -80,7 +80,12 @@ func TestSetMetadataPathBranchMatrix(t *testing.T) {
 
 	require.NoError(t, setMetadataPath(root, "profile.name", "alxx", 1))
 	require.NoError(t, setMetadataPath(root, "profile.age", "18", 2))
-	assert.Equal(t, map[string]any{"name": "alxx", "age": "18"}, root["profile"])
+	require.NoError(t, setMetadataPath(root, "profile.timezone", "Europe/Warsaw", 2))
+	assert.Equal(
+		t,
+		map[string]any{"name": "alxx", "age": "18", "timezone": "Europe/Warsaw"},
+		root["profile"],
+	)
 
 	err := setMetadataPath(root, "profile.name.first", "x", 3)
 	require.Error(t, err)

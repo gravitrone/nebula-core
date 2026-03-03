@@ -402,6 +402,18 @@ func TestInboxFilterTimeAndMatchExtraBranches(t *testing.T) {
 	old := match
 	old.CreatedAt = time.Now().Add(-24 * time.Hour)
 	assert.False(t, matchesApprovalFilter(old, filter))
+
+	agentMismatch := match
+	agentMismatch.AgentName = "beta-agent"
+	assert.False(t, matchesApprovalFilter(agentMismatch, filter))
+
+	reqMismatch := match
+	reqMismatch.RequestType = "update_job_status"
+	assert.False(t, matchesApprovalFilter(reqMismatch, filter))
+
+	termMismatch := match
+	termMismatch.Status = "approved"
+	assert.False(t, matchesApprovalFilter(termMismatch, filter))
 }
 
 func TestInboxHandleRejectInputDetailNilAndEnterBranches(t *testing.T) {

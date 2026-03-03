@@ -90,4 +90,9 @@ func TestNormalizeScopeListEdgeCases(t *testing.T) {
 		[]string{"##admin", "public"},
 		normalizeScopeList([]string{"###ADMIN", " public ", "PUBLIC"}),
 	)
+	assert.Equal(
+		t,
+		[]string{"private"},
+		normalizeScopeList([]string{"  ", "#", "#private", "PRIVATE"}),
+	)
 }

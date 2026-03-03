@@ -364,6 +364,26 @@ func TestSaveAPIStateReturnsRuntimeDirError(t *testing.T) {
 	assert.Contains(t, err.Error(), "create runtime dir")
 }
 
+func TestSaveAPIStateReturnsWriteStateErrorWhenStatePathIsDirectory(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.MkdirAll(apiStatePath(), 0o700))
+
+	err := saveAPIState(&apiRuntimeState{PID: 1})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "write runtime state")
+}
+
+func TestSaveAPIStateReturnsWritePIDErrorWhenPIDPathIsDirectory(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.MkdirAll(apiPIDPath(), 0o700))
+
+	err := saveAPIState(&apiRuntimeState{PID: 1})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is a directory")
+}
+
 // TestLoadAPIStateReturnsParseErrorOnInvalidJSON handles runtime-state parse failures.
 func TestLoadAPIStateReturnsParseErrorOnInvalidJSON(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
