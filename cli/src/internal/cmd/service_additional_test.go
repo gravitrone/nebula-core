@@ -213,6 +213,46 @@ func TestRunStartCmdReportsStartingWhenHealthNotReady(t *testing.T) {
 	require.NoError(t, runStopCmd(&stopOut))
 }
 
+// TestRunStopCmdFallsBackToLiveStatePIDWhenLockPIDIsDead ensures stop targets live runtime-state pid if lock pid is stale.
+func TestRunStopCmdFallsBackToLiveStatePIDWhenLockPIDIsDead(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	serverDir := createFakeServerDirWithUvicorn(t)
+	t.Setenv("NEBULA_SERVER_DIR", serverDir)
+	setWaitForAPIProbe(t, func() (string, error) { return "ok", nil })
+	setStartHealthTimeout(t, 300*time.Millisecond)
+
+	var startOut bytes.Buffer
+	require.NoError(t, runStartCmd(&startOut))
+	state, err := loadAPIState()
+	require.NoError(t, err)
+	require.Positive(t, state.PID)
+	require.True(t, processAlive(state.PID))
+	t.Cleanup(func() {
+		if processAlive(state.PID) {
+			if proc, findErr := os.FindProcess(state.PID); findErr == nil {
+				_ = proc.Kill()
+			}
+		}
+	})
+
+	staleLock := apiLockState{
+		OwnerPID:  os.Getpid(),
+		APIPID:    999999,
+		CreatedAt: time.Now().UTC(),
+	}
+	rawLock, err := json.Marshal(staleLock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), rawLock, 0o600))
+
+	var stopOut bytes.Buffer
+	require.NoError(t, runStopCmd(&stopOut))
+	assert.Contains(t, strings.ToLower(stopOut.String()), "stopped")
+	_, stateErr := loadAPIState()
+	assert.True(t, os.IsNotExist(stateErr))
+	_, lockErr := loadAPILock()
+	assert.True(t, os.IsNotExist(lockErr))
+}
+
 // TestRunStartCmdDetectsMultiAPIConflictMessage handles address-in-use startup failures with explicit recovery guidance.
 func TestRunStartCmdDetectsMultiAPIConflictMessage(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
