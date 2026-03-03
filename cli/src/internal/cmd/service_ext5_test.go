@@ -131,6 +131,19 @@ func TestProcessZombieReturnsFalseWhenPSUnavailable(t *testing.T) {
 	assert.False(t, processZombie(os.Getpid()))
 }
 
+func TestProcessZombieReturnsFalseWhenPSOutputEmpty(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix ps behavior required")
+	}
+
+	dir := t.TempDir()
+	psPath := filepath.Join(dir, "ps")
+	require.NoError(t, os.WriteFile(psPath, []byte("#!/bin/sh\nprintf '   \\n'\n"), 0o755))
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	assert.False(t, processZombie(os.Getpid()))
+}
+
 func TestProcessZombieReturnsFalseForLiveProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("unix ps behavior required")
@@ -276,4 +289,52 @@ func TestRunStopCmdKeepsLockPIDWhenRuntimeStatePIDIsDead(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return !processAlive(lockPID)
 	}, 2*time.Second, 20*time.Millisecond)
+}
+
+func TestRunStopCmdEscalatesToKillForTermIgnoredProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("signal semantics required")
+	}
+
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	cmd := exec.Command("sh", "-c", "trap '' TERM; sleep 30")
+	require.NoError(t, cmd.Start())
+	pid := cmd.Process.Pid
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+	})
+	require.Eventually(t, func() bool {
+		return processAlive(pid)
+	}, time.Second, 20*time.Millisecond)
+
+	lock := apiLockState{
+		OwnerPID:  os.Getpid(),
+		APIPID:    pid,
+		CreatedAt: time.Now().UTC(),
+	}
+	raw, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), raw, 0o600))
+	require.NoError(t, saveAPIState(&apiRuntimeState{
+		PID:       pid,
+		Port:      api.DefaultAPIPort,
+		ServerDir: "/tmp/server",
+		LogPath:   "/tmp/log",
+		StartedAt: time.Now().UTC(),
+	}))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	assert.Contains(t, out.String(), "stopped")
+	require.Eventually(t, func() bool {
+		return !processAlive(pid)
+	}, 2*time.Second, 20*time.Millisecond)
+
+	_, stateErr := os.Stat(apiStatePath())
+	assert.True(t, os.IsNotExist(stateErr))
+	_, lockErr := os.Stat(apiLockPath())
+	assert.True(t, os.IsNotExist(lockErr))
 }
