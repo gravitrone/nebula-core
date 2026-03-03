@@ -436,6 +436,21 @@ func TestAcquireAPILockReturnsRuntimeDirErrorWhenHomeIsFile(t *testing.T) {
 	assert.Contains(t, err.Error(), "create runtime dir")
 }
 
+// TestAcquireAPILockReturnsCreateLockErrorOnPermissionDenied ensures lock creation
+// failures surface a clear create-api-lock error when runtime dir is not writable.
+func TestAcquireAPILockReturnsCreateLockErrorOnPermissionDenied(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.Chmod(runtimeDir(), 0o500))
+	t.Cleanup(func() {
+		_ = os.Chmod(runtimeDir(), 0o700)
+	})
+
+	err := acquireAPILock()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "create api lock")
+}
+
 // TestAcquireAPILockRecoversFromCorruptStateWhenLockHasNoPID covers stale lock + unreadable state recovery.
 func TestAcquireAPILockRecoversFromCorruptStateWhenLockHasNoPID(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
