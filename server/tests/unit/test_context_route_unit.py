@@ -188,6 +188,20 @@ def test_validate_tag_list_rejects_too_long_tag():
         _validate_tag_list(["x" * (MAX_TAG_LENGTH + 1)])
 
 
+def test_validate_tag_list_rejects_non_list_payload():
+    """Tag validator should enforce list-only payloads."""
+
+    with pytest.raises(ValueError, match="Tags must be a list"):
+        _validate_tag_list("public")  # type: ignore[arg-type]
+
+
+def test_validate_tag_list_rejects_non_string_item():
+    """Tag validator should reject non-string list items."""
+
+    with pytest.raises(ValueError, match="Tags must contain only strings"):
+        _validate_tag_list(["ok", 1])  # type: ignore[list-item]
+
+
 def test_update_context_body_url_empty_string_roundtrips():
     """Empty URL values should pass through without scheme validation."""
 

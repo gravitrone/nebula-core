@@ -174,7 +174,15 @@ def _validate_tag_list(tags: list[str] | None) -> list[str] | None:
 
     if tags is None:
         return None
-    cleaned = [t.strip() for t in tags if t and t.strip()]
+    if not isinstance(tags, list):
+        raise ValueError("Tags must be a list")
+    cleaned: list[str] = []
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise ValueError("Tags must contain only strings")
+        stripped = tag.strip()
+        if stripped:
+            cleaned.append(stripped)
     if len(cleaned) > MAX_TAGS:
         raise ValueError("Too many tags")
     for tag in cleaned:

@@ -8,6 +8,7 @@ from uuid import uuid4
 # Third-Party
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 # Local
 from nebula_api.routes.protocols import (
@@ -71,6 +72,20 @@ def test_validate_tag_list_too_long_raises():
         _validate_tag_list(["x" * (MAX_TAG_LENGTH + 1)])
 
 
+def test_validate_tag_list_rejects_non_list_payload():
+    """Validator should enforce list-only payloads."""
+
+    with pytest.raises(ValueError, match="Tags must be a list"):
+        _validate_tag_list("public")  # type: ignore[arg-type]
+
+
+def test_validate_tag_list_rejects_non_string_item():
+    """Validator should reject non-string tag items."""
+
+    with pytest.raises(ValueError, match="Tags must contain only strings"):
+        _validate_tag_list(["ok", 1])  # type: ignore[list-item]
+
+
 def test_update_protocol_body_runs_tag_cleaner():
     """Update body validator should trim tags and drop empty values."""
 
@@ -88,6 +103,18 @@ def test_create_protocol_body_runs_tag_cleaner():
         tags=[" a ", "", "b", "   "],
     )
     assert payload.tags == ["a", "b"]
+
+
+def test_create_protocol_body_rejects_non_string_tag_item():
+    """Create body should fail fast when tags include non-string items."""
+
+    with pytest.raises(ValidationError, match="Tags must contain only strings"):
+        CreateProtocolBody(
+            name="p",
+            title="Protocol",
+            content="body",
+            tags=[1],  # type: ignore[list-item]
+        )
 
 
 @pytest.mark.asyncio

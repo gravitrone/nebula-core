@@ -9,6 +9,7 @@ from uuid import uuid4
 # Third-Party
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 # Local
 from nebula_api.routes.entities import (
@@ -72,6 +73,32 @@ def test_validate_tag_list_rejects_too_long_tag():
 
     with pytest.raises(ValueError, match="Tag too long"):
         _validate_tag_list(["x" * (MAX_TAG_LENGTH + 1)])
+
+
+def test_validate_tag_list_rejects_non_list_payload():
+    """Tag validator should enforce list-only payloads."""
+
+    with pytest.raises(ValueError, match="Tags must be a list"):
+        _validate_tag_list("public")  # type: ignore[arg-type]
+
+
+def test_validate_tag_list_rejects_non_string_item():
+    """Tag validator should reject non-string list items."""
+
+    with pytest.raises(ValueError, match="Tags must contain only strings"):
+        _validate_tag_list(["ok", 1])  # type: ignore[list-item]
+
+
+def test_create_entity_body_rejects_non_string_tag_item():
+    """Body validator should surface non-string tag items as validation errors."""
+
+    with pytest.raises(ValidationError, match="Tags must contain only strings"):
+        CreateEntityBody(
+            name="alpha",
+            type="person",
+            scopes=["public"],
+            tags=[1],  # type: ignore[list-item]
+        )
 
 
 class _AcquireCtx:
