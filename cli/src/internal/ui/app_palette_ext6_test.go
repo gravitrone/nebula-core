@@ -115,10 +115,28 @@ func TestBuildSearchPaletteActionsLabelFallbackBranch(t *testing.T) {
 
 	require.Len(t, actions, 1)
 	assert.Equal(t, "entity:", actions[0].ID)
-	assert.Equal(t, "", actions[0].Label)
+	assert.Equal(t, "entity", actions[0].Label)
+	assert.Equal(t, "entity", actions[0].Desc)
 	selection, ok := selections["entity:"]
 	require.True(t, ok)
 	require.NotNil(t, selection.entity)
+}
+
+func TestBuildSearchPaletteActionsUsesShortIDWhenLabelMissing(t *testing.T) {
+	actions, _ := buildSearchPaletteActions(
+		"",
+		[]api.Entity{{ID: "entity-123456789", Name: "", Type: ""}},
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	require.Len(t, actions, 1)
+	assert.Equal(t, "entity-1", actions[0].Label)
+	assert.Equal(t, "entity · entity-1", actions[0].Desc)
 }
 
 func TestCenterBlockUniformEarlyReturnBranches(t *testing.T) {

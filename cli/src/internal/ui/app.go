@@ -2103,11 +2103,16 @@ func buildSearchPaletteActions(
 		id := fmt.Sprintf("%s:%s", entry.kind, entry.id)
 		label := strings.TrimSpace(components.SanitizeOneLine(entry.label))
 		if label == "" {
-			label = shortID(entry.id)
+			if sid := strings.TrimSpace(shortID(entry.id)); sid != "" {
+				label = sid
+			} else {
+				label = strings.TrimSpace(entry.kind)
+			}
 		}
 		desc := strings.TrimSpace(components.SanitizeOneLine(entry.desc))
+		desc = strings.TrimSpace(strings.Trim(desc, " ·"))
 		if desc == "" {
-			desc = entry.kind
+			desc = strings.TrimSpace(entry.kind)
 		}
 		actions = append(actions, paletteAction{
 			ID:    id,
