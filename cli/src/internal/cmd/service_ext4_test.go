@@ -164,6 +164,41 @@ func TestRunStopCmdUsesStatePIDWhenLockAPIPIDMissing(t *testing.T) {
 	assert.Contains(t, strings.ToLower(out.String()), "cleaned stale runtime files")
 }
 
+func TestRunStopCmdPrefersLiveStatePIDWhenLockPIDConflicts(t *testing.T) {
+	if !processAlive(1) {
+		t.Skip("pid 1 not available on this host")
+	}
+
+	t.Setenv("HOME", t.TempDir())
+	serverDir := createFakeServerDirWithUvicorn(t)
+	t.Setenv("NEBULA_SERVER_DIR", serverDir)
+	setWaitForAPIProbe(t, func() (string, error) { return "ok", nil })
+	setStartHealthTimeout(t, 300*time.Millisecond)
+
+	var startOut bytes.Buffer
+	require.NoError(t, runStartCmd(&startOut))
+	state, err := loadAPIState()
+	require.NoError(t, err)
+	require.Positive(t, state.PID)
+	require.True(t, processAlive(state.PID))
+
+	lock := apiLockState{
+		OwnerPID: os.Getpid(),
+		APIPID:   1, // live conflicting pid that is not our managed API pid
+	}
+	lockRaw, err := json.Marshal(lock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), lockRaw, 0o600))
+
+	var out bytes.Buffer
+	require.NoError(t, runStopCmd(&out))
+	assert.Contains(t, strings.ToLower(out.String()), "stopped")
+	_, stateErr := os.Stat(apiStatePath())
+	assert.True(t, os.IsNotExist(stateErr))
+	_, lockErr := os.Stat(apiLockPath())
+	assert.True(t, os.IsNotExist(lockErr))
+}
+
 func TestRunStopCmdReturnsStopAPIErrorForProtectedPID(t *testing.T) {
 	if !processAlive(1) {
 		t.Skip("pid 1 not available on this host")

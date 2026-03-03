@@ -246,12 +246,19 @@ func runStopCmd(out io.Writer) error {
 	}
 
 	pid := lock.APIPID
-	// If lock metadata points to a dead process, use runtime state as fallback when available.
-	if pid > 0 && !processAlive(pid) && state != nil && state.PID > 0 {
-		pid = state.PID
-	}
-	if pid <= 0 && state != nil {
-		pid = state.PID
+	if state != nil && state.PID > 0 {
+		switch {
+		case pid <= 0:
+			pid = state.PID
+		case pid == state.PID:
+			// lock and runtime state agree
+		case !processAlive(pid):
+			// dead lock pid should not override live runtime state
+			pid = state.PID
+		case processAlive(state.PID):
+			// conflicting live pids: prefer runtime state that we actively manage
+			pid = state.PID
+		}
 	}
 	if pid <= 0 {
 		_ = cleanupAPIState()
