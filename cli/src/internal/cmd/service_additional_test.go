@@ -410,6 +410,37 @@ func TestAcquireAPILockCorruptLockButLiveRuntimeStateReturnsHeldError(t *testing
 	assert.Equal(t, os.Getpid(), held.PID)
 }
 
+// TestAcquireAPILockFallsBackToRuntimeStateWhenLockPIDIsDead ensures dead lock PID metadata does not bypass live runtime state.
+func TestAcquireAPILockFallsBackToRuntimeStateWhenLockPIDIsDead(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+
+	staleLock := apiLockState{
+		OwnerPID:  11111,
+		APIPID:    999999,
+		CreatedAt: time.Now().UTC(),
+	}
+	rawLock, err := json.Marshal(staleLock)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(apiLockPath(), rawLock, 0o600))
+	require.NoError(
+		t,
+		saveAPIState(&apiRuntimeState{
+			PID:       os.Getpid(),
+			Port:      api.DefaultAPIPort,
+			ServerDir: "/tmp/server",
+			LogPath:   "/tmp/log",
+			StartedAt: time.Now().UTC(),
+		}),
+	)
+
+	err = acquireAPILock()
+	require.Error(t, err)
+	var held *apiLockHeldError
+	require.ErrorAs(t, err, &held)
+	assert.Equal(t, os.Getpid(), held.PID)
+}
+
 // TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory handles non-file log path errors.
 func TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
