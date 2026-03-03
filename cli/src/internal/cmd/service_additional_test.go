@@ -387,6 +387,29 @@ func TestAcquireAPILockRecoversFromCorruptStateWhenLockHasNoPID(t *testing.T) {
 	assert.Zero(t, loaded.APIPID)
 }
 
+// TestAcquireAPILockCorruptLockButLiveRuntimeStateReturnsHeldError ensures runtime-state fallback blocks duplicate starts.
+func TestAcquireAPILockCorruptLockButLiveRuntimeStateReturnsHeldError(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(t, os.WriteFile(apiLockPath(), []byte("{broken"), 0o600))
+	require.NoError(
+		t,
+		saveAPIState(&apiRuntimeState{
+			PID:       os.Getpid(),
+			Port:      api.DefaultAPIPort,
+			ServerDir: "/tmp/server",
+			LogPath:   "/tmp/log",
+			StartedAt: time.Now().UTC(),
+		}),
+	)
+
+	err := acquireAPILock()
+	require.Error(t, err)
+	var held *apiLockHeldError
+	require.ErrorAs(t, err, &held)
+	assert.Equal(t, os.Getpid(), held.PID)
+}
+
 // TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory handles non-file log path errors.
 func TestRunLogsCmdReturnsReadErrorWhenLogPathIsDirectory(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
