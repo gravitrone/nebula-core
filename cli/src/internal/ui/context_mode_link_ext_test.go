@@ -402,3 +402,90 @@ func TestContextRenderLinkSearchWideLayoutAndSelectionFallbackBranches(t *testin
 	// No selected preview section because selection is out of range.
 	assert.NotContains(t, view, "Selected")
 }
+
+func TestContextHandleEditKeysNavigationBranches(t *testing.T) {
+	model := NewContextModel(nil)
+	model.view = contextViewEdit
+	model.editFocus = contextEditFieldType
+	model.editTypeSelecting = true
+	model.editScopeSelecting = true
+
+	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	require.Nil(t, cmd)
+	assert.Equal(t, contextEditFieldStatus, updated.editFocus)
+	assert.False(t, updated.editTypeSelecting)
+	assert.False(t, updated.editScopeSelecting)
+
+	updated.editFocus = contextEditFieldTitle
+	updated.editTypeSelecting = true
+	updated.editScopeSelecting = true
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.True(t, updated.modeFocus)
+	assert.Equal(t, contextEditFieldTitle, updated.editFocus)
+	assert.False(t, updated.editTypeSelecting)
+	assert.False(t, updated.editScopeSelecting)
+
+	updated.modeFocus = false
+	updated.editFocus = contextEditFieldNotes
+	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.Equal(t, contextEditFieldScopes, updated.editFocus)
+}
+
+func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing.T) {
+	model := NewContextModel(nil)
+	model.startLinkSearch()
+	model.linkList = nil
+
+	updated, cmd := model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyDown})
+	require.Nil(t, cmd)
+	assert.True(t, updated.linkSearching)
+	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.True(t, updated.linkSearching)
+	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyBackspace})
+	require.Nil(t, cmd)
+	assert.Equal(t, "", updated.linkQuery)
+	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyCtrlU})
+	require.Nil(t, cmd)
+	assert.Equal(t, "", updated.linkQuery)
+
+	model = NewContextModel(nil)
+	model.startLinkSearch()
+	model.linkQuery = "alpha"
+	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
+	model.linkList.SetItems([]string{"Alpha", "Ghost"})
+	model.linkList.Cursor = 1
+
+	updated, cmd = model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyEnter})
+	require.Nil(t, cmd)
+	assert.False(t, updated.linkSearching)
+	assert.Empty(t, updated.linkEntities)
+	assert.Empty(t, updated.linkResults)
+	assert.Equal(t, "", updated.linkQuery)
+}
+
+func TestContextRenderLinkSearchSideBySidePreviewAndNarrowTableBranches(t *testing.T) {
+	model := NewContextModel(nil)
+	model.width = 220
+	model.linkQuery = "alpha"
+	model.linkResults = []api.Entity{
+		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active", Metadata: api.JSONMap{"role": "builder"}},
+	}
+	model.linkList.SetItems([]string{"Alpha"})
+	model.linkList.Cursor = 0
+
+	view := components.SanitizeText(model.renderLinkSearch())
+	assert.Contains(t, view, "Link Entity")
+	assert.Contains(t, view, "Selected")
+	assert.Contains(t, view, "Type")
+	assert.Contains(t, view, "Status")
+
+	model.width = 20
+	view = components.SanitizeText(model.renderLinkSearch())
+	assert.Contains(t, view, "1 results")
+	assert.Contains(t, view, "Name")
+	assert.Contains(t, view, "Type")
+	assert.Contains(t, view, "Status")
+}
