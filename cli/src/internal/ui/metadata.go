@@ -403,10 +403,16 @@ func renderMetadataEditorPreview(buffer string, scopes []string, width int, maxR
 func leadingSpaces(s string) int {
 	count := 0
 	for _, r := range s {
-		if r != ' ' {
-			break
+		if r == ' ' {
+			count++
+			continue
 		}
-		count++
+		if r == '\t' {
+			// Treat tabs as two-space indentation to match parser guidance.
+			count += 2
+			continue
+		}
+		break
 	}
 	return count
 }

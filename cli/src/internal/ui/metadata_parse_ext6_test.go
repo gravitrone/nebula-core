@@ -25,6 +25,14 @@ func TestParseMetadataInputEdgeErrorMatrix(t *testing.T) {
 			want: "indent must use 2 spaces",
 		},
 		{
+			name: "mixed space and tab indent is invalid",
+			in: strings.Join([]string{
+				"profile:",
+				" \ttimezone: Europe/Warsaw",
+			}, "\n"),
+			want: "indent must use 2 spaces",
+		},
+		{
 			name: "indent without parent",
 			in:   "  timezone: Europe/Warsaw",
 			want: "indent has no parent key",
@@ -118,6 +126,21 @@ func TestParseMetadataInputPipeRowsAndDedentSuccess(t *testing.T) {
 	assert.Equal(t, "alpha | beta", profile["note"])
 	assert.Equal(t, "Europe/Warsaw", profile["timezone"])
 	assert.Equal(t, []any{"ai", "ml"}, profile["tags"])
+}
+
+func TestParseMetadataInputTabIndentMatchesTwoSpaces(t *testing.T) {
+	t.Parallel()
+
+	input := strings.Join([]string{
+		"profile:",
+		"\ttimezone: Europe/Warsaw",
+	}, "\n")
+
+	got, err := parseMetadataInput(input)
+	require.NoError(t, err)
+	profile, ok := got["profile"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "Europe/Warsaw", profile["timezone"])
 }
 
 func TestMetadataLinesPlainAndListPlainBranchMatrix(t *testing.T) {
