@@ -209,6 +209,8 @@ func TestEntitiesMetadataCopyHelpersBranchMatrix(t *testing.T) {
 	assert.Equal(t, 1, copied.count)
 	assert.Equal(t, "None", captured)
 
+	assert.Nil(t, model.copyMetadataRows([]int{99, -1}))
+
 	copyEntityMetadataClipboard = func(text string) error {
 		return fmt.Errorf("clipboard offline")
 	}

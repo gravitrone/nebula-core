@@ -48,18 +48,34 @@ func TestEntitiesMatchesFiltersMatrix(t *testing.T) {
 	assert.True(t, model.matchesEntityFilters(item))
 	model.filterTypes = map[string]bool{"person": true}
 	assert.False(t, model.matchesEntityFilters(item))
+	model.filterTypes = map[string]bool{"project": true}
+	item.Type = ""
+	assert.False(t, model.matchesEntityFilters(item))
+	item.Type = "project"
 
 	model.filterTypes = nil
 	model.filterStatus = map[string]bool{"active": true}
 	assert.True(t, model.matchesEntityFilters(item))
 	model.filterStatus = map[string]bool{"archived": true}
 	assert.False(t, model.matchesEntityFilters(item))
+	model.filterStatus = map[string]bool{"active": true}
+	item.Status = "   "
+	assert.False(t, model.matchesEntityFilters(item))
+	item.Status = "active"
 
 	model.filterStatus = nil
 	model.filterScopes = map[string]bool{"public": true}
 	assert.True(t, model.matchesEntityFilters(item))
 	model.filterScopes = map[string]bool{"admin": true}
 	assert.False(t, model.matchesEntityFilters(item))
+
+	model.filterScopes = map[string]bool{"public": true}
+	model.scopeNames["scope-empty-id"] = "   "
+	item.PrivacyScopeIDs = []string{"scope-empty-id"}
+	assert.False(t, model.matchesEntityFilters(item))
+
+	item.PrivacyScopeIDs = []string{"scope-empty-id", "scope-public-id"}
+	assert.True(t, model.matchesEntityFilters(item))
 }
 
 func TestEntitiesApplyFiltersPrunesSelectionAndList(t *testing.T) {

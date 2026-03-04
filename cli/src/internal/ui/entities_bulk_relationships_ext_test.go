@@ -33,6 +33,26 @@ func TestParseBulkInputExtendedMatrix(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "add", spec.op)
 	assert.Equal(t, []string{"foo", "bar"}, spec.values)
+
+	spec, err = parseBulkInput("alpha, beta")
+	require.NoError(t, err)
+	assert.Equal(t, "add", spec.op)
+	assert.Equal(t, []string{"alpha", "beta"}, spec.values)
+
+	spec, err = parseBulkInput("remove: foo,bar")
+	require.NoError(t, err)
+	assert.Equal(t, "remove", spec.op)
+	assert.Equal(t, []string{"foo", "bar"}, spec.values)
+
+	spec, err = parseBulkInput("SET:")
+	require.NoError(t, err)
+	assert.Equal(t, "set", spec.op)
+	assert.Empty(t, spec.values)
+
+	spec, err = parseBulkInput("=   ")
+	require.NoError(t, err)
+	assert.Equal(t, "set", spec.op)
+	assert.Empty(t, spec.values)
 }
 
 func TestNormalizeBulkScopesExtended(t *testing.T) {
