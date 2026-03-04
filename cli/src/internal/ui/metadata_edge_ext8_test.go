@@ -50,3 +50,30 @@ func TestMetadataGroupAndFieldSeparatorOnlyPath(t *testing.T) {
 	assert.Equal(t, "-", group)
 	assert.Equal(t, "[]", field)
 }
+
+func TestRenderMetadataEditorPreviewRootRowAndMaxRowsClamp(t *testing.T) {
+	preview := components.SanitizeText(renderMetadataEditorPreview("status: active", nil, 96, 0))
+	assert.Contains(t, preview, "root | status | active")
+}
+
+func TestSyncMetadataListScrollsCursorIntoViewport(t *testing.T) {
+	list := components.NewList(3)
+	list.Cursor = 4
+	list.Offset = 0
+	rows := []metadataDisplayRow{
+		{field: "a", value: "1"},
+		{field: "b", value: "2"},
+		{field: "c", value: "3"},
+		{field: "d", value: "4"},
+		{field: "e", value: "5"},
+	}
+	syncMetadataList(list, rows, 3)
+	assert.Equal(t, 4, list.Cursor)
+	assert.Equal(t, 2, list.Offset)
+}
+
+func TestMetadataGroupAndFieldContextRootWithNamedField(t *testing.T) {
+	group, field := metadataGroupAndField("context_segments.name")
+	assert.Equal(t, "context", group)
+	assert.Equal(t, "name", field)
+}
