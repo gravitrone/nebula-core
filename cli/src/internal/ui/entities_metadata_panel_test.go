@@ -35,7 +35,6 @@ func TestEntitiesDetailMetadataPanelHidesSelectionColumnUntilAnyRowSelected(t *t
 
 	out := model.renderDetail()
 	clean := components.SanitizeText(out)
-	assert.Contains(t, clean, "Metadata")
 	assert.NotContains(t, clean, "Sel")
 	assert.Contains(t, clean, "Group")
 	assert.Contains(t, clean, "Field")
@@ -234,7 +233,6 @@ func TestEntitiesDetailMetadataInspectScrollClamp(t *testing.T) {
 	assert.Equal(t, maxOffset, model.metaInspectO)
 
 	rendered := components.SanitizeText(model.renderMetaInspect())
-	assert.Contains(t, rendered, "Metadata Value")
 	assert.Contains(t, rendered, "Lines")
 	assert.Contains(t, rendered, "... ↑ more")
 }
@@ -288,7 +286,6 @@ func TestEntitiesRenderDetailOptionalFieldBranchMatrix(t *testing.T) {
 		}
 
 		out := components.SanitizeText(model.renderDetail())
-		assert.Contains(t, out, "Entity")
 		assert.Contains(t, out, "ID")
 		assert.Contains(t, out, "Name")
 		assert.Contains(t, out, "Created")
@@ -341,8 +338,6 @@ func TestEntitiesRenderDetailOptionalFieldBranchMatrix(t *testing.T) {
 		assert.Contains(t, out, "Scopes")
 		assert.Contains(t, out, "Updated")
 		assert.Contains(t, out, "Source Path")
-		assert.Contains(t, out, "Metadata")
-		assert.Contains(t, out, "Relationships")
 		assert.Contains(t, out, "depends-on")
 	})
 }

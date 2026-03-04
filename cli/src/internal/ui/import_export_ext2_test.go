@@ -48,10 +48,8 @@ func TestImportExportViewCoversStepBranches(t *testing.T) {
 	m.Start(importMode)
 
 	m.step = stepResource
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose resource")
 
 	m.step = stepFormat
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose format")
 
 	m.step = stepPath
 	m.mode = importMode

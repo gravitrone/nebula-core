@@ -39,7 +39,7 @@ func TestConfirmPreviewDialogIncludesSummaryAndChanges(t *testing.T) {
 	)
 	clean := SanitizeText(out)
 
-	assert.Contains(t, clean, "Archive Entity")
+	assert.NotContains(t, clean, "Archive Entity")
 	assert.Contains(t, clean, "Summary")
 	assert.Contains(t, clean, "Entity")
 	assert.Contains(t, clean, "Alpha")
@@ -74,7 +74,7 @@ func TestRenderSummaryRowsBranchMatrix(t *testing.T) {
 func TestConfirmPreviewDialogEmptySectionsMatrix(t *testing.T) {
 	out := ConfirmPreviewDialog("Confirm", nil, nil, 72)
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Confirm")
+	assert.NotContains(t, clean, "Confirm")
 	assert.NotContains(t, clean, "Summary")
 	assert.NotContains(t, clean, "Changes")
 }

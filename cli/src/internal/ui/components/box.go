@@ -190,42 +190,10 @@ func TitledBoxWithHeaderStyle(title, content string, width int, headerStyle lipg
 	return titledBoxWithStyle(title, content, width, boxBorder, headerStyle, lipgloss.Color("#273540"))
 }
 
-// titledBoxWithStyle handles titled box with style.
-func titledBoxWithStyle(title, content string, width int, boxStyle, headerStyle lipgloss.Style, borderColor lipgloss.Color) string {
-	if title == "" {
-		return renderBox(boxStyle, width, content)
-	}
-	boxed := renderBox(boxStyle, width, content)
-	lines := strings.Split(boxed, "\n")
-
-	lineWidth := lipgloss.Width(lines[0])
-	if lineWidth < 4 {
-		return boxed
-	}
-
-	border := lipgloss.RoundedBorder()
-	middleLen := lineWidth - 2
-	titleText := fmt.Sprintf(" [ %s ] ", title)
-	if lipgloss.Width(titleText) > middleLen {
-		titleText = truncateRunes(titleText, middleLen)
-	}
-
-	titleWidth := lipgloss.Width(titleText)
-	left := (middleLen - titleWidth) / 2
-	right := middleLen - titleWidth - left
-
-	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
-	leftSeg := borderStyle.Render(border.TopLeft + strings.Repeat(border.Top, left))
-	rightSeg := borderStyle.Render(strings.Repeat(border.Top, right) + border.TopRight)
-	line := leftSeg + headerStyle.Render(titleText) + rightSeg
-	if w := lipgloss.Width(line); w < lineWidth {
-		line += borderStyle.Render(strings.Repeat(border.Top, lineWidth-w))
-	} else if w > lineWidth {
-		line = truncateRunes(line, lineWidth)
-	}
-
-	lines[0] = line
-	return strings.Join(lines, "\n")
+// titledBoxWithStyle renders the standard closed border variant.
+// Title parameters are intentionally ignored to keep top borders fully closed.
+func titledBoxWithStyle(_ string, content string, width int, boxStyle, _ lipgloss.Style, _ lipgloss.Color) string {
+	return renderBox(boxStyle, width, content)
 }
 
 // truncateRunes handles truncate runes.

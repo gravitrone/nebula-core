@@ -18,7 +18,6 @@ func TestRenderFormGridClampsWidthAndNormalizesRows(t *testing.T) {
 	out := renderFormGrid("Entity Form", rows, 0, 120)
 	clean := components.SanitizeText(out)
 
-	assert.Contains(t, clean, "Entity Form")
 	assert.Contains(t, clean, "Field")
 	assert.Contains(t, clean, "Value")
 	assert.Contains(t, clean, "Name Label")
@@ -37,7 +36,6 @@ func TestRenderFormGridHandlesEmptyRowsAndOutOfRangeActiveRow(t *testing.T) {
 	out := renderFormGrid("Empty Grid", nil, 999, 100)
 	clean := components.SanitizeText(out)
 
-	assert.Contains(t, clean, "Empty Grid")
 	assert.Contains(t, clean, "Field")
 	assert.Contains(t, clean, "Value")
 	assert.False(t, strings.Contains(clean, "panic"))

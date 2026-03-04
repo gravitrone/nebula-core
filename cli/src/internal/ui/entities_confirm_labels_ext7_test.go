@@ -73,7 +73,6 @@ func TestEntitiesRenderConfirmAndRelationshipLabelBranches(t *testing.T) {
 	}
 
 	rendered := model.renderConfirm()
-	assert.Contains(t, rendered, "Revert Entity")
 	assert.Contains(t, rendered, "Audit ID")
 
 	model.confirmKind = "rel-archive"
@@ -93,7 +92,6 @@ func TestEntitiesRenderConfirmAndRelationshipLabelBranches(t *testing.T) {
 	}
 
 	rendered = model.renderConfirm()
-	assert.Contains(t, rendered, "Archive Relationship")
 	assert.Contains(t, rendered, "inactive")
 
 	require.NotNil(t, model.selectedRelationshipByID("rel-1"))

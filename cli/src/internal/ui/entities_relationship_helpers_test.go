@@ -77,7 +77,6 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	model.relList.SetItems([]string{"related-to"})
 
 	out := components.SanitizeText(model.renderRelationships())
-	assert.Contains(t, out, "Relationship")
 	assert.Contains(t, out, "Direction")
 	assert.Contains(t, out, "Beta")
 
@@ -96,7 +95,6 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	}
 	model.relateList.SetItems([]string{"Beta"})
 	out = components.SanitizeText(model.renderRelate())
-	assert.Contains(t, out, "Select Entity")
 	assert.Contains(t, out, "Beta")
 
 	preview := components.SanitizeText(model.renderRelateEntityPreview(model.relateResults[0], 48))
@@ -108,7 +106,6 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	model.startRelEdit()
 	model.view = entitiesViewRelEdit
 	edit := components.SanitizeText(model.renderRelEdit())
-	assert.Contains(t, edit, "Edit Relationship")
 	assert.Contains(t, edit, "Properties")
 }
 

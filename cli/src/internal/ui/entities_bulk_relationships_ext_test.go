@@ -254,7 +254,6 @@ func TestEntitiesRenderRelationshipsAndSelectionHelpersBranches(t *testing.T) {
 	}
 	model.relList.SetItems([]string{"uses"})
 	out = components.SanitizeText(model.renderRelationships())
-	assert.Contains(t, out, "Relationship")
 	assert.Contains(t, out, "Direction")
 
 	assert.Nil(t, model.selectedRelationshipByID(""))

@@ -3,8 +3,8 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"os/exec"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -233,7 +233,6 @@ func TestRunLogsCmdUsesMinimumContentWidthWhenColumnsTiny(t *testing.T) {
 
 	var out bytes.Buffer
 	require.NoError(t, runLogsCmd(&out, true, 50))
-	assert.Contains(t, out.String(), "Nebula API Logs")
 }
 
 func TestDetectStartupFailureUsesDefaultTimeoutWhenNonPositive(t *testing.T) {

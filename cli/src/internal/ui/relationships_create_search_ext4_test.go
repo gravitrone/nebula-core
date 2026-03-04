@@ -19,7 +19,6 @@ func TestRelationshipsRenderCreateSearchSideBySidePreviewBranch(t *testing.T) {
 	model.createList.Cursor = 0
 
 	out := components.SanitizeText(model.renderCreateSearch("Source Node"))
-	assert.Contains(t, out, "Source Node")
 	assert.Contains(t, out, "2 results")
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Alpha")
@@ -52,9 +51,7 @@ func TestRelationshipsRenderCreateSearchVeryNarrowWidthColumnFallbacks(t *testin
 	model.createList.SetItems([]string{"ent-1"})
 
 	out := components.SanitizeText(model.renderCreateSearch("Source Node"))
-	assert.Contains(t, out, "Source Node")
 	assert.Contains(t, out, "1 results")
 	assert.Contains(t, out, "node")
 	assert.Contains(t, out, "-")
 }
-

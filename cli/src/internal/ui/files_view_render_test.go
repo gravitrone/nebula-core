@@ -58,7 +58,6 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 
 	out := model.View()
 	clean := components.SanitizeText(out)
-	assert.Contains(t, clean, "Files")
 	assert.Contains(t, clean, "1 total")
 	assert.Contains(t, clean, "Alpha.txt")
 	assert.Contains(t, clean, "Add")
@@ -97,7 +96,6 @@ func TestFilesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	out := model.View()
 	clean := components.SanitizeText(out)
 	assert.Contains(t, clean, "Alpha.txt")
-	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "Field")
 	assert.Contains(t, clean, "Value")
 	assert.Contains(t, clean, "note")
@@ -134,7 +132,6 @@ func TestFilesDetailViewRendersRelationshipsSection(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "has-file")
 	assert.Contains(t, out, "Bro")
 }

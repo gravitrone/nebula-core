@@ -16,7 +16,6 @@ func TestRelationshipsRenderCreateTypeShowsPreviewForSelectedSuggestion(t *testi
 	model.createTypeList.Cursor = 0
 
 	out := components.SanitizeText(model.renderCreateType())
-	assert.Contains(t, out, "Relationship Type")
 	assert.Contains(t, out, "2 suggestions")
 	assert.Contains(t, out, "depends-on")
 	assert.Contains(t, out, "Source")
@@ -52,4 +51,3 @@ func TestRelationshipsRenderCreateTypeSkipsOutOfRangeVisibleRows(t *testing.T) {
 	assert.Contains(t, out, "1 suggestions")
 	assert.Contains(t, out, "depends-on")
 }
-

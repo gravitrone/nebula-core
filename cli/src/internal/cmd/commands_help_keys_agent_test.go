@@ -42,7 +42,6 @@ func TestApplyNebulaHelpRendersVisibleSortedSections(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	text := out.String()
-	assert.Contains(t, text, "[ Help ]")
 	assert.Contains(t, text, "/alpha")
 	assert.Contains(t, text, "/zeta")
 	assert.NotContains(t, text, "/hidden")
@@ -63,7 +62,6 @@ func TestApplyNebulaHelpFallbackForUnknownTarget(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	text := out.String()
-	assert.Contains(t, text, "[ Help ]")
 	assert.Contains(t, text, "nebula")
 }
 

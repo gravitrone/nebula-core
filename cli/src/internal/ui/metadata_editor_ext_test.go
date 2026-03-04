@@ -147,7 +147,7 @@ func TestMetadataEditorCommitEntryDedupesAndEditPath(t *testing.T) {
 			{path: "owner", value: "alxx"},
 			{path: "owner", value: "old"},
 		},
-		entryBuf:    "owner | updated",
+		entryBuf:     "owner | updated",
 		entryEditIdx: -1,
 	}
 	require.NoError(t, ed.commitEntry())
@@ -263,7 +263,6 @@ func TestMetadataEditorRenderInspectModeBranchMatrix(t *testing.T) {
 	ed.notice = "copied"
 
 	out := components.SanitizeText(ed.Render(90))
-	assert.Contains(t, out, "Metadata Value")
 	assert.Contains(t, out, "... ↑ more")
 	assert.Contains(t, out, "... ↓ more")
 	assert.Contains(t, out, "Lines")

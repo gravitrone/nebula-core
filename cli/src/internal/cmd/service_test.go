@@ -89,7 +89,6 @@ func TestRunLogsCmdUsesDefaultTailWhenNonPositive(t *testing.T) {
 	var out bytes.Buffer
 	require.NoError(t, runLogsCmd(&out, true, 0))
 	text := out.String()
-	assert.Contains(t, text, "Nebula API Logs")
 	assert.Contains(t, text, "first")
 	assert.Contains(t, text, "third")
 }

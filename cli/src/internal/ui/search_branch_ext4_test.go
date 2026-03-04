@@ -39,7 +39,6 @@ func TestSearchViewCoversTinyWidthAndRowFallbacks(t *testing.T) {
 	model.list.SetItems([]string{"row-1", "row-2"})
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Search")
 	assert.Contains(t, out, "1 results")
 	assert.Contains(t, out, "Selected")
 }
@@ -119,15 +118,15 @@ func TestSearchEmitSelectionFetchesContextAndJob(t *testing.T) {
 		case "/api/context/ctx-1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
-					"id":         "ctx-1",
-					"title":      "Runbook",
-					"name":       "Runbook",
+					"id":          "ctx-1",
+					"title":       "Runbook",
+					"name":        "Runbook",
 					"source_type": "doc",
-					"status":     "active",
-					"tags":       []string{},
-					"metadata":   map[string]any{},
-					"created_at": now,
-					"updated_at": now,
+					"status":      "active",
+					"tags":        []string{},
+					"metadata":    map[string]any{},
+					"created_at":  now,
+					"updated_at":  now,
 				},
 			}))
 		case "/api/jobs/job-1":

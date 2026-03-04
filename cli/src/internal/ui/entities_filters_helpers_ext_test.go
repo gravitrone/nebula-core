@@ -147,7 +147,6 @@ func TestRenderFilterPickerFocusedFacetWithoutSelectionCount(t *testing.T) {
 	model.filterScopes = map[string]bool{}
 
 	out := stripANSI(model.renderFilterPicker())
-	assert.Contains(t, out, "Filter Entities")
 	assert.Contains(t, out, "Type")
 	assert.NotContains(t, out, "Type (")
 	assert.Contains(t, out, "No active filters")
@@ -164,7 +163,6 @@ func TestRenderFilterPickerTinyWidthClampWithActiveScopeSelection(t *testing.T) 
 	model.filterCursor[entitiesFilterFacetScope] = 0
 
 	out := stripANSI(model.renderFilterPicker())
-	assert.Contains(t, out, "Filter Entities")
 	assert.Contains(t, out, "Scope (1)")
 	assert.Contains(t, out, "public")
 	assert.Contains(t, out, "Active: scope=1")

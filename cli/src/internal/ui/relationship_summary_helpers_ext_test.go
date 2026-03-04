@@ -70,6 +70,5 @@ func TestRenderRelationshipSummaryTableEmptyAndMoreRows(t *testing.T) {
 		{Type: "refs", SourceType: "entity", SourceID: "ent-1", TargetType: "entity", TargetID: "ent-4", TargetName: "Four", CreatedAt: time.Now()},
 	}
 	out := stripANSI(renderRelationshipSummaryTable("entity", "ent-1", rels, 2, 90))
-	assert.Contains(t, out, "Relationships")
 	assert.True(t, strings.Contains(out, "2 more relationships") || strings.Contains(out, "more relationships"))
 }

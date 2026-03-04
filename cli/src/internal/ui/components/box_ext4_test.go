@@ -50,7 +50,6 @@ func TestMetadataTableHandlesNilScalarAndNestedEmptyMap(t *testing.T) {
 	}, 70)
 
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "owner: None")
 	assert.Contains(t, clean, "nested: {}")
 }

@@ -28,7 +28,6 @@ func TestEntitiesViewListRendersModeLineCountAndBulkSelection(t *testing.T) {
 	out := model.View()
 	clean := components.SanitizeText(out)
 
-	assert.Contains(t, clean, "Entities")
 	assert.Contains(t, clean, "2 total")
 	assert.Contains(t, clean, "Alpha")
 	assert.Contains(t, clean, "Beta")
@@ -140,7 +139,6 @@ func TestEntitiesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	out := model.View()
 	clean := components.SanitizeText(out)
 	assert.Contains(t, clean, "Alpha")
-	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "Field")
 	assert.Contains(t, clean, "Value")
 	assert.Contains(t, clean, "note")
@@ -267,6 +265,5 @@ func TestEntitiesRenderDetailShowsMetadataInspectorPanel(t *testing.T) {
 	model.metaInspectI = 0
 
 	out := components.SanitizeText(model.renderDetail())
-	assert.Contains(t, out, "Metadata Value")
 	assert.Contains(t, out, "Lines")
 }

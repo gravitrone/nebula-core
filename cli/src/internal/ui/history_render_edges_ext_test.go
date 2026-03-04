@@ -7,7 +7,6 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHistoryRenderDetailOmitsOptionalSectionsWhenValuesAreEmpty(t *testing.T) {
@@ -24,7 +23,6 @@ func TestHistoryRenderDetailOmitsOptionalSectionsWhenValuesAreEmpty(t *testing.T
 		ChangeReason: &reason,
 	}))
 
-	assert.Contains(t, out, "Audit Entry")
 	assert.NotContains(t, out, "Fields")
 	assert.NotContains(t, out, "Reason")
 	assert.NotContains(t, out, "Changes")
@@ -45,7 +43,6 @@ func TestHistoryRenderDetailKeepsFieldsRowWhenDiffIsEmpty(t *testing.T) {
 		NewData:       api.JSONMap{"status": "active"},
 	}))
 
-	assert.Contains(t, out, "Audit Entry")
 	assert.Contains(t, out, "Fields")
 	assert.Contains(t, out, "status")
 	assert.NotContains(t, out, "Changes")
@@ -69,7 +66,6 @@ func TestHistoryRenderListHandlesUnsyncedVisibleRowsAndFallbackValues(t *testing
 
 	out := components.SanitizeText(model.renderList())
 
-	assert.Contains(t, out, "History")
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "UPDATE")
 	assert.Contains(t, out, "system")
@@ -100,6 +96,5 @@ func TestHistoryRenderListSkipsPreviewWhenCursorOutOfRange(t *testing.T) {
 
 	out := components.SanitizeText(model.renderList())
 
-	require.Contains(t, out, "History")
 	assert.NotContains(t, out, "Selected")
 }

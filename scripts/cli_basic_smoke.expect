@@ -1,0 +1,65 @@
+#!/usr/bin/env expect
+
+if {[llength $argv] != 3} {
+    puts stderr "usage: cli_basic_smoke.expect <binary> <timeout_seconds> <log_file>"
+    exit 2
+}
+
+set binary [lindex $argv 0]
+set timeout [lindex $argv 1]
+set log_file_path [lindex $argv 2]
+
+match_max 100000
+log_file -a $log_file_path
+log_user 0
+
+proc fail {code message} {
+    puts stderr $message
+    catch {send -- "q"}
+    catch {send -- "\003"}
+    catch {expect eof}
+    exit $code
+}
+
+spawn -noecho $binary
+
+expect {
+    -re {Tabs\s+1-9/0} {}
+    -re {No pending approvals\.} {}
+    -re {Step\s+Step [0-9]+/[0-9]+} {
+        send -- "\033"
+        expect {
+            -re {Tabs\s+1-9/0} {}
+            -re {No pending approvals\.} {}
+            -re {HTTP 500} { fail 31 "basic smoke: saw HTTP 500 after dismissing quickstart" }
+            -re {panic:} { fail 44 "basic smoke: saw panic after dismissing quickstart" }
+            timeout { fail 32 "basic smoke: startup timeout after dismissing quickstart" }
+            eof { fail 33 "basic smoke: app exited after dismissing quickstart" }
+        }
+    }
+    -re {HTTP 500} { fail 31 "basic smoke: saw HTTP 500 during startup" }
+    -re {panic:} { fail 44 "basic smoke: saw panic during startup" }
+    timeout { fail 32 "basic smoke: startup timeout" }
+    eof { fail 33 "basic smoke: app exited during startup" }
+}
+
+send -- "/"
+expect {
+    -re {Command Palette} {}
+    -re {Command:} {}
+    -re {HTTP 500} { fail 48 "basic smoke: saw HTTP 500 while opening command palette" }
+    -re {panic:} { fail 49 "basic smoke: saw panic while opening command palette" }
+    timeout { fail 39 "basic smoke: command palette did not open" }
+    eof { fail 40 "basic smoke: app exited while opening command palette" }
+}
+
+send -- "\033"
+send -- "\033"
+
+send -- "q"
+expect {
+    eof {}
+    timeout { fail 43 "basic smoke: app did not exit after quit" }
+}
+
+exit 0

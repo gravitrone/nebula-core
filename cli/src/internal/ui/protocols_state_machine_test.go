@@ -112,7 +112,6 @@ func TestProtocolsDetailRendersRelationshipsSection(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "references")
 	assert.Contains(t, out, "Sprint Job")
 }
@@ -330,7 +329,6 @@ func TestProtocolsRenderHelpersCoverListAddAndEdit(t *testing.T) {
 	assert.Contains(t, modeLine, "Library")
 
 	listView := components.SanitizeText(model.renderList())
-	assert.Contains(t, listView, "Protocols")
 	assert.Contains(t, listView, "Alpha Protocol")
 
 	preview := components.SanitizeText(model.renderProtocolPreview(model.items[0], 48))
@@ -341,13 +339,11 @@ func TestProtocolsRenderHelpersCoverListAddAndEdit(t *testing.T) {
 	model.view = protocolsViewAdd
 	model.addFocus = protoFieldStatus
 	addView := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addView, "Add Protocol")
 	assert.Contains(t, addView, "Status")
 
 	model.detail = &model.items[0]
 	model.startEdit()
 	editView := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editView, "Edit Protocol")
 	assert.Contains(t, editView, "Tags")
 
 	assert.Equal(t, "a, b", model.renderTags([]string{"a"}, "b"))

@@ -21,7 +21,6 @@ func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	model.addMeta.Buffer = "profile | role | founder\nprofile | location | warsaw"
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Add Entity")
 	assert.Contains(t, out, "Name")
 	assert.Contains(t, out, "Alpha")
 	assert.Contains(t, out, "Type")

@@ -76,7 +76,6 @@ func TestProtocolsRenderListFallbackAndPreviewLayout(t *testing.T) {
 	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Protocols")
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "search: alpha")
 	assert.Contains(t, strings.ToLower(out), "protocol")
@@ -85,7 +84,6 @@ func TestProtocolsRenderListFallbackAndPreviewLayout(t *testing.T) {
 	model.width = 170 // enables side-by-side layout path.
 	model.list.Cursor = 0
 	out = components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Protocols")
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Name")
 	assert.Contains(t, out, "Status")
@@ -135,7 +133,6 @@ func TestProtocolsRenderListTinyWidthStillRenders(t *testing.T) {
 	model.list.Cursor = 0
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Protocols")
 	assert.Contains(t, out, "alpha")
 	assert.Contains(t, out, "At")
 }

@@ -226,17 +226,14 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 	}
 	assert.False(t, model.loading)
 	require.Len(t, model.items, 1)
-	assert.Contains(t, model.View(), "Relationships")
 
 	// Enter detail.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, relsViewDetail, model.view)
-	assert.Contains(t, model.View(), "Relationship")
 
 	// Open archive confirm and accept.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	assert.Equal(t, relsViewConfirm, model.view)
-	assert.Contains(t, model.View(), "Archive Relationship")
 
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	require.NotNil(t, cmd)
@@ -350,7 +347,6 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	// Start create flow.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	assert.Equal(t, relsViewCreateSourceSearch, model.view)
-	assert.Contains(t, model.View(), "Source Node")
 
 	// Type query to filter from cache.
 	for _, r := range "al" {
@@ -369,7 +365,6 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	require.NotEmpty(t, model.createResults)
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, relsViewCreateType, model.view)
-	assert.Contains(t, model.View(), "Relationship Type")
 
 	// Type relationship type and submit.
 	for _, r := range "knows" {
@@ -456,7 +451,6 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 	model.startEdit()
 	assert.Equal(t, relsEditFieldStatus, model.editFocus)
 	editOut := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editOut, "Edit Relationship")
 	assert.Contains(t, editOut, "Status")
 
 	model, _ = model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})

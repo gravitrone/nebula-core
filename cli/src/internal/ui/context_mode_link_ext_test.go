@@ -394,7 +394,6 @@ func TestContextRenderLinkSearchWideLayoutAndSelectionFallbackBranches(t *testin
 	model.linkList.Cursor = 9
 
 	view := components.SanitizeText(model.renderLinkSearch())
-	assert.Contains(t, view, "Link Entity")
 	assert.Contains(t, view, "1 results")
 	assert.Contains(t, view, "Name")
 	assert.Contains(t, view, "Type")
@@ -477,7 +476,6 @@ func TestContextRenderLinkSearchSideBySidePreviewAndNarrowTableBranches(t *testi
 	model.linkList.Cursor = 0
 
 	view := components.SanitizeText(model.renderLinkSearch())
-	assert.Contains(t, view, "Link Entity")
 	assert.Contains(t, view, "Selected")
 	assert.Contains(t, view, "Type")
 	assert.Contains(t, view, "Status")

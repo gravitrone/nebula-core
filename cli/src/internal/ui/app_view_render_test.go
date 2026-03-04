@@ -124,6 +124,5 @@ func TestAppViewRendersToastFeedbackBranch(t *testing.T) {
 	app.toast = &appToast{level: "success", text: "toast branch hit"}
 
 	out := components.SanitizeText(app.View())
-	assert.Contains(t, out, "Success")
 	assert.Contains(t, out, "toast branch hit")
 }

@@ -83,7 +83,6 @@ func TestMetadataEditorRenderIsStable(t *testing.T) {
 	ed.Open(map[string]any{"name": "alex"})
 	out := ed.Render(80)
 	clean := components.SanitizeText(out)
-	assert.Contains(t, clean, "Metadata")
 	assert.NotContains(t, clean, "Sel")
 	assert.Contains(t, clean, "Group")
 	assert.Contains(t, clean, "Field")
@@ -96,7 +95,6 @@ func TestMetadataEditorRenderIsStable(t *testing.T) {
 	ed.inspectRowIdx = 0
 	out = ed.Render(80)
 	clean = components.SanitizeText(out)
-	assert.Contains(t, clean, "Metadata Value")
 	assert.Contains(t, clean, "enter copy value")
 }
 

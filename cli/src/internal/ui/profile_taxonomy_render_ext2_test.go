@@ -40,7 +40,6 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		model.taxList.Cursor = 99
 
 		out := model.renderTaxonomy()
-		assert.Contains(t, out, "Scopes Taxonomy")
 		assert.Contains(t, out, "rows")
 		assert.Contains(t, out, "filter: -")
 	})
@@ -69,7 +68,6 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		assert.Equal(t, "type-1", selected.ID)
 
 		out := model.renderTaxonomy()
-		assert.Contains(t, out, "Entity Types Taxonomy")
 		assert.Contains(t, out, "include inactive: true")
 		assert.Contains(t, out, "filter: entity")
 		assert.Contains(t, out, "Selected")
@@ -95,7 +93,6 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		model.taxList.Cursor = 0
 
 		out := model.renderTaxonomy()
-		assert.Contains(t, out, "Scopes Taxonomy")
 		assert.Contains(t, out, "Selected")
 		assert.Contains(t, out, "filter: scope")
 	})
@@ -119,7 +116,6 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		model.taxList.Cursor = 99
 
 		out := model.renderTaxonomy()
-		assert.Contains(t, out, "Log Types Taxonomy")
 		assert.NotContains(t, out, "Selected")
 	})
 
@@ -141,7 +137,6 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		model.taxList.Cursor = 0
 
 		out := model.renderTaxonomy()
-		assert.Contains(t, out, "Scopes Taxonomy")
 		assert.Contains(t, out, "Name")
 		assert.Contains(t, out, "Flags")
 		assert.Contains(t, out, "Description")

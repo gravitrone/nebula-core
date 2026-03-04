@@ -51,7 +51,6 @@ func TestRenderRelationshipSummaryTableTinyWidthStillRendersRows(t *testing.T) {
 	}
 
 	out := components.SanitizeText(renderRelationshipSummaryTable("entity", "ent-1", rels, 5, 24))
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "depen")
 	assert.Contains(t, out, "Direction")
 	assert.Contains(t, out, "Node")

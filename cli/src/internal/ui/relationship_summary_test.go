@@ -69,7 +69,7 @@ func TestRenderRelationshipSummaryTableUsesGridLayout(t *testing.T) {
 	view := renderRelationshipSummaryTable("entity", "ent-1", rels, 5, 120)
 	clean := stripANSI(view)
 
-	for _, token := range []string{"Relationships", "Rel", "Direction", "Node", "owns", "->", "Target"} {
+	for _, token := range []string{"Rel", "Direction", "Node", "owns", "->", "Target"} {
 		if !strings.Contains(clean, token) {
 			t.Fatalf("expected %q in rendered table:\n%s", token, clean)
 		}

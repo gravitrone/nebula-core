@@ -7,7 +7,6 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestInboxViewTinyWidthFilterAndUnsyncedVisibleRows(t *testing.T) {
@@ -34,7 +33,6 @@ func TestInboxViewTinyWidthFilterAndUnsyncedVisibleRows(t *testing.T) {
 
 	out := components.SanitizeText(model.View())
 
-	require.Contains(t, out, "Inbox")
 	assert.Contains(t, out, "pending")
 	assert.Contains(t, out, "filter:")
 	assert.Contains(t, out, "agent:alpha")
@@ -63,7 +61,6 @@ func TestInboxViewWideLayoutUsesSideBySidePreview(t *testing.T) {
 
 	out := components.SanitizeText(model.View())
 
-	require.Contains(t, out, "Inbox")
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Wide Entity")
 	assert.Contains(t, out, "public")

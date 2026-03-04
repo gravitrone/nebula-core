@@ -28,10 +28,12 @@ func TestBoxNarrowTerminalClampsWidth(t *testing.T) {
 	assert.False(t, overflow)
 }
 
-// TestTitledBoxIncludesTitle handles test titled box includes title.
-func TestTitledBoxIncludesTitle(t *testing.T) {
+// TestTitledBoxOmitsTitleAndKeepsContent handles test titled box omits title and keeps content.
+func TestTitledBoxOmitsTitleAndKeepsContent(t *testing.T) {
 	out := TitledBox("My Title", "Content", 80)
-	assert.True(t, strings.Contains(out, "My Title"))
+	clean := SanitizeText(out)
+	assert.NotContains(t, clean, "My Title")
+	assert.Contains(t, clean, "Content")
 }
 
 // TestTitledBoxEmptyTitleFallsBack handles test titled box empty title falls back.
@@ -51,7 +53,6 @@ func TestEmptyStateBoxIncludesActions(t *testing.T) {
 	out := EmptyStateBox("Entities", "No entities found.", []string{"Press n to create", "Press / to search"}, 80)
 	clean := SanitizeText(out)
 
-	assert.Contains(t, clean, "Entities")
 	assert.Contains(t, clean, "No entities found.")
 	assert.Contains(t, clean, "Try:")
 	assert.Contains(t, clean, "Press n to create")
@@ -149,7 +150,6 @@ func TestDiffTableRendersMultilineValuesAndSanitizes(t *testing.T) {
 	assert.NotContains(t, out, "\x1b[2J")
 
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Changes")
 	assert.Contains(t, clean, "- from1")
 	assert.Contains(t, clean, "from2")
 	assert.Contains(t, clean, "+ to1")
@@ -171,7 +171,6 @@ func TestMetadataTableRendersNestedStructures(t *testing.T) {
 	}, 60)
 
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "a:")
 	assert.Contains(t, clean, "nested:")
 }
@@ -211,7 +210,7 @@ func TestTitledBoxWithHeaderStyleRendersCustomTitle(t *testing.T) {
 	header := lipgloss.NewStyle().Bold(true)
 	out := TitledBoxWithHeaderStyle("Custom Header", "body", 70, header)
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Custom Header")
+	assert.NotContains(t, clean, "Custom Header")
 	assert.Contains(t, clean, "body")
 }
 

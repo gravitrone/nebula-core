@@ -85,7 +85,6 @@ func TestRenderOnboardingSanitizesAndShowsBusyState(t *testing.T) {
 	out := app.renderOnboarding()
 	clean := stripANSI(out)
 
-	assert.Contains(t, clean, "Onboarding")
 	assert.Contains(t, clean, "Username")
 	assert.Contains(t, clean, "Press Enter to login.")
 	assert.Contains(t, clean, "█")

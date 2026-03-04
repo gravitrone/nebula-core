@@ -27,7 +27,6 @@ func runHelpOutput(t *testing.T, args ...string) string {
 func TestRootHelpUsesNebulaBoxLayout(t *testing.T) {
 	output := runHelpOutput(t, "--help")
 	assert.Contains(t, output, "╭")
-	assert.Contains(t, output, "[ Help ]")
 	assert.Contains(t, output, "command")
 	assert.Contains(t, output, "nebula")
 	assert.NotContains(t, output, "Usage:\n  nebula")
@@ -37,7 +36,6 @@ func TestRootHelpUsesNebulaBoxLayout(t *testing.T) {
 func TestSubcommandHelpUsesNebulaBoxLayout(t *testing.T) {
 	output := runHelpOutput(t, "keys", "--help")
 	assert.Contains(t, output, "╭")
-	assert.Contains(t, output, "[ Help ]")
 	assert.Contains(t, output, "nebula keys")
 	assert.Contains(t, output, "/list")
 	assert.NotContains(t, output, "Usage:\n  nebula keys")
@@ -54,6 +52,5 @@ func TestHelpRenderHandlesUnknownSubcommandAndNarrowWidth(t *testing.T) {
 		assert.LessOrEqual(t, lipgloss.Width(line), 20)
 	}
 
-	assert.Contains(t, clean, "[ Help ]")
 	assert.Contains(t, clean, "command")
 }

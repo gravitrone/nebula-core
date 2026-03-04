@@ -173,7 +173,6 @@ func TestRunStartCmdStartsManagedProcess(t *testing.T) {
 	require.NoError(t, runStartCmd(&out))
 	text := strings.ToLower(out.String())
 	assert.Contains(t, text, "running")
-	assert.Contains(t, text, "nebula api")
 
 	state, err := loadAPIState()
 	require.NoError(t, err)

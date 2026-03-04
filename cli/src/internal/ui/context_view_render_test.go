@@ -74,7 +74,6 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	assert.Equal(t, fieldEntities, model.focus)
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.True(t, model.linkSearching)
-	assert.Contains(t, components.SanitizeText(model.View()), "Link Entity")
 
 	// Type a query and run the search command.
 	var searchCmd tea.Cmd
@@ -228,7 +227,6 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	assert.Equal(t, contextViewList, model.view)
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Context")
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "Alpha")
 
@@ -300,7 +298,6 @@ func TestContextDetailAndPreviewShowRelationshipSummary(t *testing.T) {
 	}
 
 	detail := components.SanitizeText(model.renderDetail())
-	assert.Contains(t, detail, "Relationships")
 	assert.Contains(t, detail, "references")
 	assert.Contains(t, detail, "Bro")
 

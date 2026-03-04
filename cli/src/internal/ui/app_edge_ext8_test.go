@@ -30,7 +30,6 @@ func TestRenderToastNilAndDefaultLevelBranches(t *testing.T) {
 
 	app.toast = &appToast{level: "custom", text: "hello"}
 	out := app.renderToast()
-	assert.Contains(t, out, "Info")
 	assert.Contains(t, out, "hello")
 }
 

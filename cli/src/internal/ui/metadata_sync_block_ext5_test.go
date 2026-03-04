@@ -65,7 +65,6 @@ func TestRenderMetadataBlockWithTitleClampsAndOverflow(t *testing.T) {
 	assert.Contains(t, compactNarrow, "Value")
 
 	compact := components.SanitizeText(renderMetadataBlockWithTitle("Metadata", data, 120, false))
-	assert.Contains(t, compact, "Metadata")
 	assert.Contains(t, compact, "+18 more rows (press m to expand)")
 	assert.Contains(t, compact, "Group")
 	assert.Contains(t, compact, "Field")

@@ -291,7 +291,6 @@ func TestProfileHandlePendingLimitInputAndRenderAgentDetail(t *testing.T) {
 		UpdatedAt:        now,
 	}
 	detail := stripANSI(model.renderAgentDetail())
-	assert.Contains(t, detail, "Agent Details")
 	assert.Contains(t, detail, "Scopes")
 	assert.Contains(t, detail, "public,")
 	assert.Contains(t, detail, "Descriptio")

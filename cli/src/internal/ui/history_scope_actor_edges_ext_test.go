@@ -7,7 +7,6 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHistoryRenderScopesTinyWidthPreviewAndUnsyncedVisibleRows(t *testing.T) {
@@ -31,7 +30,6 @@ func TestHistoryRenderScopesTinyWidthPreviewAndUnsyncedVisibleRows(t *testing.T)
 
 	out := components.SanitizeText(model.renderScopes())
 
-	require.Contains(t, out, "Scopes")
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "public")
 	assert.Contains(t, out, "Desc")
@@ -58,7 +56,6 @@ func TestHistoryRenderActorsTinyWidthAndUnsyncedVisibleRows(t *testing.T) {
 
 	out := components.SanitizeText(model.renderActors())
 
-	require.Contains(t, out, "Actors")
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "agent")
 	assert.NotContains(t, out, "orphan-visible-row")

@@ -42,12 +42,10 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 	m := NewImportExportModel(client)
 	m.width = 80
 	m.Start(importMode)
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose resource")
 
 	// Resource -> Format -> Path.
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, stepFormat, m.step)
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose format")
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)
 	assert.Contains(t, components.SanitizeText(m.View()), "Enter file path")
@@ -114,11 +112,9 @@ func TestImportExportExportJSONWritesFile(t *testing.T) {
 	m := NewImportExportModel(client)
 	m.width = 80
 	m.Start(exportMode)
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose resource")
 
 	// Resource -> Format -> Path.
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose format")
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)
 	assert.Contains(t, components.SanitizeText(m.View()), "Export file path")
@@ -164,11 +160,9 @@ func TestImportExportExportCSVWritesFile(t *testing.T) {
 	m := NewImportExportModel(client)
 	m.width = 80
 	m.Start(exportMode)
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose resource")
 
 	// Resource -> Format (move to csv) -> Path.
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	assert.Contains(t, components.SanitizeText(m.View()), "Choose format")
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)

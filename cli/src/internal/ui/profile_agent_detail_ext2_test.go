@@ -26,7 +26,6 @@ func TestProfileRenderAgentDetailFallbackBranches(t *testing.T) {
 	}
 
 	out := stripANSI(model.renderAgentDetail())
-	assert.Contains(t, out, "Agent Details")
 	assert.Contains(t, out, "Trust")
 	assert.Contains(t, out, "untrusted")
 	assert.Contains(t, out, "Scopes")

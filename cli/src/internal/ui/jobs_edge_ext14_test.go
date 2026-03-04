@@ -26,7 +26,6 @@ func TestJobsRenderListNarrowWidthStaleRowsAndModeFocus(t *testing.T) {
 	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Jobs")
 	assert.Contains(t, out, "Titl")
 }
 
@@ -110,6 +109,5 @@ func TestJobsRenderDetailFallsBackToListWhenDetailMissing(t *testing.T) {
 	model.list.SetItems([]string{"alpha"})
 
 	out := components.SanitizeText(model.renderDetail())
-	assert.Contains(t, out, "Jobs")
 	assert.Contains(t, out, "alpha")
 }

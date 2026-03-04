@@ -28,7 +28,6 @@ func TestApplyNebulaHelpInstallsHiddenHelpCommand(t *testing.T) {
 	root.SetErr(&out)
 	root.SetArgs([]string{"help"})
 	require.NoError(t, root.Execute())
-	assert.Contains(t, components.SanitizeText(out.String()), "[ Help ]")
 }
 
 func TestApplyNebulaHelpUnknownTargetFallsBackToRoot(t *testing.T) {
@@ -48,7 +47,6 @@ func TestApplyNebulaHelpUnknownTargetFallsBackToRoot(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	text := components.SanitizeText(out.String())
-	assert.Contains(t, text, "[ Help ]")
 	assert.Contains(t, text, "root")
 }
 
@@ -66,7 +64,6 @@ func TestApplyHelpRecursivelyOverridesChildUsage(t *testing.T) {
 	require.NoError(t, child.Usage())
 
 	text := components.SanitizeText(out.String())
-	assert.Contains(t, text, "[ Help ]")
 	assert.Contains(t, text, "root child")
 }
 

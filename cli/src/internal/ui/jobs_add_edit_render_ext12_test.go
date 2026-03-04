@@ -89,7 +89,6 @@ func TestJobsRenderAddAndEditStateBranches(t *testing.T) {
 	model.addStatusIdx = 0
 	model.addPriorityIdx = 0
 	addOut := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addOut, "Add Job")
 	assert.Contains(t, addOut, "Error")
 	assert.Contains(t, addOut, "bad add")
 
@@ -106,7 +105,6 @@ func TestJobsRenderAddAndEditStateBranches(t *testing.T) {
 	model.editDesc = ""
 	model.editSaving = true
 	editOut := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editOut, "Edit Job")
 	assert.Contains(t, editOut, "Priority")
 	assert.Contains(t, editOut, "Description")
 	assert.Contains(t, editOut, "Saving")

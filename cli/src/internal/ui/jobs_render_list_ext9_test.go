@@ -37,7 +37,6 @@ func TestJobsRenderListLoadingEmptyAndPreviewBranches(t *testing.T) {
 	model.searchSuggest = "alpha"
 	model.width = 84 // stacked layout branch
 	out = components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Jobs")
 	assert.Contains(t, out, "selected: 1")
 	assert.Contains(t, out, "search: a")
 	assert.Contains(t, out, "next: alpha")
@@ -45,7 +44,6 @@ func TestJobsRenderListLoadingEmptyAndPreviewBranches(t *testing.T) {
 
 	model.width = 170 // side-by-side layout branch
 	out = components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Jobs")
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Priority")
 }

@@ -20,7 +20,6 @@ func TestEntitiesRenderRelateWideLayoutAndFallbacks(t *testing.T) {
 	model.relateList.Cursor = 0
 
 	out := components.SanitizeText(model.renderRelate())
-	assert.Contains(t, out, "Select Entity")
 	assert.Contains(t, out, "1 results")
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "entity")
@@ -38,7 +37,6 @@ func TestEntitiesRenderRelatePreviewNilWhenCursorOutOfRange(t *testing.T) {
 	model.relateList.Cursor = 99
 
 	out := components.SanitizeText(model.renderRelate())
-	assert.Contains(t, out, "Select Entity")
 	assert.Contains(t, out, "1 results")
 	assert.NotContains(t, out, "Selected")
 }

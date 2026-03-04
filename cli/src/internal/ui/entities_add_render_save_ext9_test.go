@@ -25,7 +25,6 @@ func TestEntitiesRenderAddBranchMatrix(t *testing.T) {
 	// Focus each branch at least once so renderAdd executes all switch paths.
 	model.addFocus = addFieldStatus
 	out := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Add Entity")
 	assert.Contains(t, out, "Status:")
 	assert.Contains(t, out, "inactive")
 

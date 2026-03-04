@@ -408,7 +408,6 @@ func TestJobsRenderEditShowsFields(t *testing.T) {
 	model.view = jobsViewEdit
 
 	out := model.renderEdit()
-	assert.Contains(t, out, "Edit Job")
 	assert.Contains(t, out, "Status:")
 	assert.Contains(t, out, "Description:")
 	assert.Contains(t, out, "Priority:")

@@ -25,7 +25,6 @@ func TestEntitiesRenderHistoryCoversCompactWidthsAndInvalidVisibleRows(t *testin
 	})
 
 	out := components.SanitizeText(model.renderHistory())
-	assert.Contains(t, out, "History")
 	assert.Contains(t, out, "1 entries")
 	assert.Contains(t, out, "UPDATE")
 }
@@ -38,18 +37,17 @@ func TestEntitiesRenderHistorySideBySideIncludesReasonPreview(t *testing.T) {
 	model.detail = &api.Entity{Name: "Alpha"}
 	model.history = []api.AuditEntry{
 		{
-			ID:           "a1",
-			Action:       "update",
-			ChangedAt:    now,
+			ID:            "a1",
+			Action:        "update",
+			ChangedAt:     now,
 			ChangedFields: []string{"name", "status"},
-			ChangeReason: &reason,
+			ChangeReason:  &reason,
 		},
 	}
 	model.historyList = components.NewList(8)
 	model.historyList.SetItems([]string{formatHistoryLine(model.history[0])})
 
 	out := components.SanitizeText(model.renderHistory())
-	assert.Contains(t, out, "History - Alpha")
 	assert.Contains(t, out, "Reason")
 	assert.Contains(t, out, "manual restore after audit")
 }

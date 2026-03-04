@@ -1,0 +1,52 @@
+#!/usr/bin/env expect
+
+if {[llength $argv] != 3} {
+    puts stderr "usage: cli_relogin_smoke.expect <binary> <timeout_seconds> <log_file>"
+    exit 2
+}
+
+set binary [lindex $argv 0]
+set timeout [lindex $argv 1]
+set log_file_path [lindex $argv 2]
+
+match_max 100000
+log_file -a $log_file_path
+log_user 0
+
+proc fail {code message} {
+    puts stderr $message
+    catch {send -- "q"}
+    catch {send -- "\003"}
+    catch {expect eof}
+    exit $code
+}
+
+spawn -noecho $binary
+
+expect {
+    -re "INVALID_API_KEY" {}
+    -re "INVALID API KEY" {}
+    -re "re-login failed" { fail 21 "re-login smoke: startup already in failed re-login state" }
+    -re "HTTP 500" { fail 22 "re-login smoke: saw HTTP 500 before recovery" }
+    timeout { fail 23 "re-login smoke: timed out waiting for invalid-key recovery state" }
+    eof { fail 24 "re-login smoke: app exited before invalid-key recovery state" }
+}
+
+send -- "r"
+
+expect {
+    -re "Re-login complete\\. API key refreshed\\." {}
+    -re "re-login failed" { fail 25 "re-login smoke: recovery action failed" }
+    -re "HTTP 500" { fail 26 "re-login smoke: saw HTTP 500 during recovery" }
+    timeout { fail 27 "re-login smoke: timed out waiting for recovery success toast" }
+    eof { fail 28 "re-login smoke: app exited during recovery" }
+}
+
+send -- "q"
+
+expect {
+    eof {}
+    timeout { fail 29 "re-login smoke: app did not exit after quit" }
+}
+
+exit 0

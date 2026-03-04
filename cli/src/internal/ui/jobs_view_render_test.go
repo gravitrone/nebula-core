@@ -74,7 +74,6 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Jobs")
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "Alpha Job")
 
@@ -90,8 +89,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, jobsViewAdd, model.view)
 
-	out = components.SanitizeText(model.View())
-	assert.Contains(t, out, "Add Job")
+	_ = components.SanitizeText(model.View())
 
 	// Enter title.
 	for _, r := range "New Job" {
@@ -167,9 +165,7 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Job")
 	assert.Contains(t, out, "Alpha Job")
-	assert.Contains(t, out, "Description")
 	assert.Contains(t, out, "hello")
-	assert.Contains(t, out, "Metadata")
 	assert.Contains(t, out, "role")
 
 	// Enter edit mode.
@@ -221,7 +217,6 @@ func TestJobsDetailRendersRelationshipsSummary(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "assigned-to")
 	assert.Contains(t, out, "Owner")
 }

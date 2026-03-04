@@ -101,7 +101,6 @@ func TestTableHandlesTightWidthsAndWrappedRows(t *testing.T) {
 	}, 10)
 
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Tiny")
 	assert.Contains(t, clean, "a...")
 	assert.Contains(t, clean, "g...")
 	assert.Contains(t, clean, "zeta")

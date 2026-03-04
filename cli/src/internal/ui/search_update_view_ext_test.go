@@ -141,5 +141,4 @@ func TestSearchViewRendersPreviewWhenSelectionExists(t *testing.T) {
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Alpha Node")
-	assert.Contains(t, out, "Search")
 }

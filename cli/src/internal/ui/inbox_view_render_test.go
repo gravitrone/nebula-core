@@ -46,21 +46,18 @@ func TestInboxDetailViewRendersSummaryDiffAndNestedObjects(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Approval Request")
 	assert.Contains(t, out, "update_entity")
 	assert.Contains(t, out, "pending")
 	assert.Contains(t, out, "Review Notes")
 	assert.Contains(t, out, "review note")
 
 	// Summary table.
-	assert.Contains(t, out, "Change Details")
 	assert.Contains(t, out, "Name")
 	assert.Contains(t, out, "Alpha")
 	assert.Contains(t, out, "Tags")
 	assert.Contains(t, out, "one, two")
 
 	// Diff table.
-	assert.Contains(t, out, "Changes")
 	assert.Contains(t, out, "Status")
 	assert.Contains(t, out, "active")
 	assert.Contains(t, out, "archived")

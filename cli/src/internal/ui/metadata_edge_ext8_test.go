@@ -16,7 +16,6 @@ func TestRenderMetadataEditorPreviewAndBlockHandleEmptyNestedMaps(t *testing.T) 
 	block := components.SanitizeText(
 		renderMetadataBlockWithTitle("Metadata", map[string]any{"profile": map[string]any{}}, 96, false),
 	)
-	assert.Contains(t, block, "Metadata")
 	assert.Contains(t, block, "None")
 }
 

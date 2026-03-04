@@ -259,7 +259,6 @@ func TestProfileViewBranchMatrixAndPreviewHelpers(t *testing.T) {
 
 	model.createdKey = ""
 	model.section = 0
-	assert.Contains(t, components.SanitizeText(model.View()), "Settings")
 	assert.Contains(t, components.SanitizeText(model.View()), "API Keys")
 
 	model.section = 1

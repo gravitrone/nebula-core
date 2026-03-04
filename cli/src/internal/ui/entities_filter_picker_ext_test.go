@@ -18,7 +18,6 @@ func TestRenderFilterPickerShowsFallbackWhenFacetIsEmpty(t *testing.T) {
 	model.filterScopeSet = nil
 
 	out := components.SanitizeText(model.renderFilterPicker())
-	assert.Contains(t, out, "Filter Entities")
 	assert.Contains(t, out, "No values in current list")
 	assert.Contains(t, out, "No active filters")
 }

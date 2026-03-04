@@ -98,7 +98,6 @@ func TestEntitiesRenderHistoryBranchMatrix(t *testing.T) {
 	model.historyList.Cursor = 0
 
 	out = components.SanitizeText(model.renderHistory())
-	assert.Contains(t, out, "History - Alpha")
 	assert.Contains(t, out, "2 entries")
 	assert.Contains(t, out, "UPDATE")
 	assert.Contains(t, out, "Selected")
@@ -106,7 +105,6 @@ func TestEntitiesRenderHistoryBranchMatrix(t *testing.T) {
 	// Force narrow mode path (preview below table).
 	model.width = 52
 	out = components.SanitizeText(model.renderHistory())
-	assert.Contains(t, out, "History - Alpha")
 	assert.Contains(t, out, "2 entries")
 }
 
@@ -216,7 +214,6 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		m.relateList = components.NewList(8)
 		m.relateList.SetItems([]string{"Beta"})
 		out = components.SanitizeText(m.renderRelate())
-		assert.Contains(t, out, "Select Entity")
 		assert.Contains(t, out, "Beta")
 
 		m.view = entitiesViewRelateType
@@ -235,7 +232,6 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		m.startRelEdit()
 		m.relEditFocus = relEditFieldStatus
 		out = components.SanitizeText(m.renderRelEdit())
-		assert.Contains(t, out, "Edit Relationship")
 		assert.Contains(t, out, "Status:")
 
 		m.relEditFocus = relEditFieldProperties
@@ -294,7 +290,6 @@ func TestEntitiesRenderRelationshipsPropertiesAndCursorFallback(t *testing.T) {
 	model.relList.Cursor = 99 // hit out-of-range fallback -> idx=0
 
 	out := components.SanitizeText(model.renderRelationships())
-	assert.Contains(t, out, "Relationship")
 	assert.Contains(t, out, "incoming")
 	assert.Contains(t, out, "note")
 	assert.Contains(t, out, "hi")

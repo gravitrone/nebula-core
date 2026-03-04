@@ -55,7 +55,6 @@ func TestFilesRenderListLoadingAndSmallWidthBranches(t *testing.T) {
 	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Files")
 	assert.Contains(t, out, "2 total")
 	assert.Contains(t, out, "search:")
 	assert.Contains(t, out, "next:")

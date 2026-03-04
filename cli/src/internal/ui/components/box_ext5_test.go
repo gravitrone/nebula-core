@@ -12,7 +12,6 @@ func TestTableGuardAndWidthFallbackBranches(t *testing.T) {
 
 	out := Table("Tiny", []TableRow{{Label: "a", Value: "value"}}, 0)
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Tiny")
 	assert.Contains(t, clean, "a")
 	assert.Contains(t, clean, "value")
 }
@@ -36,7 +35,6 @@ func TestDiffTableAdditionalNormalizationAndSeparatorBranches(t *testing.T) {
 	)
 
 	clean := SanitizeText(out)
-	assert.Contains(t, clean, "Diff")
 	assert.Contains(t, clean, "owner")
 	assert.Contains(t, clean, "None")
 	assert.Contains(t, clean, "status")

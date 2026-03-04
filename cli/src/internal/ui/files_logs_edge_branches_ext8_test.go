@@ -33,7 +33,6 @@ func TestFilesRenderListSideBySidePreviewBranch(t *testing.T) {
 	model.list.SetItems([]string{"row-1"})
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Files")
 	assert.Contains(t, out, "alpha.txt")
 	assert.Contains(t, out, "Selected")
 }
@@ -95,7 +94,6 @@ func TestLogsRenderListOutOfRangeAndTagSpacingBranches(t *testing.T) {
 	model.list.SetItems([]string{"row-1", "ghost"})
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Logs")
 	assert.Contains(t, out, "event")
 	assert.NotContains(t, out, "ghost")
 

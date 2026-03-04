@@ -11,7 +11,6 @@ func TestRenderMetadataSelectableBlockReturnsNoneForEmptyRows(t *testing.T) {
 	out := renderMetadataSelectableBlockWithTitle("Metadata", nil, 80, nil, nil, false)
 	clean := components.SanitizeText(out)
 
-	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "None")
 }
 
@@ -33,7 +32,6 @@ func TestRenderMetadataSelectableBlockReturnsNoneWhenVisibleIsEmpty(t *testing.T
 	out := renderMetadataSelectableBlockWithTitle("Metadata", rows, 80, list, nil, false)
 	clean := components.SanitizeText(out)
 
-	assert.Contains(t, clean, "Metadata")
 	assert.Contains(t, clean, "None")
 }
 
@@ -50,9 +48,9 @@ func TestRenderMetadataSelectableBlockSkipsOutOfRangeVisibleRows(t *testing.T) {
 		80,
 		list,
 		map[int]bool{
-			-1: true, // invalid, ignored
-			0:  true, // valid
-			1:  true, // invalid for rows slice, ignored
+			-1: true,  // invalid, ignored
+			0:  true,  // valid
+			1:  true,  // invalid for rows slice, ignored
 			2:  false, // exercises !v continue branch
 		},
 		true,

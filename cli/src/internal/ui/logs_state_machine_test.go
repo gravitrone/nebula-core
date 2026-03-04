@@ -152,13 +152,11 @@ func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 	assert.Equal(t, logsViewDetail, model.view)
 	require.NotNil(t, model.detail)
 	assert.Equal(t, "log-2", model.detail.ID)
-	assert.Contains(t, model.View(), "Log")
 
 	// Back to list.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	assert.Equal(t, logsViewList, model.view)
 	assert.Nil(t, model.detail)
-	assert.Contains(t, model.View(), "Logs")
 }
 
 // TestLogsDetailRendersRelationshipsSection handles test logs detail renders relationships section.
@@ -192,7 +190,6 @@ func TestLogsDetailRendersRelationshipsSection(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "related-to")
 	assert.Contains(t, out, "Bro")
 }

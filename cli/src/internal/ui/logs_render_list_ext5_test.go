@@ -46,7 +46,6 @@ func TestLogsRenderListLoadingEmptyAndLayoutBranches(t *testing.T) {
 	model.searchBuf = "dep"
 	model.searchSuggest = "deploy"
 	out = components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Logs")
 	assert.Contains(t, out, "2 total")
 	assert.Contains(t, out, "search: dep")
 	assert.Contains(t, out, "next: deploy")
@@ -66,7 +65,6 @@ func TestLogsRenderListLoadingEmptyAndLayoutBranches(t *testing.T) {
 	model.list.Cursor = 0
 	model.modeFocus = true
 	out = components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Logs")
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Status")
 }

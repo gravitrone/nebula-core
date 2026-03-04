@@ -7,7 +7,6 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHistoryRenderListTinyWidthClampsColumnsAndFallbacksActor(t *testing.T) {
@@ -28,7 +27,6 @@ func TestHistoryRenderListTinyWidthClampsColumnsAndFallbacksActor(t *testing.T) 
 
 	out := components.SanitizeText(model.renderList())
 
-	require.Contains(t, out, "History")
 	assert.Contains(t, out, "UPDATE")
 	assert.Contains(t, out, "system")
 	assert.Contains(t, out, "1 total")

@@ -32,7 +32,6 @@ func TestRelationshipsRenderListNarrowEdgeCaseBranches(t *testing.T) {
 	model.filterBuf = "ent-1"
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "1 total · filter: ent-1")
 	assert.Contains(t, out, "unknown entity")
 }
@@ -59,7 +58,6 @@ func TestRelationshipsRenderListWideSideBySidePreviewBranch(t *testing.T) {
 	model.list.Cursor = 0
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "Relationships")
 	assert.Contains(t, out, "depends-on")
 	assert.Contains(t, out, "Alpha -> Beta")
 	assert.Contains(t, out, "Selected")

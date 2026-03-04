@@ -37,7 +37,6 @@ func TestHistoryViewRendersListAndFiltersLine(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "History")
 	assert.Contains(t, out, "Filters:")
 	assert.Contains(t, out, "table:entities")
 	assert.Contains(t, out, "action:create")
@@ -60,7 +59,6 @@ func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 		},
 	})
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Scopes")
 	assert.Contains(t, out, "public")
 
 	// Actors view.
@@ -71,7 +69,6 @@ func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 		},
 	})
 	out = components.SanitizeText(model.View())
-	assert.Contains(t, out, "Actors")
 	assert.Contains(t, out, "agent:")
 
 	// Detail view with diff.
@@ -90,10 +87,8 @@ func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 		}(),
 	}
 	out = components.SanitizeText(model.View())
-	assert.Contains(t, out, "Audit Entry")
 	assert.Contains(t, out, "Table")
 	assert.Contains(t, out, "entities")
-	assert.Contains(t, out, "Changes")
 	assert.Contains(t, out, "Status")
 	assert.Contains(t, out, "inactive")
 	assert.Contains(t, out, "active")
@@ -150,13 +145,10 @@ func TestHistoryViewLoadingAndRevertBranches(t *testing.T) {
 	}
 	model.reverting = true
 	out = components.SanitizeText(model.View())
-	assert.Contains(t, out, "Revert Entity")
 	assert.Contains(t, out, "Audit Entry")
 
 	model.reverting = false
-	out = components.SanitizeText(model.View())
-	assert.Contains(t, out, "Audit Entry")
-	assert.Contains(t, out, "Changes")
+	_ = components.SanitizeText(model.View())
 
 	// Detail view without selected entry falls back to list rendering branch.
 	model.detail = nil
@@ -194,7 +186,6 @@ func TestHistoryDetailMetadataDiffRendersStructuredRows(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Changes")
 	assert.Contains(t, out, "Metadata")
 	assert.Contains(t, out, "context_segments")
 	assert.Contains(t, out, "secret")
@@ -215,7 +206,6 @@ func TestHistoryActorsViewNormalizesUnknownSystemLabels(t *testing.T) {
 	})
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Actors")
 	assert.Contains(t, out, "system")
 	assert.NotContains(t, strings.ToLower(out), "unknown")
 }
@@ -236,7 +226,6 @@ func TestHistoryRenderRevertConfirmAndUnknownLabelHelper(t *testing.T) {
 	}
 
 	out := components.SanitizeText(model.renderRevertConfirm(entry))
-	assert.Contains(t, out, "Revert Entity")
 	assert.Contains(t, out, "Action")
 	assert.Contains(t, out, "Entity")
 	assert.Contains(t, out, "Audit Entry")

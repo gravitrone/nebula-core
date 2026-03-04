@@ -39,7 +39,6 @@ func TestProtocolsRenderPreviewAddAndEditEdgeBranches(t *testing.T) {
 		model.addErr = "boom"
 
 		out := components.SanitizeText(model.renderAdd())
-		assert.Contains(t, out, "Add Protocol")
 		assert.Contains(t, out, "boom")
 	})
 

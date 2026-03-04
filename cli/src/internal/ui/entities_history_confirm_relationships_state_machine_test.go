@@ -74,7 +74,6 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 
 	require.False(t, model.historyLoading)
 	require.Len(t, model.history, 1)
-	assert.Contains(t, model.View(), "History")
 
 	// Select the first entry to open confirm.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -128,7 +127,6 @@ func TestEntitiesArchiveConfirmCallsUpdateEntity(t *testing.T) {
 	// Open archive confirm.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	assert.Equal(t, entitiesViewConfirm, model.view)
-	assert.Contains(t, model.View(), "Archive Entity")
 
 	// Confirm.
 	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
@@ -314,7 +312,6 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	model.view = entitiesViewRelationships
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
 	assert.Equal(t, entitiesViewConfirm, model.view)
-	assert.Contains(t, model.View(), "Archive Relationship")
 
 	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
 	require.NotNil(t, cmd)

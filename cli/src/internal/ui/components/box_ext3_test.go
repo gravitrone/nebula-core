@@ -29,7 +29,7 @@ func TestTitledBoxWithStyleTruncatesLongHeaderToFit(t *testing.T) {
 
 	clean := SanitizeText(out)
 	assert.Contains(t, clean, "body")
-	assert.Contains(t, clean, "[")
+	assert.NotContains(t, clean, "[")
 
 	for _, line := range strings.Split(out, "\n") {
 		assert.LessOrEqual(t, lipgloss.Width(line), 22)
@@ -57,4 +57,3 @@ func TestRenderMetadataLinesNestedAndInlineScopeBranches(t *testing.T) {
 	assert.Contains(t, joined, "k: v")
 	assert.Contains(t, joined, "- [public, admin] hello")
 }
-
