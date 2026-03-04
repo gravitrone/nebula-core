@@ -147,15 +147,10 @@ func parseMetadataPipeLine(content string, lineNum int) (string, string, error) 
 func setMetadataPath(root map[string]any, path string, value any, lineNum int) error {
 	segments := strings.Split(path, ".")
 	current := root
-	for idx, raw := range segments {
+	for idx, raw := range segments[:len(segments)-1] {
 		segment := strings.TrimSpace(raw)
 		if segment == "" {
 			return fmt.Errorf("line %d: empty key segment in '%s'", lineNum, path)
-		}
-		isLast := idx == len(segments)-1
-		if isLast {
-			current[segment] = value
-			return nil
 		}
 		next, ok := current[segment]
 		if !ok {
@@ -170,6 +165,11 @@ func setMetadataPath(root map[string]any, path string, value any, lineNum int) e
 		}
 		current = child
 	}
+	last := strings.TrimSpace(segments[len(segments)-1])
+	if last == "" {
+		return fmt.Errorf("line %d: empty key segment in '%s'", lineNum, path)
+	}
+	current[last] = value
 	return nil
 }
 
@@ -362,9 +362,6 @@ func renderMetadataEditorPreview(buffer string, scopes []string, width int, maxR
 	}
 
 	rows := metadataDisplayRows(data)
-	if len(rows) == 0 {
-		return "-"
-	}
 	remaining := 0
 	if len(rows) > maxRows {
 		remaining = len(rows) - maxRows
@@ -441,9 +438,6 @@ func metadataPreview(data map[string]any, maxLen int) string {
 		sorted = append(sorted, k)
 	}
 	sort.Strings(sorted)
-	if len(sorted) == 0 {
-		return ""
-	}
 	return metadataValuePreview(data[sorted[0]], maxLen)
 }
 
@@ -577,9 +571,6 @@ func renderMetadataBlockWithTitle(title string, data map[string]any, width int, 
 		contentWidth = 24
 	}
 	rows := metadataDisplayRows(data)
-	if len(rows) == 0 {
-		return components.TitledBox(title, MetaValueStyle.Render("None"), width)
-	}
 	maxRows := 12
 	if expanded {
 		maxRows = 26
@@ -774,12 +765,6 @@ func renderMetadataSelectableBlockWithTitle(
 
 	start := list.Offset + 1
 	end := list.Offset + len(visible)
-	if start < 1 {
-		start = 1
-	}
-	if end < start {
-		end = start
-	}
 	modeLabel := "row"
 	if showSelectionColumn {
 		modeLabel = "select"
@@ -820,9 +805,6 @@ func metadataGridRowsWrapped(
 		fieldLines = []string{"-"}
 	}
 	valueLines := metadataValueWrappedLines(value, valueWidth)
-	if len(valueLines) == 0 {
-		valueLines = []string{"None"}
-	}
 
 	lineCount := len(valueLines)
 	if len(groupLines) > lineCount {
@@ -1414,12 +1396,7 @@ func parseJSONStructuredString(raw string) (any, bool) {
 	if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
 		return nil, false
 	}
-	switch parsed.(type) {
-	case map[string]any, []any:
-		return parsed, true
-	default:
-		return nil, false
-	}
+	return parsed, true
 }
 
 // parseStringSlice parses parse string slice.
@@ -1544,9 +1521,6 @@ func wrapMetadataWords(text string, width int) []string {
 		return []string{text}
 	}
 	words := strings.Fields(text)
-	if len(words) == 0 {
-		return []string{components.ClampTextWidthEllipsis(text, width)}
-	}
 	out := make([]string, 0, len(words))
 	current := ""
 	for _, word := range words {
