@@ -880,13 +880,7 @@ func (m EntitiesModel) renderFilterPicker() string {
 		boxWidth = 48
 	}
 	tableWidth := boxWidth - 2
-	if tableWidth < 40 {
-		tableWidth = 40
-	}
 	optionWidth := tableWidth - 6
-	if optionWidth < 20 {
-		optionWidth = 20
-	}
 	cols := []components.TableColumn{
 		{Header: "Sel", Width: 4, Align: lipgloss.Left},
 		{Header: "Value", Width: optionWidth, Align: lipgloss.Left},

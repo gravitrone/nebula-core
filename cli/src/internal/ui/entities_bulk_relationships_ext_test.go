@@ -24,12 +24,20 @@ func TestParseBulkInputExtendedMatrix(t *testing.T) {
 	_, err = parseBulkInput("remove:  ")
 	require.Error(t, err)
 
+	_, err = parseBulkInput("add:\t\t")
+	require.Error(t, err)
+
 	spec, err := parseBulkInput("= public, private")
 	require.NoError(t, err)
 	assert.Equal(t, "set", spec.op)
 	assert.Equal(t, []string{"public", "private"}, spec.values)
 
 	spec, err = parseBulkInput("+foo bar")
+	require.NoError(t, err)
+	assert.Equal(t, "add", spec.op)
+	assert.Equal(t, []string{"foo", "bar"}, spec.values)
+
+	spec, err = parseBulkInput("add:foo,\t,bar")
 	require.NoError(t, err)
 	assert.Equal(t, "add", spec.op)
 	assert.Equal(t, []string{"foo", "bar"}, spec.values)

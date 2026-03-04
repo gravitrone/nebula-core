@@ -34,6 +34,7 @@ var waitForAPIHealthProbe = func() (string, error) {
 }
 
 var startHealthTimeout = 8 * time.Second
+var startupFailureProbeTimeout = 900 * time.Millisecond
 
 type apiLockWriter interface {
 	Write([]byte) (int, error)
@@ -217,7 +218,7 @@ func runStartCmd(out io.Writer) error {
 
 	ready := waitForAPIHealth(startHealthTimeout)
 	if !ready {
-		portConflict, processExited := detectStartupFailure(logPath, pid, 900*time.Millisecond)
+		portConflict, processExited := detectStartupFailure(logPath, pid, startupFailureProbeTimeout)
 		if portConflict {
 			stopProcessIfAlive(pid)
 			_ = cleanupAPIState()

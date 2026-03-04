@@ -264,6 +264,7 @@ func TestRunStartCmdDetectsMultiAPIConflictMessage(t *testing.T) {
 	t.Setenv("NEBULA_SERVER_DIR", serverDir)
 	setWaitForAPIProbe(t, func() (string, error) { return "", assert.AnError })
 	setStartHealthTimeout(t, 300*time.Millisecond)
+	setStartupFailureProbeTimeout(t, 600*time.Millisecond)
 
 	var out bytes.Buffer
 	err := runStartCmd(&out)
@@ -286,6 +287,7 @@ func TestRunStartCmdDetectsMultiAPIConflictMessageAfterDelayedLog(t *testing.T) 
 	t.Setenv("NEBULA_SERVER_DIR", serverDir)
 	setWaitForAPIProbe(t, func() (string, error) { return "", assert.AnError })
 	setStartHealthTimeout(t, 100*time.Millisecond)
+	setStartupFailureProbeTimeout(t, 2*time.Second)
 
 	var out bytes.Buffer
 	err := runStartCmd(&out)
@@ -664,6 +666,16 @@ func setStartHealthTimeout(t *testing.T, timeout time.Duration) {
 	startHealthTimeout = timeout
 	t.Cleanup(func() {
 		startHealthTimeout = previousTimeout
+	})
+}
+
+// setStartupFailureProbeTimeout handles overriding startup failure polling timeout.
+func setStartupFailureProbeTimeout(t *testing.T, timeout time.Duration) {
+	t.Helper()
+	previousTimeout := startupFailureProbeTimeout
+	startupFailureProbeTimeout = timeout
+	t.Cleanup(func() {
+		startupFailureProbeTimeout = previousTimeout
 	})
 }
 
