@@ -125,6 +125,15 @@ func TestWrapPreviewTextHandlesCombiningAndWideRunes(t *testing.T) {
 	assert.Contains(t, wide[0], "界")
 }
 
+func TestWrapPreviewTextHandlesZeroWidthRuneDuringWrap(t *testing.T) {
+	// Keep width tighter than text so the loop executes and zero-width runes are normalized.
+	wrapped := wrapPreviewText("a\u0301b", 1)
+	require.GreaterOrEqual(t, len(wrapped), 2)
+	assert.Equal(t, "a", wrapped[0])
+	assert.Equal(t, "b", wrapped[len(wrapped)-1])
+	assert.Contains(t, strings.Join(wrapped, ""), "\u0301")
+}
+
 func TestPreviewStringAndListValueMatrix(t *testing.T) {
 	assert.Equal(t, "", previewStringValue(nil, "note"))
 	assert.Equal(t, "", previewListValue(nil, "tags"))

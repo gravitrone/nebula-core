@@ -130,9 +130,6 @@ func renderPreviewScopeRow(label, value string, width int) string {
 	parts := make([]string, 0, len(scopes))
 	for _, scope := range scopes {
 		badge := renderScopeBadge(scope)
-		if badge == "" {
-			continue
-		}
 		candidate := strings.Join(append(parts, badge), " ")
 		if lipgloss.Width(candidate) <= maxValue {
 			parts = append(parts, badge)
@@ -156,9 +153,6 @@ func renderPreviewScopeRow(label, value string, width int) string {
 		}
 		break
 	}
-	if len(parts) == 0 {
-		return MetaKeyStyle.Render(label) + MetaPunctStyle.Render(": ") + MetaValueStyle.Render("-")
-	}
 	return MetaKeyStyle.Render(label) + MetaPunctStyle.Render(": ") + strings.Join(parts, " ")
 }
 
@@ -177,9 +171,6 @@ func parseScopePreviewTokens(value string) []string {
 	seen := map[string]struct{}{}
 	for _, token := range raw {
 		token = strings.TrimSpace(token)
-		if token == "" {
-			continue
-		}
 		key := strings.ToLower(token)
 		if _, ok := seen[key]; ok {
 			continue
