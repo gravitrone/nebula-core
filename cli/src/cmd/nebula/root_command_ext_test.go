@@ -1,11 +1,13 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -184,6 +186,54 @@ func TestRootCommandRunEDelegatesToRunTUI(t *testing.T) {
 	err = root.Execute()
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "config not found")
+}
+
+func TestRunTUIReturnsNilWhenProgramRunnerSucceeds(t *testing.T) {
+	dir := t.TempDir()
+	oldHome := os.Getenv("HOME")
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() { require.NoError(t, os.Setenv("HOME", oldHome)) }()
+
+	cfgDir := filepath.Join(dir, ".nebula")
+	require.NoError(t, os.MkdirAll(cfgDir, 0o700))
+	cfgPath := filepath.Join(cfgDir, "config")
+	require.NoError(t, os.WriteFile(cfgPath, []byte("api_key: nbl_test\n"), 0o600))
+
+	previousRunner := runBubbleTUI
+	t.Cleanup(func() { runBubbleTUI = previousRunner })
+
+	var captured tea.Model
+	runBubbleTUI = func(app tea.Model) error {
+		captured = app
+		return nil
+	}
+
+	err := runTUI()
+	require.NoError(t, err)
+	assert.NotNil(t, captured)
+}
+
+func TestRunTUIWrapsProgramRunnerError(t *testing.T) {
+	dir := t.TempDir()
+	oldHome := os.Getenv("HOME")
+	require.NoError(t, os.Setenv("HOME", dir))
+	defer func() { require.NoError(t, os.Setenv("HOME", oldHome)) }()
+
+	cfgDir := filepath.Join(dir, ".nebula")
+	require.NoError(t, os.MkdirAll(cfgDir, 0o700))
+	cfgPath := filepath.Join(cfgDir, "config")
+	require.NoError(t, os.WriteFile(cfgPath, []byte("api_key: nbl_test\n"), 0o600))
+
+	previousRunner := runBubbleTUI
+	t.Cleanup(func() { runBubbleTUI = previousRunner })
+
+	runBubbleTUI = func(_ tea.Model) error {
+		return errors.New("runner boom")
+	}
+
+	err := runTUI()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tui error: runner boom")
 }
 
 func TestIsInteractiveTerminalReturnsFalseForClosedFile(t *testing.T) {

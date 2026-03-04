@@ -14,6 +14,12 @@ import (
 	"github.com/gravitrone/nebula-core/cli/internal/ui"
 )
 
+var runBubbleTUI = func(app tea.Model) error {
+	p := tea.NewProgram(app, tea.WithAltScreen())
+	_, err := p.Run()
+	return err
+}
+
 // main runs the CLI entrypoint.
 func main() {
 	root := newRootCommand()
@@ -76,8 +82,7 @@ func runTUI() error {
 	client := api.NewDefaultClient(apiKey)
 	app := ui.NewApp(client, cfg)
 
-	p := tea.NewProgram(app, tea.WithAltScreen())
-	if _, err := p.Run(); err != nil {
+	if err := runBubbleTUI(app); err != nil {
 		return fmt.Errorf("tui error: %w", err)
 	}
 	return nil
