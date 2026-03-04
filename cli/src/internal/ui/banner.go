@@ -39,10 +39,7 @@ func RenderBanner() string {
 
 	subtitleText := "Context Infrastructure for Agents • Command-Line Interface"
 	subtitleWidth := lipgloss.Width(subtitleText)
-	blockWidth := maxWidth
-	if blockWidth < subtitleWidth {
-		blockWidth = subtitleWidth
-	}
+	blockWidth := max(maxWidth, subtitleWidth)
 
 	subtitleStyle := lipgloss.NewStyle().
 		Foreground(ColorMuted).

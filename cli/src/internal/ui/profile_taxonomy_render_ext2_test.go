@@ -122,4 +122,41 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		assert.Contains(t, out, "Log Types Taxonomy")
 		assert.NotContains(t, out, "Selected")
 	})
+
+	t.Run("tiny width clamps column budgets and still renders", func(t *testing.T) {
+		model := NewProfileModel(nil, &config.Config{})
+		model.width = 24
+		model.taxKind = 0
+		model.taxLoading = false
+		model.taxItems = []api.TaxonomyEntry{{
+			ID:          "scope-3",
+			Name:        "public",
+			Description: &desc,
+			IsBuiltin:   true,
+			IsActive:    true,
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		}}
+		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
+		model.taxList.Cursor = 0
+
+		out := model.renderTaxonomy()
+		assert.Contains(t, out, "Scopes Taxonomy")
+		assert.Contains(t, out, "Name")
+		assert.Contains(t, out, "Flags")
+		assert.Contains(t, out, "Description")
+	})
+}
+
+func TestRenderTaxonomyPreviewEmptyNameFallsBackToLabel(t *testing.T) {
+	model := NewProfileModel(nil, &config.Config{})
+	item := api.TaxonomyEntry{
+		ID:       "scope-9",
+		Name:     "   ",
+		IsActive: true,
+	}
+
+	preview := model.renderTaxonomyPreview(item, 32)
+	assert.Contains(t, preview, "Selected")
+	assert.Contains(t, preview, "taxonomy")
 }
