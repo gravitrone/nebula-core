@@ -19,9 +19,6 @@ func renderFormGrid(title string, rows [][2]string, activeRow int, width int) st
 		fieldWidth = 16
 	}
 	valueWidth := contentWidth - fieldWidth - 1
-	if valueWidth < 24 {
-		valueWidth = 24
-	}
 
 	columns := []components.TableColumn{
 		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},

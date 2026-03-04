@@ -19,9 +19,6 @@ func copyTextToClipboard(text string) error {
 
 	var lastErr error
 	for _, candidate := range candidates {
-		if len(candidate) == 0 {
-			continue
-		}
 		bin, err := exec.LookPath(candidate[0])
 		if err != nil {
 			continue
