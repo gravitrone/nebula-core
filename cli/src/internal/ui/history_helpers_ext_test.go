@@ -185,3 +185,28 @@ func TestFormatScopeLineMatrix(t *testing.T) {
 	line = formatScopeLine(scope)
 	assert.NotContains(t, line, "public-safe")
 }
+
+func TestParseAuditFilterEmptyInputReturnsZeroValue(t *testing.T) {
+	filter := parseAuditFilter("   ")
+	assert.Equal(t, auditFilter{}, filter)
+}
+
+func TestBuildAuditDiffRowsSkipsEmptyChangedFieldNames(t *testing.T) {
+	entry := api.AuditEntry{
+		ChangedFields: []string{"", "name"},
+		OldData:       api.JSONMap{"name": "old"},
+		NewData:       api.JSONMap{"name": "new"},
+	}
+	rows := buildAuditDiffRows(entry)
+	assert.Len(t, rows, 1)
+	assert.Equal(t, "Name", rows[0].Label)
+}
+
+func TestFormatAuditValueDefaultMarshalScalarBranch(t *testing.T) {
+	assert.Equal(t, "123", formatAuditValue(123))
+	assert.Equal(t, "true", formatAuditValue(true))
+}
+
+func TestHumanizeAuditFieldSeparatorOnlyFallsBackToRaw(t *testing.T) {
+	assert.Equal(t, "___", humanizeAuditField("___"))
+}
