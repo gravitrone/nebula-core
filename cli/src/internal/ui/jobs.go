@@ -579,9 +579,6 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	default:
 		ch := msg.String()
 		if len(ch) == 1 || ch == " " {
-			if ch == " " && m.searchBuf == "" {
-				return m, nil
-			}
 			m.searchBuf += ch
 			m.applyJobSearch()
 		}
@@ -928,9 +925,6 @@ func (m JobsModel) renderEdit() string {
 	}
 	b.WriteString("\n")
 	meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-	if strings.TrimSpace(meta) == "" {
-		meta = "-"
-	}
 	b.WriteString(NormalStyle.Render("  " + meta))
 
 	if m.editSaving {
