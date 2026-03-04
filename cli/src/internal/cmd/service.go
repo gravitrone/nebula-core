@@ -311,7 +311,7 @@ func runStopCmd(out io.Writer) error {
 		return nil
 	}
 
-	proc, err := os.FindProcess(pid)
+	proc, err := findProcessForStop(pid)
 	if err != nil {
 		return fmt.Errorf("find api process: %w", err)
 	}
@@ -328,9 +328,7 @@ func runStopCmd(out io.Writer) error {
 		time.Sleep(200 * time.Millisecond)
 	}
 
-	if err := cleanupAPIState(); err != nil {
-		return err
-	}
+	_ = cleanupAPIState()
 	_ = os.Remove(apiLockPath())
 
 	renderCommandPanel(out, "Nebula API", []components.TableRow{

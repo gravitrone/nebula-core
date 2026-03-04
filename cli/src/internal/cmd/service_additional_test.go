@@ -300,6 +300,37 @@ func TestRunStartCmdDetectsMultiAPIConflictMessageAfterDelayedLog(t *testing.T) 
 	assert.True(t, os.IsNotExist(lockErr))
 }
 
+// TestRunStartCmdReturnsUpdateLockPIDErrorWhenMarshalFails covers update lock error propagation.
+func TestRunStartCmdReturnsUpdateLockPIDErrorWhenMarshalFails(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	serverDir := createFakeServerDirWithUvicorn(t)
+	t.Setenv("NEBULA_SERVER_DIR", serverDir)
+	setWaitForAPIProbe(t, func() (string, error) { return "ok", nil })
+	setStartHealthTimeout(t, 300*time.Millisecond)
+
+	previousMarshal := marshalServiceJSON
+	callCount := 0
+	t.Cleanup(func() {
+		marshalServiceJSON = previousMarshal
+	})
+	marshalServiceJSON = func(v any) ([]byte, error) {
+		callCount++
+		if callCount == 2 {
+			return nil, errors.New("marshal fail update")
+		}
+		return previousMarshal(v)
+	}
+
+	var out bytes.Buffer
+	err := runStartCmd(&out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "marshal api lock: marshal fail update")
+	assert.GreaterOrEqual(t, callCount, 2)
+
+	_, stateErr := os.Stat(apiStatePath())
+	assert.True(t, os.IsNotExist(stateErr))
+}
+
 // TestDetectStartupFailureDetectsConflictFromLog handles conflict detection when log marker is already present.
 func TestDetectStartupFailureDetectsConflictFromLog(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "api.log")
@@ -331,6 +362,36 @@ func TestDetectStartupFailureReturnsExitedWhenProcessDies(t *testing.T) {
 	conflict, exited := detectStartupFailure(logPath, 999999, 80*time.Millisecond)
 	assert.False(t, conflict)
 	assert.True(t, exited)
+}
+
+// TestRunStopCmdReturnsFindProcessErrorFromHook covers stop path process lookup failures.
+func TestRunStopCmdReturnsFindProcessErrorFromHook(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	require.NoError(t, os.MkdirAll(runtimeDir(), 0o700))
+	require.NoError(
+		t,
+		saveAPIState(&apiRuntimeState{
+			PID:       os.Getpid(),
+			Port:      api.DefaultAPIPort,
+			ServerDir: "/tmp/server",
+			LogPath:   "/tmp/log",
+			StartedAt: time.Now().UTC(),
+		}),
+	)
+	require.NoError(t, updateAPILockPID(os.Getpid()))
+
+	previousFind := findProcessForStop
+	t.Cleanup(func() {
+		findProcessForStop = previousFind
+	})
+	findProcessForStop = func(int) (*os.Process, error) {
+		return nil, errors.New("find fail")
+	}
+
+	var out bytes.Buffer
+	err := runStopCmd(&out)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "find api process: find fail")
 }
 
 // TestDetectStartupFailureHandlesUnreadableLogPath ensures log read failures do
