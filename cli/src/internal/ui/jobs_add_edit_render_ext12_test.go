@@ -23,6 +23,16 @@ func TestJobsHandleAddKeysAdditionalBranches(t *testing.T) {
 
 	model.addSaving = false
 
+	// down/up navigation branches while staying in add mode
+	model.addFocus = jobFieldTitle
+	updated, cmd = model.handleAddKeys(tea.KeyMsg{Type: tea.KeyDown})
+	require.Nil(t, cmd)
+	assert.Equal(t, jobFieldDescription, updated.addFocus)
+
+	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyUp})
+	require.Nil(t, cmd)
+	assert.Equal(t, jobFieldTitle, updated.addFocus)
+
 	// status and priority left-wrap branches
 	model.addFocus = jobFieldStatus
 	model.addStatusIdx = 0
