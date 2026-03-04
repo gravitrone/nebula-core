@@ -139,6 +139,48 @@ func TestBuildSearchPaletteActionsUsesShortIDWhenLabelMissing(t *testing.T) {
 	assert.Equal(t, "entity · entity-1", actions[0].Desc)
 }
 
+func TestBuildSearchPaletteActionsDescFallbackBranch(t *testing.T) {
+	actions, _ := buildSearchPaletteActions(
+		"",
+		[]api.Entity{{ID: "", Name: "Alpha", Type: "·"}},
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	require.Len(t, actions, 1)
+	assert.Equal(t, "Alpha", actions[0].Label)
+	assert.Equal(t, "entity", actions[0].Desc)
+}
+
+func TestBuildSearchPaletteActionsRelationshipLabelFallbackBranch(t *testing.T) {
+	actions, _ := buildSearchPaletteActions(
+		"",
+		nil,
+		nil,
+		nil,
+		[]api.Relationship{{
+			ID:         "rel-1",
+			Type:       "",
+			Status:     "active",
+			SourceName: "",
+			TargetName: "",
+			SourceID:   "ent-a",
+			TargetID:   "ent-b",
+		}},
+		nil,
+		nil,
+		nil,
+	)
+
+	require.Len(t, actions, 1)
+	assert.NotContains(t, actions[0].Label, "(")
+	assert.Contains(t, actions[0].Label, "->")
+}
+
 func TestCenterBlockUniformEarlyReturnBranches(t *testing.T) {
 	assert.Equal(t, "", centerBlockUniform("", 80))
 	assert.Equal(t, "abcd", centerBlockUniform("abcd", 3))

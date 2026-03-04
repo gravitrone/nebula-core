@@ -115,3 +115,15 @@ func TestAppTabWantsArrowsAndCanExitToTabNav(t *testing.T) {
 	app.history.filtering = false
 	assert.True(t, app.canExitToTabNav())
 }
+
+func TestAppViewRendersToastFeedbackBranch(t *testing.T) {
+	app := NewApp(nil, &config.Config{})
+	app.width = 100
+	app.height = 32
+	app.startupChecking = false
+	app.toast = &appToast{level: "success", text: "toast branch hit"}
+
+	out := components.SanitizeText(app.View())
+	assert.Contains(t, out, "Success")
+	assert.Contains(t, out, "toast branch hit")
+}

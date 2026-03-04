@@ -583,7 +583,7 @@ func buildPaletteSearchEntries(
 			edge = components.SanitizeText(fmt.Sprintf("%s -> %s", shortID(r.SourceID), shortID(r.TargetID)))
 		}
 		label := components.SanitizeText(strings.TrimSpace(fmt.Sprintf("%s (%s)", r.Type, edge)))
-		if strings.TrimSpace(label) == "" || strings.HasPrefix(label, " (") {
+		if strings.TrimSpace(label) == "" || strings.HasPrefix(label, "(") {
 			label = components.SanitizeText(edge)
 		}
 		desc := r.Status
