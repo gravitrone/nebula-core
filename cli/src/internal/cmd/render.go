@@ -35,6 +35,10 @@ func centerBlockLines(block string, width int) string {
 
 // shouldRenderCommandBanner handles whether command banner should render.
 func shouldRenderCommandBanner(out io.Writer) bool {
+	enabled := strings.ToLower(strings.TrimSpace(os.Getenv("NEBULA_COMMAND_ASCII")))
+	if enabled != "1" && enabled != "true" && enabled != "yes" {
+		return false
+	}
 	file, ok := out.(*os.File)
 	if !ok || file == nil {
 		return false

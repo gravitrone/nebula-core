@@ -76,6 +76,7 @@ func TestCenterBlockLinesSanitizesAndClamps(t *testing.T) {
 }
 
 func TestShouldRenderCommandBannerNonFileAndClosedFile(t *testing.T) {
+	t.Setenv("NEBULA_COMMAND_ASCII", "1")
 	assert.False(t, shouldRenderCommandBanner(&bytes.Buffer{}))
 
 	tmp, err := os.CreateTemp(t.TempDir(), "nebula-banner-*.tmp")
@@ -85,6 +86,7 @@ func TestShouldRenderCommandBannerNonFileAndClosedFile(t *testing.T) {
 }
 
 func TestRenderCommandPanelAndMessageInteractivePath(t *testing.T) {
+	t.Setenv("NEBULA_COMMAND_ASCII", "1")
 	devNull, err := os.OpenFile("/dev/null", os.O_WRONLY, 0)
 	require.NoError(t, err)
 	defer func() {
@@ -104,4 +106,13 @@ func TestRenderCommandPanelAndMessageInteractivePath(t *testing.T) {
 		},
 	)
 	renderCommandMessage(devNull, "Nebula API", "ok")
+}
+
+func TestShouldRenderCommandBannerDisabledByDefault(t *testing.T) {
+	devNull, err := os.OpenFile("/dev/null", os.O_WRONLY, 0)
+	require.NoError(t, err)
+	defer func() {
+		_ = devNull.Close()
+	}()
+	assert.False(t, shouldRenderCommandBanner(devNull))
 }
