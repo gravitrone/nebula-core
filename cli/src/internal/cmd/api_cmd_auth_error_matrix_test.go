@@ -3,7 +3,9 @@ package cmd
 import (
 	"bytes"
 	"testing"
+	"time"
 
+	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -101,6 +103,15 @@ func TestAPICmdAuthRequiredMatrixErrorsWithoutConfig(t *testing.T) {
 
 func TestAPICmdHealthErrorWithoutServer(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	prevFactory := newDefaultClient
+	t.Cleanup(func() {
+		newDefaultClient = prevFactory
+	})
+	newDefaultClient = func(apiKey string, timeout ...time.Duration) *api.Client {
+		if len(timeout) > 0 {
+			return api.NewClient("http://127.0.0.1:1", apiKey, timeout[0])
+		}
+		return api.NewClient("http://127.0.0.1:1", apiKey)
+	}
 	runAPISubcommandExpectError(t, "health check", "health")
 }
-

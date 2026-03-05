@@ -42,9 +42,9 @@ func TestApplyNebulaHelpRendersVisibleSortedSections(t *testing.T) {
 	require.NoError(t, root.Execute())
 
 	text := out.String()
-	assert.Contains(t, text, "/alpha")
-	assert.Contains(t, text, "/zeta")
-	assert.NotContains(t, text, "/hidden")
+	assert.Contains(t, text, "nebula alpha")
+	assert.Contains(t, text, "nebula zeta")
+	assert.NotContains(t, text, "nebula hidden")
 	assert.Contains(t, text, "-c, --config")
 	assert.NotContains(t, text, "secret")
 }

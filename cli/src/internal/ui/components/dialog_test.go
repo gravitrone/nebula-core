@@ -91,10 +91,13 @@ func TestRenderDiffRowsBranchMatrix(t *testing.T) {
 
 	assert.Contains(t, clean, "status")
 	assert.Contains(t, clean, "owner")
+	assert.Contains(t, clean, "Field")
+	assert.Contains(t, clean, "Before")
+	assert.Contains(t, clean, "After")
 	assert.Contains(t, clean, "- active")
 	assert.Contains(t, clean, "+ archived")
 	assert.Contains(t, clean, "None")
-	assert.Equal(t, 1, strings.Count(clean, "\n\nowner"))
+	assert.GreaterOrEqual(t, strings.Count(clean, "owner"), 1)
 }
 
 func TestRenderDiffValuePlaceholderAndMultilineBranches(t *testing.T) {

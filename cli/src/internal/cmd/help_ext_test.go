@@ -32,7 +32,7 @@ func TestRenderNebulaHelpIncludesLongAliasesAndEmptySummaryFallback(t *testing.T
 	assert.Contains(t, text, "long form description")
 	assert.Contains(t, text, "nb, n")
 	assert.Contains(t, text, "subcommands")
-	assert.Contains(t, text, "/child")
+	assert.Contains(t, text, "nebula child")
 	assert.Contains(t, text, "  -")
 }
 

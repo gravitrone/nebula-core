@@ -77,8 +77,12 @@ func renderNebulaHelp(out io.Writer, command *cobra.Command) {
 			if summary == "" {
 				summary = "-"
 			}
+			subPath := sub.CommandPath()
+			if subPath == "" {
+				subPath = sub.Name()
+			}
 			rows = append(rows, components.TableRow{
-				Label: "  /" + sub.Name(),
+				Label: "  " + subPath,
 				Value: summary,
 			})
 		}
@@ -92,7 +96,7 @@ func renderNebulaHelp(out io.Writer, command *cobra.Command) {
 
 	rows = append(rows, components.TableRow{
 		Label: "tip",
-		Value: "run /<subcommand> in command palette or use `nebula <command> --help`",
+		Value: "use `nebula <command> --help` for command details",
 	})
 	renderCommandPanel(out, "Help", rows)
 }

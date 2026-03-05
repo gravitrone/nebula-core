@@ -133,5 +133,5 @@ func TestRenderNebulaHelpShowsAliasesAndSubcommands(t *testing.T) {
 	assert.Contains(t, text, "aliases")
 	assert.Contains(t, text, "r, rt")
 	assert.Contains(t, text, "subcommands")
-	assert.Contains(t, text, "/child")
+	assert.Contains(t, text, "root child")
 }

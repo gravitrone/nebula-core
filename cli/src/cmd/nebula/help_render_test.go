@@ -37,7 +37,7 @@ func TestSubcommandHelpUsesNebulaBoxLayout(t *testing.T) {
 	output := runHelpOutput(t, "keys", "--help")
 	assert.Contains(t, output, "╭")
 	assert.Contains(t, output, "nebula keys")
-	assert.Contains(t, output, "/list")
+	assert.Contains(t, output, "nebula keys list")
 	assert.NotContains(t, output, "Usage:\n  nebula keys")
 }
 

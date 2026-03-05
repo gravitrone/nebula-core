@@ -420,58 +420,95 @@ type DiffRow struct {
 	To    string
 }
 
-// DiffTable renders a from/to diff table with - (red) and + (yellow) lines.
+// DiffTable renders a tabular before/after diff using Nebula table grid styling.
 func DiffTable(title string, rows []DiffRow, width int) string {
+	grid := renderDiffGrid(rows, width)
+	if grid == "" {
+		return ""
+	}
+	return TitledBox(title, grid, width)
+}
+
+// renderDiffGrid renders diff rows as a Field/Before/After grid with wrapped values.
+func renderDiffGrid(rows []DiffRow, width int) string {
 	if len(rows) == 0 {
 		return ""
 	}
 
-	removeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff4d6d"))
-	addStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3f866b"))
-	valueWidth := BoxContentWidth(width) - 4
-	if valueWidth < 24 {
-		valueWidth = 24
+	contentWidth := BoxContentWidth(width)
+	if contentWidth <= 0 {
+		contentWidth = 64
 	}
-	renderValue := func(style lipgloss.Style, prefix string, value string) string {
-		value = SanitizeText(value)
-		trimmed := strings.TrimSpace(value)
-		if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
-			value = "None"
-		} else {
-			value = trimmed
-		}
-		lines := strings.Split(value, "\n")
-		var out strings.Builder
-		for i, line := range lines {
-			wrapped := wrapDiffLine(line, valueWidth-len(prefix))
-			for j, chunk := range wrapped {
-				if i == 0 && j == 0 {
-					out.WriteString(style.Render(prefix + chunk))
-				} else {
-					out.WriteString(style.Render(strings.Repeat(" ", len(prefix)) + chunk))
-				}
-				if i < len(lines)-1 || j < len(wrapped)-1 {
-					out.WriteString("\n")
-				}
+	if contentWidth < 36 {
+		contentWidth = 36
+	}
+
+	fieldWidth := contentWidth / 4
+	if fieldWidth < 8 {
+		fieldWidth = 8
+	}
+	if fieldWidth > 20 {
+		fieldWidth = 20
+	}
+	valueWidth := (contentWidth - fieldWidth) / 2
+	if valueWidth < 10 {
+		valueWidth = 10
+	}
+
+	columns := []TableColumn{
+		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
+		{Header: "Before", Width: valueWidth, Align: lipgloss.Left},
+		{Header: "After", Width: valueWidth, Align: lipgloss.Left},
+	}
+
+	gridRows := make([][]string, 0, len(rows)*2)
+	for _, row := range rows {
+		label := SanitizeOneLine(row.Label)
+		beforeLines := wrapDiffCellValue(row.From, maxInt(6, valueWidth-2))
+		afterLines := wrapDiffCellValue(row.To, maxInt(6, valueWidth-2))
+		lineCount := maxInt(len(beforeLines), len(afterLines))
+		for i := 0; i < lineCount; i++ {
+			fieldCell := ""
+			if i == 0 {
+				fieldCell = diffLabelStyle.Render(label)
 			}
+			beforeCell := "  "
+			if i == 0 {
+				beforeCell = "- "
+			}
+			afterCell := "  "
+			if i == 0 {
+				afterCell = "+ "
+			}
+			if i < len(beforeLines) {
+				beforeCell += beforeLines[i]
+			}
+			if i < len(afterLines) {
+				afterCell += afterLines[i]
+			}
+			gridRows = append(gridRows, []string{fieldCell, beforeCell, afterCell})
 		}
-		return out.String()
 	}
 
-	var b strings.Builder
-	for i, r := range rows {
-		label := SanitizeOneLine(r.Label)
-		b.WriteString(diffLabelStyle.Render(label))
-		b.WriteString("\n")
-		b.WriteString(renderValue(removeStyle, "  - ", r.From))
-		b.WriteString("\n")
-		b.WriteString(renderValue(addStyle, "  + ", r.To))
-		if i < len(rows)-1 {
-			b.WriteString("\n\n")
-		}
-	}
+	return TableGrid(columns, gridRows, contentWidth)
+}
 
-	return TitledBox(title, b.String(), width)
+// wrapDiffCellValue normalizes diff values and wraps them for grid rendering.
+func wrapDiffCellValue(value string, width int) []string {
+	value = SanitizeText(value)
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
+		return []string{"None"}
+	}
+	lines := strings.Split(trimmed, "\n")
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		out = append(out, wrapDiffLine(line, width)...)
+	}
+	if len(out) == 0 {
+		return []string{"None"}
+	}
+	return out
 }
 
 // wrapDiffLine handles wrap diff line.

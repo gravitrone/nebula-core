@@ -127,56 +127,24 @@ func renderSummaryRows(rows []TableRow, width int) string {
 
 // renderDiffRows renders render diff rows.
 func renderDiffRows(rows []DiffRow, width int) string {
-	if len(rows) == 0 {
-		return ""
-	}
-
-	removeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#ff4d6d"))
-	addStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3f866b"))
-	contentWidth := BoxContentWidth(width)
-	if contentWidth <= 0 {
-		contentWidth = 60
-	}
-	valueWidth := contentWidth - 4
-	if valueWidth < 8 {
-		valueWidth = 8
-	}
-
-	var b strings.Builder
-	for i, row := range rows {
-		label := SanitizeOneLine(row.Label)
-		b.WriteString(diffLabelStyle.Render(label))
-		b.WriteString("\n")
-		b.WriteString(renderDiffValue(removeStyle, "  - ", row.From, valueWidth))
-		b.WriteString("\n")
-		b.WriteString(renderDiffValue(addStyle, "  + ", row.To, valueWidth))
-		if i < len(rows)-1 {
-			b.WriteString("\n\n")
-		}
-	}
-	return b.String()
+	return renderDiffGrid(rows, width)
 }
 
-// renderDiffValue renders render diff value.
+// renderDiffValue is kept for test/backward compatibility with prefix-based diff formatting.
 func renderDiffValue(style lipgloss.Style, prefix, value string, valueWidth int) string {
-	safe := SanitizeText(value)
-	trimmed := strings.TrimSpace(safe)
-	if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
-		safe = "None"
-	} else {
-		safe = trimmed
+	lines := wrapDiffCellValue(value, maxInt(4, valueWidth))
+	if len(lines) == 0 {
+		lines = []string{"None"}
 	}
-	lines := strings.Split(safe, "\n")
+	pad := strings.Repeat(" ", lipgloss.Width(prefix))
 
 	var out strings.Builder
-	pad := strings.Repeat(" ", lipgloss.Width(prefix))
 	for i, line := range lines {
-		clamped := ClampTextWidth(line, valueWidth)
+		leader := pad
 		if i == 0 {
-			out.WriteString(style.Render(prefix + clamped))
-		} else {
-			out.WriteString(style.Render(pad + clamped))
+			leader = prefix
 		}
+		out.WriteString(style.Render(leader + line))
 		if i < len(lines)-1 {
 			out.WriteString("\n")
 		}
