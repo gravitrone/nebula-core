@@ -83,3 +83,25 @@ func TestShouldRenderCommandBannerNonFileAndClosedFile(t *testing.T) {
 	require.NoError(t, tmp.Close())
 	assert.False(t, shouldRenderCommandBanner(tmp))
 }
+
+func TestRenderCommandPanelAndMessageInteractivePath(t *testing.T) {
+	devNull, err := os.OpenFile("/dev/null", os.O_WRONLY, 0)
+	require.NoError(t, err)
+	defer func() {
+		_ = devNull.Close()
+	}()
+
+	if !shouldRenderCommandBanner(devNull) {
+		t.Skip("/dev/null is not a character device in this environment")
+	}
+
+	renderCommandPanel(
+		devNull,
+		"Nebula API",
+		[]components.TableRow{
+			{Label: "status", Value: "running"},
+			{Label: "port", Value: "8765"},
+		},
+	)
+	renderCommandMessage(devNull, "Nebula API", "ok")
+}
