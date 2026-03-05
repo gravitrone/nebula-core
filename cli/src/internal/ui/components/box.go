@@ -3,6 +3,7 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -225,6 +226,14 @@ func maxInt(a, b int) int {
 	return b
 }
 
+// minInt handles min int.
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // padRight handles pad right.
 func padRight(s string, width int) string {
 	w := lipgloss.Width(s)
@@ -437,12 +446,13 @@ func renderDiffGrid(rows []DiffRow, width int) string {
 
 	contentWidth := BoxContentWidth(width)
 	if contentWidth <= 0 {
-		contentWidth = 64
+		contentWidth = 72
 	}
-	if contentWidth < 36 {
-		contentWidth = 36
+	if contentWidth < 44 {
+		contentWidth = 44
 	}
 
+	changeWidth := 9
 	fieldWidth := contentWidth / 4
 	if fieldWidth < 8 {
 		fieldWidth = 8
@@ -450,13 +460,28 @@ func renderDiffGrid(rows []DiffRow, width int) string {
 	if fieldWidth > 20 {
 		fieldWidth = 20
 	}
-	valueWidth := (contentWidth - fieldWidth) / 2
+	remaining := contentWidth - fieldWidth - changeWidth
+	if remaining < 20 {
+		deficit := 20 - remaining
+		if fieldWidth > 8 {
+			recover := minInt(deficit, fieldWidth-8)
+			fieldWidth -= recover
+			deficit -= recover
+		}
+		if deficit > 0 && changeWidth > 7 {
+			recover := minInt(deficit, changeWidth-7)
+			changeWidth -= recover
+		}
+		remaining = contentWidth - fieldWidth - changeWidth
+	}
+	valueWidth := remaining / 2
 	if valueWidth < 10 {
 		valueWidth = 10
 	}
 
 	columns := []TableColumn{
 		{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
+		{Header: "Change", Width: changeWidth, Align: lipgloss.Left},
 		{Header: "Before", Width: valueWidth, Align: lipgloss.Left},
 		{Header: "After", Width: valueWidth, Align: lipgloss.Left},
 	}
@@ -472,6 +497,10 @@ func renderDiffGrid(rows []DiffRow, width int) string {
 			if i == 0 {
 				fieldCell = diffLabelStyle.Render(label)
 			}
+			changeCell := ""
+			if i == 0 {
+				changeCell = diffChangeKind(row.From, row.To)
+			}
 			beforeCell := "  "
 			if i == 0 {
 				beforeCell = "- "
@@ -486,7 +515,7 @@ func renderDiffGrid(rows []DiffRow, width int) string {
 			if i < len(afterLines) {
 				afterCell += afterLines[i]
 			}
-			gridRows = append(gridRows, []string{fieldCell, beforeCell, afterCell})
+			gridRows = append(gridRows, []string{fieldCell, changeCell, beforeCell, afterCell})
 		}
 	}
 
@@ -508,7 +537,43 @@ func wrapDiffCellValue(value string, width int) []string {
 	if len(out) == 0 {
 		return []string{"None"}
 	}
+	if !diffFullModeEnabled() && len(out) > 6 {
+		hidden := len(out) - 6
+		out = append(out[:6], fmt.Sprintf("... (+%d more lines)", hidden))
+	}
 	return out
+}
+
+// diffChangeKind classifies a diff row for clearer scanning in tabular view.
+func diffChangeKind(from, to string) string {
+	before := normalizeDiffRawValue(from)
+	after := normalizeDiffRawValue(to)
+	switch {
+	case before == "None" && after != "None":
+		return "added"
+	case before != "None" && after == "None":
+		return "removed"
+	case before == after:
+		return "same"
+	default:
+		return "updated"
+	}
+}
+
+// diffFullModeEnabled keeps full multi-line diff output opt-in for command surfaces.
+func diffFullModeEnabled() bool {
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv("NEBULA_DIFF_FULL")))
+	return raw == "1" || raw == "true" || raw == "yes"
+}
+
+// normalizeDiffRawValue normalizes placeholders for diff change classification.
+func normalizeDiffRawValue(value string) string {
+	value = SanitizeText(value)
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" || trimmed == "<nil>" || trimmed == "-" || trimmed == "--" {
+		return "None"
+	}
+	return trimmed
 }
 
 // wrapDiffLine handles wrap diff line.

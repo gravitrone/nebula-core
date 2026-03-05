@@ -98,7 +98,27 @@ func renderNebulaHelp(out io.Writer, command *cobra.Command) {
 		Label: "tip",
 		Value: "use `nebula <command> --help` for command details",
 	})
+	rows = append(rows, helpRecipeRows(command)...)
 	renderCommandPanel(out, "Help", rows)
+}
+
+// helpRecipeRows adds explicit shell examples so non-interactive usage is obvious.
+func helpRecipeRows(command *cobra.Command) []components.TableRow {
+	if command == nil {
+		return nil
+	}
+	if command.Parent() != nil {
+		return []components.TableRow{
+			{Label: "example", Value: command.CommandPath() + " --help"},
+		}
+	}
+	return []components.TableRow{
+		{Label: "recipes", Value: "quick examples"},
+		{Label: "  1", Value: "nebula api entities query --param limit=5"},
+		{Label: "  2", Value: "nebula api approvals pending"},
+		{Label: "  3", Value: "nebula api approvals diff <approval-id>"},
+		{Label: "  4", Value: "nebula start | nebula logs --api | nebula stop"},
+	}
 }
 
 // visibleSubcommands handles visible subcommands.
