@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gravitrone/nebula-core/cli/internal/config"
@@ -105,4 +107,19 @@ func TestAPICmdInputCommandsRejectDecodeTypeMismatch(t *testing.T) {
 	for _, args := range commands {
 		runAPISubcommandExpectError(t, "parse JSON input", args...)
 	}
+}
+
+func TestAPICmdApprovalsApproveRejectsConflictingInputFlags(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+
+	inputPath := filepath.Join(t.TempDir(), "approve.json")
+	require.NoError(t, os.WriteFile(inputPath, []byte(`{"review_notes":"ok"}`), 0o600))
+
+	runAPISubcommandExpectError(
+		t,
+		"use either --input or --input-file",
+		"approvals", "approve", "a1",
+		"--input", `{"review_notes":"ok"}`,
+		"--input-file", inputPath,
+	)
 }

@@ -66,10 +66,7 @@ func apiHealthCmd() *cobra.Command {
 		Use:   "health",
 		Short: "Check API health",
 		RunE: func(command *cobra.Command, _ []string) error {
-			client, err := loadCommandClient(false)
-			if err != nil {
-				return err
-			}
+			client, _ := loadCommandClient(false)
 			status, err := client.Health()
 			if err != nil {
 				return fmt.Errorf("health check: %w", err)
@@ -1244,10 +1241,7 @@ func apiKeysCmd() *cobra.Command {
 		Short: "Login with username and print API key payload as JSON",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
-			client, err := loadCommandClient(false)
-			if err != nil {
-				return err
-			}
+			client, _ := loadCommandClient(false)
 			resp, err := client.Login(args[0])
 			if err != nil {
 				return fmt.Errorf("login: %w", err)

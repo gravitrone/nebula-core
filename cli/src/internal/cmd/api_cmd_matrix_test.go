@@ -324,6 +324,7 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 
 	runAPISubcommand(t, "approvals", "get", "a1")
 	runAPISubcommand(t, "approvals", "diff", "a1")
+	runAPISubcommand(t, "approvals", "approve", "a1")
 	runAPISubcommand(t, "approvals", "approve", "a1", "--input", `{"review_notes":"ok"}`)
 	runAPISubcommand(t, "approvals", "reject", "a1", "--notes", "nope")
 
