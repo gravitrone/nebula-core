@@ -136,12 +136,13 @@ func TestResolveServerDirFindsDeepNebulaCoreServerUnderHome(t *testing.T) {
 	home := t.TempDir()
 	serverDir := filepath.Join(
 		home,
-		"workspace",
-		"long",
-		"path",
-		"nest",
+		"Library",
+		"Mobile Documents",
+		"vault",
+		"Documents",
 		"nebula",
-		"projects",
+		"00-The-Void",
+		"Nebula",
 		"nebula-core",
 		"server",
 	)

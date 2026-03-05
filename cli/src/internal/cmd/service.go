@@ -639,28 +639,48 @@ func resolveServerDir() (string, error) {
 	}
 
 	roots := []string{}
+	deepScanRoots := map[string]bool{}
+	seenRoots := map[string]bool{}
+	addRoot := func(root string) {
+		root = filepath.Clean(strings.TrimSpace(root))
+		if root == "" || seenRoots[root] {
+			return
+		}
+		seenRoots[root] = true
+		roots = append(roots, root)
+	}
 	if cwd, err := currentWorkingDir(); err == nil && cwd != "" {
-		roots = append(roots, cwd)
+		addRoot(cwd)
 		dir := cwd
 		for i := 0; i < 6; i++ {
 			parent := filepath.Dir(dir)
 			if parent == dir {
 				break
 			}
-			roots = append(roots, parent)
+			addRoot(parent)
 			dir = parent
 		}
 	}
 	if exe, err := executablePath(); err == nil && exe != "" {
 		dir := filepath.Dir(exe)
-		roots = append(roots, dir)
+		addRoot(dir)
 		for i := 0; i < 4; i++ {
 			parent := filepath.Dir(dir)
 			if parent == dir {
 				break
 			}
-			roots = append(roots, parent)
+			addRoot(parent)
 			dir = parent
+		}
+	}
+	if homeDir != "" {
+		for _, root := range []string{
+			filepath.Join(homeDir, "Desktop"),
+			filepath.Join(homeDir, "Documents"),
+			filepath.Join(homeDir, "Library", "Mobile Documents"),
+		} {
+			addRoot(root)
+			deepScanRoots[filepath.Clean(root)] = true
 		}
 	}
 
@@ -680,8 +700,8 @@ func resolveServerDir() (string, error) {
 			filepath.Join(root, "*", "*", "nebula-core", "server"),
 		}
 		// Global installs can be launched from outside the repo; probe deeper from $HOME only.
-		if homeDir != "" && sameFilesystemPath(root, homeDir) {
-			for depth := 3; depth <= 9; depth++ {
+		if deepScanRoots[filepath.Clean(root)] {
+			for depth := 3; depth <= 7; depth++ {
 				parts := make([]string, 0, depth+3)
 				parts = append(parts, root)
 				for i := 0; i < depth; i++ {
@@ -726,17 +746,6 @@ func normalizeServerDirCandidate(candidate string) (string, bool) {
 		return "", false
 	}
 	return abs, true
-}
-
-// sameFilesystemPath handles macOS /private aliases while comparing roots.
-func sameFilesystemPath(a, b string) bool {
-	a = filepath.Clean(strings.TrimSpace(a))
-	b = filepath.Clean(strings.TrimSpace(b))
-	if runtime.GOOS == "darwin" {
-		a = strings.TrimPrefix(a, "/private")
-		b = strings.TrimPrefix(b, "/private")
-	}
-	return a == b
 }
 
 // tailLines handles tail lines.
