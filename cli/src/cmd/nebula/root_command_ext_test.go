@@ -17,7 +17,7 @@ func TestNewRootCommandRegistersExpectedSubcommands(t *testing.T) {
 	assert.Equal(t, "nebula", root.Use)
 	assert.NotNil(t, root.RunE)
 
-	for _, name := range []string{"login", "agent", "keys", "start", "stop", "logs", "api"} {
+	for _, name := range []string{"login", "agent", "keys", "start", "stop", "logs", "doctor", "api"} {
 		cmd, _, err := root.Find([]string{name})
 		require.NoError(t, err)
 		require.NotNil(t, cmd)

@@ -52,6 +52,19 @@ func shouldRenderCommandBanner(out io.Writer) bool {
 
 // renderCommandPanel renders render command panel.
 func renderCommandPanel(out io.Writer, title string, rows []components.TableRow) {
+	mode := resolveOutputMode(OutputModeTable)
+	switch mode {
+	case OutputModeJSON:
+		_ = writeCleanJSON(out, map[string]any{
+			"title": title,
+			"rows":  rows,
+		})
+		return
+	case OutputModePlain:
+		renderPlainPanel(out, title, rows)
+		return
+	}
+
 	width := commandWidth(out)
 	panel := components.Table(title, rows, width)
 	if !shouldRenderCommandBanner(out) {
@@ -64,6 +77,19 @@ func renderCommandPanel(out io.Writer, title string, rows []components.TableRow)
 
 // renderCommandMessage renders render command message.
 func renderCommandMessage(out io.Writer, title, message string) {
+	mode := resolveOutputMode(OutputModeTable)
+	switch mode {
+	case OutputModeJSON:
+		_ = writeCleanJSON(out, map[string]any{
+			"title":   title,
+			"message": message,
+		})
+		return
+	case OutputModePlain:
+		renderPlainMessage(out, title, message)
+		return
+	}
+
 	width := commandWidth(out)
 	body := components.TitledBox(title, message, width)
 	if !shouldRenderCommandBanner(out) {
@@ -72,4 +98,37 @@ func renderCommandMessage(out io.Writer, title, message string) {
 	}
 	banner := centerBlockLines(ui.RenderBanner(), width)
 	_, _ = fmt.Fprintf(out, "%s\n\n%s\n", banner, body)
+}
+
+// renderPlainPanel renders machine-clean text output (no box drawing or ANSI styles).
+func renderPlainPanel(out io.Writer, title string, rows []components.TableRow) {
+	title = strings.TrimSpace(components.SanitizeOneLine(title))
+	if title != "" {
+		_, _ = fmt.Fprintln(out, title)
+	}
+	for _, row := range rows {
+		label := strings.TrimSpace(components.SanitizeOneLine(row.Label))
+		value := strings.TrimSpace(components.SanitizeText(row.Value))
+		if label == "" {
+			if value != "" {
+				_, _ = fmt.Fprintln(out, value)
+			}
+			continue
+		}
+		_, _ = fmt.Fprintf(out, "%s: %s\n", label, value)
+	}
+}
+
+// renderPlainMessage renders plain text output without decorative UI framing.
+func renderPlainMessage(out io.Writer, title, message string) {
+	title = strings.TrimSpace(components.SanitizeOneLine(title))
+	message = strings.TrimSpace(components.SanitizeText(message))
+	switch {
+	case title == "":
+		_, _ = fmt.Fprintln(out, message)
+	case message == "":
+		_, _ = fmt.Fprintln(out, title)
+	default:
+		_, _ = fmt.Fprintf(out, "%s: %s\n", title, message)
+	}
 }

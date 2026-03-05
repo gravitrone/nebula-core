@@ -14,10 +14,10 @@ import (
 func APICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "api",
-		Short: "Non-interactive API command suite (clean JSON output)",
+		Short: "Non-interactive API command suite (json|table|plain output)",
 		Long: strings.TrimSpace(
 			`Run Nebula operations without opening the TUI.
-All commands print clean JSON (no banners), so they work in scripts and CI.
+Use --output json|table|plain (or --plain) for predictable output formatting.
 Use --input or --input-file for create/update actions, and --param key=value for query filters.`,
 		),
 	}
@@ -1051,11 +1051,17 @@ func apiApprovalsCmd() *cobra.Command {
 		},
 	}
 
+	var diffOnly []string
+	var diffMaxLines int
 	diff := &cobra.Command{
 		Use:   "diff <id>",
 		Short: "Get computed approval diff",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
+			opts, err := parseApprovalDiffViewOptions(diffOnly, diffMaxLines)
+			if err != nil {
+				return err
+			}
 			client, err := loadCommandClient(true)
 			if err != nil {
 				return err
@@ -1064,9 +1070,22 @@ func apiApprovalsCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("approval diff: %w", err)
 			}
-			return writeCleanJSON(command.OutOrStdout(), item)
+			rows := approvalDiffRows(item.Changes, opts.MaxLines)
+			rows = applyApprovalDiffFilters(rows, opts)
+			if resolveOutputMode(OutputModeJSON) == OutputModeTable {
+				renderApprovalDiffTable(command.OutOrStdout(), item, rows, opts)
+				return nil
+			}
+			return writeCleanJSON(command.OutOrStdout(), buildApprovalDiffResponse(item, rows, opts))
 		},
 	}
+	diff.Flags().StringArrayVar(
+		&diffOnly,
+		"only",
+		nil,
+		"focus output: changed or section=<core|metadata|tags|scopes|content|source|other> (repeatable)",
+	)
+	diff.Flags().IntVar(&diffMaxLines, "max-lines", 6, "max rendered lines per diff value")
 
 	var approveInput string
 	var approveInputFile string

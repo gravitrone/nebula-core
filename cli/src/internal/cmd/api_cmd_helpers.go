@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
+	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
 // loadCommandClient builds an API client for non-interactive command flows.
@@ -28,10 +31,121 @@ func writeCleanJSON(out io.Writer, value any) error {
 	if value == nil {
 		value = map[string]any{"ok": true}
 	}
+	switch resolveOutputMode(OutputModeJSON) {
+	case OutputModePlain:
+		return encodeJSON(out, value, false)
+	case OutputModeTable:
+		return writeTableOutput(out, value)
+	default:
+		return encodeJSON(out, value, true)
+	}
+}
+
+// encodeJSON handles JSON encoding with optional indentation.
+func encodeJSON(out io.Writer, value any, pretty bool) error {
 	enc := json.NewEncoder(out)
-	enc.SetIndent("", "  ")
+	if pretty {
+		enc.SetIndent("", "  ")
+	}
 	enc.SetEscapeHTML(false)
 	return enc.Encode(value)
+}
+
+// writeTableOutput renders API responses as concise table-style command panels.
+func writeTableOutput(out io.Writer, value any) error {
+	normalized, err := normalizeOutputValue(value)
+	if err != nil {
+		return err
+	}
+
+	switch typed := normalized.(type) {
+	case map[string]any:
+		rows := mapRows(typed)
+		if len(rows) == 0 {
+			renderCommandMessage(out, "Result", "ok")
+			return nil
+		}
+		renderCommandPanel(out, "Result", rows)
+		return nil
+	case []any:
+		rows := make([]components.TableRow, 0, len(typed)+1)
+		rows = append(rows, components.TableRow{
+			Label: "count",
+			Value: strconv.Itoa(len(typed)),
+		})
+		for idx, item := range typed {
+			rows = append(rows, components.TableRow{
+				Label: fmt.Sprintf("[%d]", idx),
+				Value: formatOutputValue(item),
+			})
+		}
+		renderCommandPanel(out, "Result", rows)
+		return nil
+	default:
+		renderCommandMessage(out, "Result", formatOutputValue(typed))
+		return nil
+	}
+}
+
+// normalizeOutputValue normalizes typed responses into map or slice structures.
+func normalizeOutputValue(value any) (any, error) {
+	if value == nil {
+		return map[string]any{"ok": true}, nil
+	}
+
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("encode output: %w", err)
+	}
+	var normalized any
+	if err := json.Unmarshal(raw, &normalized); err != nil {
+		return nil, fmt.Errorf("decode output: %w", err)
+	}
+	return normalized, nil
+}
+
+// mapRows renders a deterministic key/value view for map outputs.
+func mapRows(data map[string]any) []components.TableRow {
+	keys := make([]string, 0, len(data))
+	for key := range data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	rows := make([]components.TableRow, 0, len(keys))
+	for _, key := range keys {
+		rows = append(rows, components.TableRow{
+			Label: key,
+			Value: formatOutputValue(data[key]),
+		})
+	}
+	return rows
+}
+
+// formatOutputValue compacts structured values while keeping scalar values readable.
+func formatOutputValue(value any) string {
+	switch typed := value.(type) {
+	case nil:
+		return "null"
+	case string:
+		v := strings.TrimSpace(typed)
+		if v == "" {
+			return "-"
+		}
+		return components.SanitizeText(v)
+	case bool:
+		return strconv.FormatBool(typed)
+	case float64:
+		return strconv.FormatFloat(typed, 'f', -1, 64)
+	case json.Number:
+		return typed.String()
+	default:
+		raw, err := json.Marshal(typed)
+		if err != nil {
+			return components.SanitizeText(fmt.Sprintf("%v", typed))
+		}
+		return components.SanitizeText(string(raw))
+	}
 }
 
 // parseQueryParams converts repeated --param key=value flags into query params.
