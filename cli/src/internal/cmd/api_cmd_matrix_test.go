@@ -110,6 +110,60 @@ func TestAPICmdReadMatrixAgainstMockServer(t *testing.T) {
 	_ = now
 }
 
+func TestAPICmdReadDetailMatrixAgainstMockServer(t *testing.T) {
+	setupAPICommandAuth(t)
+
+	now := time.Now().UTC()
+	shutdown := startDefaultAPIBaseServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/entities/e1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{"smoke"}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/context/c1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "c1", "title": "Context", "name": "Context", "source_type": "note", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/jobs/j1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "j1", "title": "Job", "status": "pending", "priority": "low", "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/logs/l1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "l1", "log_type": "event", "timestamp": now, "value": map[string]any{"kind": "smoke"}, "status": "active", "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/files/f1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "f1", "filename": "file.txt", "uri": "file:///tmp/file.txt", "file_path": "/tmp/file.txt", "status": "active", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/protocols/proto":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "p1", "name": "proto", "title": "Proto", "status": "active", "content": "# proto", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/agents/alpha":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "ag1", "name": "alpha", "description": "agent", "scopes": []string{"public"}, "capabilities": []string{"read"}, "status": "active", "requires_approval": false, "created_at": now, "updated_at": now,
+			}}))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/approvals/a1":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+				"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": map[string]any{}, "review_details": map[string]any{}, "status": "pending", "created_at": now,
+			}}))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(shutdown)
+
+	runAPISubcommand(t, "entities", "get", "e1")
+	runAPISubcommand(t, "context", "get", "c1")
+	runAPISubcommand(t, "jobs", "get", "j1")
+	runAPISubcommand(t, "logs", "get", "l1")
+	runAPISubcommand(t, "files", "get", "f1")
+	runAPISubcommand(t, "protocols", "get", "proto")
+	runAPISubcommand(t, "agents", "get", "alpha")
+	runAPISubcommand(t, "approvals", "get", "a1")
+}
+
 func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 	setupAPICommandAuth(t)
 
