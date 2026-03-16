@@ -3,9 +3,10 @@
 ---
 
 <p align="center">
-  <img src="https://img.shields.io/badge/CLI%20Coverage-100%25-22c55e?style=for-the-badge" alt="CLI Coverage">
-  <img src="https://img.shields.io/badge/Server%20Coverage-100%25-22c55e?style=for-the-badge" alt="Server Coverage">
-  <img src="https://img.shields.io/badge/Tests-3153%20passing-0ea5e9?style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/gravitrone/nebula-core/main/.badges/cli-coverage-badge.json&style=for-the-badge" alt="CLI Coverage">
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/gravitrone/nebula-core/main/.badges/server-coverage-badge.json&style=for-the-badge" alt="Server Coverage">
+  <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/gravitrone/nebula-core/main/.badges/tests-badge.json&style=for-the-badge" alt="Tests">
+  <img src="https://img.shields.io/github/actions/workflow/status/gravitrone/nebula-core/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI">
 </p>
 
 ## 🚀 About

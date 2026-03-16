@@ -44,14 +44,37 @@ jobs:
       - name: Format check
         run: cd server && uv run ruff format --check src
 
-      - name: Run tests
+      - name: Run tests with coverage
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
           POSTGRES_USER: nebula
           POSTGRES_PASSWORD: nebula
           POSTGRES_DB: nebula_test
-        run: cd server && uv run pytest -q
+        run: |
+          cd server
+          uv run pytest -q --tb=short \
+            --cov=nebula_api --cov=nebula_mcp \
+            --cov-report=term-missing \
+            --cov-report=json:coverage.json
+
+      - name: Generate server badges
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          cd server
+          TOTAL=$(python3 -c "import json; d=json.load(open('coverage.json')); print(round(d['totals']['percent_covered']))")
+          TESTS=$(grep -oP '\d+ passed' <<< "$(uv run pytest -q --tb=no 2>&1 | tail -1)" | grep -oP '\d+')
+          echo "{\"schemaVersion\":1,\"label\":\"Server Coverage\",\"message\":\"${TOTAL}%\",\"color\":\"$([ $TOTAL -ge 80 ] && echo '22c55e' || echo 'f59e0b')\"}" > server-coverage-badge.json
+          echo "{\"schemaVersion\":1,\"label\":\"Tests\",\"message\":\"${TESTS} passing\",\"color\":\"0ea5e9\"}" > tests-badge.json
+
+      - name: Upload badge data
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-badges
+          path: |
+            server/server-coverage-badge.json
+            server/tests-badge.json
 
   cli:
     name: CLI (Go)
@@ -70,5 +93,53 @@ jobs:
       - name: Build
         run: cd cli/src && go build ./...
 
-      - name: Test
-        run: cd cli/src && go test ./... -count=1
+      - name: Test with coverage
+        run: |
+          cd cli/src
+          go test ./... -count=1 -coverprofile=coverage.out
+          go tool cover -func=coverage.out | tail -1
+
+      - name: Generate CLI badge
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          cd cli/src
+          TOTAL=$(go tool cover -func=coverage.out | tail -1 | awk '{print int($3)}')
+          echo "{\"schemaVersion\":1,\"label\":\"CLI Coverage\",\"message\":\"${TOTAL}%\",\"color\":\"$([ $TOTAL -ge 80 ] && echo '22c55e' || echo 'f59e0b')\"}" > cli-coverage-badge.json
+
+      - name: Upload badge data
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-badges
+          path: cli/src/cli-coverage-badge.json
+
+  badges:
+    name: Update badges
+    needs: [server, cli]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-badges
+          path: badges/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cli-badges
+          path: badges/
+
+      - name: Commit badge data
+        run: |
+          mkdir -p .badges
+          cp badges/*.json .badges/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .badges/
+          git diff --cached --quiet || git commit -m "chore: update coverage badges [skip ci]"
+          git push
