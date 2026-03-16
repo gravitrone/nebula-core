@@ -29,4 +29,12 @@ if git diff --cached --name-only | grep -q "server/src/nebula_models/"; then
     git add docs/SCHEMA.md
 fi
 
+# Auto-regenerate changelog
+if command -v git-cliff >/dev/null 2>&1; then
+    echo "  Regenerating changelog..."
+    cd "${ROOT_DIR}"
+    git-cliff -o docs/CHANGELOG.md
+    git add docs/CHANGELOG.md
+fi
+
 echo "All pre-commit checks passed"

@@ -23,6 +23,9 @@ deps: ## Install all dependencies (python + go)
 docs-schema: ## Generate schema docs from SQLAlchemy models
 	cd server && PYTHONPATH=./src uv run python ../scripts/generate_schema_docs.py
 
+changelog: ## Generate changelog from conventional commits
+	git-cliff -o docs/CHANGELOG.md
+
 # --- Testing ---
 
 test: ## Run all tests (server + cli)
