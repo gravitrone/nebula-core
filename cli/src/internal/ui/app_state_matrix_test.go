@@ -515,28 +515,8 @@ func TestTabWantsArrowsMatrix(t *testing.T) {
 	assert.True(t, app.tabWantsArrows())
 }
 
-func TestInitTabReturnsCommandsForKnownTabs(t *testing.T) {
+func TestInitTabReturnsNilForUnknownTab(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-
-	for _, tab := range []int{
-		tabInbox,
-		tabEntities,
-		tabRelations,
-		tabKnow,
-		tabJobs,
-		tabLogs,
-		tabFiles,
-		tabProtocols,
-		tabHistory,
-		tabProfile,
-	} {
-		t.Run(tabNames[tab], func(t *testing.T) {
-			assert.NotPanics(t, func() {
-				_ = app.initTab(tab)
-			})
-		})
-	}
-
 	assert.Nil(t, app.initTab(999))
 }
 

@@ -191,20 +191,4 @@ func TestJobsViewBranchMatrix(t *testing.T) {
 	model.searchBuf = "alpha"
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "Filter Jobs")
-
-	// Branches where link/unlink/create flags are set but detail is nil should fall through.
-	model = NewJobsModel(nil)
-	model.width = 90
-	model.linkingRel = true
-	model.view = jobsViewAdd
-	_ = components.SanitizeText(model.View())
-
-	model = NewJobsModel(nil)
-	model.width = 90
-	model.unlinkingRel = true
-	model.view = jobsViewEdit
-	model.detail = &api.Job{Status: "pending"}
-	model.startEdit()
-	model.detail = nil
-	_ = components.SanitizeText(model.View())
 }

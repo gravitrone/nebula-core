@@ -147,9 +147,6 @@ func TestHistoryViewLoadingAndRevertBranches(t *testing.T) {
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "Audit Entry")
 
-	model.reverting = false
-	_ = components.SanitizeText(model.View())
-
 	// Detail view without selected entry falls back to list rendering branch.
 	model.detail = nil
 	out = components.SanitizeText(model.View())

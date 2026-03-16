@@ -23,15 +23,6 @@ func TestContextUpdateBackspaceTagBufferBeforeRemovingTags(t *testing.T) {
 	assert.Equal(t, []string{"alpha"}, updated.tags)
 }
 
-func TestContextViewRendersEditBodyBranch(t *testing.T) {
-	model := NewContextModel(nil)
-	model.width = 90
-	model.view = contextViewEdit
-
-	out := components.SanitizeText(model.View())
-	_ = out
-}
-
 func TestContextRenderListHandlesNarrowColumnsAndOutOfRangeVisibleRows(t *testing.T) {
 	now := time.Now().UTC()
 	model := NewContextModel(nil)

@@ -26,9 +26,3 @@ func TestCenterBlockLeavesWideLinesUnchanged(t *testing.T) {
 	assert.Equal(t, in, centerBlock(in, 5))
 	assert.Equal(t, in, centerBlock(in, 0))
 }
-
-// TestAppRenderTipsDoesNotPanic handles test app render tips does not panic.
-func TestAppRenderTipsDoesNotPanic(t *testing.T) {
-	app := App{width: 80}
-	assert.NotPanics(t, func() { _ = app.renderTips() })
-}

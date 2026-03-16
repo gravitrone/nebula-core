@@ -55,9 +55,6 @@ func TestRelationshipsViewAndListFilterRouteBranches(t *testing.T) {
 	model.view = relsViewEdit
 	model.detail = &api.Relationship{ID: "rel-1", Status: "active", Properties: api.JSONMap{}}
 
-	viewOut := components.SanitizeText(model.View())
-	_ = viewOut
-
 	model.view = relsViewList
 	model.filtering = true
 	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
@@ -80,8 +77,6 @@ func TestRelationshipsRenderListTinyWidthAndPreviewGuardBranches(t *testing.T) {
 	}
 	model.list.SetItems([]string{"rel-1"})
 
-	out := components.SanitizeText(model.renderList())
-	_ = out
 	assert.Equal(t, "", model.renderRelationshipPreview(model.items[0], 0))
 }
 

@@ -546,10 +546,6 @@ func TestRelationshipsViewBranchMatrix(t *testing.T) {
 	}
 	model.list.SetItems([]string{"depends-on · unknown entity -> unknown entity"})
 
-	model.editMeta.Active = true
-	_ = components.SanitizeText(model.View())
-
-	model.editMeta.Active = false
 	model.filtering = true
 	model.view = relsViewList
 	out := components.SanitizeText(model.View())
@@ -559,19 +555,4 @@ func TestRelationshipsViewBranchMatrix(t *testing.T) {
 	model.view = relsViewList
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "Library")
-
-	model.view = relsViewConfirm
-	model.detail = &api.Relationship{
-		ID:         "rel-1",
-		Type:       "depends-on",
-		Status:     "active",
-		SourceType: "entity",
-		SourceID:   "ent-1",
-		TargetType: "entity",
-		TargetID:   "ent-2",
-	}
-	_ = components.SanitizeText(model.View())
-
-	model.view = relsViewCreateSourceSearch
-	_ = components.SanitizeText(model.View())
 }

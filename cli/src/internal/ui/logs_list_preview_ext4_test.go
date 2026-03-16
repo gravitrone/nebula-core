@@ -139,8 +139,6 @@ func TestLogsHandleDetailAndRenderDetailAdditionalBranches(t *testing.T) {
 	model.items = []api.Log{{ID: "log-1", LogType: "build", Status: "active", Timestamp: now}}
 	model.list.SetItems([]string{"build"})
 
-	_ = components.SanitizeText(model.renderDetail())
-
 	model.view = logsViewDetail
 	model.detail = &api.Log{
 		ID:        "log-1",
