@@ -18,6 +18,11 @@ format: ## Auto-format all code (ruff + gofmt)
 deps: ## Install all dependencies (python + go)
 	./scripts/deps.sh
 
+# --- Docs ---
+
+docs-schema: ## Generate schema docs from SQLAlchemy models
+	cd server && PYTHONPATH=./src uv run python ../scripts/generate_schema_docs.py
+
 # --- Testing ---
 
 test: ## Run all tests (server + cli)

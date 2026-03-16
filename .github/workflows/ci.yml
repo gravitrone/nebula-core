@@ -44,6 +44,11 @@ jobs:
       - name: Format check
         run: cd server && uv run ruff format --check src
 
+      - name: Schema docs up to date
+        run: |
+          cd server && PYTHONPATH=./src uv run python ../scripts/generate_schema_docs.py
+          git diff --exit-code -- docs/SCHEMA.md || (echo "Schema docs are stale. Run 'make docs-schema' and commit." && exit 1)
+
       - name: Run tests with coverage
         env:
           POSTGRES_HOST: localhost

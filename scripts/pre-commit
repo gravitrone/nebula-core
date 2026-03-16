@@ -21,4 +21,12 @@ echo "  Go vet..."
 cd "${ROOT_DIR}/cli/src"
 go vet ./...
 
+# Auto-regenerate schema docs if models changed
+if git diff --cached --name-only | grep -q "server/src/nebula_models/"; then
+    echo "  Models changed, regenerating schema docs..."
+    cd "${ROOT_DIR}"
+    make docs-schema
+    git add docs/SCHEMA.md
+fi
+
 echo "All pre-commit checks passed"
