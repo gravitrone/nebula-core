@@ -61,14 +61,15 @@ jobs:
           uv run pytest -q --tb=short \
             --cov=nebula_api --cov=nebula_mcp \
             --cov-report=term-missing \
-            --cov-report=json:coverage.json
+            --cov-report=json:coverage.json \
+            2>&1 | tee pytest-output.txt
 
       - name: Generate server badges
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           cd server
           TOTAL=$(python3 -c "import json; d=json.load(open('coverage.json')); print(round(d['totals']['percent_covered']))")
-          TESTS=$(grep -oP '\d+ passed' <<< "$(uv run pytest -q --tb=no 2>&1 | tail -1)" | grep -oP '\d+')
+          TESTS=$(tail -1 pytest-output.txt | sed 's/ passed.*//' | tr -dc '0-9')
           echo "{\"schemaVersion\":1,\"label\":\"Server Coverage\",\"message\":\"${TOTAL}%\",\"color\":\"$([ $TOTAL -ge 80 ] && echo '22c55e' || echo 'f59e0b')\"}" > server-coverage-badge.json
           echo "{\"schemaVersion\":1,\"label\":\"Tests\",\"message\":\"${TESTS} passing\",\"color\":\"0ea5e9\"}" > tests-badge.json
 
