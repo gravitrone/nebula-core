@@ -1,0 +1,27 @@
+{
+  "project": {
+    "name": "nebula-core",
+    "description": "Git for agent context - secure system-of-record for AI agents"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "command": "cd /Users/alxx/Code/Gravitrone/Nebula/nebula-core && bash scripts/post-edit-format.sh \"$CLAUDE_FILE_PATH\""
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "pip install",
+      "pip3 install",
+      "python -m pip",
+      "npm",
+      "yarn",
+      "pnpm",
+      "git push --force",
+      "git reset --hard",
+      "rm -rf database/data"
+    ]
+  }
+}
