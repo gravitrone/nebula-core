@@ -221,7 +221,7 @@ func TestAcquireAPILockCleansStaleFiles(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	staleLock := apiLockState{
-		OwnerPID:  42,
+		OwnerPID:  4194304,
 		APIPID:    999999,
 		CreatedAt: time.Now().UTC(),
 	}
