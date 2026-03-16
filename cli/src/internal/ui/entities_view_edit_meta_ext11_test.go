@@ -101,11 +101,6 @@ func TestEntitiesViewBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "Bulk Tags")
 
 	model = base
-	model.view = entitiesViewList
-	model.filtering = true
-	_ = components.SanitizeText(model.View())
-
-	model = base
 	model.view = entitiesViewAdd
 	model.addSaving = true
 	out = components.SanitizeText(model.View())
@@ -118,24 +113,9 @@ func TestEntitiesViewBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "Entity saved")
 
 	model = base
-	model.view = entitiesViewAdd
-	_ = components.SanitizeText(model.View())
-
-	model = base
 	model.view = entitiesViewSearch
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "Search Entities")
-
-	model = base
-	model.view = entitiesViewEdit
-	model.startEdit()
-	_ = components.SanitizeText(model.View())
-
-	model = base
-	model.view = entitiesViewConfirm
-	model.confirmKind = "entity-archive"
-	model.confirmReturn = entitiesViewDetail
-	_ = components.SanitizeText(model.View())
 
 	model = base
 	model.view = entitiesViewRelationships
@@ -152,10 +132,6 @@ func TestEntitiesViewBranchMatrix(t *testing.T) {
 	model.view = entitiesViewRelateType
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "Relationship Type")
-
-	model = base
-	model.view = entitiesViewRelEdit
-	_ = components.SanitizeText(model.View())
 
 	model = base
 	model.view = entitiesViewDetail

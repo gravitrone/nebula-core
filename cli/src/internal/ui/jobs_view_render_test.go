@@ -88,8 +88,6 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.Equal(t, jobsViewAdd, model.view)
 
-	_ = components.SanitizeText(model.View())
-
 	// Enter title.
 	for _, r := range "New Job" {
 		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})

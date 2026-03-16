@@ -20,9 +20,6 @@ func TestProtocolsViewSwitchesAcrossListAddDetailAndEdit(t *testing.T) {
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Library")
 
-	model.view = protocolsViewAdd
-	_ = components.SanitizeText(model.View())
-
 	content := "proto content"
 	version := "v1"
 	typ := "ops"

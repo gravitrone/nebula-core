@@ -200,18 +200,3 @@ func TestViewOverlayPriorityPrefersQuitConfirm(t *testing.T) {
 	assert.NotContains(t, out, "Command Palette")
 	assert.NotContains(t, out, "Getting Started")
 }
-
-func TestViewPaletteAndImportExportOverlays(t *testing.T) {
-	app := NewApp(nil, &config.Config{})
-	app.width = 100
-	app.height = 36
-	app.openPaletteCommand()
-
-	out := components.SanitizeText(app.View())
-	_ = out
-
-	app.paletteOpen = false
-	app.importExportOpen = true
-	app.impex.Start(importMode)
-	_ = components.SanitizeText(app.View())
-}

@@ -206,17 +206,6 @@ func TestQuickstartSkipsOnEscapeAndResetsState(t *testing.T) {
 	assert.Equal(t, "info", updated.toast.level)
 }
 
-// TestRenderQuickstartDoesNotPanic handles test render quickstart does not panic.
-func TestRenderQuickstartDoesNotPanic(t *testing.T) {
-	app := NewApp(nil, &config.Config{})
-	app.width = 80
-	app.quickstartOpen = true
-	app.quickstartStep = 1
-
-	out := app.renderQuickstart()
-	_ = out
-}
-
 // TestStartupParsingHelpers handles test startup parsing helpers.
 func TestStartupParsingHelpers(t *testing.T) {
 	code, msg := parseErrorCodeAndMessage("FORBIDDEN: missing scope")

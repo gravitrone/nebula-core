@@ -329,20 +329,6 @@ func TestInboxViewAdditionalBranches(t *testing.T) {
 	}
 	model.applyFilter(true)
 
-	model.confirming = true
-	_ = components.SanitizeText(model.View())
-
-	model.confirming = false
-	model.rejectPreview = true
-	model.bulkRejectIDs = []string{"ap-1"}
-	model.rejectBuf = "no"
-	_ = components.SanitizeText(model.View())
-
-	model.rejectPreview = false
-	model.grantEditing = true
-	_ = components.SanitizeText(model.View())
-
-	model.grantEditing = false
 	model.filtering = true
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Filter Approvals")

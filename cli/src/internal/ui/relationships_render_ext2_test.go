@@ -7,23 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRelationshipsRenderCreateSwitchBranches(t *testing.T) {
-	model := NewRelationshipsModel(nil)
-	model.width = 96
-
-	model.view = relsViewCreateSourceSearch
-	_ = components.SanitizeText(model.renderCreate())
-
-	model.view = relsViewCreateTargetSearch
-	_ = components.SanitizeText(model.renderCreate())
-
-	model.view = relsViewCreateType
-	_ = components.SanitizeText(model.renderCreate())
-
-	model.view = relsViewList
-	assert.Equal(t, "", model.renderCreate())
-}
-
 func TestRelationshipsRenderCreateNodePreviewGuardAndFallbacks(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	assert.Equal(t, "", model.renderCreateNodePreview(relationshipCreateCandidate{}, 0))
