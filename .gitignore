@@ -42,3 +42,4 @@ database/data/
 # Node modules
 node_modules/
 package-lock.json
+.claude/worktrees/
