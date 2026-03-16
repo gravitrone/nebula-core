@@ -1,6 +1,5 @@
 """Taxonomy tables: entity_types, log_types, privacy_scopes, relationship_types, statuses."""
 
-
 from sqlalchemy import Boolean, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -68,9 +67,7 @@ class Status(Base, IDMixin, TimestampMixin):
 
     name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text)
-    category: Mapped[str] = mapped_column(
-        String, server_default=text("'active'"), nullable=False
-    )
+    category: Mapped[str] = mapped_column(String, server_default=text("'active'"), nullable=False)
     is_builtin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))

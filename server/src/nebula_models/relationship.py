@@ -16,7 +16,11 @@ class Relationship(Base, IDMixin):
     __tablename__ = "relationships"
     __table_args__ = (
         UniqueConstraint(
-            "source_type", "source_id", "target_type", "target_id", "type_id",
+            "source_type",
+            "source_id",
+            "target_type",
+            "target_id",
+            "type_id",
             name="relationships_unique_edge",
         ),
     )
