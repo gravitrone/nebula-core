@@ -40,15 +40,14 @@ async def _make_job(db_pool, enums, title, agent_id, scopes):
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids, metadata)
-        VALUES ($1, $2, $3, $4, $5::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         title,
         status_id,
         agent_id,
         scope_ids,
-        json.dumps({"note": "owned"}),
     )
     return dict(row)
 
@@ -61,8 +60,8 @@ async def _make_entity(db_pool, enums, name, scopes=None):
     scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -70,7 +69,6 @@ async def _make_entity(db_pool, enums, name, scopes=None):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"note": "entity"}),
     )
     return dict(row)
 
@@ -82,8 +80,8 @@ async def _make_context(db_pool, enums, title, scopes):
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         title,
@@ -92,7 +90,6 @@ async def _make_context(db_pool, enums, title, scopes):
         scope_ids,
         status_id,
         ["test"],
-        json.dumps({"class": "private"}),
     )
     return dict(row)
 

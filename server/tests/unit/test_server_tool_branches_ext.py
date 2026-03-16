@@ -88,7 +88,7 @@ from nebula_mcp.server import (
     list_active_protocols,
     list_agents,
     list_files,
-    link_context_to_entity,
+    link_context_to_owner,
     lifespan,
     list_all_api_keys,
     query_context,
@@ -1023,46 +1023,12 @@ async def test_get_context_not_found_raises(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_get_context_filters_metadata_segments(monkeypatch, mock_enums):
-    """get_context should filter metadata segments against readable scopes."""
-
-    context_id = str(uuid4())
-    pool = _PoolStub(
-        fetchrow_rows=[
-            {"id": context_id, "metadata": {"context_segments": [{"text": "x", "scopes": ["public"]}]}}
-        ]
-    )
-    agent = _public_agent(mock_enums)
-    payload = GetContextInput(context_id=context_id)
-
-    monkeypatch.setattr(
-        "nebula_mcp.server.require_context",
-        AsyncMock(return_value=(pool, mock_enums, agent)),
-    )
-    monkeypatch.setattr("nebula_mcp.server._scope_filter_ids", lambda _agent, _enums: [])
-    monkeypatch.setattr("nebula_mcp.server.scope_names_from_ids", lambda _ids, _enums: ["public"])
-    monkeypatch.setattr(
-        "nebula_mcp.server.filter_context_segments",
-        lambda metadata, _scopes: {"filtered": metadata},
-    )
-
-    result = await get_context(payload, _ctx(pool, mock_enums, agent))
-
-    assert result["metadata"]["filtered"]["context_segments"][0]["scopes"] == ["public"]
-
-
-@pytest.mark.asyncio
-async def test_query_context_filters_metadata_and_clamps_offset(monkeypatch, mock_enums):
-    """query_context should filter row metadata and clamp negative offsets."""
+async def test_query_context_clamps_offset(monkeypatch, mock_enums):
+    """query_context should clamp negative offsets."""
 
     row_id = str(uuid4())
     pool = _PoolStub(
-        fetch_rows=[
-            [
-                {"id": row_id, "metadata": {"context_segments": [{"text": "x"}]}},
-                {"id": str(uuid4()), "metadata": None},
-            ]
-        ]
+        fetch_rows=[[{"id": row_id}, {"id": str(uuid4())}]]
     )
     agent = _public_agent(mock_enums)
     payload = QueryContextInput(scopes=["public"], limit=1000, offset=-25)
@@ -1071,32 +1037,30 @@ async def test_query_context_filters_metadata_and_clamps_offset(monkeypatch, moc
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server.scope_names_from_ids", lambda _ids, _enums: ["public"])
     monkeypatch.setattr("nebula_mcp.server.enforce_scope_subset", lambda scopes, _allowed: scopes)
     monkeypatch.setattr(
         "nebula_mcp.server.require_scopes",
         lambda scopes, enums: [enums.scopes.name_to_id[s] for s in scopes],
     )
     monkeypatch.setattr("nebula_mcp.server._clamp_limit", lambda _limit: 50)
-    monkeypatch.setattr(
-        "nebula_mcp.server.filter_context_segments",
-        lambda metadata, _scopes: {"filtered": metadata},
-    )
 
     result = await query_context(payload, _ctx(pool, mock_enums, agent))
 
     assert len(result) == 2
-    assert result[0]["metadata"]["filtered"]["context_segments"][0]["text"] == "x"
     assert pool.fetch_calls[0][1][-1] == 0
 
 
 @pytest.mark.asyncio
-async def test_link_context_to_entity_approval_short_circuit(monkeypatch, mock_enums):
-    """link_context_to_entity should return approval payload without writer call."""
+async def test_link_context_to_owner_approval_short_circuit(monkeypatch, mock_enums):
+    """link_context_to_owner should return approval payload without writer call."""
 
     pool = _PoolStub()
     agent = _public_agent(mock_enums)
-    payload = LinkContextInput(context_id=str(uuid4()), entity_id=str(uuid4()), relationship_type="references")
+    payload = LinkContextInput(
+        context_id=str(uuid4()),
+        owner_type="entity",
+        owner_id=str(uuid4()),
+    )
     execute_link = AsyncMock()
 
     monkeypatch.setattr(
@@ -1110,19 +1074,23 @@ async def test_link_context_to_entity_approval_short_circuit(monkeypatch, mock_e
     )
     monkeypatch.setattr("nebula_mcp.server.execute_create_relationship", execute_link)
 
-    result = await link_context_to_entity(payload, _ctx(pool, mock_enums, agent))
+    result = await link_context_to_owner(payload, _ctx(pool, mock_enums, agent))
 
     assert result["status"] == "approval_required"
     execute_link.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_link_context_to_entity_direct_create(monkeypatch, mock_enums):
-    """link_context_to_entity should execute relationship create on direct path."""
+async def test_link_context_to_owner_direct_create(monkeypatch, mock_enums):
+    """link_context_to_owner should execute relationship create on direct path."""
 
     pool = _PoolStub()
     agent = _public_agent(mock_enums)
-    payload = LinkContextInput(context_id=str(uuid4()), entity_id=str(uuid4()), relationship_type="references")
+    payload = LinkContextInput(
+        context_id=str(uuid4()),
+        owner_type="entity",
+        owner_id=str(uuid4()),
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -1136,7 +1104,7 @@ async def test_link_context_to_entity_direct_create(monkeypatch, mock_enums):
         AsyncMock(return_value={"id": str(uuid4())}),
     )
 
-    result = await link_context_to_entity(payload, _ctx(pool, mock_enums, agent))
+    result = await link_context_to_owner(payload, _ctx(pool, mock_enums, agent))
 
     assert "id" in result
 

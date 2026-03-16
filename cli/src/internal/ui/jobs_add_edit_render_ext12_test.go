@@ -48,12 +48,6 @@ func TestJobsHandleAddKeysAdditionalBranches(t *testing.T) {
 	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
 	assert.Equal(t, 0, updated.addPriorityIdx)
 
-	// metadata backspace no-op branch
-	updated.addFocus = jobFieldMetadata
-	beforeMeta := updated.addMeta.Buffer
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
-	assert.Equal(t, beforeMeta, updated.addMeta.Buffer)
-
 	// ctrl+s branch (returns save cmd without executing)
 	updated.addFocus = jobFieldTitle
 	updated.addFields[jobFieldTitle].value = "Ship tests"
@@ -125,7 +119,7 @@ func TestJobsHandleSubtaskInputNilDetailEnterIsSafe(t *testing.T) {
 	})
 }
 
-func TestJobsRenderEditWithLoadedDetailMetadata(t *testing.T) {
+func TestJobsRenderEditWithLoadedDetail(t *testing.T) {
 	desc := "job details"
 	priority := "high"
 	model := NewJobsModel(nil)
@@ -135,17 +129,16 @@ func TestJobsRenderEditWithLoadedDetailMetadata(t *testing.T) {
 		Status:      "active",
 		Priority:    &priority,
 		Description: &desc,
-		Metadata:    api.JSONMap{"owner": "alxx"},
 	}
 	model.startEdit()
-	model.editFocus = jobEditFieldMetadata
+	model.editFocus = jobEditFieldDescription
 
 	out := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "owner")
-	assert.Contains(t, out, "alxx")
+	assert.Contains(t, out, "Description")
+	assert.Contains(t, out, "job details")
 }
 
-func TestJobsRenderEditDescriptionFocusAndMetaFallbackBranches(t *testing.T) {
+func TestJobsRenderEditDescriptionFocusBranch(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.width = 90
 	model.detail = &api.Job{ID: "job-1", Status: "pending"}
@@ -153,15 +146,11 @@ func TestJobsRenderEditDescriptionFocusAndMetaFallbackBranches(t *testing.T) {
 
 	model.editFocus = jobEditFieldDescription
 	model.editDesc = "ship this"
-	model.editMeta.Buffer = ""
-	model.editMeta.Scopes = nil
 
 	out := components.SanitizeText(model.renderEdit())
 	assert.Contains(t, out, "Description:")
 	assert.Contains(t, out, "ship this")
 	assert.Contains(t, out, "█")
-	assert.Contains(t, out, "Metadata:")
-	assert.Contains(t, out, "  -")
 }
 
 func TestJobsHandleEditKeysDownUpNavigationBranches(t *testing.T) {
@@ -186,7 +175,6 @@ func TestJobsSaveAddCommandReturnsErrMsgOnCreateFailure(t *testing.T) {
 	model.addFields[jobFieldDescription].value = "desc"
 	model.addStatusIdx = 0
 	model.addPriorityIdx = 1
-	model.addMeta.Buffer = "profile | owner | alxx"
 
 	updated, cmd := model.saveAdd()
 	require.NotNil(t, cmd)

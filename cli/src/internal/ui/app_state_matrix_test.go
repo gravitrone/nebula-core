@@ -140,20 +140,19 @@ func TestStatusHintsForEntitiesStates(t *testing.T) {
 			want: []string{"apply", "clear"},
 		},
 		{
-			name: "detail metadata expanded",
+			name: "detail context prompt",
 			setup: func(a *App) {
 				a.entities.view = entitiesViewDetail
-				a.entities.metaExpanded = true
+				a.entities.contextCreating = true
 			},
-			want: []string{"meta row", "copy sel", "collapse", "archive", "back"},
+			want: []string{"confirm", "cancel"},
 		},
 		{
 			name: "detail basic",
 			setup: func(a *App) {
 				a.entities.view = entitiesViewDetail
-				a.entities.metaExpanded = false
 			},
-			want: []string{"edit", "history", "metadata", "archive", "back"},
+			want: []string{"add context", "link context", "edit", "history", "relationships", "archive", "back"},
 		},
 		{
 			name: "edit",
@@ -314,7 +313,7 @@ func TestStatusHintsForContextStates(t *testing.T) {
 			setup: func(a *App) {
 				a.know.view = contextViewDetail
 			},
-			want: []string{"metadata", "content", "source", "back"},
+			want: []string{"content", "source", "back"},
 		},
 		{
 			name: "add",
@@ -338,7 +337,7 @@ func TestStatusHintsForOtherTabs(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.tab = tabJobs
 	app.jobs.detail = &api.Job{ID: "job-1"}
-	assertHintsContain(t, app.statusHintsForTab(), "status", "subtask", "link", "unlink")
+	assertHintsContain(t, app.statusHintsForTab(), "add context", "link context", "status", "subtask", "link", "unlink")
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabLogs
@@ -384,22 +383,6 @@ func TestRowHighlightEnabledTabMatrix(t *testing.T) {
 			setup: func(a *App) {
 				a.tab = tabRelations
 				a.rels.editMeta.Active = true
-			},
-			want: true,
-		},
-		{
-			name: "context metadata editor",
-			setup: func(a *App) {
-				a.tab = tabKnow
-				a.know.metaEditor.Active = true
-			},
-			want: true,
-		},
-		{
-			name: "jobs add metadata",
-			setup: func(a *App) {
-				a.tab = tabJobs
-				a.jobs.addMeta.Active = true
 			},
 			want: true,
 		},
@@ -580,7 +563,6 @@ func TestToastCmdForMsgMatrix(t *testing.T) {
 		{name: "file updated", msg: fileUpdatedMsg{}, want: "file saved."},
 		{name: "protocol created", msg: protocolCreatedMsg{}, want: "protocol saved."},
 		{name: "protocol updated", msg: protocolUpdatedMsg{}, want: "protocol saved."},
-		{name: "metadata copied", msg: entityMetadataCopiedMsg{count: 3}, want: "copied 3 metadata value(s)."},
 	}
 
 	for _, tc := range cases {

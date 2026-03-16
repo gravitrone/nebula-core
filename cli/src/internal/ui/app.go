@@ -643,12 +643,6 @@ func (a App) rowHighlightEnabled() bool {
 	case tabInbox:
 		return !a.inbox.filtering && !a.inbox.rejecting && !a.inbox.confirming && !a.inbox.rejectPreview && a.inbox.detail == nil
 	case tabEntities:
-		if (a.entities.addMeta.Active || a.entities.editMeta.Active) && !a.entities.modeFocus {
-			return true
-		}
-		if a.entities.view == entitiesViewDetail && a.entities.metaExpanded && len(a.entities.metaRows) > 0 && !a.entities.metaInspect {
-			return true
-		}
 		return !a.entities.modeFocus && !a.entities.filtering &&
 			(a.entities.view == entitiesViewList || a.entities.view == entitiesViewHistory || a.entities.view == entitiesViewRelationships)
 	case tabRelations:
@@ -657,14 +651,8 @@ func (a App) rowHighlightEnabled() bool {
 		}
 		return !a.rels.modeFocus && !a.rels.filtering && a.rels.view == relsViewList
 	case tabKnow:
-		if (a.know.metaEditor.Active || a.know.editMeta.Active) && !a.know.modeFocus {
-			return true
-		}
 		return !a.know.modeFocus && !a.know.filtering && a.know.view == contextViewList
 	case tabJobs:
-		if a.jobs.addMeta.Active || a.jobs.editMeta.Active {
-			return true
-		}
 		return !a.jobs.modeFocus && !a.jobs.filtering && a.jobs.view == jobsViewList && a.jobs.detail == nil && !a.jobs.changingSt
 	case tabLogs:
 		if a.logs.addMeta.Active || a.logs.editMeta.Active || a.logs.addValue.Active || a.logs.editValue.Active {
@@ -765,9 +753,6 @@ func (a App) viewStateKey() string {
 			return base + ":inbox:list"
 		}
 	case tabEntities:
-		if a.entities.metaInspect {
-			return base + ":entities:meta-inspect"
-		}
 		return fmt.Sprintf("%s:entities:%d:mode=%t:filter=%t", base, a.entities.view, a.entities.modeFocus, a.entities.filtering)
 	case tabRelations:
 		return fmt.Sprintf("%s:rels:%d:mode=%t:filter=%t", base, a.rels.view, a.rels.modeFocus, a.rels.filtering)
@@ -977,26 +962,18 @@ func (a App) statusHintsForTab() []string {
 		}
 		switch a.entities.view {
 		case entitiesViewDetail:
-			if a.entities.metaExpanded {
+			if a.entities.contextLinking || a.entities.contextCreating {
 				return append(base,
-					components.Hint("↑/↓", "Meta Row"),
-					components.Hint("space", "Select"),
-					components.Hint("b", "Select All"),
-					components.Hint("enter", "Inspect"),
-					components.Hint("c", "Copy Sel"),
-					components.Hint("m", "Collapse"),
-					components.Hint("e", "Edit"),
-					components.Hint("h", "History"),
-					components.Hint("r", "Relationships"),
-					components.Hint("d", "Archive"),
-					components.Hint("esc", "Back"),
+					components.Hint("enter", "Confirm"),
+					components.Hint("esc", "Cancel"),
 				)
 			}
 			return append(base,
+				components.Hint("a", "Add Context"),
+				components.Hint("l", "Link Context"),
 				components.Hint("e", "Edit"),
 				components.Hint("h", "History"),
 				components.Hint("r", "Relationships"),
-				components.Hint("m", "Metadata"),
 				components.Hint("d", "Archive"),
 				components.Hint("esc", "Back"),
 			)
@@ -1156,7 +1133,6 @@ func (a App) statusHintsForTab() []string {
 			)
 		case contextViewDetail:
 			return append(base,
-				components.Hint("m", "Metadata"),
 				components.Hint("c", "Content"),
 				components.Hint("v", "Source"),
 				components.Hint("esc", "Back"),
@@ -1177,6 +1153,12 @@ func (a App) statusHintsForTab() []string {
 				components.Hint("esc", "Clear"),
 			)
 		}
+		if a.jobs.contextLinking || a.jobs.contextCreating {
+			return append(base,
+				components.Hint("enter", "Confirm"),
+				components.Hint("esc", "Cancel"),
+			)
+		}
 		if a.jobs.view == jobsViewAdd || a.jobs.view == jobsViewEdit {
 			return append(base,
 				components.Hint("↑/↓", "Fields"),
@@ -1188,6 +1170,8 @@ func (a App) statusHintsForTab() []string {
 		}
 		if a.jobs.detail != nil {
 			return append(base,
+				components.Hint("a", "Add Context"),
+				components.Hint("c", "Link Context"),
 				components.Hint("s", "Status"),
 				components.Hint("n", "Subtask"),
 				components.Hint("l", "Link"),
@@ -1527,7 +1511,7 @@ func (a App) renderStartupPanel() string {
 // toastCmdForMsg handles toast cmd for msg.
 func (a *App) toastCmdForMsg(msg tea.Msg) tea.Cmd {
 	var level, text string
-	switch typed := msg.(type) {
+	switch msg.(type) {
 	case approvalDoneMsg:
 		level, text = "success", "Approval action completed."
 	case entityCreatedMsg:
@@ -1554,8 +1538,6 @@ func (a *App) toastCmdForMsg(msg tea.Msg) tea.Cmd {
 		level, text = "success", "File saved."
 	case protocolCreatedMsg, protocolUpdatedMsg:
 		level, text = "success", "Protocol saved."
-	case entityMetadataCopiedMsg:
-		level, text = "success", fmt.Sprintf("Copied %d metadata value(s).", typed.count)
 	}
 	if text == "" {
 		return nil

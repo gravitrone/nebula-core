@@ -5,8 +5,7 @@ INSERT INTO entities (
   type_id,
   status_id,
   tags,
-  metadata,
   source_path
 )
-VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;

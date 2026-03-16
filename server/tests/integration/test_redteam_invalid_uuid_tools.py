@@ -67,7 +67,7 @@ async def test_update_entity_rejects_invalid_uuid(db_pool, enums):
 
     payload = UpdateEntityInput(
         entity_id="not-a-uuid",
-        metadata={"note": "bad"},
+        tags=["bad"],
     )
 
     with pytest.raises(ValueError):

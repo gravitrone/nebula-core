@@ -508,15 +508,15 @@ func TestUniqueRelationshipTypesAndCandidateCombinerBranches(t *testing.T) {
 	priority := " high "
 	candidates := combineCreateCandidates(
 		[]api.Entity{
-			{ID: "ent-1", Name: " ", Type: " ", Status: " ", Tags: []string{"t1"}, Metadata: api.JSONMap{"ek": "ev"}},
+			{ID: "ent-1", Name: " ", Type: " ", Status: " ", Tags: []string{"t1"}},
 			{ID: "ent-2", Name: "alpha", Type: "person", Status: "active"},
 		},
 		[]api.Context{
-			{ID: "ctx-1", Title: " ", Name: "fallback", SourceType: " ", Status: " ", Tags: []string{"ct"}, Metadata: api.JSONMap{"ck": "cv"}},
+			{ID: "ctx-1", Title: " ", Name: "fallback", SourceType: " ", Status: " ", Tags: []string{"ct"}},
 			{ID: "ctx-2", Title: "", Name: "", SourceType: "doc", Status: "archived"},
 		},
 		[]api.Job{
-			{ID: "job-1", Title: " ", Priority: &priority, Status: " ", Metadata: api.JSONMap{"jk": "jv"}},
+			{ID: "job-1", Title: " ", Priority: &priority, Status: " "},
 			{ID: "job-2", Title: "deliver", Status: "running"},
 		},
 	)
@@ -528,7 +528,6 @@ func TestUniqueRelationshipTypesAndCandidateCombinerBranches(t *testing.T) {
 		Kind:     "entity/entity",
 		Status:   "-",
 		Tags:     []string{"t1"},
-		Metadata: map[string]any{"ek": "ev"},
 	}, candidates[0])
 	assert.Equal(t, "entity/person", candidates[1].Kind)
 	assert.Equal(t, "fallback", candidates[2].Name)
@@ -541,7 +540,6 @@ func TestUniqueRelationshipTypesAndCandidateCombinerBranches(t *testing.T) {
 		Name:     "job",
 		Kind:     "job/high",
 		Status:   "-",
-		Metadata: map[string]any{"jk": "jv"},
 	}, candidates[4])
 	assert.Equal(t, "job", candidates[5].Kind)
 }

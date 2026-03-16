@@ -107,7 +107,7 @@ def load_export_schema_contract() -> dict[str, Any]:
 
     resources: dict[str, Any] = {
         "entities": {
-            "description": "Entity rows with status/scopes/tags/metadata",
+            "description": "Entity rows with status/scopes/tags",
             "filter_params": [
                 "type",
                 "tags",
@@ -121,7 +121,7 @@ def load_export_schema_contract() -> dict[str, Any]:
         },
         "context": {
             "description": (
-                "Context rows with source type, scopes, content and metadata"
+                "Context rows with source type, scopes, and content"
             ),
             "filter_params": [
                 "source_type",

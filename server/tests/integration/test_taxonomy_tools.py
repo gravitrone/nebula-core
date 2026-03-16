@@ -93,8 +93,8 @@ async def test_archive_taxonomy_conflict_when_in_use(mock_mcp_context, db_pool, 
     scope_ids = [enums.scopes.name_to_id["public"]]
     await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
         """,
         "Taxonomy Usage Entity",
@@ -102,7 +102,6 @@ async def test_archive_taxonomy_conflict_when_in_use(mock_mcp_context, db_pool, 
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"note": "in-use taxonomy guard"}),
     )
 
     with pytest.raises(ValueError, match="referenced"):

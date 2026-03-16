@@ -1,6 +1,6 @@
--- Get entity type_id and metadata by entity id
+-- Deprecated: entity metadata removed, keep legacy shape for callers.
 SELECT
     type_id,
-    metadata
+    NULL::jsonb AS metadata
 FROM entities
 WHERE id = $1::uuid;

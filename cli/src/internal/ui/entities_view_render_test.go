@@ -120,33 +120,31 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	assert.Empty(t, model.searchBuf)
 }
 
-// TestEntitiesDetailViewRendersMetadataWhenExpanded handles test entities detail view renders metadata when expanded.
-func TestEntitiesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
+// TestEntitiesDetailViewRendersContextSummary handles test entities detail view renders context summary.
+func TestEntitiesDetailViewRendersContextSummary(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 80
 	model.view = entitiesViewDetail
 	model.detail = &api.Entity{
-		ID:              "ent-1",
-		Name:            "Alpha",
-		Type:            "person",
-		Status:          "active",
-		Tags:            []string{"t1"},
-		PrivacyScopeIDs: []string{"s1"},
-		Metadata:        api.JSONMap{"note": "hello"},
+		ID:     "ent-1",
+		Name:   "Alpha",
+		Type:   "person",
+		Status: "active",
 	}
-	model.metaExpanded = true
+	model.contextLoading = false
+	model.detailContext = []api.Context{
+		{ID: "ctx-1", Title: "Onboarding Notes", SourceType: "note", Status: "active"},
+	}
 
-	out := model.View()
-	clean := components.SanitizeText(out)
-	assert.Contains(t, clean, "Alpha")
-	assert.Contains(t, clean, "Field")
-	assert.Contains(t, clean, "Value")
-	assert.Contains(t, clean, "note")
-	assert.Contains(t, clean, "hello")
+	out := components.SanitizeText(model.View())
+	assert.Contains(t, out, "Alpha")
+	assert.Contains(t, out, "Onboarding Notes")
+	assert.Contains(t, out, "note")
+	assert.Contains(t, out, "active")
 }
 
-// TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet handles test entities selected preview formats scopes and metadata snippet.
-func TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet(t *testing.T) {
+// TestEntitiesSelectedPreviewIncludesScopesAndContextCount handles test entities selected preview includes scopes and context count.
+func TestEntitiesSelectedPreviewIncludesScopesAndContextCount(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 100
 	model.scopeNames = map[string]string{
@@ -154,46 +152,22 @@ func TestEntitiesSelectedPreviewFormatsScopesAndMetadataSnippet(t *testing.T) {
 		"scope-admin":  "admin",
 	}
 
-	items := []api.Entity{
-		{
-			ID:              "ent-1",
-			Name:            "Alpha",
-			Type:            "person",
-			Status:          "active",
-			PrivacyScopeIDs: []string{"scope-public", "scope-admin"},
-			Metadata: api.JSONMap{
-				"context_segments": []any{
-					map[string]any{"text": "private note", "scopes": []any{"public"}},
-				},
-			},
-		},
+	item := api.Entity{
+		ID:              "ent-1",
+		Name:            "Alpha",
+		Type:            "person",
+		Status:          "active",
+		PrivacyScopeIDs: []string{"scope-public", "scope-admin"},
 	}
-	model, _ = model.Update(entitiesLoadedMsg{items: items})
+	model.detail = &api.Entity{ID: "ent-1"}
+	model.detailRels = []api.Relationship{{ID: "rel-1"}}
+	model.detailContext = []api.Context{{ID: "ctx-1"}}
 
-	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "Selected")
-	assert.Contains(t, out, "Scopes")
-	assert.Contains(t, out, "public")
-	assert.Contains(t, out, "Preview")
-	assert.NotContains(t, out, "map[")
-}
-
-// TestEntitiesFormMetadataUsesStructuredPreviewTable handles test entities form metadata uses structured preview table.
-func TestEntitiesFormMetadataUsesStructuredPreviewTable(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.width = 100
-	model.addFocus = addFieldMetadata
-	model.addMeta.Buffer = "profile | timezone | Europe/Warsaw"
-
-	addView := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addView, "profile | timezone | Europe/Warsaw")
-
-	model.detail = &api.Entity{ID: "ent-1", Name: "Alpha"}
-	model.editFocus = editFieldMetadata
-	model.editMeta.Buffer = "ops | board | nebula-core"
-
-	editView := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editView, "ops | board | nebula-core")
+	preview := components.SanitizeText(model.renderEntityPreview(item, 48))
+	assert.Contains(t, preview, "Scopes")
+	assert.Contains(t, preview, "public")
+	assert.Contains(t, preview, "Context")
+	assert.Contains(t, preview, "1")
 }
 
 func TestEntitiesRenderEntityPreviewEdgeBranches(t *testing.T) {
@@ -244,26 +218,4 @@ func TestEntitiesRenderDetailFallsBackToListWhenDetailMissing(t *testing.T) {
 
 	out := components.SanitizeText(model.renderDetail())
 	assert.Contains(t, out, "No entities found.")
-}
-
-func TestEntitiesRenderDetailShowsMetadataInspectorPanel(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.width = 96
-	model.height = 30
-	model.detail = &api.Entity{
-		ID:   "ent-1",
-		Name: "Alpha",
-		Metadata: api.JSONMap{
-			"profile": map[string]any{
-				"bio": "line one\nline two\nline three",
-			},
-		},
-	}
-	model.metaExpanded = true
-	model.syncDetailMetadataRows()
-	model.metaInspect = true
-	model.metaInspectI = 0
-
-	out := components.SanitizeText(model.renderDetail())
-	assert.Contains(t, out, "Lines")
 }

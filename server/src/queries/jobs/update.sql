@@ -6,10 +6,9 @@ WITH updated AS (
         description = COALESCE($3, description),
         status_id = COALESCE($4, status_id),
         priority = COALESCE($5, priority),
-        metadata = COALESCE($6::jsonb, metadata),
-        assigned_to = COALESCE($7::uuid, assigned_to),
+        assigned_to = COALESCE($6::uuid, assigned_to),
         due_at = CASE
-            WHEN $9::boolean THEN $8::timestamptz
+            WHEN $8::boolean THEN $7::timestamptz
             ELSE due_at
         END
     WHERE id = $1
@@ -28,7 +27,6 @@ SELECT
     u.parent_job_id,
     u.due_at,
     u.completed_at,
-    u.metadata,
     u.privacy_scope_ids,
     u.created_at,
     u.updated_at

@@ -1,7 +1,4 @@
-"""Red team API tests for metadata privacy filtering in queries."""
-
-# Standard Library
-import json
+"""Red team API tests for context-of privacy filtering with user auth."""
 
 # Third-Party
 from httpx import ASGITransport, AsyncClient
@@ -12,142 +9,157 @@ from nebula_api.app import app
 from nebula_api.auth import require_auth
 
 
-async def _make_entity(db_pool, enums, name, scopes, metadata):
-    """Insert a test entity for metadata filtering scenarios."""
+def _user_auth_override(entity_row: dict, scope_ids: list[str]) -> callable:
+    """Build a user auth override with explicit scopes."""
 
-    status_id = enums.statuses.name_to_id["active"]
-    type_id = enums.entity_types.name_to_id["person"]
-    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
-
-    row = await db_pool.fetchrow(
-        """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-        RETURNING *
-        """,
-        name,
-        type_id,
-        status_id,
-        scope_ids,
-        ["test"],
-        json.dumps(metadata),
-    )
-    return dict(row)
-
-
-def _public_user_auth_override(test_entity, enums):
-    """Build a user auth override that only has public scope."""
-
-    public_scope = enums.scopes.name_to_id["public"]
     auth_dict = {
         "key_id": None,
         "caller_type": "user",
-        "entity_id": test_entity["id"],
-        "entity": test_entity,
+        "entity_id": entity_row["id"],
+        "entity": entity_row,
         "agent_id": None,
         "agent": None,
-        "scopes": [public_scope],
+        "scopes": scope_ids,
     }
 
     async def mock_auth():
-        """Return public-only user auth context."""
+        """Return scoped user auth context."""
 
         return auth_dict
 
     return mock_auth
 
 
+async def _ensure_context_of_type(db_pool) -> str:
+    """Ensure context-of relationship type exists and return its id."""
+
+    row = await db_pool.fetchrow(
+        "SELECT id FROM relationship_types WHERE name = 'context-of'"
+    )
+    if row:
+        return str(row["id"])
+    created = await db_pool.fetchrow(
+        """
+        INSERT INTO relationship_types (name, description, is_symmetric, is_builtin, is_active, metadata)
+        VALUES ('context-of', 'Context item used as scoped metadata for an owner', false, true, true, '{}'::jsonb)
+        RETURNING id
+        """
+    )
+    return str(created["id"])
+
+
+async def _make_entity(db_pool, enums, name: str, scopes: list[str]) -> dict:
+    """Insert a test entity."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5)
+        RETURNING *
+        """,
+        name,
+        type_id,
+        status_id,
+        scope_ids,
+        ["redteam"],
+    )
+    return dict(row)
+
+
+async def _make_context(db_pool, enums, title: str, scopes: list[str]) -> dict:
+    """Insert a test context item."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+        """,
+        title,
+        "note",
+        "secret",
+        scope_ids,
+        status_id,
+        ["test"],
+    )
+    return dict(row)
+
+
+async def _link_context(db_pool, enums, owner_id: str, context_id: str) -> None:
+    """Create a context-of relationship between entity and context."""
+
+    type_id = await _ensure_context_of_type(db_pool)
+    status_id = enums.statuses.name_to_id["active"]
+    await db_pool.execute(
+        """
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
+        VALUES ('entity', $1::uuid, 'context', $2::uuid, $3::uuid, $4::uuid, '{}'::jsonb)
+        """,
+        owner_id,
+        context_id,
+        type_id,
+        status_id,
+    )
+
+
 @pytest.mark.asyncio
-async def test_api_query_entities_filters_context_segments(
-    db_pool, enums, test_entity
-):
-    """API query results should not include context segments outside scopes."""
+async def test_list_context_by_owner_filters_private_for_user(db_pool, enums):
+    """Public user should not see private context-of items."""
 
-    metadata = {
-        "context_segments": [
-            {"text": "public info", "scopes": ["public"]},
-            {"text": "private info", "scopes": ["private"]},
-        ]
-    }
-    await _make_entity(db_pool, enums, "Mixed Scope", ["public", "private"], metadata)
+    owner = await _make_entity(db_pool, enums, "Owner", ["public"])
+    ctx_public = await _make_context(db_pool, enums, "Public Note", ["public"])
+    ctx_private = await _make_context(db_pool, enums, "Private Note", ["private"])
+    await _link_context(db_pool, enums, owner["id"], ctx_public["id"])
+    await _link_context(db_pool, enums, owner["id"], ctx_private["id"])
 
+    app.dependency_overrides[require_auth] = _user_auth_override(
+        owner, [enums.scopes.name_to_id["public"]]
+    )
     app.state.pool = db_pool
     app.state.enums = enums
-    app.dependency_overrides[require_auth] = _public_user_auth_override(
-        test_entity, enums
-    )
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.get("/api/entities/")
+        resp = await client.get(f"/api/context/by-owner/entity/{owner['id']}")
     app.dependency_overrides.pop(require_auth, None)
 
     assert resp.status_code == 200
-    data = resp.json()["data"]
-    assert data
-    segments = data[0]["metadata"].get("context_segments", [])
-
-    assert all("private" not in seg.get("scopes", []) for seg in segments)
+    ids = {str(row["id"]) for row in resp.json()["data"]}
+    assert str(ctx_public["id"]) in ids
+    assert str(ctx_private["id"]) not in ids
 
 
 @pytest.mark.asyncio
-async def test_api_search_entities_filters_context_segments(
-    db_pool, enums, test_entity
-):
-    """API metadata search should not leak context segments outside scopes."""
+async def test_list_context_by_owner_includes_private_for_user(db_pool, enums):
+    """Private user should see private context-of items."""
 
-    metadata = {
-        "context_segments": [
-            {"text": "public info", "scopes": ["public"]},
-            {"text": "private info", "scopes": ["private"]},
+    owner = await _make_entity(db_pool, enums, "Owner Two", ["public", "private"])
+    ctx_public = await _make_context(db_pool, enums, "Public Note", ["public"])
+    ctx_private = await _make_context(db_pool, enums, "Private Note", ["private"])
+    await _link_context(db_pool, enums, owner["id"], ctx_public["id"])
+    await _link_context(db_pool, enums, owner["id"], ctx_private["id"])
+
+    app.dependency_overrides[require_auth] = _user_auth_override(
+        owner,
+        [
+            enums.scopes.name_to_id["public"],
+            enums.scopes.name_to_id["private"],
         ],
-        "signal": "needle",
-    }
-    await _make_entity(db_pool, enums, "Metadata Leak", ["public", "private"], metadata)
-
+    )
     app.state.pool = db_pool
     app.state.enums = enums
-    app.dependency_overrides[require_auth] = _public_user_auth_override(
-        test_entity, enums
-    )
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.post(
-            "/api/entities/search",
-            json={"metadata_query": {"signal": "needle"}},
-        )
+        resp = await client.get(f"/api/context/by-owner/entity/{owner['id']}")
     app.dependency_overrides.pop(require_auth, None)
 
     assert resp.status_code == 200
-    data = resp.json()["data"]
-    assert data
-    segments = data[0]["metadata"].get("context_segments", [])
-
-    assert all("private" not in seg.get("scopes", []) for seg in segments)
-
-
-@pytest.mark.asyncio
-async def test_api_search_entities_hides_private_entities(
-    db_pool, enums, test_entity
-):
-    """API metadata search should not return private-only entities."""
-
-    metadata = {"signal": "private-only"}
-    await _make_entity(db_pool, enums, "Private Node", ["private"], metadata)
-
-    app.state.pool = db_pool
-    app.state.enums = enums
-    app.dependency_overrides[require_auth] = _public_user_auth_override(
-        test_entity, enums
-    )
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.post(
-            "/api/entities/search",
-            json={"metadata_query": {"signal": "private-only"}},
-        )
-    app.dependency_overrides.pop(require_auth, None)
-
-    assert resp.status_code == 200
-    data = resp.json()["data"]
-
-    assert not data
+    ids = {str(row["id"]) for row in resp.json()["data"]}
+    assert str(ctx_public["id"]) in ids
+    assert str(ctx_private["id"]) in ids

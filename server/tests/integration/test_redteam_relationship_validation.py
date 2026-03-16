@@ -22,8 +22,8 @@ async def test_relationship_rejects_missing_job(db_pool, enums, mock_mcp_context
 
     entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Public Target",
@@ -31,7 +31,6 @@ async def test_relationship_rejects_missing_job(db_pool, enums, mock_mcp_context
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({}),
     )
 
     payload = CreateRelationshipInput(
@@ -57,8 +56,8 @@ async def test_relationship_rejects_invalid_uuid(db_pool, enums, mock_mcp_contex
 
     entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Valid Target",
@@ -66,7 +65,6 @@ async def test_relationship_rejects_invalid_uuid(db_pool, enums, mock_mcp_contex
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({}),
     )
 
     payload = CreateRelationshipInput(

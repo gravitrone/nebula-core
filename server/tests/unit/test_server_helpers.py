@@ -204,13 +204,12 @@ def test_semantic_candidate_formatters_build_expected_fields():
             "name": "Alpha Project",
             "type": "project",
             "tags": ["x", "y"],
-            "metadata": {"priority": "high"},
         }
     )
     assert entity["kind"] == "entity"
     assert entity["title"] == "Alpha Project"
     assert "project" in entity["snippet"]
-    assert "priority" in entity["text"]
+    assert "x" in entity["text"]
 
     context = _context_semantic_candidate(
         {
@@ -219,7 +218,6 @@ def test_semantic_candidate_formatters_build_expected_fields():
             "source_type": "note",
             "content": "x" * 200,
             "tags": ["ops"],
-            "metadata": {"v": 1},
         }
     )
     assert context["kind"] == "context"

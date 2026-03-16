@@ -1,15 +1,12 @@
 """Semantic search API tests."""
 
 # Standard Library
-import json
 
 # Third-Party
 import pytest
 
 
-async def _insert_entity(
-    db_pool, enums, *, name: str, scopes: list[str], metadata: dict
-):
+async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str]):
     """Handle insert entity.
 
     Args:
@@ -17,7 +14,6 @@ async def _insert_entity(
         enums: Input parameter for _insert_entity.
         name: Input parameter for _insert_entity.
         scopes: Input parameter for _insert_entity.
-        metadata: Input parameter for _insert_entity.
 
     Returns:
         Result value from the operation.
@@ -28,8 +24,8 @@ async def _insert_entity(
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id, name
         """,
         name,
@@ -37,7 +33,6 @@ async def _insert_entity(
         status_id,
         scope_ids,
         ["semantic"],
-        json.dumps(metadata),
     )
     out = dict(row)
     out["id"] = str(out["id"])
@@ -64,8 +59,8 @@ async def _insert_context(
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO context_items (title, source_type, content, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, title
         """,
         title,
@@ -74,7 +69,6 @@ async def _insert_context(
         status_id,
         scope_ids,
         ["semantic"],
-        json.dumps({"topic": "memory"}),
     )
     out = dict(row)
     out["id"] = str(out["id"])
@@ -90,7 +84,6 @@ async def test_semantic_search_happy_path(api, db_pool, enums):
         enums,
         name="Agent Memory Mesh",
         scopes=["public"],
-        metadata={"summary": "Context memory mesh for agent collaboration"},
     )
     context = await _insert_context(
         db_pool,
@@ -121,14 +114,12 @@ async def test_semantic_search_enforces_scopes(api, db_pool, enums, auth_overrid
         enums,
         name="Public Agent Context",
         scopes=["public"],
-        metadata={"summary": "Public context memory"},
     )
     private_entity = await _insert_entity(
         db_pool,
         enums,
         name="Sensitive Agent Context",
         scopes=["sensitive"],
-        metadata={"summary": "Private context memory"},
     )
 
     # User caller search is constrained to public scope for list/search endpoints.

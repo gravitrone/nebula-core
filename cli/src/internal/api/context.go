@@ -40,8 +40,17 @@ func (c *Client) UpdateContext(id string, input UpdateContextInput) (*Context, e
 }
 
 // LinkContext handles link context.
-func (c *Client) LinkContext(id, entityID string) error {
-	body := map[string]string{"entity_id": entityID}
-	_, err := c.post(fmt.Sprintf("/api/context/%s/link", id), body)
+func (c *Client) LinkContext(id string, input LinkContextInput) error {
+	_, err := c.post(fmt.Sprintf("/api/context/%s/link", id), input)
 	return err
+}
+
+// ListContextByOwner handles list context by owner.
+func (c *Client) ListContextByOwner(ownerType, ownerID string, params QueryParams) ([]Context, error) {
+	path := fmt.Sprintf("/api/context/by-owner/%s/%s", ownerType, ownerID)
+	data, err := c.get(buildQuery(path, params))
+	if err != nil {
+		return nil, err
+	}
+	return decodeList[Context](data)
 }

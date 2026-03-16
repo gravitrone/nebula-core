@@ -29,7 +29,6 @@ async def test_get_approval_requires_admin(api, db_pool, test_agent_row):
             "status": "active",
             "scopes": ["public"],
             "tags": ["test"],
-            "metadata": {},
         },
         None,
     )
@@ -52,7 +51,6 @@ async def test_approve_requires_admin(api, db_pool, test_agent_row):
             "status": "active",
             "scopes": ["public"],
             "tags": ["test"],
-            "metadata": {},
         },
         None,
     )
@@ -75,7 +73,6 @@ async def test_reject_requires_admin(api, db_pool, test_agent_row):
             "status": "active",
             "scopes": ["public"],
             "tags": ["test"],
-            "metadata": {},
         },
         None,
     )

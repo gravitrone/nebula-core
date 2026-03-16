@@ -47,7 +47,6 @@ CASES = (
         create_payload={
             "title": "Queue Persist Context",
             "source_type": "note",
-            "status": "active",
             "scopes": ["public"],
         },
         list_path="/api/context",
@@ -59,7 +58,6 @@ CASES = (
         create_payload={
             "title": "Queue Persist Job",
             "priority": "medium",
-            "status": "in-progress",
         },
         list_path="/api/jobs",
         table_name="jobs",
@@ -136,8 +134,8 @@ async def _make_reviewer(db_pool, enums):
     public_scope = enums.scopes.name_to_id["public"]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4::uuid[], $5)
         RETURNING id
         """,
         "approval-visibility-reviewer",
@@ -145,12 +143,10 @@ async def _make_reviewer(db_pool, enums):
         status_id,
         [public_scope],
         ["test"],
-        "{}",
     )
     return str(row["id"])
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("case", CASES)
 async def test_untrusted_create_remains_visible_after_approval(
     db_pool,
@@ -226,203 +222,6 @@ async def test_untrusted_create_remains_visible_after_approval(
         app.dependency_overrides.pop(require_auth, None)
 
 
-@pytest.mark.asyncio
-async def test_queued_create_entity_preserves_metadata_after_approval(
-    db_pool, enums
-):
-    """Queued entity creates should preserve nested metadata after approval."""
-
-    public_scope = enums.scopes.name_to_id["public"]
-    private_scope = enums.scopes.name_to_id["private"]
-    untrusted_agent = await _make_agent(
-        db_pool,
-        enums,
-        "approval-queue-agent-metadata",
-        True,
-        scopes=["public", "private"],
-    )
-    reviewer_id = await _make_reviewer(db_pool, enums)
-
-    payload = {
-        "name": "Queue Metadata Preserve Entity",
-        "type": "person",
-        "status": "active",
-        "scopes": ["public", "private"],
-        "tags": ["metadata", "approval"],
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "context_segments": [
-                {"text": "public summary", "scopes": ["public"]},
-                {"text": "private summary", "scopes": ["private"]},
-            ],
-        },
-    }
-
-    app.state.pool = db_pool
-    app.state.enums = enums
-    transport = ASGITransport(app=app)
-    try:
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            untrusted_agent,
-            [public_scope, private_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            queued = await client.post("/api/entities", json=payload)
-        assert queued.status_code == 202, queued.text
-
-        approval = await db_pool.fetchrow(
-            """
-            SELECT id
-            FROM approval_requests
-            WHERE requested_by = $1::uuid
-              AND request_type = 'create_entity'
-              AND status = 'pending'
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            untrusted_agent["id"],
-        )
-        assert approval is not None
-        approved = await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
-        created_id = str(approved["entity"]["id"])
-
-        row = await db_pool.fetchrow(
-            "SELECT metadata FROM entities WHERE id = $1::uuid",
-            created_id,
-        )
-        assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata["owner"] == "alxx"
-        assert persisted_metadata["profile"]["timezone"] == "Europe/Warsaw"
-        assert persisted_metadata["context_segments"] == [
-            {"text": "public summary", "scopes": ["public"]},
-            {"text": "private summary", "scopes": ["private"]},
-        ]
-
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            {**untrusted_agent, "requires_approval": False},
-            [public_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            response = await client.get(f"/api/entities/{created_id}")
-
-        assert response.status_code == 200, response.text
-        metadata = response.json()["data"]["metadata"]
-        assert metadata["owner"] == "alxx"
-        assert metadata["profile"]["timezone"] == "Europe/Warsaw"
-        assert metadata["context_segments"] == [
-            {"text": "public summary", "scopes": ["public"]}
-        ]
-    finally:
-        app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
-async def test_queued_create_context_preserves_metadata_after_approval(
-    db_pool, enums
-):
-    """Queued context creates should keep metadata and filter context segments by scope."""
-
-    public_scope = enums.scopes.name_to_id["public"]
-    private_scope = enums.scopes.name_to_id["private"]
-    untrusted_agent = await _make_agent(
-        db_pool,
-        enums,
-        "approval-queue-agent-context-metadata",
-        True,
-        scopes=["public", "private"],
-    )
-    reviewer_id = await _make_reviewer(db_pool, enums)
-
-    payload = {
-        "title": "Queue Metadata Preserve Context",
-        "source_type": "note",
-        "status": "active",
-        "scopes": ["public", "private"],
-        "tags": ["metadata", "context"],
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "context_segments": [
-                {"text": "public context", "scopes": ["public"]},
-                {"text": "private context", "scopes": ["private"]},
-            ],
-        },
-    }
-
-    app.state.pool = db_pool
-    app.state.enums = enums
-    transport = ASGITransport(app=app)
-    try:
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            untrusted_agent,
-            [public_scope, private_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            queued = await client.post("/api/context", json=payload)
-        assert queued.status_code == 202, queued.text
-
-        approval = await db_pool.fetchrow(
-            """
-            SELECT id
-            FROM approval_requests
-            WHERE requested_by = $1::uuid
-              AND request_type = 'create_context'
-              AND status = 'pending'
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            untrusted_agent["id"],
-        )
-        assert approval is not None
-        approved = await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
-        created_id = str(approved["entity"]["id"])
-
-        row = await db_pool.fetchrow(
-            "SELECT metadata FROM context_items WHERE id = $1::uuid",
-            created_id,
-        )
-        assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata["owner"] == "alxx"
-        assert persisted_metadata["profile"]["timezone"] == "Europe/Warsaw"
-        assert persisted_metadata["context_segments"] == [
-            {"text": "public context", "scopes": ["public"]},
-            {"text": "private context", "scopes": ["private"]},
-        ]
-
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            {**untrusted_agent, "requires_approval": False},
-            [public_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            response = await client.get(f"/api/context/{created_id}")
-
-        assert response.status_code == 200, response.text
-        metadata = response.json()["data"]["metadata"]
-        assert metadata["owner"] == "alxx"
-        assert metadata["profile"]["timezone"] == "Europe/Warsaw"
-        assert metadata["context_segments"] == [
-            {"text": "public context", "scopes": ["public"]}
-        ]
-    finally:
-        app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
 async def test_queued_create_log_preserves_metadata_after_approval(
     db_pool, enums
 ):
@@ -506,9 +305,6 @@ async def test_queued_create_log_preserves_metadata_after_approval(
         assert response.json()["data"]["metadata"] == payload["metadata"]
     finally:
         app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
 async def test_queued_create_file_preserves_metadata_after_approval(
     db_pool, enums
 ):
@@ -589,9 +385,6 @@ async def test_queued_create_file_preserves_metadata_after_approval(
         assert response.json()["data"]["metadata"] == payload["metadata"]
     finally:
         app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
 async def test_queued_update_log_preserves_metadata_after_approval(
     db_pool, enums
 ):
@@ -696,9 +489,6 @@ async def test_queued_update_log_preserves_metadata_after_approval(
         assert isinstance(listed_row["value"], dict)
     finally:
         app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
 async def test_queued_update_file_preserves_metadata_after_approval(
     db_pool, enums
 ):
@@ -799,216 +589,5 @@ async def test_queued_update_file_preserves_metadata_after_approval(
         )
         assert listed_row is not None
         assert listed_row["metadata"] == payload["metadata"]
-    finally:
-        app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
-async def test_queued_update_entity_preserves_metadata_after_approval(
-    db_pool, enums
-):
-    """Queued entity updates should preserve nested metadata after approval."""
-
-    public_scope = enums.scopes.name_to_id["public"]
-    private_scope = enums.scopes.name_to_id["private"]
-    status_id = enums.statuses.name_to_id["active"]
-    person_type_id = enums.entity_types.name_to_id["person"]
-    untrusted_agent = await _make_agent(
-        db_pool,
-        enums,
-        "approval-queue-agent-update-entity-metadata",
-        True,
-        scopes=["public", "private"],
-    )
-    reviewer_id = await _make_reviewer(db_pool, enums)
-
-    existing = await db_pool.fetchrow(
-        """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
-        RETURNING id
-        """,
-        "Queued Update Entity",
-        person_type_id,
-        status_id,
-        [public_scope, private_scope],
-        ["before"],
-        json.dumps(
-            {
-                "owner": "before",
-                "context_segments": [
-                    {"text": "before public", "scopes": ["public"]},
-                    {"text": "before private", "scopes": ["private"]},
-                ],
-            }
-        ),
-    )
-    assert existing is not None
-    entity_id = str(existing["id"])
-
-    payload = {
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "context_segments": [
-                {"text": "public summary", "scopes": ["public"]},
-                {"text": "private summary", "scopes": ["private"]},
-            ],
-        }
-    }
-
-    app.state.pool = db_pool
-    app.state.enums = enums
-    transport = ASGITransport(app=app)
-    try:
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            untrusted_agent,
-            [public_scope, private_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            queued = await client.patch(f"/api/entities/{entity_id}", json=payload)
-        assert queued.status_code == 202, queued.text
-        assert queued.json()["status"] == "approval_required"
-
-        approval = await db_pool.fetchrow(
-            """
-            SELECT id
-            FROM approval_requests
-            WHERE requested_by = $1::uuid
-              AND request_type = 'update_entity'
-              AND status = 'pending'
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            untrusted_agent["id"],
-        )
-        assert approval is not None
-        await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
-
-        row = await db_pool.fetchrow(
-            "SELECT metadata FROM entities WHERE id = $1::uuid",
-            entity_id,
-        )
-        assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata == payload["metadata"]
-
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            {**untrusted_agent, "requires_approval": False},
-            [public_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            response = await client.get(f"/api/entities/{entity_id}")
-
-        assert response.status_code == 200, response.text
-        visible_metadata = response.json()["data"]["metadata"]
-        assert visible_metadata["owner"] == "alxx"
-        assert visible_metadata["profile"]["timezone"] == "Europe/Warsaw"
-        assert visible_metadata["context_segments"] == [
-            {"text": "public summary", "scopes": ["public"]}
-        ]
-    finally:
-        app.dependency_overrides.pop(require_auth, None)
-
-
-@pytest.mark.asyncio
-async def test_queued_update_entity_merges_metadata_patch_after_approval(
-    db_pool, enums
-):
-    """Queued entity metadata patch should merge with existing metadata."""
-
-    public_scope = enums.scopes.name_to_id["public"]
-    private_scope = enums.scopes.name_to_id["private"]
-    status_id = enums.statuses.name_to_id["active"]
-    person_type_id = enums.entity_types.name_to_id["person"]
-    untrusted_agent = await _make_agent(
-        db_pool,
-        enums,
-        "approval-queue-agent-update-entity-merge",
-        True,
-        scopes=["public", "private"],
-    )
-    reviewer_id = await _make_reviewer(db_pool, enums)
-
-    existing_metadata = {
-        "owner": "alxx",
-        "profile": {"timezone": "Europe/Warsaw", "tone": "direct"},
-        "context_segments": [
-            {"text": "public summary", "scopes": ["public"]},
-            {"text": "private summary", "scopes": ["private"]},
-        ],
-    }
-    existing = await db_pool.fetchrow(
-        """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
-        RETURNING id
-        """,
-        "Queued Update Entity Merge",
-        person_type_id,
-        status_id,
-        [public_scope, private_scope],
-        ["before"],
-        json.dumps(existing_metadata),
-    )
-    assert existing is not None
-    entity_id = str(existing["id"])
-
-    payload = {
-        "metadata": {
-            "profile": {"tone": "casual"},
-            "private_notes": {"runbook": "internal-only"},
-        }
-    }
-
-    app.state.pool = db_pool
-    app.state.enums = enums
-    transport = ASGITransport(app=app)
-    try:
-        app.dependency_overrides[require_auth] = await _agent_auth_override(
-            untrusted_agent,
-            [public_scope, private_scope],
-        )
-        async with AsyncClient(
-            transport=transport, base_url="http://test", follow_redirects=True
-        ) as client:
-            queued = await client.patch(f"/api/entities/{entity_id}", json=payload)
-        assert queued.status_code == 202, queued.text
-
-        approval = await db_pool.fetchrow(
-            """
-            SELECT id
-            FROM approval_requests
-            WHERE requested_by = $1::uuid
-              AND request_type = 'update_entity'
-              AND status = 'pending'
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            untrusted_agent["id"],
-        )
-        assert approval is not None
-        await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
-
-        row = await db_pool.fetchrow(
-            "SELECT metadata FROM entities WHERE id = $1::uuid",
-            entity_id,
-        )
-        assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-
-        assert persisted_metadata["owner"] == "alxx"
-        assert persisted_metadata["profile"]["timezone"] == "Europe/Warsaw"
-        assert persisted_metadata["profile"]["tone"] == "casual"
-        assert persisted_metadata["private_notes"]["runbook"] == "internal-only"
-        assert persisted_metadata["context_segments"] == existing_metadata["context_segments"]
     finally:
         app.dependency_overrides.pop(require_auth, None)

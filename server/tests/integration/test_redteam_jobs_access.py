@@ -1,7 +1,6 @@
 """Red team tests for job access isolation."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 
 # Third-Party
@@ -65,14 +64,13 @@ async def _make_job(db_pool, enums, agent_id):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
-        VALUES ($1, $2, $3, $4::jsonb, $5)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "Private Job",
         status_id,
         agent_id,
-        json.dumps({"secret": "job"}),
         scope_ids,
     )
     return dict(row)
@@ -120,14 +118,13 @@ async def test_get_job_denies_agent_outside_scopes(db_pool, enums):
     private_scope_ids = [enums.scopes.name_to_id["private"]]
     job = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
-        VALUES ($1, $2, $3, $4::jsonb, $5)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "Scoped Job",
         status_id,
         owner["id"],
-        json.dumps({"secret": "job"}),
         private_scope_ids,
     )
 

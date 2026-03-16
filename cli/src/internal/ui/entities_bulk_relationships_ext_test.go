@@ -262,12 +262,3 @@ func TestEntitiesRenderRelationshipsAndSelectionHelpersBranches(t *testing.T) {
 	require.NotNil(t, rel)
 	assert.Equal(t, "rel-1", rel.ID)
 }
-
-func TestEntitiesCopyCurrentMetadataRowOutOfRangeBranch(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.metaRows = []metadataDisplayRow{{field: "note", value: "hello"}}
-	model.metaList = components.NewList(4)
-	model.metaList.SetItems([]string{"note"})
-	model.metaList.Cursor = 9
-	assert.Nil(t, model.copyCurrentMetadataRow())
-}

@@ -67,7 +67,6 @@ def test_context_candidate_truncates_long_snippet():
         "source_type": "note",
         "content": long_content,
         "tags": [],
-        "metadata": {},
     }
 
     candidate = _context_candidate(row)

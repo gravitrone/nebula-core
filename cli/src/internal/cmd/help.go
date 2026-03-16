@@ -154,12 +154,12 @@ func helpRecipeCatalog() map[string][]string {
 		"nebula api entities": {
 			"nebula api entities query --param limit=10 --output table",
 			"nebula api entities create --input-file ./entity.json --output json",
-			"nebula api entities search --input '{\"board\":\"nebula-core\"}' --plain",
+			"nebula api entities update <entity-id> --input '{\"status\":\"inactive\"}' --plain",
 		},
 		"nebula api context": {
 			"nebula api context query --param limit=10 --output table",
 			"nebula api context create --input-file ./context.json --output json",
-			"nebula api context link <context-id> --entity-id <entity-id>",
+			"nebula api context link <context-id> --owner-type entity --owner-id <entity-id>",
 		},
 		"nebula api relationships": {
 			"nebula api relationships query --param limit=10 --output table",

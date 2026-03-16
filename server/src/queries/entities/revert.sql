@@ -8,8 +8,7 @@ SET
   status_changed_at = $6::timestamptz,
   status_reason = $7::text,
   tags = COALESCE($8::text[], '{}'),
-  metadata = COALESCE($9::jsonb, '{}'::jsonb),
-  source_path = $10::text
+  source_path = $9::text
 WHERE id = $1::uuid
 RETURNING
   id,
@@ -18,6 +17,5 @@ RETURNING
   status_id,
   privacy_scope_ids,
   tags,
-  metadata,
   status_reason,
   updated_at;

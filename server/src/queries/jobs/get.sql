@@ -12,7 +12,6 @@ SELECT
     j.parent_job_id,
     j.due_at,
     j.completed_at,
-    j.metadata,
     j.privacy_scope_ids,
     j.created_at,
     j.updated_at

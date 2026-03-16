@@ -1,7 +1,6 @@
 """Context route tests."""
 
 # Standard Library
-import json
 
 # Third-Party
 from httpx import ASGITransport, AsyncClient
@@ -79,8 +78,8 @@ async def test_query_context(api):
 
 
 @pytest.mark.asyncio
-async def test_link_context_to_entity(api):
-    """Test link context to entity."""
+async def test_link_context_to_owner(api):
+    """Test link context to owner."""
 
     kr = await api.post(
         "/api/context",
@@ -104,8 +103,8 @@ async def test_link_context_to_entity(api):
     r = await api.post(
         f"/api/context/{k_id}/link",
         json={
-            "entity_id": str(e_id),
-            "relationship_type": "related-to",
+            "owner_type": "entity",
+            "owner_id": str(e_id),
         },
     )
     assert r.status_code == 200
@@ -184,15 +183,15 @@ async def test_link_context_validation_and_relationship_type_errors(api):
 
     invalid_ids = await api.post(
         f"/api/context/{context['id']}/link",
-        json={"entity_id": "not-a-uuid", "relationship_type": "related-to"},
+        json={"owner_type": "entity", "owner_id": "not-a-uuid"},
     )
-    assert invalid_ids.status_code == 400
+    assert invalid_ids.status_code in (400, 422)
 
     bad_rel_type = await api.post(
         f"/api/context/{context['id']}/link",
-        json={"entity_id": entity["id"], "relationship_type": "does-not-exist"},
+        json={"owner_type": "does-not-exist", "owner_id": entity["id"]},
     )
-    assert bad_rel_type.status_code == 400
+    assert bad_rel_type.status_code in (400, 422)
 
 
 @pytest.mark.asyncio
@@ -313,8 +312,8 @@ async def test_link_context_untrusted_agent_returns_approval_required(
 
     context = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3::uuid[], $4::uuid, $5, $6::jsonb)
+        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3::uuid[], $4::uuid, $5)
         RETURNING id
         """,
         "Ctx Queue Link",
@@ -322,12 +321,11 @@ async def test_link_context_untrusted_agent_returns_approval_required(
         [enums.scopes.name_to_id["public"]],
         enums.statuses.name_to_id["active"],
         [],
-        "{}",
     )
     entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5)
         RETURNING id
         """,
         "Entity Queue Link",
@@ -335,7 +333,6 @@ async def test_link_context_untrusted_agent_returns_approval_required(
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         [],
-        "{}",
     )
 
     app.dependency_overrides[require_auth] = _agent_auth_override(
@@ -350,7 +347,7 @@ async def test_link_context_untrusted_agent_returns_approval_required(
     ) as client:
         resp = await client.post(
             f"/api/context/{context['id']}/link",
-            json={"entity_id": str(entity["id"]), "relationship_type": "related-to"},
+            json={"owner_type": "entity", "owner_id": str(entity["id"])},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -364,8 +361,8 @@ async def test_link_context_entity_scope_forbidden_for_agent(db_pool, enums):
 
     context = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3::uuid[], $4::uuid, $5, $6::jsonb)
+        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3::uuid[], $4::uuid, $5)
         RETURNING id
         """,
         "Ctx Scope Guard",
@@ -373,12 +370,11 @@ async def test_link_context_entity_scope_forbidden_for_agent(db_pool, enums):
         [enums.scopes.name_to_id["public"]],
         enums.statuses.name_to_id["active"],
         [],
-        "{}",
     )
     entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5)
         RETURNING id
         """,
         "Entity Scope Guard",
@@ -386,7 +382,6 @@ async def test_link_context_entity_scope_forbidden_for_agent(db_pool, enums):
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"], enums.scopes.name_to_id["sensitive"]],
         [],
-        "{}",
     )
 
     status_id = enums.statuses.name_to_id["active"]
@@ -415,7 +410,7 @@ async def test_link_context_entity_scope_forbidden_for_agent(db_pool, enums):
     ) as client:
         resp = await client.post(
             f"/api/context/{context['id']}/link",
-            json={"entity_id": str(entity["id"]), "relationship_type": "related-to"},
+            json={"owner_type": "entity", "owner_id": str(entity["id"])},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -429,8 +424,8 @@ async def test_update_context_admin_agent_can_bypass_scope_guard(db_pool, enums)
 
     context = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3::uuid[], $4::uuid, $5, $6::jsonb)
+        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3::uuid[], $4::uuid, $5)
         RETURNING id
         """,
         "Ctx Admin Guard",
@@ -438,7 +433,6 @@ async def test_update_context_admin_agent_can_bypass_scope_guard(db_pool, enums)
         [enums.scopes.name_to_id["sensitive"]],
         enums.statuses.name_to_id["active"],
         [],
-        "{}",
     )
     admin_scope = enums.scopes.name_to_id.get("admin")
     if not admin_scope:
@@ -486,8 +480,8 @@ async def test_update_context_untrusted_agent_returns_approval_required(
 
     context = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3::uuid[], $4::uuid, $5, $6::jsonb)
+        INSERT INTO context_items (title, source_type, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3::uuid[], $4::uuid, $5)
         RETURNING id
         """,
         "Ctx Queue Update",
@@ -495,7 +489,6 @@ async def test_update_context_untrusted_agent_returns_approval_required(
         [enums.scopes.name_to_id["public"]],
         enums.statuses.name_to_id["active"],
         [],
-        "{}",
     )
     app.dependency_overrides[require_auth] = _agent_auth_override(
         {**untrusted_agent_row, "requires_approval": True},
@@ -545,44 +538,6 @@ async def test_update_context_accepts_valid_url_and_null_tags(api):
     )
     assert resp.status_code == 200
     assert resp.json()["data"]["url"] == "https://example.com/new"
-
-
-@pytest.mark.asyncio
-async def test_update_context_metadata_patch_merges_nested_keys(api):
-    """Update should deep-merge context metadata patches."""
-
-    created = (
-        await api.post(
-            "/api/context",
-            json={
-                "title": "Ctx Metadata Merge",
-                "scopes": ["public"],
-                "metadata": {
-                    "owner": "alxx",
-                    "profile": {"timezone": "UTC", "language": "en"},
-                },
-            },
-        )
-    ).json()["data"]
-
-    update = await api.patch(
-        f"/api/context/{created['id']}",
-        json={
-            "metadata": {
-                "profile": {"timezone": "Europe/Warsaw"},
-                "private_notes": {"handoff_key": "bro-private-01"},
-            },
-        },
-    )
-
-    assert update.status_code == 200
-    merged = update.json()["data"]["metadata"]
-    if isinstance(merged, str):
-        merged = json.loads(merged)
-    assert merged["owner"] == "alxx"
-    assert merged["profile"]["timezone"] == "Europe/Warsaw"
-    assert merged["profile"]["language"] == "en"
-    assert merged["private_notes"]["handoff_key"] == "bro-private-01"
 
 
 @pytest.mark.asyncio
@@ -637,7 +592,7 @@ async def test_link_context_executor_value_error_returns_400(api, monkeypatch):
     monkeypatch.setattr("nebula_api.routes.context.execute_create_relationship", _boom)
     resp = await api.post(
         f"/api/context/{context['id']}/link",
-        json={"entity_id": entity["id"], "relationship_type": "related-to"},
+        json={"owner_type": "entity", "owner_id": entity["id"]},
     )
     assert resp.status_code == 400
     assert resp.json()["detail"] == "ctx link failed"

@@ -1,7 +1,6 @@
 """Semantic search API routes."""
 
 # Standard Library
-import json
 from pathlib import Path
 from typing import Any
 
@@ -100,14 +99,12 @@ def _entity_candidate(row: dict[str, Any]) -> dict[str, Any]:
         Result value from the operation.
     """
 
-    metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     text = " ".join(
         [
             str(row.get("name", "")),
             str(row.get("type", "")),
             " ".join(str(t) for t in tags),
-            json.dumps(metadata, sort_keys=True),
         ]
     ).strip()
     subtitle = str(row.get("type", "") or "entity")
@@ -134,7 +131,6 @@ def _context_candidate(row: dict[str, Any]) -> dict[str, Any]:
         Result value from the operation.
     """
 
-    metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     content = str(row.get("content") or "")
     text = " ".join(
@@ -143,7 +139,6 @@ def _context_candidate(row: dict[str, Any]) -> dict[str, Any]:
             str(row.get("source_type", "")),
             content,
             " ".join(str(t) for t in tags),
-            json.dumps(metadata, sort_keys=True),
         ]
     ).strip()
     subtitle = str(row.get("source_type", "") or "context")

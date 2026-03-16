@@ -55,8 +55,7 @@ const (
 	fieldScopes   = 4
 	fieldEntities = 5
 	fieldNotes    = 6
-	fieldMeta     = 7
-	fieldCount    = 8
+	fieldCount    = 7
 )
 
 const (
@@ -67,7 +66,6 @@ const (
 	contextEditFieldTags
 	contextEditFieldScopes
 	contextEditFieldNotes
-	contextEditFieldMeta
 	contextEditFieldCount
 )
 
@@ -116,10 +114,7 @@ type ContextModel struct {
 	editTagBuf          string
 	editScopes          []string
 	editScopeBuf        string
-	editMeta            MetadataEditor
 	editSaving          bool
-	metaEditor          MetadataEditor
-	metaExpanded        bool
 	contentExpanded     bool
 	sourcePathExpanded  bool
 	scopeNames          map[string]string
@@ -144,7 +139,6 @@ func NewContextModel(client *api.Client) ContextModel {
 			{label: "Scopes"},
 			{label: "Entities"},
 			{label: "Notes"},
-			{label: "Metadata"},
 		},
 		contextEditFields: []formField{
 			{label: "Title"},
@@ -154,7 +148,6 @@ func NewContextModel(client *api.Client) ContextModel {
 			{label: "Tags"},
 			{label: "Scopes"},
 			{label: "Notes"},
-			{label: "Metadata"},
 		},
 		linkList: components.NewList(6),
 		list:     components.NewList(10),
@@ -195,10 +188,7 @@ func (m ContextModel) Init() tea.Cmd {
 	m.editTagBuf = ""
 	m.editScopes = nil
 	m.editScopeBuf = ""
-	m.editMeta.Reset()
 	m.editSaving = false
-	m.metaEditor.Reset()
-	m.metaExpanded = false
 	m.contentExpanded = false
 	m.sourcePathExpanded = false
 	if m.scopeNames == nil {
@@ -254,8 +244,6 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 			m.scopeNames[id] = name
 		}
 		m.scopeOptions = scopeNameList(m.scopeNames)
-		m.metaEditor.SetScopeOptions(m.scopeOptions)
-		m.editMeta.SetScopeOptions(m.scopeOptions)
 		return m, nil
 	case contextDetailLoadedMsg:
 		m.detail = &msg.item
@@ -268,14 +256,6 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.metaEditor.Active {
-			m.metaEditor.HandleKey(msg)
-			return m, nil
-		}
-		if m.editMeta.Active {
-			m.editMeta.HandleKey(msg)
-			return m, nil
-		}
 		if m.view == contextViewList {
 			return m.handleListKeys(msg)
 		}
@@ -396,10 +376,6 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 				if isEnter(msg) {
 					m.startLinkSearch()
 				}
-			} else if m.focus == fieldMeta {
-				if isEnter(msg) {
-					m.metaEditor.Active = true
-				}
 			} else if m.focus != fieldType {
 				ch := msg.String()
 				if len(ch) == 1 || ch == " " {
@@ -427,14 +403,6 @@ func (m ContextModel) View() string {
 
 	if m.saved {
 		return components.Indent(components.Box(SuccessStyle.Render("Context saved! Press Esc to add another."), m.width), 1)
-	}
-
-	if m.editMeta.Active {
-		return m.editMeta.Render(m.width)
-	}
-
-	if m.metaEditor.Active {
-		return m.metaEditor.Render(m.width)
 	}
 
 	if m.linkSearching {
@@ -527,15 +495,6 @@ func (m ContextModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderLinkedEntities(false)))
 			}
-		case fieldMeta:
-			if i == m.focus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-			}
-			b.WriteString("\n")
-			meta := renderMetadataEditorPreview(m.metaEditor.Buffer, m.metaEditor.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + meta))
 		case m.focus:
 			b.WriteString(SelectedStyle.Render("  " + label + ":"))
 			b.WriteString("\n")
@@ -626,15 +585,6 @@ func (m ContextModel) renderEdit() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderEditScopes(false)))
 			}
-		case contextEditFieldMeta:
-			if i == m.editFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-			}
-			b.WriteString("\n")
-			meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + meta))
 		default:
 			if i == m.editFocus {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
@@ -717,7 +667,6 @@ func (m ContextModel) handleModeKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 func (m ContextModel) toggleMode() (ContextModel, tea.Cmd) {
 	m.modeFocus = false
 	m.detail = nil
-	m.metaExpanded = false
 	m.contentExpanded = false
 	m.sourcePathExpanded = false
 	if m.view == contextViewAdd {
@@ -804,15 +753,12 @@ func (m ContextModel) handleDetailKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 	case isBack(msg):
 		m.detail = nil
 		m.detailRelationships = nil
-		m.metaExpanded = false
 		m.contentExpanded = false
 		m.sourcePathExpanded = false
 		m.view = contextViewList
 	case isKey(msg, "e"):
 		m.startEdit()
 		m.view = contextViewEdit
-	case isKey(msg, "m"):
-		m.metaExpanded = !m.metaExpanded
 	case isKey(msg, "c"):
 		m.contentExpanded = !m.contentExpanded
 	case isKey(msg, "v"):
@@ -934,10 +880,6 @@ func (m ContextModel) handleEditKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 		case contextEditFieldScopes:
 			if isSpace(msg) {
 				m.editScopeSelecting = true
-			}
-		case contextEditFieldMeta:
-			if isEnter(msg) {
-				m.editMeta.Active = true
 			}
 		default:
 			if m.editFocus != contextEditFieldType && m.editFocus != contextEditFieldStatus {
@@ -1116,10 +1058,6 @@ func (m ContextModel) renderDetail() string {
 		}
 		sections = append(sections, components.TitledBox("Content", content, m.width))
 	}
-	if len(k.Metadata) > 0 {
-		metaTable := renderMetadataBlock(map[string]any(k.Metadata), m.width, m.metaExpanded)
-		sections = append(sections, metaTable)
-	}
 	if len(m.detailRelationships) > 0 {
 		sections = append(sections, renderRelationshipSummaryTable("context", k.ID, m.detailRelationships, 6, m.width))
 	}
@@ -1175,9 +1113,7 @@ func (m ContextModel) renderContextPreview(k api.Context, width int) string {
 	}
 
 	snippet := ""
-	if metaPreview := metadataPreview(map[string]any(k.Metadata), 80); metaPreview != "" {
-		snippet = humanizeGoMapString(metaPreview)
-	} else if k.Content != nil {
+	if k.Content != nil {
 		snippet = truncateString(strings.TrimSpace(components.SanitizeText(*k.Content)), 80)
 	} else if k.URL != nil {
 		snippet = truncateString(strings.TrimSpace(components.SanitizeText(*k.URL)), 80)
@@ -1213,8 +1149,6 @@ func (m *ContextModel) startEdit() {
 	m.editScopeBuf = ""
 	m.editScopeSelecting = false
 	m.scopeIdx = 0
-	m.editMeta.Load(map[string]any(k.Metadata))
-	m.editMeta.Active = false
 	m.editSaving = false
 	m.editFocus = 0
 }
@@ -1232,12 +1166,6 @@ func (m ContextModel) saveEdit() (ContextModel, tea.Cmd) {
 	status := contextStatusOptions[m.editStatusIdx]
 	tags := normalizeBulkTags(m.editTags)
 	scopes := normalizeBulkScopes(m.editScopes)
-	meta, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
 
 	input := api.UpdateContextInput{
 		Title:      &title,
@@ -1247,7 +1175,6 @@ func (m ContextModel) saveEdit() (ContextModel, tea.Cmd) {
 		Status:     &status,
 		Tags:       &tags,
 		Scopes:     &scopes,
-		Metadata:   meta,
 	}
 
 	m.editSaving = true
@@ -1284,12 +1211,20 @@ func (m *ContextModel) applyContextFilter() {
 			typ := strings.ToLower(strings.TrimSpace(item.SourceType))
 			status := strings.ToLower(strings.TrimSpace(item.Status))
 			tags := strings.ToLower(strings.Join(item.Tags, " "))
-			preview := strings.ToLower(metadataPreview(map[string]any(item.Metadata), 120))
+			content := ""
+			if item.Content != nil {
+				content = strings.ToLower(strings.TrimSpace(*item.Content))
+			}
+			url := ""
+			if item.URL != nil {
+				url = strings.ToLower(strings.TrimSpace(*item.URL))
+			}
 			if strings.Contains(title, query) ||
 				strings.Contains(typ, query) ||
 				strings.Contains(status, query) ||
 				strings.Contains(tags, query) ||
-				strings.Contains(preview, query) {
+				strings.Contains(content, query) ||
+				strings.Contains(url, query) {
 				filtered = append(filtered, item)
 			}
 		}
@@ -1334,9 +1269,7 @@ func formatContextLine(k api.Context) string {
 		line = fmt.Sprintf("%s · %s", line, status)
 	}
 	preview := ""
-	if metaPreview := metadataPreview(map[string]any(k.Metadata), 40); metaPreview != "" {
-		preview = metaPreview
-	} else if k.Content != nil {
+	if k.Content != nil {
 		preview = truncateString(strings.TrimSpace(components.SanitizeText(*k.Content)), 40)
 	} else if k.URL != nil {
 		preview = truncateString(strings.TrimSpace(components.SanitizeText(*k.URL)), 40)
@@ -1443,7 +1376,6 @@ func (m *ContextModel) resetForm() {
 	m.linkQuery = ""
 	m.linkResults = nil
 	m.linkEntities = nil
-	m.metaEditor.Reset()
 	if m.linkList != nil {
 		m.linkList.SetItems(nil)
 	}
@@ -1466,13 +1398,6 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 
 	m.commitTag()
 
-	meta, err := parseMetadataInput(m.metaEditor.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.metaEditor.Scopes)
-
 	scopes := normalizeBulkScopes(m.scopes)
 	if len(scopes) == 0 {
 		scopes = []string{"private"}
@@ -1485,7 +1410,6 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 		Content:    notes,
 		Scopes:     scopes,
 		Tags:       m.tags,
-		Metadata:   meta,
 	}
 
 	linkIDs := make([]string, 0, len(m.linkEntities))
@@ -1500,7 +1424,10 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 			return errMsg{err}
 		}
 		for _, id := range linkIDs {
-			if err := m.client.LinkContext(created.ID, id); err != nil {
+			if err := m.client.LinkContext(created.ID, api.LinkContextInput{
+				OwnerType: "entity",
+				OwnerID:   id,
+			}); err != nil {
 				return errMsg{err}
 			}
 		}
@@ -1811,9 +1738,6 @@ func (m ContextModel) renderLinkEntityPreview(e api.Entity, width int) string {
 	lines = append(lines, renderPreviewRow("Status", status, width))
 	if len(e.Tags) > 0 {
 		lines = append(lines, renderPreviewRow("Tags", strings.Join(e.Tags, ", "), width))
-	}
-	if metaPreview := metadataPreview(map[string]any(e.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
 	}
 
 	return padPreviewLines(lines, width)

@@ -21,6 +21,10 @@ type entityDetailRelationshipsLoadedMsg struct {
 	id    string
 	items []api.Relationship
 }
+type entityContextLoadedMsg struct {
+	id    string
+	items []api.Context
+}
 type entityUpdatedMsg struct{ entity api.Entity }
 type entityCreatedMsg struct{ entity api.Entity }
 type relationshipUpdatedMsg struct{ rel api.Relationship }
@@ -30,7 +34,6 @@ type entityHistoryLoadedMsg struct{ items []api.AuditEntry }
 type entityRevertedMsg struct{ entity api.Entity }
 type entityBulkUpdatedMsg struct{}
 type entityScopesLoadedMsg struct{ names map[string]string }
-type entityMetadataCopiedMsg struct{ count int }
 
 // --- View States ---
 
@@ -57,7 +60,6 @@ const (
 	addFieldStatus
 	addFieldTags
 	addFieldScopes
-	addFieldMetadata
 	addFieldCount
 )
 
@@ -65,7 +67,6 @@ const (
 	editFieldTags = iota
 	editFieldStatus
 	editFieldScopes
-	editFieldMetadata
 	editFieldCount
 )
 
@@ -77,7 +78,6 @@ const (
 
 var entityStatusOptions = []string{"active", "inactive"}
 var relationshipStatusOptions = []string{"active", "inactive"}
-var copyEntityMetadataClipboard = copyTextToClipboard
 
 type bulkTarget int
 
@@ -124,17 +124,15 @@ type EntitiesModel struct {
 	width          int
 	height         int
 
-	detail         *api.Entity
-	detailRels     []api.Relationship
-	errText        string
-	metaExpanded   bool
-	metaRows       []metadataDisplayRow
-	metaList       *components.List
-	metaSelected   map[int]bool
-	metaSelectMode bool
-	metaInspect    bool
-	metaInspectI   int
-	metaInspectO   int
+	detail           *api.Entity
+	detailRels       []api.Relationship
+	errText          string
+	detailContext    []api.Context
+	contextLoading   bool
+	contextLinking   bool
+	contextLinkBuf   string
+	contextCreating  bool
+	contextCreateBuf string
 
 	// add
 	addFields         []formField
@@ -146,7 +144,6 @@ type EntitiesModel struct {
 	addScopeBuf       string
 	addScopeIdx       int
 	addScopeSelecting bool
-	addMeta           MetadataEditor
 	addSaving         bool
 	addSaved          bool
 
@@ -159,7 +156,6 @@ type EntitiesModel struct {
 	editScopeBuf       string
 	editScopeIdx       int
 	editScopeSelecting bool
-	editMeta           MetadataEditor
 	editScopesDirty    bool
 	editSaving         bool
 
@@ -216,20 +212,16 @@ func NewEntitiesModel(client *api.Client) EntitiesModel {
 			{label: "Status"},
 			{label: "Tags"},
 			{label: "Scopes"},
-			{label: "Metadata"},
 		},
-		relList:        components.NewList(8),
-		relateList:     components.NewList(8),
-		historyList:    components.NewList(8),
-		metaList:       components.NewList(metadataPanelPageSize(false)),
-		view:           entitiesViewList,
-		bulkSelected:   map[string]bool{},
-		scopeNames:     map[string]string{},
-		metaSelected:   map[int]bool{},
-		metaSelectMode: false,
-		filterTypes:    map[string]bool{},
-		filterStatus:   map[string]bool{},
-		filterScopes:   map[string]bool{},
+		relList:      components.NewList(8),
+		relateList:   components.NewList(8),
+		historyList:  components.NewList(8),
+		view:         entitiesViewList,
+		bulkSelected: map[string]bool{},
+		scopeNames:   map[string]string{},
+		filterTypes:  map[string]bool{},
+		filterStatus: map[string]bool{},
+		filterScopes: map[string]bool{},
 	}
 }
 
@@ -249,15 +241,13 @@ func (m EntitiesModel) Init() tea.Cmd {
 	m.filterTypeSet = nil
 	m.filterStatSet = nil
 	m.filterScopeSet = nil
-	m.metaExpanded = false
-	m.metaRows = nil
-	m.metaSelected = map[int]bool{}
-	m.metaSelectMode = false
-	if m.metaList == nil {
-		m.metaList = components.NewList(metadataPanelPageSize(false))
-	}
-	syncMetadataList(m.metaList, nil, metadataPanelPageSize(false))
 	m.detailRels = nil
+	m.detailContext = nil
+	m.contextLoading = false
+	m.contextLinking = false
+	m.contextLinkBuf = ""
+	m.contextCreating = false
+	m.contextCreateBuf = ""
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(entityStatusOptions, "active")
 	m.addTags = nil
@@ -266,7 +256,6 @@ func (m EntitiesModel) Init() tea.Cmd {
 	m.addScopeBuf = ""
 	m.addScopeIdx = 0
 	m.addScopeSelecting = false
-	m.addMeta.Reset()
 	m.addSaving = false
 	m.addSaved = false
 	return tea.Batch(
@@ -301,6 +290,12 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	case entityDetailRelationshipsLoadedMsg:
 		if m.detail != nil && m.detail.ID == msg.id {
 			m.detailRels = msg.items
+		}
+		return m, nil
+	case entityContextLoadedMsg:
+		if m.detail != nil && m.detail.ID == msg.id {
+			m.contextLoading = false
+			m.detailContext = msg.items
 		}
 		return m, nil
 
@@ -363,8 +358,6 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 			m.scopeNames[id] = name
 		}
 		m.scopeOptions = scopeNameList(m.scopeNames)
-		m.addMeta.SetScopeOptions(m.scopeOptions)
-		m.editMeta.SetScopeOptions(m.scopeOptions)
 		m.refreshFilterSets()
 		m.applyEntityFilters()
 		return m, nil
@@ -377,18 +370,13 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 		m.editSaving = false
 		m.addSaving = false
 		m.bulkRunning = false
+		m.contextLoading = false
+		m.contextLinking = false
+		m.contextCreating = false
 		m.errText = msg.err.Error()
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.addMeta.Active {
-			m.addMeta.HandleKey(msg)
-			return m, nil
-		}
-		if m.editMeta.Active {
-			m.editMeta.HandleKey(msg)
-			return m, nil
-		}
 		switch m.view {
 		case entitiesViewAdd:
 			return m.handleAddKeys(msg)
@@ -417,12 +405,6 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 
 // View handles view.
 func (m EntitiesModel) View() string {
-	if m.addMeta.Active {
-		return m.addMeta.Render(m.width)
-	}
-	if m.editMeta.Active {
-		return m.editMeta.Render(m.width)
-	}
 	if m.view == entitiesViewList && m.bulkPrompt != "" {
 		return components.Indent(components.InputDialog(m.bulkPrompt, m.bulkBuf), 1)
 	}
@@ -457,6 +439,12 @@ func (m EntitiesModel) View() string {
 	case entitiesViewRelEdit:
 		return m.renderRelEdit()
 	case entitiesViewDetail:
+		if m.contextLinking {
+			return components.Indent(components.InputDialog("Link context id", m.contextLinkBuf), 1)
+		}
+		if m.contextCreating {
+			return components.Indent(components.InputDialog("New context title", m.contextCreateBuf), 1)
+		}
 		body := m.renderDetail()
 		modeLine := m.renderModeLine()
 		if modeLine != "" {
@@ -509,9 +497,13 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			item := m.items[idx]
 			m.detail = &item
 			m.detailRels = nil
-			m.syncDetailMetadataRows()
+			m.detailContext = nil
+			m.contextLoading = true
 			m.view = entitiesViewDetail
-			return m, m.loadEntityDetailRelationships(item.ID)
+			return m, tea.Batch(
+				m.loadEntityDetailRelationships(item.ID),
+				m.loadEntityContext(item.ID),
+			)
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
@@ -1039,8 +1031,6 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			if len(m.addScopes) > 0 {
 				m.addScopes = m.addScopes[:len(m.addScopes)-1]
 			}
-		case addFieldMetadata:
-			m.addMeta.Buffer = dropLastRune(m.addMeta.Buffer)
 		default:
 			if m.addFocus < len(m.addFields) {
 				f := &m.addFields[m.addFocus]
@@ -1064,10 +1054,6 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 		case addFieldScopes:
 			if isSpace(msg) {
 				m.addScopeSelecting = true
-			}
-		case addFieldMetadata:
-			if isEnter(msg) {
-				m.addMeta.Active = true
 			}
 		default:
 			ch := msg.String()
@@ -1120,15 +1106,6 @@ func (m EntitiesModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + m.renderAddScopes(false)))
 			}
-		case addFieldMetadata:
-			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-			}
-			b.WriteString("\n")
-			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + meta))
 		default:
 			if m.addFocus == i {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
@@ -1173,13 +1150,6 @@ func (m EntitiesModel) saveAdd() (EntitiesModel, tea.Cmd) {
 
 	m.commitAddTag()
 
-	meta, err := parseMetadataInput(m.addMeta.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
-
 	status := entityStatusOptions[m.addStatusIdx]
 	scopes := normalizeScopeList(m.addScopes)
 	if len(scopes) == 0 {
@@ -1187,12 +1157,11 @@ func (m EntitiesModel) saveAdd() (EntitiesModel, tea.Cmd) {
 	}
 
 	input := api.CreateEntityInput{
-		Scopes:   scopes,
-		Name:     name,
-		Type:     typ,
-		Status:   status,
-		Tags:     append([]string{}, m.addTags...),
-		Metadata: meta,
+		Scopes: scopes,
+		Name:   name,
+		Type:   typ,
+		Status: status,
+		Tags:   append([]string{}, m.addTags...),
 	}
 
 	m.addSaving = true
@@ -1218,7 +1187,6 @@ func (m *EntitiesModel) resetAddForm() {
 	m.addScopeBuf = ""
 	m.addScopeIdx = 0
 	m.addScopeSelecting = false
-	m.addMeta.Reset()
 	for i := range m.addFields {
 		m.addFields[i].value = ""
 	}
@@ -1480,11 +1448,11 @@ func (m EntitiesModel) renderEntityPreview(e api.Entity, width int) string {
 	if len(e.Tags) > 0 {
 		lines = append(lines, renderPreviewRow("Tags", strings.Join(e.Tags, ", "), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(e.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Preview", humanizeGoMapString(metaPreview), width))
-	}
 	if m.detail != nil && m.detail.ID == e.ID && len(m.detailRels) > 0 {
 		lines = append(lines, renderPreviewRow("Links", fmt.Sprintf("%d", len(m.detailRels)), width))
+	}
+	if m.detail != nil && m.detail.ID == e.ID && len(m.detailContext) > 0 {
+		lines = append(lines, renderPreviewRow("Context", fmt.Sprintf("%d", len(m.detailContext)), width))
 	}
 
 	return padPreviewLines(lines, width)
@@ -1676,91 +1644,99 @@ func (m EntitiesModel) handleSearchInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 // --- Detail ---
 
 func (m EntitiesModel) handleDetailKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
-	m.syncDetailMetadataRows()
-	if m.metaInspect {
-		switch {
-		case isDown(msg):
-			m.moveMetaInspect(1)
-			return m, nil
-		case isUp(msg):
-			m.moveMetaInspect(-1)
-			return m, nil
-		case isEnter(msg):
-			return m, m.copyMetadataRows([]int{m.metaInspectI})
-		case isBack(msg):
-			m.closeMetaInspect()
-			return m, nil
-		}
-	}
-	if m.metaExpanded && len(m.metaRows) > 0 {
-		switch {
-		case isDown(msg):
-			m.metaList.Down()
-			return m, nil
-		case isUp(msg):
-			m.metaList.Up()
-			return m, nil
-		case isSpace(msg):
-			m.metaSelectMode = true
-			m.toggleMetaSelection(m.metaList.Selected())
-			if len(m.metaSelected) == 0 {
-				m.metaSelectMode = false
-			}
-			return m, nil
-		case isKey(msg, "b"):
-			m.metaSelectMode = true
-			m.toggleMetaSelectAll()
-			if len(m.metaSelected) == 0 {
-				m.metaSelectMode = false
-			}
-			return m, nil
-		case isEnter(msg):
-			m.openMetaInspect(m.metaList.Selected())
-			return m, nil
-		case isKey(msg, "c"):
-			return m, m.copySelectedMetadataRows()
-		case isBack(msg):
-			if len(m.metaSelected) > 0 || m.metaSelectMode {
-				m.clearMetaSelection()
-				return m, nil
-			}
-		}
+	if m.contextLinking || m.contextCreating {
+		return m.handleContextPromptKeys(msg)
 	}
 
 	switch {
 	case isBack(msg):
 		m.detail = nil
 		m.detailRels = nil
-		m.metaRows = nil
-		m.clearMetaSelection()
-		m.closeMetaInspect()
+		m.detailContext = nil
+		m.contextLoading = false
+		m.contextLinking = false
+		m.contextLinkBuf = ""
+		m.contextCreating = false
+		m.contextCreateBuf = ""
 		m.view = entitiesViewList
 	case isKey(msg, "e"):
-		m.closeMetaInspect()
 		m.startEdit()
 		m.view = entitiesViewEdit
 	case isKey(msg, "r"):
-		m.closeMetaInspect()
 		m.view = entitiesViewRelationships
 		m.relLoading = true
 		return m, m.loadRelationships()
 	case isKey(msg, "h"):
-		m.closeMetaInspect()
 		m.view = entitiesViewHistory
 		m.historyLoading = true
 		return m, m.loadHistory()
-	case isKey(msg, "m"):
-		m.metaExpanded = !m.metaExpanded
-		m.syncDetailMetadataRows()
-		if !m.metaExpanded {
-			m.clearMetaSelection()
-			m.closeMetaInspect()
-		}
+	case isKey(msg, "a"):
+		m.contextCreating = true
+		m.contextCreateBuf = ""
+	case isKey(msg, "l"):
+		m.contextLinking = true
+		m.contextLinkBuf = ""
 	case isKey(msg, "d"):
-		m.closeMetaInspect()
 		m.confirmKind = "entity-archive"
 		m.confirmReturn = entitiesViewDetail
 		m.view = entitiesViewConfirm
+	}
+	return m, nil
+}
+
+func (m EntitiesModel) handleContextPromptKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.contextLinking = false
+		m.contextLinkBuf = ""
+		m.contextCreating = false
+		m.contextCreateBuf = ""
+		return m, nil
+	case isKey(msg, "enter"):
+		if m.contextLinking {
+			value := strings.TrimSpace(m.contextLinkBuf)
+			if value == "" {
+				return m, func() tea.Msg { return errMsg{fmt.Errorf("context id is required")} }
+			}
+			m.contextLinking = false
+			m.contextLinkBuf = ""
+			m.contextLoading = true
+			return m, m.linkContextToEntity(value)
+		}
+		if m.contextCreating {
+			title := strings.TrimSpace(m.contextCreateBuf)
+			if title == "" {
+				return m, func() tea.Msg { return errMsg{fmt.Errorf("context title is required")} }
+			}
+			m.contextCreating = false
+			m.contextCreateBuf = ""
+			m.contextLoading = true
+			return m, m.createContextForEntity(title)
+		}
+	case isKey(msg, "backspace", "delete"):
+		if m.contextLinking && len(m.contextLinkBuf) > 0 {
+			m.contextLinkBuf = m.contextLinkBuf[:len(m.contextLinkBuf)-1]
+		}
+		if m.contextCreating && len(m.contextCreateBuf) > 0 {
+			m.contextCreateBuf = m.contextCreateBuf[:len(m.contextCreateBuf)-1]
+		}
+	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
+		if m.contextLinking {
+			m.contextLinkBuf = ""
+		}
+		if m.contextCreating {
+			m.contextCreateBuf = ""
+		}
+	default:
+		ch := msg.String()
+		if len(ch) == 1 || ch == " " {
+			if m.contextLinking {
+				m.contextLinkBuf += ch
+			}
+			if m.contextCreating {
+				m.contextCreateBuf += ch
+			}
+		}
 	}
 	return m, nil
 }
@@ -1771,7 +1747,6 @@ func (m EntitiesModel) renderDetail() string {
 		return m.renderList()
 	}
 
-	m.syncDetailMetadataRows()
 	e := m.detail
 	rows := []components.TableRow{
 		{Label: "ID", Value: e.ID},
@@ -1798,18 +1773,10 @@ func (m EntitiesModel) renderDetail() string {
 	}
 
 	sections := []string{components.Table("Entity", rows, m.width)}
-	if len(e.Metadata) > 0 {
-		sections = append(sections, renderMetadataSelectableBlockWithTitle(
-			"Metadata",
-			m.metaRows,
-			m.width,
-			m.metaList,
-			m.metaSelected,
-			m.metaSelectMode,
-		))
-		if m.metaInspect {
-			sections = append(sections, m.renderMetaInspect())
-		}
+	if m.contextLoading {
+		sections = append(sections, components.TitledBox("Context Items", MutedStyle.Render("Loading..."), m.width))
+	} else {
+		sections = append(sections, renderContextSummaryTable(m.detailContext, 6, m.width))
 	}
 	if len(m.detailRels) > 0 {
 		sections = append(sections, renderRelationshipSummaryTable("entity", e.ID, m.detailRels, 8, m.width))
@@ -2022,8 +1989,6 @@ func (m *EntitiesModel) startEdit() {
 	m.editScopeBuf = ""
 	m.editScopeIdx = 0
 	m.editScopeSelecting = false
-	m.editMeta.Reset()
-	m.editMeta.Load(map[string]any(m.detail.Metadata))
 	m.editScopesDirty = false
 	m.editSaving = false
 }
@@ -2108,10 +2073,6 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			case isKey(msg, "right"), isSpace(msg):
 				m.editStatusIdx = (m.editStatusIdx + 1) % len(entityStatusOptions)
 			}
-		case editFieldMetadata:
-			if isEnter(msg) {
-				m.editMeta.Active = true
-			}
 		}
 	}
 	return m, nil
@@ -2171,16 +2132,6 @@ func (m EntitiesModel) renderEdit() string {
 
 	b.WriteString("\n\n")
 
-	// Metadata
-	if m.editFocus == editFieldMetadata {
-		b.WriteString(SelectedStyle.Render("  Metadata:"))
-	} else {
-		b.WriteString(MutedStyle.Render("  Metadata:"))
-	}
-	b.WriteString("\n")
-	meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-	b.WriteString(NormalStyle.Render("  " + meta))
-
 	if m.editSaving {
 		b.WriteString("\n\n" + MutedStyle.Render("Saving..."))
 	}
@@ -2197,20 +2148,9 @@ func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 
 	status := entityStatusOptions[m.editStatusIdx]
 	tags := append([]string{}, m.editTags...)
-	metaBuf := strings.TrimSpace(m.editMeta.Buffer)
-	meta, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	if metaBuf == "" {
-		meta = map[string]any{}
-	}
-	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
 	input := api.UpdateEntityInput{
-		Status:   &status,
-		Tags:     &tags,
-		Metadata: meta,
+		Status: &status,
+		Tags:   &tags,
 	}
 
 	m.editSaving = true
@@ -2763,9 +2703,6 @@ func (m EntitiesModel) renderRelateEntityPreview(e api.Entity, width int) string
 	if len(e.Tags) > 0 {
 		lines = append(lines, renderPreviewRow("Tags", strings.Join(e.Tags, ", "), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(e.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
-	}
 
 	return padPreviewLines(lines, width)
 }
@@ -2900,6 +2837,94 @@ func (m EntitiesModel) loadEntityDetailRelationships(entityID string) tea.Cmd {
 	}
 }
 
+// loadEntityContext loads context items linked to entity.
+func (m EntitiesModel) loadEntityContext(entityID string) tea.Cmd {
+	return func() tea.Msg {
+		items, err := m.client.ListContextByOwner("entity", entityID, api.QueryParams{
+			"limit":  "50",
+			"offset": "0",
+		})
+		if err != nil {
+			return entityContextLoadedMsg{id: entityID, items: nil}
+		}
+		return entityContextLoadedMsg{id: entityID, items: items}
+	}
+}
+
+func (m EntitiesModel) linkContextToEntity(contextID string) tea.Cmd {
+	return func() tea.Msg {
+		if m.detail == nil {
+			return errMsg{fmt.Errorf("no entity selected")}
+		}
+		ownerID := m.detail.ID
+		if err := m.client.LinkContext(contextID, api.LinkContextInput{
+			OwnerType: "entity",
+			OwnerID:   ownerID,
+		}); err != nil {
+			return errMsg{err}
+		}
+		items, err := m.client.ListContextByOwner("entity", ownerID, api.QueryParams{
+			"limit":  "50",
+			"offset": "0",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		return entityContextLoadedMsg{id: ownerID, items: items}
+	}
+}
+
+func (m EntitiesModel) createContextForEntity(title string) tea.Cmd {
+	return func() tea.Msg {
+		if m.detail == nil {
+			return errMsg{fmt.Errorf("no entity selected")}
+		}
+		input := api.CreateContextInput{
+			Title:      title,
+			SourceType: "note",
+			Scopes:     m.contextScopesForEntity(),
+			Tags:       []string{},
+		}
+		created, err := m.client.CreateContext(input)
+		if err != nil {
+			return errMsg{err}
+		}
+		if err := m.client.LinkContext(created.ID, api.LinkContextInput{
+			OwnerType: "entity",
+			OwnerID:   m.detail.ID,
+		}); err != nil {
+			return errMsg{err}
+		}
+		items, err := m.client.ListContextByOwner("entity", m.detail.ID, api.QueryParams{
+			"limit":  "50",
+			"offset": "0",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		return entityContextLoadedMsg{id: m.detail.ID, items: items}
+	}
+}
+
+func (m EntitiesModel) contextScopesForEntity() []string {
+	if m.detail == nil {
+		return []string{"private"}
+	}
+	if len(m.detail.PrivacyScopeIDs) == 0 {
+		return []string{"private"}
+	}
+	scopes := make([]string, 0, len(m.detail.PrivacyScopeIDs))
+	for _, id := range m.detail.PrivacyScopeIDs {
+		if name, ok := m.scopeNames[id]; ok && strings.TrimSpace(name) != "" {
+			scopes = append(scopes, name)
+		}
+	}
+	if len(scopes) == 0 {
+		return []string{"private"}
+	}
+	return scopes
+}
+
 // loadRelationships loads load relationships.
 func (m EntitiesModel) loadRelationships() tea.Cmd {
 	return func() tea.Msg {
@@ -2946,262 +2971,12 @@ func (m EntitiesModel) createRelationship(source api.Entity, target api.Entity, 
 // applyEntityUpdate handles apply entity update.
 func (m *EntitiesModel) applyEntityUpdate(updated api.Entity) {
 	m.detail = &updated
-	m.syncDetailMetadataRows()
 	for i := range m.items {
 		if m.items[i].ID == updated.ID {
 			m.items[i] = updated
 			m.list.Items[i] = formatEntityLine(updated)
 			break
 		}
-	}
-}
-
-// syncDetailMetadataRows handles sync detail metadata rows.
-func (m *EntitiesModel) syncDetailMetadataRows() {
-	if m.metaList == nil {
-		m.metaList = components.NewList(metadataPanelPageSize(false))
-	}
-	if m.metaSelected == nil {
-		m.metaSelected = map[int]bool{}
-	}
-	rows := []metadataDisplayRow{}
-	if m.detail != nil && len(m.detail.Metadata) > 0 {
-		rows = metadataDisplayRows(map[string]any(m.detail.Metadata))
-	}
-	m.metaRows = rows
-	syncMetadataList(m.metaList, rows, metadataPanelPageSize(m.metaExpanded))
-	if !m.metaExpanded || len(rows) == 0 {
-		m.closeMetaInspect()
-		if !m.metaExpanded {
-			m.metaSelectMode = false
-		}
-	}
-	if m.metaInspect && (m.metaInspectI < 0 || m.metaInspectI >= len(rows)) {
-		m.closeMetaInspect()
-	}
-	for idx := range m.metaSelected {
-		if idx < 0 || idx >= len(rows) {
-			delete(m.metaSelected, idx)
-		}
-	}
-}
-
-// clearMetaSelection handles clear meta selection.
-func (m *EntitiesModel) clearMetaSelection() {
-	m.metaSelected = map[int]bool{}
-	m.metaSelectMode = false
-}
-
-// toggleMetaSelection handles toggle meta selection.
-func (m *EntitiesModel) toggleMetaSelection(idx int) {
-	if idx < 0 || idx >= len(m.metaRows) {
-		return
-	}
-	if m.metaSelected == nil {
-		m.metaSelected = map[int]bool{}
-	}
-	if m.metaSelected[idx] {
-		delete(m.metaSelected, idx)
-		if len(m.metaSelected) == 0 {
-			m.metaSelectMode = false
-		}
-		return
-	}
-	m.metaSelected[idx] = true
-	m.metaSelectMode = true
-}
-
-// toggleMetaSelectAll handles toggle meta select all.
-func (m *EntitiesModel) toggleMetaSelectAll() {
-	if len(m.metaRows) == 0 {
-		return
-	}
-	if len(m.metaSelected) == len(m.metaRows) {
-		m.clearMetaSelection()
-		return
-	}
-	all := make(map[int]bool, len(m.metaRows))
-	for i := range m.metaRows {
-		all[i] = true
-	}
-	m.metaSelected = all
-	m.metaSelectMode = true
-}
-
-// selectedMetaIndices handles selected meta indices.
-func (m EntitiesModel) selectedMetaIndices() []int {
-	if len(m.metaSelected) == 0 {
-		return nil
-	}
-	out := make([]int, 0, len(m.metaSelected))
-	for idx, selected := range m.metaSelected {
-		if selected {
-			out = append(out, idx)
-		}
-	}
-	sort.Ints(out)
-	return out
-}
-
-// copyCurrentMetadataRow handles copy current metadata row.
-func (m EntitiesModel) copyCurrentMetadataRow() tea.Cmd {
-	if len(m.metaRows) == 0 || m.metaList == nil {
-		return nil
-	}
-	idx := m.metaList.Selected()
-	if idx < 0 || idx >= len(m.metaRows) {
-		return nil
-	}
-	return m.copyMetadataRows([]int{idx})
-}
-
-// openMetaInspect handles open meta inspect.
-func (m *EntitiesModel) openMetaInspect(idx int) {
-	if idx < 0 || idx >= len(m.metaRows) {
-		return
-	}
-	m.metaInspect = true
-	m.metaInspectI = idx
-	m.metaInspectO = 0
-}
-
-// closeMetaInspect handles close meta inspect.
-func (m *EntitiesModel) closeMetaInspect() {
-	m.metaInspect = false
-	m.metaInspectI = 0
-	m.metaInspectO = 0
-}
-
-// moveMetaInspect handles move meta inspect.
-func (m *EntitiesModel) moveMetaInspect(delta int) {
-	if !m.metaInspect {
-		return
-	}
-	lines := m.metaInspectLines()
-	page := m.metaInspectPageSize()
-	maxOffset := len(lines) - page
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
-	m.metaInspectO += delta
-	if m.metaInspectO < 0 {
-		m.metaInspectO = 0
-	}
-	if m.metaInspectO > maxOffset {
-		m.metaInspectO = maxOffset
-	}
-}
-
-// metaInspectPageSize handles meta inspect page size.
-func (m EntitiesModel) metaInspectPageSize() int {
-	page := 10
-	if m.height > 0 {
-		page = m.height / 5
-	}
-	if page < 6 {
-		page = 6
-	}
-	if page > 18 {
-		page = 18
-	}
-	return page
-}
-
-// metaInspectLines handles meta inspect lines.
-func (m EntitiesModel) metaInspectLines() []string {
-	if !m.metaInspect || m.metaInspectI < 0 || m.metaInspectI >= len(m.metaRows) {
-		return nil
-	}
-	row := m.metaRows[m.metaInspectI]
-	width := components.BoxContentWidth(m.width) - 4
-	if width < 30 {
-		width = 30
-	}
-	group, field := metadataGroupAndField(row.field)
-	lines := []string{
-		renderPreviewRow("Group", group, width),
-		renderPreviewRow("Field", field, width),
-		"",
-	}
-	value := row.value
-	if strings.TrimSpace(value) == "" {
-		value = "None"
-	}
-	raw := strings.Split(value, "\n")
-	for _, line := range raw {
-		wrapped := wrapMetadataDisplayLine(line, width)
-		lines = append(lines, wrapped...)
-	}
-	return lines
-}
-
-// renderMetaInspect renders render meta inspect.
-func (m EntitiesModel) renderMetaInspect() string {
-	lines := m.metaInspectLines()
-	if len(lines) == 0 {
-		return ""
-	}
-	page := m.metaInspectPageSize()
-	start := m.metaInspectO
-	if start < 0 {
-		start = 0
-	}
-	if start > len(lines) {
-		start = len(lines)
-	}
-	end := start + page
-	if end > len(lines) {
-		end = len(lines)
-	}
-	visible := append([]string{}, lines[start:end]...)
-	if start > 0 && len(visible) > 0 {
-		visible[0] = MutedStyle.Render("... ↑ more")
-	}
-	if end < len(lines) && len(visible) > 0 {
-		visible[len(visible)-1] = MutedStyle.Render("... ↓ more")
-	}
-	info := MutedStyle.Render(fmt.Sprintf("Lines %d-%d of %d", start+1, end, len(lines)))
-	hints := MutedStyle.Render("↑/↓ scroll · enter copy value · esc back")
-	content := strings.Join(visible, "\n") + "\n\n" + info + "\n" + hints
-	return components.TitledBox("Metadata Value", colorizeScopeBadges(content), m.width)
-}
-
-// copySelectedMetadataRows handles copy selected metadata rows.
-func (m EntitiesModel) copySelectedMetadataRows() tea.Cmd {
-	indices := m.selectedMetaIndices()
-	if len(indices) == 0 {
-		return m.copyCurrentMetadataRow()
-	}
-	return m.copyMetadataRows(indices)
-}
-
-// copyMetadataRows handles copy metadata rows.
-func (m EntitiesModel) copyMetadataRows(indices []int) tea.Cmd {
-	if len(indices) == 0 {
-		return nil
-	}
-	lines := make([]string, 0, len(indices))
-	for _, idx := range indices {
-		if idx < 0 || idx >= len(m.metaRows) {
-			continue
-		}
-		row := m.metaRows[idx]
-		value := strings.TrimSpace(row.value)
-		if value == "" {
-			value = "None"
-		}
-		lines = append(lines, value)
-	}
-	if len(lines) == 0 {
-		return nil
-	}
-	payload := strings.Join(lines, "\n")
-	count := len(lines)
-	return func() tea.Msg {
-		if err := copyEntityMetadataClipboard(payload); err != nil {
-			return errMsg{err}
-		}
-		return entityMetadataCopiedMsg{count: count}
 	}
 }
 
@@ -3337,9 +3112,6 @@ func formatEntityLineWidth(e api.Entity, maxWidth int) string {
 	}
 	if tagPreview := previewTags(e.Tags, 2); tagPreview != "" {
 		segments = append(segments, tagPreview)
-	}
-	if preview := metadataPreview(map[string]any(e.Metadata), 40); preview != "" {
-		segments = append(segments, preview)
 	}
 	return joinEntitySegments(segments, lineWidth)
 }

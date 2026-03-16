@@ -17,7 +17,6 @@ async def test_import_entities_rejects_invalid_format(api):
                 "status": "active",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
             }
         ],
     }

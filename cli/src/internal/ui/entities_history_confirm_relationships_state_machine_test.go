@@ -31,7 +31,6 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 						"changed_fields": []string{"name"},
 						"old_data":       map[string]any{},
 						"new_data":       map[string]any{},
-						"metadata":       map[string]any{},
 						"changed_at":     now,
 					},
 				},
@@ -155,7 +154,6 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 				"status":            "active",
 				"privacy_scope_ids": []string{"s1"},
 				"tags":              []string{},
-				"metadata":          map[string]any{},
 				"created_at":        now,
 				"updated_at":        now,
 			}}))
@@ -174,7 +172,6 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 				"status":            "active",
 				"privacy_scope_ids": []string{"s1"},
 				"tags":              []string{},
-				"metadata":          map[string]any{},
 				"created_at":        now,
 				"updated_at":        now,
 			}}))

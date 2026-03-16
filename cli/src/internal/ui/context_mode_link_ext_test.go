@@ -29,7 +29,7 @@ func TestContextHandleModeKeysBranchMatrix(t *testing.T) {
 
 	updated.modeFocus = true
 	updated.view = contextViewEdit
-	updated.editFocus = contextEditFieldMeta
+	updated.editFocus = contextEditFieldNotes
 	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
@@ -108,16 +108,12 @@ func TestContextHandleDetailKeysBranchMatrix(t *testing.T) {
 		Tags:            []string{"demo"},
 		PrivacyScopeIDs: []string{"scope-1"},
 		CreatedAt:       now,
-		Metadata:        api.JSONMap{"topic": "build"},
 	}
 
 	updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
-	require.Nil(t, cmd)
-	assert.True(t, updated.metaExpanded)
 	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
 	assert.True(t, updated.contentExpanded)
 	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
@@ -134,7 +130,6 @@ func TestContextHandleDetailKeysBranchMatrix(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Equal(t, contextViewList, updated.view)
 	assert.Nil(t, updated.detail)
-	assert.False(t, updated.metaExpanded)
 	assert.False(t, updated.contentExpanded)
 	assert.False(t, updated.sourcePathExpanded)
 }
@@ -227,16 +222,8 @@ func TestContextHandleEditKeysBranchMatrix(t *testing.T) {
 		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
 		assert.Equal(t, "Alpha ", updated.contextEditFields[contextEditFieldTitle].value)
 
-		updated.editFocus = contextEditFieldMeta
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
-		assert.True(t, updated.editMeta.Active)
-
-		updated.editMeta.Buffer = "bad metadata line"
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
-		require.Nil(t, cmd)
-		assert.False(t, updated.editSaving)
-
-		updated.editMeta.Buffer = "profile: value"
+		updated.editFocus = contextEditFieldNotes
+		updated.contextEditFields[contextEditFieldNotes].value = "notes"
 		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
 		require.NotNil(t, cmd)
 		assert.True(t, updated.editSaving)
@@ -360,7 +347,7 @@ func TestContextRenderLinkSearchAndPreviewBranches(t *testing.T) {
 	assert.Contains(t, view, "No matches")
 
 	model.linkResults = []api.Entity{
-		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active", Tags: []string{"demo"}, Metadata: api.JSONMap{"role": "builder"}},
+		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active", Tags: []string{"demo"}},
 		{ID: "ent-2", Name: "Beta", Type: "project", Status: "inactive"},
 	}
 	model.linkList.SetItems([]string{"Alpha", "Beta"})
@@ -470,7 +457,7 @@ func TestContextRenderLinkSearchSideBySidePreviewAndNarrowTableBranches(t *testi
 	model.width = 220
 	model.linkQuery = "alpha"
 	model.linkResults = []api.Entity{
-		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active", Metadata: api.JSONMap{"role": "builder"}},
+		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active"},
 	}
 	model.linkList.SetItems([]string{"Alpha"})
 	model.linkList.Cursor = 0

@@ -46,7 +46,6 @@ func TestContextSearchLinkEntitiesSuccessAndError(t *testing.T) {
 					"type":       "project",
 					"status":     "active",
 					"tags":       []string{},
-					"metadata":   map[string]any{},
 					"created_at": now,
 					"updated_at": now,
 				}},

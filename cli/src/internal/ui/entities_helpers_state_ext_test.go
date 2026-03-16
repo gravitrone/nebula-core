@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -100,85 +99,4 @@ func TestEntitiesSearchInputAndBulkSelectionBranchMatrix(t *testing.T) {
 	updated.bulkSelected = map[string]bool{"ent-1": true}
 	updated.clearBulkSelection()
 	assert.Empty(t, updated.bulkSelected)
-}
-
-func TestEntitiesMetaSelectionAndInspectBranchMatrix(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.width = 80
-	model.height = 20
-	model.metaRows = []metadataDisplayRow{
-		{field: "profile.note", value: strings.Repeat("line\n", 20)},
-		{field: "profile.tz", value: "UTC"},
-	}
-	model.metaSelected = nil
-
-	model.toggleMetaSelection(-1)
-	assert.Empty(t, model.metaSelected)
-	model.toggleMetaSelection(9)
-	assert.Empty(t, model.metaSelected)
-
-	model.toggleMetaSelection(0)
-	assert.True(t, model.metaSelected[0])
-	assert.True(t, model.metaSelectMode)
-
-	model.toggleMetaSelection(0)
-	assert.False(t, model.metaSelected[0])
-	assert.False(t, model.metaSelectMode)
-
-	emptyRows := NewEntitiesModel(nil)
-	emptyRows.metaRows = nil
-	emptyRows.metaSelected = map[int]bool{0: true}
-	emptyRows.toggleMetaSelectAll()
-	assert.Equal(t, map[int]bool{0: true}, emptyRows.metaSelected)
-
-	model.metaSelected = map[int]bool{1: true, 0: true}
-	assert.Equal(t, []int{0, 1}, model.selectedMetaIndices())
-
-	model.openMetaInspect(-1)
-	assert.False(t, model.metaInspect)
-	model.openMetaInspect(9)
-	assert.False(t, model.metaInspect)
-
-	model.openMetaInspect(0)
-	assert.True(t, model.metaInspect)
-	assert.Equal(t, 0, model.metaInspectI)
-
-	model.moveMetaInspect(999)
-	lines := model.metaInspectLines()
-	require.NotNil(t, lines)
-	page := model.metaInspectPageSize()
-	maxOffset := len(lines) - page
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
-	assert.Equal(t, maxOffset, model.metaInspectO)
-
-	model.moveMetaInspect(-999)
-	assert.Equal(t, 0, model.metaInspectO)
-
-	model.closeMetaInspect()
-	assert.False(t, model.metaInspect)
-	assert.Nil(t, model.metaInspectLines())
-}
-
-func TestEntitiesMetaInspectLinesWidthClampAndEmptyValueBranches(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.width = 0 // force width clamp to minimum inspect width branch
-	model.metaInspect = true
-	model.metaInspectI = 0
-	model.metaRows = []metadataDisplayRow{
-		{field: "profile.note", value: "line 1\n\nline 3"},
-	}
-
-	lines := model.metaInspectLines()
-	require.NotEmpty(t, lines)
-	joined := strings.Join(lines, "\n")
-	assert.Contains(t, joined, "Group")
-	assert.Contains(t, joined, "Field")
-	assert.Contains(t, lines, "")
-
-	model.metaRows[0].value = "   "
-	lines = model.metaInspectLines()
-	require.NotEmpty(t, lines)
-	assert.Contains(t, strings.Join(lines, "\n"), "None")
 }

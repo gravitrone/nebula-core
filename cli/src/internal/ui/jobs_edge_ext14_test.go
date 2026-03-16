@@ -90,7 +90,6 @@ func TestJobsSaveEditReturnsErrMsgOnUpdateFailure(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1", Title: "Alpha", Status: "pending"}
 	model.startEdit()
 	model.editDesc = "note"
-	model.editMeta.Buffer = `{"owner":"ops"}`
 
 	updated, cmd := model.saveEdit()
 	require.NotNil(t, cmd)

@@ -1,18 +1,15 @@
--- Search entities by JSONB metadata containment
-SELECT 
+-- Deprecated: entity metadata removed, keep query to avoid hard failures.
+SELECT
     e.id,
     e.name,
     et.name AS type,
     s.name AS status,
     e.privacy_scope_ids,
     e.tags,
-    e.metadata,
+    NULL::jsonb AS metadata,
     e.created_at
 FROM entities e
 JOIN entity_types et ON e.type_id = et.id
 JOIN statuses s ON e.status_id = s.id
-WHERE 
-    e.metadata @> $1::jsonb
-    AND e.privacy_scope_ids && $3::uuid[]
-    AND s.category = 'active'
-LIMIT $2;
+WHERE false
+LIMIT 0;

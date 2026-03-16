@@ -339,8 +339,20 @@ func (m SearchModel) renderSearchPreview(entry searchEntry, width int) string {
 		if len(entry.context.Tags) > 0 {
 			lines = append(lines, renderPreviewRow("Tags", strings.Join(entry.context.Tags, ", "), width))
 		}
-		if snippet := previewStringValue(entry.context.Metadata, "snippet"); snippet != "" {
-			lines = append(lines, renderPreviewRow("Snippet", snippet, width))
+		snippet := ""
+		if entry.context.Content != nil {
+			snippet = truncateString(
+				strings.TrimSpace(components.SanitizeText(*entry.context.Content)),
+				80,
+			)
+		} else if entry.context.URL != nil {
+			snippet = truncateString(
+				strings.TrimSpace(components.SanitizeText(*entry.context.URL)),
+				80,
+			)
+		}
+		if strings.TrimSpace(snippet) != "" {
+			lines = append(lines, renderPreviewRow("Preview", strings.TrimSpace(snippet), width))
 		}
 	} else if entry.job != nil {
 		status := strings.TrimSpace(components.SanitizeOneLine(entry.job.Status))
@@ -350,8 +362,14 @@ func (m SearchModel) renderSearchPreview(entry searchEntry, width int) string {
 		if entry.job.Priority != nil && strings.TrimSpace(*entry.job.Priority) != "" {
 			lines = append(lines, renderPreviewRow("Priority", strings.TrimSpace(*entry.job.Priority), width))
 		}
-		if metaPreview := metadataPreview(map[string]any(entry.job.Metadata), 80); metaPreview != "" {
-			lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
+		if entry.job.Description != nil {
+			desc := truncateString(
+				strings.TrimSpace(components.SanitizeText(*entry.job.Description)),
+				80,
+			)
+			if strings.TrimSpace(desc) != "" {
+				lines = append(lines, renderPreviewRow("Description", strings.TrimSpace(desc), width))
+			}
 		}
 	}
 

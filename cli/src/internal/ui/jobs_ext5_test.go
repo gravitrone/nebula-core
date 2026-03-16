@@ -30,6 +30,14 @@ func TestJobsHandleDetailKeysMatrix(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.True(t, updated.creatingSubtask)
 
+	updated, cmd = base.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	require.Nil(t, cmd)
+	assert.True(t, updated.contextCreating)
+
+	updated, cmd = base.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	require.Nil(t, cmd)
+	assert.True(t, updated.contextLinking)
+
 	updated, cmd = base.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkingRel)
@@ -43,11 +51,6 @@ func TestJobsHandleDetailKeysMatrix(t *testing.T) {
 	updated, cmd = base.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobsViewEdit, updated.view)
-
-	updated.metaExpanded = false
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
-	require.Nil(t, cmd)
-	assert.True(t, updated.metaExpanded)
 
 	updated, cmd = base.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
 	require.Nil(t, cmd)

@@ -244,13 +244,13 @@ func TestViewTabBranchesAndRowHighlightExtraMatrix(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabKnow
 	app.tabNav = false
-	app.know.metaEditor.Active = true
+	app.know.view = contextViewList
 	assert.True(t, app.rowHighlightEnabled())
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabJobs
 	app.tabNav = false
-	app.jobs.addMeta.Active = true
+	app.jobs.view = jobsViewList
 	assert.True(t, app.rowHighlightEnabled())
 
 	app = NewApp(nil, &config.Config{})

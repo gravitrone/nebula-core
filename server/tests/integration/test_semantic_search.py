@@ -32,8 +32,8 @@ async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str], summar
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
         """,
         name,
@@ -41,7 +41,6 @@ async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str], summar
         status_id,
         scope_ids,
         ["semantic"],
-        json.dumps({"summary": summary}),
     )
     return str(row["id"])
 
@@ -66,8 +65,8 @@ async def _insert_context(
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO context_items (title, source_type, content, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id
         """,
         title,
@@ -76,7 +75,6 @@ async def _insert_context(
         status_id,
         scope_ids,
         ["semantic"],
-        json.dumps({"topic": "memory"}),
     )
     return str(row["id"])
 

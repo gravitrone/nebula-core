@@ -39,8 +39,8 @@ async def test_login_ensures_admin_scope(api_no_auth, db_pool, enums):
 
     existing = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4::uuid[], $5)
         RETURNING id
         """,
         "login-admin-scope-user",
@@ -48,7 +48,6 @@ async def test_login_ensures_admin_scope(api_no_auth, db_pool, enums):
         status_id,
         [public_scope, private_scope],
         [],
-        "{}",
     )
 
     r = await api_no_auth.post(
@@ -82,8 +81,8 @@ async def test_login_existing_user_backfills_baseline_scopes(
 
     existing = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4::uuid[], $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4::uuid[], $5)
         RETURNING id
         """,
         "login-baseline-backfill-user",
@@ -91,7 +90,6 @@ async def test_login_existing_user_backfills_baseline_scopes(
         status_id,
         [public_scope],
         [],
-        "{}",
     )
 
     r = await api_no_auth.post(

@@ -39,15 +39,6 @@ func (c *Client) UpdateEntity(id string, input UpdateEntityInput) (*Entity, erro
 	return decodeOne[Entity](data)
 }
 
-// SearchEntities handles search entities.
-func (c *Client) SearchEntities(metadata map[string]any) ([]Entity, error) {
-	data, err := c.post("/api/entities/search", map[string]any{"metadata_query": metadata})
-	if err != nil {
-		return nil, err
-	}
-	return decodeList[Entity](data)
-}
-
 // GetEntityHistory gets get entity history.
 func (c *Client) GetEntityHistory(id string, limit int, offset int) ([]AuditEntry, error) {
 	params := QueryParams{

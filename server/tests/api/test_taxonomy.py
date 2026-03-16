@@ -198,15 +198,14 @@ async def test_taxonomy_scope_archive_conflict_when_referenced(
 
     await db_pool.execute(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         """,
         "sdk-scope-holder",
         enums.entity_types.name_to_id["person"],
         enums.statuses.name_to_id["active"],
         [scope["id"]],
         ["sdk"],
-        json.dumps({"source": "test"}),
     )
 
     resp = await api_admin.post(f"/api/taxonomy/scopes/{scope['id']}/archive")
@@ -230,15 +229,14 @@ async def test_taxonomy_entity_type_archive_conflict_when_referenced(
 
     await db_pool.execute(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         """,
         "sdk-entity-type-holder",
         entity_type["id"],
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         ["sdk"],
-        json.dumps({"source": "test"}),
     )
 
     resp = await api_admin.post(
@@ -262,8 +260,8 @@ async def test_taxonomy_relationship_type_archive_conflict_when_referenced(
 
     source = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
         """,
         "sdk-rel-source",
@@ -271,12 +269,11 @@ async def test_taxonomy_relationship_type_archive_conflict_when_referenced(
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         ["sdk"],
-        json.dumps({"source": "test"}),
     )
     target = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
         """,
         "sdk-rel-target",
@@ -284,7 +281,6 @@ async def test_taxonomy_relationship_type_archive_conflict_when_referenced(
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         ["sdk"],
-        json.dumps({"source": "test"}),
     )
     await db_pool.execute(
         """

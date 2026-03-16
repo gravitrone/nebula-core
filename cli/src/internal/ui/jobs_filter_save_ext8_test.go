@@ -149,18 +149,13 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 	assert.Equal(t, "job-1", updated.detail.ID)
 }
 
-func TestJobsSaveAddValidationMetadataAndSuccess(t *testing.T) {
+func TestJobsSaveAddValidationAndSuccess(t *testing.T) {
 	model := NewJobsModel(nil)
 	updated, cmd := model.saveAdd()
 	require.Nil(t, cmd)
 	assert.Equal(t, "Title is required", updated.addErr)
 
 	updated.addFields[jobFieldTitle].value = "Ship it"
-	updated.addMeta.Buffer = "invalid"
-	updated, cmd = updated.saveAdd()
-	require.Nil(t, cmd)
-	assert.NotEmpty(t, updated.addErr)
-
 	var seen api.CreateJobInput
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/api/jobs" {
@@ -178,8 +173,6 @@ func TestJobsSaveAddValidationMetadataAndSuccess(t *testing.T) {
 	model.addFields[jobFieldDescription].value = "desc"
 	model.addStatusIdx = 1
 	model.addPriorityIdx = 2
-	model.addMeta.Buffer = "group | field | value"
-	model.addMeta.Scopes = []string{"public"}
 
 	updated, cmd = model.saveAdd()
 	require.NotNil(t, cmd)
@@ -191,5 +184,4 @@ func TestJobsSaveAddValidationMetadataAndSuccess(t *testing.T) {
 	assert.Equal(t, "desc", seen.Description)
 	assert.Equal(t, jobStatusOptions[1], seen.Status)
 	assert.Equal(t, jobPriorityOptions[2], seen.Priority)
-	require.NotNil(t, seen.Metadata)
 }

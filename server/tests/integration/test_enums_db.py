@@ -41,8 +41,9 @@ async def test_scopes_count(enums):
 async def test_relationship_types_count(enums):
     """Relationship types section should contain the minimal enterprise defaults."""
 
-    assert len(enums.relationship_types.name_to_id) == 10
+    assert len(enums.relationship_types.name_to_id) == 11
     assert "has-file" in enums.relationship_types.name_to_id
+    assert "context-of" in enums.relationship_types.name_to_id
 
 
 async def test_entity_types_count(enums):

@@ -67,76 +67,6 @@ def _advisory_lock_key(*parts: str) -> int:
     return int.from_bytes(digest[:8], "big", signed=True)
 
 
-def _decode_json_object(value: object) -> dict:
-    """Decode JSON object payloads from DB rows and request payloads.
-
-    Args:
-        value: Dict or JSON string value.
-
-    Returns:
-        Decoded dict when possible, otherwise empty dict.
-    """
-
-    if value is None:
-        return {}
-    if isinstance(value, dict):
-        return value
-    if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return {}
-        if isinstance(parsed, str):
-            try:
-                reparsed = json.loads(parsed)
-            except json.JSONDecodeError:
-                return {}
-            return reparsed if isinstance(reparsed, dict) else {}
-        if isinstance(parsed, dict):
-            return parsed
-    return {}
-
-
-def _deep_merge_dict(base: dict, patch: dict) -> dict:
-    """Recursively merge patch into base metadata dict.
-
-    Args:
-        base: Existing metadata object.
-        patch: Incoming metadata patch object.
-
-    Returns:
-        New merged metadata object.
-    """
-
-    merged = dict(base)
-    for key, value in patch.items():
-        if (
-            isinstance(value, dict)
-            and isinstance(merged.get(key), dict)
-        ):
-            merged[key] = _deep_merge_dict(merged[key], value)
-            continue
-        merged[key] = value
-    return merged
-
-
-def _normalize_entity_row(row: dict | None) -> dict:
-    """Normalize entity row metadata shape.
-
-    Args:
-        row: Raw entity row from asyncpg.
-
-    Returns:
-        Entity row with metadata always coerced to a dict.
-    """
-
-    if not row:
-        return {}
-    normalized = dict(row)
-    normalized["metadata"] = _decode_json_object(normalized.get("metadata"))
-    return normalized
-
-
 async def execute_create_entity(
     pool: Pool, enums: EnumRegistry, change_details: dict
 ) -> dict:
@@ -155,7 +85,7 @@ async def execute_create_entity(
     """
 
     from .enums import require_entity_type
-    from .models import CreateEntityInput, validate_entity_metadata
+    from .models import CreateEntityInput
 
     if isinstance(change_details, str):
         change_details = json.loads(change_details)
@@ -196,23 +126,6 @@ async def execute_create_entity(
                 f"(id: {existing['id']}). If intentional, use different scopes or name."
             )
 
-        # Validate metadata structure
-        metadata = validate_entity_metadata(payload.type, payload.metadata)
-
-        # Validate context segment privacy rules
-        context_segments = metadata.get("context_segments") if metadata else None
-        if context_segments:
-            allowed_scopes = set(payload.scopes)
-            for segment in context_segments:
-                segment_scopes = segment.get("scopes", [])
-                if not segment_scopes:
-                    raise ValueError("Context segment scopes required")
-                for scope_name in segment_scopes:
-                    if scope_name not in enums.scopes.name_to_id:
-                        raise ValueError(f"Unknown scope: {scope_name}")
-                    if scope_name not in allowed_scopes:
-                        raise ValueError("Context segment scope not in entity scopes")
-
         # LAYER 2: Insert entity
         row = await conn.fetchrow(
             QUERIES["entities/create"],
@@ -221,11 +134,10 @@ async def execute_create_entity(
             type_id,
             status_id,
             payload.tags,
-            json.dumps(metadata) if metadata else None,
             payload.source_path,
         )
 
-        return _normalize_entity_row(dict(row) if row else {})
+        return dict(row) if row else {}
 
     if isinstance(pool, Pool):
         async with pool.acquire() as conn:
@@ -284,10 +196,9 @@ async def execute_create_context(
         scope_ids,
         status_id,
         payload.tags,
-        json.dumps(payload.metadata) if payload.metadata else "{}",
     )
 
-    return _normalize_entity_row(dict(row) if row else {})
+    return dict(row) if row else {}
 
 
 async def execute_update_context(
@@ -304,7 +215,7 @@ async def execute_update_context(
         Updated context row as dict.
     """
 
-    from .models import UpdateContextInput, validate_metadata_payload
+    from .models import UpdateContextInput
 
     if isinstance(change_details, str):
         change_details = json.loads(change_details)
@@ -319,19 +230,6 @@ async def execute_update_context(
     if payload.scopes is not None:
         scope_ids = require_scopes(payload.scopes, enums)
 
-    metadata = None
-    if payload.metadata is not None:
-        context_row = await pool.fetchrow(
-            QUERIES["context/get"],
-            payload.context_id,
-            None,
-        )
-        if not context_row:
-            raise ValueError("Context not found")
-        existing_metadata = _decode_json_object(context_row.get("metadata"))
-        merged_metadata = _deep_merge_dict(existing_metadata, payload.metadata)
-        metadata = validate_metadata_payload(merged_metadata) or {}
-
     row = await pool.fetchrow(
         QUERIES["context/update"],
         payload.context_id,
@@ -342,7 +240,6 @@ async def execute_update_context(
         status_id,
         payload.tags,
         scope_ids,
-        json.dumps(metadata) if metadata is not None else None,
     )
 
     if not row:
@@ -411,7 +308,7 @@ async def execute_create_relationship(
             raise ValueError("Relationship already exists")
         raise
 
-    return _normalize_entity_row(dict(row) if row else {})
+    return dict(row) if row else {}
 
 
 async def execute_create_job(
@@ -449,7 +346,6 @@ async def execute_create_job(
         payload.priority,
         payload.parent_job_id,
         parse_optional_datetime(payload.due_at, "due_at"),
-        json.dumps(payload.metadata) if payload.metadata else "{}",
         scope_ids,
     )
 
@@ -490,7 +386,6 @@ async def execute_update_job(
         payload.description,
         status_id,
         payload.priority,
-        json.dumps(payload.metadata) if payload.metadata is not None else None,
         payload.assigned_to,
         due_at,
         due_at_supplied,
@@ -787,7 +682,7 @@ async def execute_update_entity(
         ValueError: If entity not found.
     """
 
-    from .models import UpdateEntityInput, validate_entity_metadata
+    from .models import UpdateEntityInput
 
     if isinstance(change_details, str):
         change_details = json.loads(change_details)
@@ -799,30 +694,17 @@ async def execute_update_entity(
     if payload.status:
         status_id = require_status(payload.status, enums)
 
-    # Validate metadata if provided.
-    metadata = None
-    if payload.metadata is not None:
-        entity = await pool.fetchrow(
-            QUERIES["entities/get_type_and_metadata"], payload.entity_id
-        )
-        if not entity:
-            raise ValueError("Entity not found")
-
-        type_name = enums.entity_types.id_to_name[entity["type_id"]]
-        existing_metadata = _decode_json_object(entity.get("metadata"))
-        merged_metadata = _deep_merge_dict(existing_metadata, payload.metadata)
-        metadata = validate_entity_metadata(type_name, merged_metadata)
-
     row = await pool.fetchrow(
         QUERIES["entities/update"],
         payload.entity_id,
-        json.dumps(metadata) if metadata else None,
         payload.tags,
         status_id,
         payload.status_reason,
     )
 
-    return _normalize_entity_row(dict(row) if row else {})
+    if not row:
+        raise ValueError("Entity not found")
+    return dict(row)
 
 
 async def execute_bulk_update_entity_tags(

@@ -62,7 +62,6 @@ async def _make_approval_request(db_pool, agent_id):
                 "type": "person",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
                 "source_path": None,
                 "status": "active",
             }

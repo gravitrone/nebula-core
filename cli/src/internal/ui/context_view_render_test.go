@@ -31,7 +31,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 		case strings.HasPrefix(r.URL.Path, "/api/entities") && r.Method == http.MethodGet:
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
-					{"id": "ent-1", "name": "OpenAI", "type": "organization", "status": "active", "tags": []string{}, "metadata": map[string]any{}},
+					{"id": "ent-1", "name": "OpenAI", "type": "organization", "status": "active", "tags": []string{}},
 				},
 			}))
 		case r.URL.Path == "/api/context" && r.Method == http.MethodPost:
@@ -44,7 +44,6 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 					"status":            "active",
 					"tags":              []string{"demo"},
 					"privacy_scope_ids": []string{"scope-1"},
-					"metadata":          map[string]any{},
 					"created_at":        now,
 					"updated_at":        now,
 				},
@@ -161,7 +160,6 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 						"privacy_scope_ids": []string{"scope-1"},
 						"status":            "active",
 						"tags":              []string{"demo"},
-						"metadata":          map[string]any{"role": "builder"},
 						"source_path":       vaultPath,
 						"created_at":        now,
 						"updated_at":        now,
@@ -179,7 +177,6 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 					"privacy_scope_ids": []string{"scope-1"},
 					"status":            "active",
 					"tags":              []string{"demo"},
-					"metadata":          map[string]any{"role": "builder"},
 					"source_path":       vaultPath,
 					"created_at":        now,
 					"updated_at":        now,
@@ -197,7 +194,6 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 					"privacy_scope_ids": []string{"scope-1"},
 					"status":            "active",
 					"tags":              []string{"demo", "new"},
-					"metadata":          map[string]any{"role": "builder"},
 					"source_path":       vaultPath,
 					"created_at":        now,
 					"updated_at":        now,
@@ -280,7 +276,6 @@ func TestContextDetailAndPreviewShowRelationshipSummary(t *testing.T) {
 		PrivacyScopeIDs: []string{"scope-1"},
 		CreatedAt:       now,
 		UpdatedAt:       now,
-		Metadata:        api.JSONMap{"summary": "demo context"},
 	}
 	model.detail = &item
 	model.detailRelationships = []api.Relationship{

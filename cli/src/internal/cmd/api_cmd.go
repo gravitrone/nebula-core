@@ -176,34 +176,6 @@ func apiEntitiesCmd() *cobra.Command {
 	}
 	bindInputFlags(update, &updateInput, &updateInputFile)
 
-	var searchInput string
-	var searchInputFile string
-	search := &cobra.Command{
-		Use:   "search",
-		Short: "Search entities by metadata JSON",
-		Long:  "Input must be metadata object JSON, for example: {\"board\":\"nebula-core\"}.",
-		RunE: func(command *cobra.Command, _ []string) error {
-			raw, err := readInputJSON(searchInput, searchInputFile, true)
-			if err != nil {
-				return err
-			}
-			var metadata map[string]any
-			if err := decodeJSONInput(raw, &metadata); err != nil {
-				return err
-			}
-			client, err := loadCommandClient(true)
-			if err != nil {
-				return err
-			}
-			items, err := client.SearchEntities(metadata)
-			if err != nil {
-				return fmt.Errorf("search entities: %w", err)
-			}
-			return writeCleanJSON(command.OutOrStdout(), items)
-		},
-	}
-	bindInputFlags(search, &searchInput, &searchInputFile)
-
 	var historyLimit int
 	var historyOffset int
 	history := &cobra.Command{
@@ -302,7 +274,7 @@ func apiEntitiesCmd() *cobra.Command {
 	}
 	bindInputFlags(bulkScopes, &bulkScopesInput, &bulkScopesInputFile)
 
-	cmd.AddCommand(query, get, create, update, search, history, revert, bulkTags, bulkScopes)
+	cmd.AddCommand(query, get, create, update, history, revert, bulkTags, bulkScopes)
 	return cmd
 }
 
@@ -407,30 +379,47 @@ func apiContextCmd() *cobra.Command {
 	bindInputFlags(update, &updateInput, &updateInputFile)
 
 	var entityID string
+	var ownerType string
+	var ownerID string
 	link := &cobra.Command{
 		Use:   "link <context-id>",
-		Short: "Link context item to an entity",
+		Short: "Link context item to an owner",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			entityID = strings.TrimSpace(entityID)
-			if entityID == "" {
-				return fmt.Errorf("missing --entity-id")
+			ownerType = strings.TrimSpace(ownerType)
+			ownerID = strings.TrimSpace(ownerID)
+			if ownerID == "" && entityID != "" {
+				ownerType = "entity"
+				ownerID = entityID
+			}
+			if ownerType == "" {
+				ownerType = "entity"
+			}
+			if ownerID == "" {
+				return fmt.Errorf("missing --owner-id")
 			}
 			client, err := loadCommandClient(true)
 			if err != nil {
 				return err
 			}
-			if err := client.LinkContext(args[0], entityID); err != nil {
+			if err := client.LinkContext(args[0], api.LinkContextInput{
+				OwnerType: ownerType,
+				OwnerID:   ownerID,
+			}); err != nil {
 				return fmt.Errorf("link context: %w", err)
 			}
 			return writeCleanJSON(command.OutOrStdout(), map[string]any{
 				"context_id": args[0],
-				"entity_id":  entityID,
+				"owner_type": ownerType,
+				"owner_id":   ownerID,
 				"linked":     true,
 			})
 		},
 	}
-	link.Flags().StringVar(&entityID, "entity-id", "", "target entity id")
+	link.Flags().StringVar(&ownerType, "owner-type", "entity", "owner type (entity or job)")
+	link.Flags().StringVar(&ownerID, "owner-id", "", "owner id")
+	link.Flags().StringVar(&entityID, "entity-id", "", "deprecated alias for --owner-id (entity)")
 
 	cmd.AddCommand(query, get, create, update, link)
 	return cmd

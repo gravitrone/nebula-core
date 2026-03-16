@@ -15,8 +15,8 @@ async def _insert_entity(db_pool, enums, name: str, scopes: list[str]) -> dict:
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -24,7 +24,6 @@ async def _insert_entity(db_pool, enums, name: str, scopes: list[str]) -> dict:
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"kind": "entity"}),
     )
     return dict(row)
 
@@ -37,9 +36,9 @@ async def _insert_context(db_pool, enums, title: str, scopes: list[str]) -> dict
     row = await db_pool.fetchrow(
         """
         INSERT INTO context_items (
-            title, url, source_type, content, privacy_scope_ids, status_id, tags, metadata
+            title, url, source_type, content, privacy_scope_ids, status_id, tags
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         title,
@@ -49,7 +48,6 @@ async def _insert_context(db_pool, enums, title: str, scopes: list[str]) -> dict
         scope_ids,
         status_id,
         ["test"],
-        json.dumps({"kind": "context"}),
     )
     return dict(row)
 
@@ -61,8 +59,8 @@ async def _insert_job(db_pool, enums, title: str, scopes: list[str]) -> dict:
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, description, job_type, status_id, priority, metadata, privacy_scope_ids)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)
+        INSERT INTO jobs (title, description, job_type, status_id, priority, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         title,
@@ -70,7 +68,6 @@ async def _insert_job(db_pool, enums, title: str, scopes: list[str]) -> dict:
         "task",
         status_id,
         "medium",
-        json.dumps({"kind": "job"}),
         scope_ids,
     )
     return dict(row)

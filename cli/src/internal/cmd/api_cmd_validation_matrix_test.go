@@ -39,7 +39,6 @@ func TestAPICmdInputCommandsRejectMissingInput(t *testing.T) {
 	commands := [][]string{
 		{"entities", "create"},
 		{"entities", "update", "e1"},
-		{"entities", "search"},
 		{"entities", "bulk-tags"},
 		{"entities", "bulk-scopes"},
 		{"context", "create"},
@@ -77,7 +76,6 @@ func TestAPICmdInputCommandsRejectDecodeTypeMismatch(t *testing.T) {
 	commands := [][]string{
 		{"entities", "create", "--input", "[]"},
 		{"entities", "update", "e1", "--input", "[]"},
-		{"entities", "search", "--input", "[]"},
 		{"entities", "bulk-tags", "--input", "[]"},
 		{"entities", "bulk-scopes", "--input", "[]"},
 		{"context", "create", "--input", "[]"},

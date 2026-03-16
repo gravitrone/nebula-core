@@ -17,7 +17,6 @@ async def test_concurrent_entity_updates(api):
         "status": "active",
         "scopes": ["public"],
         "tags": ["chaos"],
-        "metadata": {"seed": True},
     }
     create = await api.post("/api/entities", json=payload)
     assert create.status_code in (200, 202)
@@ -28,7 +27,7 @@ async def test_concurrent_entity_updates(api):
 
         return await api.patch(
             f"/api/entities/{entity_id}",
-            json={"metadata": {"iteration": i}},
+            json={"tags": [f"iter-{i}"]},
         )
 
     results = await asyncio.gather(*[do_update(i) for i in range(50)])
@@ -45,7 +44,6 @@ async def test_state_desync_reflects_db_changes(api, db_pool):
         "status": "active",
         "scopes": ["public"],
         "tags": [],
-        "metadata": {},
     }
     create = await api.post("/api/entities", json=payload)
     assert create.status_code in (200, 202)
@@ -78,14 +76,13 @@ async def test_malformed_json_rejected(api):
 async def test_large_payload_and_unicode(api):
     """Handle large payloads and unicode data in context creation."""
 
-    big_text = "x" * 10_000_000
+    big_text = ("x" * 9_999_000) + " 🚀 日本語"
     payload = {
         "title": "big-context",
         "source_type": "note",
         "content": big_text,
         "scopes": ["public"],
         "tags": ["load"],
-        "metadata": {"emoji": "🚀", "lang": "日本語"},
     }
     resp = await api.post("/api/context", json=payload)
     assert resp.status_code in (200, 202, 413)

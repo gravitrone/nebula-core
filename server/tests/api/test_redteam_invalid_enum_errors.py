@@ -42,8 +42,8 @@ async def _make_entity(db_pool, enums, name):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -51,7 +51,6 @@ async def _make_entity(db_pool, enums, name):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"note": "enum"}),
     )
     return dict(row)
 
@@ -63,14 +62,13 @@ async def _make_job(db_pool, enums, agent_id):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO jobs (title, status_id, agent_id)
+        VALUES ($1, $2, $3)
         RETURNING *
         """,
         "Enum Job",
         status_id,
         agent_id,
-        json.dumps({"note": "enum"}),
     )
     return dict(row)
 

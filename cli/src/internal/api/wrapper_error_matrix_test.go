@@ -69,10 +69,6 @@ func TestClientWrappersReturnErrorsOnNon2xx(t *testing.T) {
 			call: func(c *Client) error { _, err := c.UpdateEntity("ent-1", UpdateEntityInput{}); return err },
 		},
 		{
-			name: "entities/search-by-metadata",
-			call: func(c *Client) error { _, err := c.SearchEntities(map[string]any{"k": "v"}); return err },
-		},
-		{
 			name: "entities/history",
 			call: func(c *Client) error { _, err := c.GetEntityHistory("ent-1", 10, 0); return err },
 		},
@@ -136,11 +132,17 @@ func TestClientWrappersReturnErrorsOnNon2xx(t *testing.T) {
 		},
 		{
 			name: "imports/entities",
-			call: func(c *Client) error { _, err := c.ImportEntities(BulkImportRequest{Format: "json", Data: "[]"}); return err },
+			call: func(c *Client) error {
+				_, err := c.ImportEntities(BulkImportRequest{Format: "json", Data: "[]"})
+				return err
+			},
 		},
 		{
 			name: "imports/context",
-			call: func(c *Client) error { _, err := c.ImportContext(BulkImportRequest{Format: "json", Data: "[]"}); return err },
+			call: func(c *Client) error {
+				_, err := c.ImportContext(BulkImportRequest{Format: "json", Data: "[]"})
+				return err
+			},
 		},
 		{
 			name: "imports/relationships",
@@ -151,7 +153,10 @@ func TestClientWrappersReturnErrorsOnNon2xx(t *testing.T) {
 		},
 		{
 			name: "imports/jobs",
-			call: func(c *Client) error { _, err := c.ImportJobs(BulkImportRequest{Format: "json", Data: "[]"}); return err },
+			call: func(c *Client) error {
+				_, err := c.ImportJobs(BulkImportRequest{Format: "json", Data: "[]"})
+				return err
+			},
 		},
 		{
 			name: "jobs/create",
@@ -171,7 +176,10 @@ func TestClientWrappersReturnErrorsOnNon2xx(t *testing.T) {
 		},
 		{
 			name: "jobs/create-subtask",
-			call: func(c *Client) error { _, err := c.CreateSubtask("job-1", map[string]string{"title": "child"}); return err },
+			call: func(c *Client) error {
+				_, err := c.CreateSubtask("job-1", map[string]string{"title": "child"})
+				return err
+			},
 		},
 		{
 			name: "keys/list",

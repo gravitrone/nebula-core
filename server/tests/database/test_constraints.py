@@ -123,28 +123,6 @@ async def test_relationship_unique_rejects_duplicate(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_entity_metadata_must_be_object(db_pool, enums):
-    """Entity metadata CHECK rejects a JSON array."""
-
-    status_id = enums.statuses.name_to_id["active"]
-    type_id = enums.entity_types.name_to_id["person"]
-    scope_ids = [enums.scopes.name_to_id["public"]]
-
-    with pytest.raises(asyncpg.CheckViolationError):
-        await db_pool.execute(
-            """
-            INSERT INTO entities (privacy_scope_ids, name, type_id, status_id, metadata)
-            VALUES ($1, $2, $3, $4, $5::jsonb)
-            """,
-            scope_ids,
-            "bad-metadata-entity",
-            type_id,
-            status_id,
-            "[]",
-        )
-
-
-@pytest.mark.asyncio
 async def test_job_priority_check_rejects_invalid(db_pool, enums):
     """Jobs table rejects an invalid priority value."""
 

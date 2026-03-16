@@ -85,7 +85,7 @@ func TestJobsHandleModeKeysAndToggle(t *testing.T) {
 	assert.False(t, updated.modeFocus)
 }
 
-func TestJobsHandleAddKeysStatusPriorityAndMetadataBranches(t *testing.T) {
+func TestJobsHandleAddKeysStatusPriorityBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.view = jobsViewAdd
 	model.addFocus = jobFieldStatus
@@ -98,11 +98,6 @@ func TestJobsHandleAddKeysStatusPriorityAndMetadataBranches(t *testing.T) {
 	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
 	assert.Equal(t, 1, updated.addPriorityIdx)
 
-	updated.addFocus = jobFieldMetadata
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
-	assert.True(t, updated.addMeta.Active)
-	updated.addMeta.Active = false
-
 	updated.addFocus = jobFieldTitle
 	updated.addFields[jobFieldTitle].value = "abc"
 	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
@@ -113,11 +108,11 @@ func TestJobsHandleAddKeysStatusPriorityAndMetadataBranches(t *testing.T) {
 	assert.True(t, updated.modeFocus)
 }
 
-func TestJobsHandleEditKeysStatusPriorityDescriptionMetadataAndBack(t *testing.T) {
+func TestJobsHandleEditKeysStatusPriorityDescriptionAndBack(t *testing.T) {
 	desc := "hello"
 	model := NewJobsModel(nil)
 	model.view = jobsViewEdit
-	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc, Metadata: api.JSONMap{}}
+	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc}
 	model.startEdit()
 
 	model.editFocus = jobEditFieldStatus
@@ -134,12 +129,6 @@ func TestJobsHandleEditKeysStatusPriorityDescriptionMetadataAndBack(t *testing.T
 	assert.Contains(t, updated.editDesc, "x")
 	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
 	assert.NotContains(t, updated.editDesc, "x")
-
-	updated.editFocus = jobEditFieldMetadata
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
-	assert.True(t, updated.editMeta.Active)
-
-	updated.editMeta.Active = false
 	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
 	assert.Equal(t, jobsViewDetail, updated.view)
 }
@@ -148,7 +137,7 @@ func TestJobsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	desc := "hello"
 	model := NewJobsModel(nil)
 	model.view = jobsViewEdit
-	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc, Metadata: api.JSONMap{}}
+	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc}
 	model.startEdit()
 
 	model.editSaving = true
@@ -176,11 +165,6 @@ func TestJobsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	assert.Equal(t, len(jobPriorityOptions)-1, updated.editPriorityIdx)
 	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
 	assert.Equal(t, 0, updated.editPriorityIdx)
-
-	updated.editFocus = jobEditFieldMetadata
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
-	assert.True(t, updated.editMeta.Active)
-	updated.editMeta.Active = false
 
 	updated.editFocus = jobEditFieldDescription
 	updated.editDesc = "x"

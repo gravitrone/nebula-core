@@ -29,7 +29,6 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 						"title":      "Alpha Job",
 						"status":     "pending",
 						"priority":   "high",
-						"metadata":   map[string]any{},
 						"created_at": now,
 						"updated_at": now,
 					},
@@ -50,7 +49,6 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 					"id":         "job-new",
 					"title":      "New Job",
 					"status":     "pending",
-					"metadata":   map[string]any{},
 					"created_at": now,
 					"updated_at": now,
 				},
@@ -69,9 +67,10 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, cmd = model.Update(msg)
-	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	if cmd != nil {
+		msg = cmd()
+		model, _ = model.Update(msg)
+	}
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "1 total")
@@ -128,7 +127,6 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 					"id":         "job-1",
 					"title":      "Alpha Job",
 					"status":     "active",
-					"metadata":   map[string]any{"role": "founder"},
 					"created_at": now,
 					"updated_at": now,
 				},
@@ -156,17 +154,16 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 		Description: &desc,
 		Status:      "active",
 		Priority:    &priority,
-		Metadata:    api.JSONMap{"role": "builder"},
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	model.metaExpanded = true
+	model.detailContext = []api.Context{{ID: "ctx-1", Title: "Alpha Context", SourceType: "note", Status: "active"}}
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Job")
 	assert.Contains(t, out, "Alpha Job")
 	assert.Contains(t, out, "hello")
-	assert.Contains(t, out, "role")
+	assert.Contains(t, out, "Alpha Context")
 
 	// Enter edit mode.
 	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
@@ -197,7 +194,6 @@ func TestJobsDetailRendersRelationshipsSummary(t *testing.T) {
 		ID:        "job-1",
 		Title:     "Alpha Job",
 		Status:    "active",
-		Metadata:  api.JSONMap{},
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -219,24 +215,4 @@ func TestJobsDetailRendersRelationshipsSummary(t *testing.T) {
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "assigned-to")
 	assert.Contains(t, out, "Owner")
-}
-
-// TestJobsFormsRenderMetadataPreviewTable handles test jobs forms render metadata preview table.
-func TestJobsFormsRenderMetadataPreviewTable(t *testing.T) {
-	model := NewJobsModel(nil)
-	model.width = 100
-	model.view = jobsViewAdd
-	model.addFocus = jobFieldMetadata
-	model.addMeta.Buffer = "profile | timezone | Europe/Warsaw"
-
-	addView := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addView, "profile | timezone | Europe/Warsaw")
-
-	model.view = jobsViewEdit
-	model.detail = &api.Job{ID: "job-1", Title: "Alpha Job"}
-	model.editFocus = jobEditFieldMetadata
-	model.editMeta.Buffer = "ops | board | nebula-core"
-
-	editView := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editView, "ops | board | nebula-core")
 }

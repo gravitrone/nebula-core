@@ -95,7 +95,7 @@ func TestJobsModelEnterShowsDetail(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
+				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -120,7 +120,7 @@ func TestJobsModelEscapeBackFromDetail(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
+				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -147,7 +147,7 @@ func TestJobsModelStatusChangeFlow(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
+				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -171,7 +171,7 @@ func TestJobsModelStatusInputHandling(t *testing.T) {
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now(), "metadata": map[string]any{}},
+				{"id": "job-1", "status": "pending", "title": "Test Job", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -400,7 +400,6 @@ func TestJobsRenderEditShowsFields(t *testing.T) {
 		ID:        "job-1",
 		Title:     "Edit Me",
 		Status:    "pending",
-		Metadata:  api.JSONMap{},
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -411,7 +410,6 @@ func TestJobsRenderEditShowsFields(t *testing.T) {
 	assert.Contains(t, out, "Status:")
 	assert.Contains(t, out, "Description:")
 	assert.Contains(t, out, "Priority:")
-	assert.Contains(t, out, "Metadata:")
 }
 
 // TestJobsBulkStatusUpdateForSelectedRows handles test jobs bulk status update for selected rows.

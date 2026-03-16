@@ -189,9 +189,8 @@ func TestRelationshipsCreatePreviewAndNameLoadBranches(t *testing.T) {
 		NodeType: "entity",
 		Kind:     "person",
 		Status:   "active",
-		Metadata: api.JSONMap{"note": "ships nightly"},
 	}, 48))
-	assert.Contains(t, nodeOut, "Meta")
+	assert.NotContains(t, nodeOut, "Meta")
 
 	model.createSource = &relationshipCreateCandidate{Name: "Source Name"}
 	model.createTarget = &relationshipCreateCandidate{Name: "Target Name"}

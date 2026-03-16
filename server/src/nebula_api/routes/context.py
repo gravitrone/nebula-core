@@ -18,17 +18,8 @@ from nebula_mcp.executors import (
     execute_create_relationship,
     execute_update_context,
 )
-from nebula_mcp.helpers import (
-    enforce_scope_subset,
-    filter_context_segments,
-    scope_names_from_ids,
-)
-from nebula_mcp.models import (
-    MAX_PAGE_LIMIT,
-    MAX_TAG_LENGTH,
-    MAX_TAGS,
-    validate_metadata_payload,
-)
+from nebula_mcp.helpers import enforce_scope_subset, scope_names_from_ids
+from nebula_mcp.models import MAX_PAGE_LIMIT, MAX_TAG_LENGTH, MAX_TAGS
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -98,6 +89,63 @@ async def _require_entity_write_access(
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+async def _require_entity_read_access(
+    pool: Any, enums: Any, auth: dict, entity_id: str
+) -> None:
+    """Handle require entity read access."""
+
+    if _is_admin(auth, enums):
+        return
+    row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not Found")
+    entity_scopes = row.get("privacy_scope_ids") or []
+    caller_scopes = auth.get("scopes", []) or []
+    if entity_scopes and not any(scope in caller_scopes for scope in entity_scopes):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+async def _require_job_read_access(
+    pool: Any, enums: Any, auth: dict, job_id: str
+) -> dict:
+    """Handle require job read access."""
+
+    if _is_admin(auth, enums):
+        row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Not Found")
+        return dict(row)
+    row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Not Found")
+    job = dict(row)
+    job_scopes = job.get("privacy_scope_ids") or []
+    caller_scopes = auth.get("scopes", []) or []
+    if job_scopes and not any(scope in caller_scopes for scope in job_scopes):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return job
+
+
+async def _require_job_write_access(
+    pool: Any, enums: Any, auth: dict, job_id: str
+) -> None:
+    """Handle require job write access."""
+
+    job = await _require_job_read_access(pool, enums, auth, job_id)
+    if _is_admin(auth, enums):
+        return
+    if auth["caller_type"] == "user":
+        if job.get("agent_id"):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        assigned_to = str(job.get("assigned_to") or "")
+        caller_id = str(auth.get("entity_id") or "")
+        if assigned_to and assigned_to != caller_id:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return
+    if job.get("agent_id") != auth.get("agent_id"):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 async def _require_context_write_access(
     pool: Any, enums: Any, auth: dict, context_id: str
 ) -> None:
@@ -160,8 +208,9 @@ class CreateContextBody(BaseModel):
         content: Optional content text.
         scopes: Privacy scopes.
         tags: Tag list.
-        metadata: Arbitrary metadata.
     """
+
+    model_config = {"extra": "forbid"}
 
     title: str
     url: str | None = None
@@ -169,7 +218,6 @@ class CreateContextBody(BaseModel):
     content: str | None = None
     scopes: list[str] = []
     tags: list[str] = []
-    metadata: dict | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -210,15 +258,12 @@ class CreateContextBody(BaseModel):
 
 
 class LinkContextBody(BaseModel):
-    """Payload for linking context to an entity.
+    """Payload for linking context to an owner."""
 
-    Attributes:
-        entity_id: Target entity id.
-        relationship_type: Relationship type name.
-    """
+    model_config = {"extra": "forbid"}
 
-    entity_id: str
-    relationship_type: str = "related-to"
+    owner_type: str
+    owner_id: str
 
 
 class UpdateContextBody(BaseModel):
@@ -232,8 +277,9 @@ class UpdateContextBody(BaseModel):
         status: Updated status name.
         tags: Updated tags.
         scopes: Updated scopes.
-        metadata: Updated metadata.
     """
+
+    model_config = {"extra": "forbid"}
 
     title: str | None = None
     url: str | None = None
@@ -242,7 +288,6 @@ class UpdateContextBody(BaseModel):
     status: str | None = None
     tags: list[str] | None = None
     scopes: list[str] | None = None
-    metadata: dict | None = None
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -302,13 +347,6 @@ async def create_context(
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
-    data.setdefault("metadata", {})
-    if data["metadata"] is None:
-        data["metadata"] = {}
-    try:
-        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:
@@ -368,13 +406,48 @@ async def query_context(
         limit,
         offset,
     )
-    scope_names = scope_names_from_ids(scope_ids, request.app.state.enums)
-    results = []
-    for row in rows:
-        item = dict(row)
-        if item.get("metadata"):
-            item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-        results.append(item)
+    results = [dict(row) for row in rows]
+    return paginated(results, len(results), limit, offset)
+
+
+@router.get("/by-owner/{owner_type}/{owner_id}")
+async def list_context_by_owner(
+    owner_type: str,
+    owner_id: str,
+    request: Request,
+    auth: dict = Depends(require_auth),
+    limit: int = Query(100, ge=1, le=MAX_PAGE_LIMIT),
+    offset: int = Query(0, ge=0),
+) -> dict[str, Any]:
+    """List context items linked to an owner via context-of relationships."""
+
+    pool = request.app.state.pool
+    enums = request.app.state.enums
+    normalized_owner = (owner_type or "").strip().lower()
+    if normalized_owner not in {"entity", "job"}:
+        raise HTTPException(status_code=400, detail="Invalid owner type")
+    try:
+        UUID(owner_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid owner id")
+
+    if normalized_owner == "entity":
+        await _require_entity_read_access(pool, enums, auth, owner_id)
+    else:
+        await _require_job_read_access(pool, enums, auth, owner_id)
+
+    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
+    type_id = require_relationship_type("context-of", enums)
+    rows = await pool.fetch(
+        QUERIES["context/by_owner"],
+        normalized_owner,
+        owner_id,
+        type_id,
+        scope_filter,
+        limit,
+        offset,
+    )
+    results = [dict(row) for row in rows]
     return paginated(results, len(results), limit, offset)
 
 
@@ -408,25 +481,21 @@ async def get_context(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Not Found")
-    item = dict(row)
-    if item.get("metadata"):
-        scope_names = scope_names_from_ids(scope_ids, request.app.state.enums)
-        item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-    return success(item)
+    return success(dict(row))
 
 
 @router.post("/{context_id}/link")
-async def link_to_entity(
+async def link_to_owner(
     context_id: str,
     payload: LinkContextBody,
     request: Request,
     auth: dict = Depends(require_auth),
 ) -> dict[str, Any]:
-    """Create a relationship from context to an entity.
+    """Create a context-of relationship from owner to context.
 
     Args:
         context_id: Context id.
-        payload: Link payload.
+        payload: Link payload with owner info.
         request: FastAPI request.
         auth: Auth context.
 
@@ -438,21 +507,26 @@ async def link_to_entity(
     enums = request.app.state.enums
     try:
         UUID(context_id)
-        UUID(payload.entity_id)
+        UUID(payload.owner_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid id")
     await _require_context_write_access(pool, enums, auth, context_id)
-    await _require_entity_write_access(pool, enums, auth, payload.entity_id)
+    if payload.owner_type == "entity":
+        await _require_entity_write_access(pool, enums, auth, payload.owner_id)
+    elif payload.owner_type == "job":
+        await _require_job_write_access(pool, enums, auth, payload.owner_id)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid owner type")
     relationship_payload = {
-        "source_type": "context",
-        "source_id": context_id,
-        "target_type": "entity",
-        "target_id": payload.entity_id,
-        "relationship_type": payload.relationship_type,
+        "source_type": payload.owner_type,
+        "source_id": payload.owner_id,
+        "target_type": "context",
+        "target_id": context_id,
+        "relationship_type": "context-of",
         "properties": {},
     }
     try:
-        require_relationship_type(payload.relationship_type, enums)
+        require_relationship_type("context-of", enums)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     if resp := await maybe_check_agent_approval(
@@ -499,13 +573,6 @@ async def update_context(
     if data.get("status"):
         try:
             require_status(data["status"], enums)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
-    if data.get("metadata") is None:
-        data.pop("metadata", None)
-    else:
-        try:
-            data["metadata"] = validate_metadata_payload(data["metadata"])
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
     if auth["caller_type"] == "agent" and data.get("scopes") is not None:

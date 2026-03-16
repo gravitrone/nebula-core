@@ -75,7 +75,6 @@ async def test_scope_lifecycle_updates_schema_and_validation(api_admin):
             "status": "active",
             "scopes": ["public", "lifecycle-scope"],
             "tags": [],
-            "metadata": {},
         },
     )
     assert created.status_code == 200, created.text
@@ -107,7 +106,6 @@ async def test_scope_lifecycle_updates_schema_and_validation(api_admin):
             "status": "active",
             "scopes": ["lifecycle-scope"],
             "tags": [],
-            "metadata": {},
         },
     )
     assert rejected.status_code == 400, rejected.text

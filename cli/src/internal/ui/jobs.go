@@ -18,10 +18,13 @@ type jobStatusUpdatedMsg struct{}
 type subtaskCreatedMsg struct{}
 type jobCreatedMsg struct{}
 type jobRelationshipChangedMsg struct{}
-type jobsScopesLoadedMsg struct{ options []string }
 type jobRelationshipsLoadedMsg struct {
 	id            string
 	relationships []api.Relationship
+}
+type jobContextLoadedMsg struct {
+	id    string
+	items []api.Context
 }
 
 type jobsView int
@@ -38,7 +41,6 @@ const (
 	jobFieldDescription
 	jobFieldStatus
 	jobFieldPriority
-	jobFieldMetadata
 	jobFieldCount
 )
 
@@ -46,7 +48,6 @@ const (
 	jobEditFieldStatus = iota
 	jobEditFieldDescription
 	jobEditFieldPriority
-	jobEditFieldMetadata
 	jobEditFieldCount
 )
 
@@ -56,39 +57,42 @@ var jobPriorityOptions = []string{"", "low", "medium", "high"}
 // --- Jobs Model ---
 
 type JobsModel struct {
-	client          *api.Client
-	allItems        []api.Job
-	items           []api.Job
-	list            *components.List
-	selected        map[string]bool
-	loading         bool
-	detail          *api.Job
-	detailRels      []api.Relationship
-	filtering       bool
-	searchBuf       string
-	searchSuggest   string
-	view            jobsView
-	modeFocus       bool
-	changingSt      bool
-	statusBuf       string
-	statusTargets   []string
-	creatingSubtask bool
-	subtaskBuf      string
-	linkingRel      bool
-	linkBuf         string
-	unlinkingRel    bool
-	unlinkBuf       string
-	metaExpanded    bool
-	width           int
-	height          int
-	scopeOptions    []string
+	client           *api.Client
+	allItems         []api.Job
+	items            []api.Job
+	list             *components.List
+	selected         map[string]bool
+	loading          bool
+	detail           *api.Job
+	detailRels       []api.Relationship
+	filtering        bool
+	searchBuf        string
+	searchSuggest    string
+	view             jobsView
+	modeFocus        bool
+	changingSt       bool
+	statusBuf        string
+	statusTargets    []string
+	creatingSubtask  bool
+	subtaskBuf       string
+	linkingRel       bool
+	linkBuf          string
+	unlinkingRel     bool
+	unlinkBuf        string
+	detailContext    []api.Context
+	contextLoading   bool
+	contextLinking   bool
+	contextLinkBuf   string
+	contextCreating  bool
+	contextCreateBuf string
+	width            int
+	height           int
 
 	// add
 	addFields      []formField
 	addFocus       int
 	addStatusIdx   int
 	addPriorityIdx int
-	addMeta        MetadataEditor
 	addSaving      bool
 	addSaved       bool
 	addErr         string
@@ -98,7 +102,6 @@ type JobsModel struct {
 	editStatusIdx   int
 	editPriorityIdx int
 	editDesc        string
-	editMeta        MetadataEditor
 	editSaving      bool
 }
 
@@ -114,7 +117,6 @@ func NewJobsModel(client *api.Client) JobsModel {
 			{label: "Description"},
 			{label: "Status"},
 			{label: "Priority"},
-			{label: "Metadata"},
 		},
 	}
 }
@@ -124,11 +126,9 @@ func (m JobsModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = jobsViewList
 	m.modeFocus = false
-	m.metaExpanded = false
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(jobStatusOptions, "pending")
 	m.addPriorityIdx = statusIndex(jobPriorityOptions, "")
-	m.addMeta.Reset()
 	m.addSaving = false
 	m.addSaved = false
 	m.addErr = ""
@@ -138,6 +138,12 @@ func (m JobsModel) Init() tea.Cmd {
 	m.selected = map[string]bool{}
 	m.statusTargets = nil
 	m.detailRels = nil
+	m.detailContext = nil
+	m.contextLoading = false
+	m.contextLinking = false
+	m.contextLinkBuf = ""
+	m.contextCreating = false
+	m.contextCreateBuf = ""
 	return m.loadJobs
 }
 
@@ -148,15 +154,16 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.loading = false
 		m.allItems = msg.items
 		m.applyJobSearch()
-		return m, m.loadScopeOptions()
-	case jobsScopesLoadedMsg:
-		m.scopeOptions = msg.options
-		m.addMeta.SetScopeOptions(m.scopeOptions)
-		m.editMeta.SetScopeOptions(m.scopeOptions)
 		return m, nil
 	case jobRelationshipsLoadedMsg:
 		if m.detail != nil && m.detail.ID == msg.id {
 			m.detailRels = msg.relationships
+		}
+		return m, nil
+	case jobContextLoadedMsg:
+		if m.detail != nil && m.detail.ID == msg.id {
+			m.contextLoading = false
+			m.detailContext = msg.items
 		}
 		return m, nil
 	case jobRelationshipChangedMsg:
@@ -167,12 +174,16 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 
 	case jobStatusUpdatedMsg:
 		m.detail = nil
+		m.detailContext = nil
+		m.contextLoading = false
 		m.changingSt = false
 		m.statusBuf = ""
 		m.statusTargets = nil
 		return m, m.loadJobs
 	case subtaskCreatedMsg:
 		m.detail = nil
+		m.detailContext = nil
+		m.contextLoading = false
 		m.creatingSubtask = false
 		m.subtaskBuf = ""
 		return m, m.loadJobs
@@ -190,18 +201,13 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.creatingSubtask = false
 		m.linkingRel = false
 		m.unlinkingRel = false
+		m.contextLoading = false
+		m.contextLinking = false
+		m.contextCreating = false
 		m.addErr = msg.err.Error()
 		return m, nil
 
 	case tea.KeyMsg:
-		if m.addMeta.Active {
-			m.addMeta.HandleKey(msg)
-			return m, nil
-		}
-		if m.editMeta.Active {
-			m.editMeta.HandleKey(msg)
-			return m, nil
-		}
 		if m.creatingSubtask {
 			return m.handleSubtaskInput(msg)
 		}
@@ -233,11 +239,11 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 
 // View handles view.
 func (m JobsModel) View() string {
-	if m.addMeta.Active {
-		return m.addMeta.Render(m.width)
+	if m.contextLinking && m.detail != nil {
+		return components.Indent(components.InputDialog("Link context id", m.contextLinkBuf), 1)
 	}
-	if m.editMeta.Active {
-		return m.editMeta.Render(m.width)
+	if m.contextCreating && m.detail != nil {
+		return components.Indent(components.InputDialog("New context title", m.contextCreateBuf), 1)
 	}
 	if m.creatingSubtask && m.detail != nil {
 		return components.Indent(components.InputDialog("New Subtask Title", m.subtaskBuf), 1)
@@ -318,7 +324,6 @@ func (m JobsModel) handleModeKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 func (m JobsModel) toggleMode() (JobsModel, tea.Cmd) {
 	m.modeFocus = false
 	m.detail = nil
-	m.metaExpanded = false
 	if m.view == jobsViewAdd {
 		m.view = jobsViewList
 		m.loading = true
@@ -497,15 +502,14 @@ func (m JobsModel) renderJobPreview(j api.Job, width int) string {
 	if m.detail != nil && m.detail.ID == j.ID && len(m.detailRels) > 0 {
 		lines = append(lines, renderPreviewRow("Links", fmt.Sprintf("%d", len(m.detailRels)), width))
 	}
+	if m.detail != nil && m.detail.ID == j.ID && len(m.detailContext) > 0 {
+		lines = append(lines, renderPreviewRow("Context", fmt.Sprintf("%d", len(m.detailContext)), width))
+	}
 
 	if j.Description != nil && strings.TrimSpace(*j.Description) != "" {
 		desc := truncateString(strings.TrimSpace(components.SanitizeText(*j.Description)), 120)
 		lines = append(lines, renderPreviewRow("Notes", desc, width))
 	}
-	if metaPreview := metadataPreview(map[string]any(j.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Preview", metaPreview, width))
-	}
-
 	return padPreviewLines(lines, width)
 }
 
@@ -528,8 +532,13 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			item := m.items[idx]
 			m.detail = &item
 			m.detailRels = nil
+			m.detailContext = nil
+			m.contextLoading = true
 			m.view = jobsViewDetail
-			return m, m.loadDetailRelationships(item.ID)
+			return m, tea.Batch(
+				m.loadDetailRelationships(item.ID),
+				m.loadJobContext(item.ID),
+			)
 		}
 	case isSpace(msg):
 		m.toggleSelected()
@@ -634,9 +643,6 @@ func (m JobsModel) handleAddKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	case isBack(msg):
 		m.resetAddForm()
 	case isKey(msg, "backspace"):
-		if m.addFocus == jobFieldMetadata {
-			return m, nil
-		}
 		if m.addFocus == jobFieldTitle || m.addFocus == jobFieldDescription {
 			f := &m.addFields[m.addFocus]
 			if len(f.value) > 0 {
@@ -659,13 +665,9 @@ func (m JobsModel) handleAddKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			case isKey(msg, "right"), isSpace(msg):
 				m.addPriorityIdx = (m.addPriorityIdx + 1) % len(jobPriorityOptions)
 			}
-		case jobFieldMetadata:
-			if isEnter(msg) {
-				m.addMeta.Active = true
-			}
 		default:
 			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			if (len(ch) == 1 || ch == " ") && (m.addFocus == jobFieldTitle || m.addFocus == jobFieldDescription) {
 				m.addFields[m.addFocus].value += ch
 			}
 		}
@@ -711,15 +713,6 @@ func (m JobsModel) renderAdd() string {
 				b.WriteString("\n")
 				b.WriteString(NormalStyle.Render("  " + priority))
 			}
-		case jobFieldMetadata:
-			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-			}
-			b.WriteString("\n")
-			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + meta))
 		default:
 			if i == m.addFocus {
 				b.WriteString(SelectedStyle.Render("  " + label + ":"))
@@ -760,19 +753,11 @@ func (m JobsModel) saveAdd() (JobsModel, tea.Cmd) {
 	status := jobStatusOptions[m.addStatusIdx]
 	priority := strings.TrimSpace(jobPriorityOptions[m.addPriorityIdx])
 
-	meta, err := parseMetadataInput(m.addMeta.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
-
 	input := api.CreateJobInput{
 		Title:       title,
 		Description: desc,
 		Status:      status,
 		Priority:    priority,
-		Metadata:    meta,
 	}
 
 	m.addSaving = true
@@ -792,7 +777,6 @@ func (m *JobsModel) resetAddForm() {
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(jobStatusOptions, "pending")
 	m.addPriorityIdx = statusIndex(jobPriorityOptions, "")
-	m.addMeta.Reset()
 	for i := range m.addFields {
 		m.addFields[i].value = ""
 	}
@@ -808,8 +792,6 @@ func (m *JobsModel) startEdit() {
 	m.editStatusIdx = statusIndex(jobStatusOptions, m.detail.Status)
 	m.editPriorityIdx = statusIndex(jobPriorityOptions, valueOrEmpty(m.detail.Priority))
 	m.editDesc = valueOrEmpty(m.detail.Description)
-	m.editMeta.Reset()
-	m.editMeta.Load(map[string]any(m.detail.Metadata))
 	m.editSaving = false
 }
 
@@ -844,10 +826,6 @@ func (m JobsModel) handleEditKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 				m.editPriorityIdx = (m.editPriorityIdx - 1 + len(jobPriorityOptions)) % len(jobPriorityOptions)
 			case isKey(msg, "right"), isSpace(msg):
 				m.editPriorityIdx = (m.editPriorityIdx + 1) % len(jobPriorityOptions)
-			}
-		case jobEditFieldMetadata:
-			if isEnter(msg) {
-				m.editMeta.Active = true
 			}
 		case jobEditFieldDescription:
 			switch {
@@ -917,16 +895,6 @@ func (m JobsModel) renderEdit() string {
 
 	b.WriteString("\n\n")
 
-	// Metadata
-	if m.editFocus == jobEditFieldMetadata {
-		b.WriteString(SelectedStyle.Render("  Metadata:"))
-	} else {
-		b.WriteString(MutedStyle.Render("  Metadata:"))
-	}
-	b.WriteString("\n")
-	meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-	b.WriteString(NormalStyle.Render("  " + meta))
-
 	if m.editSaving {
 		b.WriteString("\n\n" + MutedStyle.Render("Saving..."))
 	}
@@ -942,18 +910,11 @@ func (m JobsModel) saveEdit() (JobsModel, tea.Cmd) {
 	status := jobStatusOptions[m.editStatusIdx]
 	priority := strings.TrimSpace(jobPriorityOptions[m.editPriorityIdx])
 	desc := strings.TrimSpace(m.editDesc)
-	meta, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
 
 	input := api.UpdateJobInput{
 		Status:      &status,
 		Priority:    &priority,
 		Description: &desc,
-		Metadata:    meta,
 	}
 
 	m.editSaving = true
@@ -981,24 +942,6 @@ func (m JobsModel) loadJobs() tea.Msg {
 		return errMsg{err}
 	}
 	return jobsLoadedMsg{items}
-}
-
-// loadScopeOptions loads load scope options.
-func (m JobsModel) loadScopeOptions() tea.Cmd {
-	if m.client == nil {
-		return nil
-	}
-	return func() tea.Msg {
-		scopes, err := m.client.ListAuditScopes()
-		if err != nil {
-			return errMsg{err}
-		}
-		names := map[string]string{}
-		for _, scope := range scopes {
-			names[scope.ID] = scope.Name
-		}
-		return jobsScopesLoadedMsg{options: scopeNameList(names)}
-	}
 }
 
 // applyJobSearch handles apply job search.
@@ -1119,13 +1062,21 @@ func (m *JobsModel) updateSearchSuggest() {
 
 // handleDetailKeys handles handle detail keys.
 func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+	if m.contextLinking || m.contextCreating {
+		return m.handleContextPromptKeys(msg)
+	}
 	switch {
 	case isUp(msg):
 		m.modeFocus = true
 	case isBack(msg):
 		m.detail = nil
 		m.detailRels = nil
-		m.metaExpanded = false
+		m.detailContext = nil
+		m.contextLoading = false
+		m.contextLinking = false
+		m.contextLinkBuf = ""
+		m.contextCreating = false
+		m.contextCreateBuf = ""
 		m.view = jobsViewList
 	case isKey(msg, "s"):
 		m.changingSt = true
@@ -1134,6 +1085,12 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	case isKey(msg, "n"):
 		m.creatingSubtask = true
 		m.subtaskBuf = ""
+	case isKey(msg, "a"):
+		m.contextCreating = true
+		m.contextCreateBuf = ""
+	case isKey(msg, "c"):
+		m.contextLinking = true
+		m.contextLinkBuf = ""
 	case isKey(msg, "l"):
 		m.linkingRel = true
 		m.linkBuf = ""
@@ -1143,8 +1100,63 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	case isKey(msg, "e"):
 		m.startEdit()
 		m.view = jobsViewEdit
-	case isKey(msg, "m"):
-		m.metaExpanded = !m.metaExpanded
+	}
+	return m, nil
+}
+
+func (m JobsModel) handleContextPromptKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.contextLinking = false
+		m.contextLinkBuf = ""
+		m.contextCreating = false
+		m.contextCreateBuf = ""
+		return m, nil
+	case isKey(msg, "enter"):
+		if m.contextLinking {
+			value := strings.TrimSpace(m.contextLinkBuf)
+			if value == "" {
+				return m, func() tea.Msg { return errMsg{fmt.Errorf("context id is required")} }
+			}
+			m.contextLinking = false
+			m.contextLinkBuf = ""
+			m.contextLoading = true
+			return m, m.linkContextToJob(value)
+		}
+		if m.contextCreating {
+			title := strings.TrimSpace(m.contextCreateBuf)
+			if title == "" {
+				return m, func() tea.Msg { return errMsg{fmt.Errorf("context title is required")} }
+			}
+			m.contextCreating = false
+			m.contextCreateBuf = ""
+			m.contextLoading = true
+			return m, m.createContextForJob(title)
+		}
+	case isKey(msg, "backspace", "delete"):
+		if m.contextLinking && len(m.contextLinkBuf) > 0 {
+			m.contextLinkBuf = m.contextLinkBuf[:len(m.contextLinkBuf)-1]
+		}
+		if m.contextCreating && len(m.contextCreateBuf) > 0 {
+			m.contextCreateBuf = m.contextCreateBuf[:len(m.contextCreateBuf)-1]
+		}
+	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
+		if m.contextLinking {
+			m.contextLinkBuf = ""
+		}
+		if m.contextCreating {
+			m.contextCreateBuf = ""
+		}
+	default:
+		ch := msg.String()
+		if len(ch) == 1 || ch == " " {
+			if m.contextLinking {
+				m.contextLinkBuf += ch
+			}
+			if m.contextCreating {
+				m.contextCreateBuf += ch
+			}
+		}
 	}
 	return m, nil
 }
@@ -1373,11 +1385,10 @@ func (m JobsModel) renderDetail() string {
 		)
 	}
 
-	if len(j.Metadata) > 0 {
-		metaTable := renderMetadataBlock(map[string]any(j.Metadata), m.width, m.metaExpanded)
-		if metaTable != "" {
-			sections = append(sections, metaTable)
-		}
+	if m.contextLoading {
+		sections = append(sections, components.TitledBox("Context Items", MutedStyle.Render("Loading..."), m.width))
+	} else {
+		sections = append(sections, renderContextSummaryTable(m.detailContext, 6, m.width))
 	}
 	if len(m.detailRels) > 0 {
 		sections = append(sections, renderRelationshipSummaryTable("job", j.ID, m.detailRels, 6, m.width))
@@ -1397,6 +1408,74 @@ func (m JobsModel) loadDetailRelationships(jobID string) tea.Cmd {
 	}
 }
 
+func (m JobsModel) loadJobContext(jobID string) tea.Cmd {
+	return func() tea.Msg {
+		items, err := m.client.ListContextByOwner("job", jobID, api.QueryParams{
+			"limit":  "50",
+			"offset": "0",
+		})
+		if err != nil {
+			return jobContextLoadedMsg{id: jobID, items: nil}
+		}
+		return jobContextLoadedMsg{id: jobID, items: items}
+	}
+}
+
+func (m JobsModel) linkContextToJob(contextID string) tea.Cmd {
+	return func() tea.Msg {
+		if m.detail == nil {
+			return errMsg{fmt.Errorf("no job selected")}
+		}
+		ownerID := m.detail.ID
+		if err := m.client.LinkContext(contextID, api.LinkContextInput{
+			OwnerType: "job",
+			OwnerID:   ownerID,
+		}); err != nil {
+			return errMsg{err}
+		}
+		items, err := m.client.ListContextByOwner("job", ownerID, api.QueryParams{
+			"limit":  "50",
+			"offset": "0",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		return jobContextLoadedMsg{id: ownerID, items: items}
+	}
+}
+
+func (m JobsModel) createContextForJob(title string) tea.Cmd {
+	return func() tea.Msg {
+		if m.detail == nil {
+			return errMsg{fmt.Errorf("no job selected")}
+		}
+		input := api.CreateContextInput{
+			Title:      title,
+			SourceType: "note",
+			Scopes:     []string{"private"},
+			Tags:       []string{},
+		}
+		created, err := m.client.CreateContext(input)
+		if err != nil {
+			return errMsg{err}
+		}
+		if err := m.client.LinkContext(created.ID, api.LinkContextInput{
+			OwnerType: "job",
+			OwnerID:   m.detail.ID,
+		}); err != nil {
+			return errMsg{err}
+		}
+		items, err := m.client.ListContextByOwner("job", m.detail.ID, api.QueryParams{
+			"limit":  "50",
+			"offset": "0",
+		})
+		if err != nil {
+			return errMsg{err}
+		}
+		return jobContextLoadedMsg{id: m.detail.ID, items: items}
+	}
+}
+
 // formatJobLine handles format job line.
 func formatJobLine(j api.Job) string {
 	p := ""
@@ -1409,8 +1488,5 @@ func formatJobLine(j api.Job) string {
 		components.SanitizeText(j.Status),
 		p,
 	)
-	if preview := metadataPreview(map[string]any(j.Metadata), 40); preview != "" {
-		line = fmt.Sprintf("%s · %s", line, preview)
-	}
 	return line
 }

@@ -49,6 +49,7 @@ async def test_get_schema_includes_enterprise_taxonomy(api):
         "about",
         "assigned-to",
         "blocks",
+        "context-of",
         "created-by",
         "depends-on",
         "has-file",

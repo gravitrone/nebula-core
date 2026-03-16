@@ -35,7 +35,6 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 						"type":       "person",
 						"status":     "active",
 						"tags":       []string{"alpha", "beta-tag"},
-						"metadata":   map[string]any{},
 						"created_at": time.Now().UTC(),
 						"updated_at": time.Now().UTC(),
 					},
@@ -54,7 +53,6 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 		model.editStatusIdx = 0
 		model.editTags = []string{"alpha"}
 		model.editTagBuf = "Beta Tag"
-		model.editMeta.Buffer = ""
 		model.editScopesDirty = true
 		model.editScopes = []string{"Public Scope"}
 
@@ -69,7 +67,6 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 
 		require.NotNil(t, updateInput.Tags)
 		assert.Equal(t, []string{"alpha", "beta-tag"}, *updateInput.Tags)
-		assert.Nil(t, updateInput.Metadata)
 
 		assert.Equal(t, []string{"ent-1"}, bulkInput.EntityIDs)
 		assert.Equal(t, []string{"public scope"}, bulkInput.Scopes)
@@ -89,7 +86,6 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 		model.detail = &api.Entity{ID: "ent-1", Status: "active"}
 		model.editStatusIdx = 0
 		model.editTags = []string{"alpha"}
-		model.editMeta.Buffer = ""
 		model.editScopesDirty = false
 
 		updated, cmd := model.saveEdit()
@@ -113,7 +109,6 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 						"type":       "person",
 						"status":     "active",
 						"tags":       []string{"alpha"},
-						"metadata":   map[string]any{},
 						"created_at": time.Now().UTC(),
 						"updated_at": time.Now().UTC(),
 					},
@@ -135,7 +130,6 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 		model.detail = &api.Entity{ID: "ent-1", Status: "active"}
 		model.editStatusIdx = 0
 		model.editTags = []string{"alpha"}
-		model.editMeta.Buffer = ""
 		model.editScopesDirty = true
 		model.editScopes = []string{"public"}
 

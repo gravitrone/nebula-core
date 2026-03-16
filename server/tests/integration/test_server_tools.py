@@ -28,7 +28,6 @@ from nebula_mcp.models import (
     QueryJobsInput,
     QueryContextInput,
     QueryRelationshipsInput,
-    SearchEntitiesByMetadataInput,
     UpdateEntityInput,
     UpdateJobInput,
     UpdateJobStatusInput,
@@ -51,7 +50,7 @@ from nebula_mcp.server import (
     get_relationships,
     graph_neighbors,
     graph_shortest_path,
-    link_context_to_entity,
+    link_context_to_owner,
     list_active_protocols,
     list_agents,
     list_files,
@@ -60,7 +59,6 @@ from nebula_mcp.server import (
     query_context,
     query_relationships,
     reload_enums,
-    search_entities_by_metadata,
     update_entity,
     update_job,
     update_job_status,
@@ -81,13 +79,10 @@ async def test_create_entity_trusted(mock_mcp_context, test_agent):
         status="active",
         scopes=["public"],
         tags=["test"],
-        metadata={"met_at": "gym"},
     )
 
     result = await create_entity(payload, mock_mcp_context)
     assert "id" in result
-    assert isinstance(result["metadata"], dict)
-    assert result["metadata"]["met_at"] == "gym"
 
 
 async def test_create_entity_untrusted_returns_approval(
@@ -207,8 +202,8 @@ async def test_get_entity_access_denied(db_pool, enums):
 
     entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Private Project",
@@ -216,7 +211,6 @@ async def test_get_entity_access_denied(db_pool, enums):
         status_id,
         [private_scope_id],
         ["private"],
-        "{}",
     )
 
     # build context with the public-only agent
@@ -256,17 +250,6 @@ async def test_update_entity(mock_mcp_context, test_agent, test_entity):
 
     result = await update_entity(payload, mock_mcp_context)
     assert "id" in result
-
-
-async def test_search_entities_by_metadata(mock_mcp_context, test_agent, test_entity):
-    """Searching by metadata containment should return matching entities."""
-
-    payload = SearchEntitiesByMetadataInput(
-        metadata_query={"first_name": "Test"},
-    )
-
-    result = await search_entities_by_metadata(payload, mock_mcp_context)
-    assert isinstance(result, list)
 
 
 async def test_bulk_import_entities(mock_mcp_context, test_agent):
@@ -313,7 +296,7 @@ async def test_query_context(mock_mcp_context, test_agent):
     assert isinstance(result, list)
 
 
-async def test_link_context_to_entity(
+async def test_link_context_to_owner(
     mock_mcp_context, test_agent, test_entity, enums, db_pool
 ):
     """Linking context to an entity should create a relationship."""
@@ -328,11 +311,11 @@ async def test_link_context_to_entity(
 
     payload = LinkContextInput(
         context_id=str(ki["id"]),
-        entity_id=str(test_entity["id"]),
-        relationship_type="about",
+        owner_type="entity",
+        owner_id=str(test_entity["id"]),
     )
 
-    result = await link_context_to_entity(payload, mock_mcp_context)
+    result = await link_context_to_owner(payload, mock_mcp_context)
     assert "id" in result
 
 
@@ -351,8 +334,8 @@ async def test_create_relationship(
 
     target = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Rel Target",
@@ -360,7 +343,6 @@ async def test_create_relationship(
         status_id,
         scope_ids,
         ["test"],
-        "{}",
     )
 
     payload = CreateRelationshipInput(

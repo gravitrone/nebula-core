@@ -98,20 +98,13 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.Equal(t, "", updated.searchBuf)
 }
 
-func TestJobsSaveEditNilMetadataErrorAndSuccess(t *testing.T) {
+func TestJobsSaveEditNilDetailAndSuccess(t *testing.T) {
 	model := NewJobsModel(nil)
 	updated, cmd := model.saveEdit()
 	require.Nil(t, cmd)
 	assert.Equal(t, model, updated)
 
 	desc := "desc"
-	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc, Metadata: api.JSONMap{}}
-	model.startEdit()
-	model.editMeta.Buffer = "invalid"
-	updated, cmd = model.saveEdit()
-	require.Nil(t, cmd)
-	assert.NotEmpty(t, updated.addErr)
-
 	var seen api.UpdateJobInput
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch || r.URL.Path != "/api/jobs/job-1" {
@@ -125,13 +118,11 @@ func TestJobsSaveEditNilMetadataErrorAndSuccess(t *testing.T) {
 	})
 
 	model = NewJobsModel(client)
-	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc, Metadata: api.JSONMap{}}
+	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc}
 	model.startEdit()
 	model.editStatusIdx = 1
 	model.editPriorityIdx = 2
 	model.editDesc = "updated desc"
-	model.editMeta.Buffer = "group | field | value"
-	model.editMeta.Scopes = []string{"public"}
 
 	updated, cmd = model.saveEdit()
 	require.NotNil(t, cmd)
@@ -145,5 +136,4 @@ func TestJobsSaveEditNilMetadataErrorAndSuccess(t *testing.T) {
 	assert.Equal(t, jobStatusOptions[1], *seen.Status)
 	assert.Equal(t, jobPriorityOptions[2], *seen.Priority)
 	assert.Equal(t, "updated desc", *seen.Description)
-	require.NotNil(t, seen.Metadata)
 }

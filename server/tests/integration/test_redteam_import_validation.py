@@ -59,7 +59,6 @@ async def test_bulk_import_entities_rejects_invalid_format(db_pool, enums):
                 "status": "active",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
             }
         ],
     )

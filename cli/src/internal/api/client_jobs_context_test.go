@@ -29,7 +29,6 @@ func TestUpdateJobEncodesBodyAndDecodesResponse(t *testing.T) {
 			"description": nil,
 			"status":      "active",
 			"priority":    nil,
-			"metadata":    map[string]any{},
 			"created_at":  now,
 			"updated_at":  now,
 		}))
@@ -57,7 +56,6 @@ func TestGetContextDecodesResponse(t *testing.T) {
 			"source_type": "note",
 			"status":      "active",
 			"tags":        []string{"docs"},
-			"metadata":    map[string]any{},
 			"created_at":  now,
 			"updated_at":  now,
 		}))
@@ -90,7 +88,6 @@ func TestUpdateContextEncodesBodyAndDecodesResponse(t *testing.T) {
 			"source_type": "note",
 			"status":      "active",
 			"tags":        []string{},
-			"metadata":    map[string]any{"k": "v"},
 			"created_at":  now,
 			"updated_at":  now,
 		}))
@@ -98,8 +95,7 @@ func TestUpdateContextEncodesBodyAndDecodesResponse(t *testing.T) {
 	})
 
 	out, err := client.UpdateContext("kn-1", UpdateContextInput{
-		Title:    &title,
-		Metadata: map[string]any{"k": "v"},
+		Title: &title,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, out)

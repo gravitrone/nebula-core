@@ -64,15 +64,16 @@ func TestLinkContext(t *testing.T) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		assert.Contains(t, r.URL.Path, "/link")
 
-		var body map[string]string
+		var body LinkContextInput
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		assert.Equal(t, "ent-1", body["entity_id"])
+		assert.Equal(t, "entity", body.OwnerType)
+		assert.Equal(t, "ent-1", body.OwnerID)
 
 		_, err := w.Write(jsonResponse(map[string]any{}))
 		require.NoError(t, err)
 	})
 
-	err := client.LinkContext("know-1", "ent-1")
+	err := client.LinkContext("know-1", LinkContextInput{OwnerType: "entity", OwnerID: "ent-1"})
 	require.NoError(t, err)
 }
 
@@ -124,7 +125,7 @@ func TestLinkContextInvalidEntity(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	err := client.LinkContext("know-1", "invalid-ent")
+	err := client.LinkContext("know-1", LinkContextInput{OwnerType: "entity", OwnerID: "invalid-ent"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "NOT_FOUND")
 }

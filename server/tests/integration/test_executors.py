@@ -38,13 +38,11 @@ class TestCreateEntity:
                 "status": "active",
                 "scopes": ["public"],
                 "tags": ["test"],
-                "metadata": {"description": "A test project"},
             },
         )
 
         assert "id" in result
         assert result["name"] == "Alpha Project"
-        assert result["metadata"]["description"] == "A test project"
 
     async def test_invalid_status_raises(self, db_pool, enums):
         """An unknown status name should raise ValueError."""
@@ -182,86 +180,6 @@ class TestCreateEntity:
         )
         assert recreated["id"] != first["id"]
 
-    async def test_valid_metadata_works(self, db_pool, enums):
-        """Valid person metadata with structured fields should succeed."""
-
-        result = await execute_create_entity(
-            db_pool,
-            enums,
-            {
-                "name": "Jane Doe",
-                "type": "person",
-                "status": "active",
-                "scopes": ["private"],
-                "metadata": {
-                    "first_name": "Jane",
-                    "last_name": "Doe",
-                    "birth_month": 6,
-                    "birth_day": 15,
-                },
-            },
-        )
-
-        assert "id" in result
-
-    async def test_invalid_metadata_month_raises(self, db_pool, enums):
-        """Person metadata with birth_month=13 should raise a validation error."""
-
-        with pytest.raises(ValueError, match="Birth month out of range"):
-            await execute_create_entity(
-                db_pool,
-                enums,
-                {
-                    "name": "Bad Month Person",
-                    "type": "person",
-                    "status": "active",
-                    "scopes": ["private"],
-                    "metadata": {"birth_month": 13},
-                },
-            )
-
-    async def test_context_segment_unknown_scope_raises(self, db_pool, enums):
-        """Context segment with an unknown scope name should raise."""
-
-        with pytest.raises(ValueError, match="Unknown scope"):
-            await execute_create_entity(
-                db_pool,
-                enums,
-                {
-                    "name": "Bad Segment Scope",
-                    "type": "project",
-                    "status": "active",
-                    "scopes": ["public"],
-                    "metadata": {
-                        "context_segments": [
-                            {"text": "secret", "scopes": ["NONEXISTENT_SCOPE"]},
-                        ],
-                    },
-                },
-            )
-
-    async def test_context_segment_outside_entity_scopes_raises(self, db_pool, enums):
-        """Context segment scope not in entity scopes should raise."""
-
-        with pytest.raises(
-            ValueError, match="Context segment scope not in entity scopes"
-        ):
-            await execute_create_entity(
-                db_pool,
-                enums,
-                {
-                    "name": "Scope Mismatch",
-                    "type": "project",
-                    "status": "active",
-                    "scopes": ["public"],
-                    "metadata": {
-                        "context_segments": [
-                            {"text": "private info", "scopes": ["private"]},
-                        ],
-                    },
-                },
-            )
-
     async def test_json_string_change_details(self, db_pool, enums):
         """Passing change_details as a JSON string should work."""
 
@@ -368,8 +286,8 @@ class TestCreateRelationship:
 
         target = await db_pool.fetchrow(
             """
-            INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+            INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *
             """,
             "Target Project",
@@ -377,7 +295,6 @@ class TestCreateRelationship:
             status_id,
             scope_ids,
             ["test"],
-            "{}",
         )
 
         result = await execute_create_relationship(
@@ -539,43 +456,6 @@ class TestUpdateEntity:
 
         assert result["status_id"] == enums.statuses.name_to_id["on-hold"]
 
-    async def test_metadata_change(self, db_pool, enums, test_entity):
-        """Updating entity metadata should merge with existing metadata."""
-
-        await db_pool.execute(
-            """
-            UPDATE entities
-            SET metadata = $2::jsonb
-            WHERE id = $1::uuid
-            """,
-            str(test_entity["id"]),
-            json.dumps(
-                {
-                    "first_name": "Test",
-                    "last_name": "Baseline",
-                    "profile": {"timezone": "UTC"},
-                }
-            ),
-        )
-
-        result = await execute_update_entity(
-            db_pool,
-            enums,
-            {
-                "entity_id": str(test_entity["id"]),
-                "metadata": {
-                    "first_name": "Updated",
-                    "profile": {"timezone": "Europe/Warsaw"},
-                },
-            },
-        )
-
-        merged = result["metadata"]
-        assert "id" in result
-        assert merged["first_name"] == "Updated"
-        assert merged["last_name"] == "Baseline"
-        assert merged["profile"]["timezone"] == "Europe/Warsaw"
-
     async def test_nonexistent_raises(self, db_pool, enums):
         """Updating a nonexistent entity should raise ValueError."""
 
@@ -585,7 +465,6 @@ class TestUpdateEntity:
                 enums,
                 {
                     "entity_id": "00000000-0000-0000-0000-000000000000",
-                    "metadata": {"first_name": "Ghost"},
                 },
             )
 
@@ -596,43 +475,6 @@ class TestUpdateEntity:
 class TestUpdateContext:
     """Tests for execute_update_context."""
 
-    async def test_metadata_change_merges_nested_values(self, db_pool, enums):
-        """Updating context metadata should merge with existing nested values."""
-
-        created = await execute_create_context(
-            db_pool,
-            enums,
-            {
-                "title": "Context Merge Test",
-                "source_type": "note",
-                "scopes": ["public"],
-                "metadata": {
-                    "owner": "alxx",
-                    "profile": {"timezone": "UTC", "language": "en"},
-                },
-            },
-        )
-
-        updated = await execute_update_context(
-            db_pool,
-            enums,
-            {
-                "context_id": str(created["id"]),
-                "metadata": {
-                    "profile": {"timezone": "Europe/Warsaw"},
-                    "private_notes": {"handoff_key": "bro-private-01"},
-                },
-            },
-        )
-
-        merged = updated["metadata"]
-        if isinstance(merged, str):
-            merged = json.loads(merged)
-        assert merged["owner"] == "alxx"
-        assert merged["profile"]["timezone"] == "Europe/Warsaw"
-        assert merged["profile"]["language"] == "en"
-        assert merged["private_notes"]["handoff_key"] == "bro-private-01"
-
     async def test_nonexistent_context_raises(self, db_pool, enums):
         """Updating a missing context row should raise ValueError."""
 
@@ -642,6 +484,5 @@ class TestUpdateContext:
                 enums,
                 {
                     "context_id": "00000000-0000-0000-0000-000000000000",
-                    "metadata": {"owner": "ghost"},
                 },
             )

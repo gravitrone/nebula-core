@@ -20,10 +20,10 @@ func TestContextSaveValidationBranches(t *testing.T) {
 
 	model = NewContextModel(nil)
 	model.fields[fieldTitle].value = "Alpha"
-	model.metaEditor.Buffer = "invalid metadata row"
 	updated, cmd = model.save()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.errText)
+	assert.NotNil(t, cmd)
+	assert.Equal(t, "", updated.errText)
+	assert.True(t, updated.saving)
 }
 
 func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
@@ -53,6 +53,7 @@ func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
 	t.Run("link context error with default private scope", func(t *testing.T) {
 		var created api.CreateContextInput
 		var linkedID string
+		var linkedType string
 		_, client := contextTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.URL.Path == "/api/context" && r.Method == http.MethodPost:
@@ -64,7 +65,8 @@ func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
 			case strings.HasPrefix(r.URL.Path, "/api/context/") && strings.HasSuffix(r.URL.Path, "/link"):
 				var body map[string]string
 				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-				linkedID = body["entity_id"]
+				linkedID = body["owner_id"]
+				linkedType = body["owner_type"]
 				http.Error(w, `{"error":{"code":"LINK_CONTEXT_FAILED","message":"link failed"}}`, http.StatusInternalServerError)
 				return
 			}
@@ -89,6 +91,6 @@ func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
 		assert.Equal(t, []string{"private"}, created.Scopes)
 		assert.Equal(t, []string{"core-tag"}, created.Tags)
 		assert.Equal(t, "ent-1", linkedID)
+		assert.Equal(t, "entity", linkedType)
 	})
 }
-

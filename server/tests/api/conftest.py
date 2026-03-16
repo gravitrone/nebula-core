@@ -1,8 +1,6 @@
 """API test fixtures: async test client with mocked auth."""
 
 # Standard Library
-import json
-
 # Third-Party
 import sys
 from pathlib import Path
@@ -30,8 +28,8 @@ async def test_entity(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "api-test-user",
@@ -39,15 +37,6 @@ async def test_entity(db_pool, enums):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps(
-            {
-                "first_name": "API",
-                "context_segments": [
-                    {"text": "public info", "scopes": ["public"]},
-                    {"text": "private info", "scopes": ["private"]},
-                ],
-            }
-        ),
     )
     return dict(row)
 

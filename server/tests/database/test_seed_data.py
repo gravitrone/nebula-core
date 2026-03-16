@@ -224,4 +224,5 @@ async def test_active_relationship_types_are_minimal_enterprise_set(db_pool):
         "mentions",
         "created-by",
         "has-file",
+        "context-of",
     }

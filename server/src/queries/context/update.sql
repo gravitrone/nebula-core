@@ -8,8 +8,7 @@ WITH updated AS (
         content = COALESCE($5, content),
         status_id = COALESCE($6, status_id),
         tags = COALESCE($7, tags),
-        privacy_scope_ids = COALESCE($8, privacy_scope_ids),
-        metadata = COALESCE($9::jsonb, metadata)
+        privacy_scope_ids = COALESCE($8, privacy_scope_ids)
     WHERE id = $1
     RETURNING *
 )
@@ -22,7 +21,6 @@ SELECT
     u.privacy_scope_ids,
     s.name AS status,
     u.tags,
-    u.metadata,
     u.source_path,
     u.created_at,
     u.updated_at

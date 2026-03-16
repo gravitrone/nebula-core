@@ -1,14 +1,13 @@
 """Entity API routes."""
 
 # Standard Library
-import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
 # Third-Party
 from fastapi import APIRouter, Depends, Query, Request
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 # Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
@@ -23,7 +22,6 @@ from nebula_mcp.helpers import (
 )
 from nebula_mcp.helpers import (
     enforce_scope_subset,
-    filter_context_segments,
     normalize_bulk_operation,
     scope_names_from_ids,
 )
@@ -33,48 +31,13 @@ from nebula_mcp.helpers import (
 from nebula_mcp.helpers import (
     revert_entity as do_revert_entity,
 )
-from nebula_mcp.models import (
-    MAX_TAG_LENGTH,
-    MAX_TAGS,
-    validate_metadata_payload,
-)
+from nebula_mcp.models import MAX_TAG_LENGTH, MAX_TAGS
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
 
 router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
-
-
-def _normalize_entity_metadata(entity: dict[str, Any]) -> dict[str, Any]:
-    """Normalize entity metadata field to a JSON object.
-
-    Args:
-        entity: Entity payload returned from executor/query layers.
-
-    Returns:
-        Entity payload with metadata coerced to a dict.
-    """
-
-    metadata = entity.get("metadata")
-    if metadata is None:
-        entity["metadata"] = {}
-        return entity
-    if isinstance(metadata, str):
-        try:
-            metadata = json.loads(metadata)
-        except json.JSONDecodeError:
-            metadata = {}
-        # Backward compatibility: legacy rows may be double-encoded JSON.
-        if isinstance(metadata, str):
-            try:
-                metadata = json.loads(metadata)
-            except json.JSONDecodeError:
-                metadata = {}
-    if not isinstance(metadata, dict):
-        metadata = {}
-    entity["metadata"] = metadata
-    return entity
 
 
 def _is_admin(auth: dict, enums: Any) -> bool:
@@ -200,16 +163,16 @@ class CreateEntityBody(BaseModel):
         status: Status name.
         scopes: Privacy scopes.
         tags: Tag list.
-        metadata: Arbitrary metadata.
         source_path: Optional file path reference.
     """
+
+    model_config = {"extra": "forbid"}
 
     name: str
     type: str
     status: str = "active"
     scopes: list[str] = []
     tags: list[str] = []
-    metadata: dict | None = None
     source_path: str | None = None
 
     @field_validator("tags", mode="before")
@@ -231,13 +194,13 @@ class UpdateEntityBody(BaseModel):
     """Payload for updating an entity.
 
     Attributes:
-        metadata: Updated metadata.
         tags: Updated tag list.
         status: Updated status name.
         status_reason: Optional status reason.
     """
 
-    metadata: dict | None = None
+    model_config = {"extra": "forbid"}
+
     tags: list[str] | None = None
     status: str | None = None
     status_reason: str | None = None
@@ -255,18 +218,6 @@ class UpdateEntityBody(BaseModel):
         """
 
         return _validate_tag_list(v)
-
-
-class MetadataSearchBody(BaseModel):
-    """Payload for metadata search.
-
-    Attributes:
-        metadata_query: JSON query object.
-        limit: Max results to return.
-    """
-
-    metadata_query: dict
-    limit: int = Field(default=50, ge=1, le=1000)
 
 
 class RevertEntityBody(BaseModel):
@@ -341,13 +292,6 @@ async def create_entity(
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
-    data.setdefault("metadata", {})
-    if data["metadata"] is None:
-        data["metadata"] = {}
-    try:
-        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
-    except ValueError as exc:
-        api_error("INVALID_INPUT", str(exc), 400)
     if auth["caller_type"] == "agent":
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:
@@ -369,7 +313,6 @@ async def create_entity(
         result = await execute_create_entity(pool, enums, data)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    _normalize_entity_metadata(result)
     return success(result)
 
 
@@ -391,7 +334,6 @@ async def get_entity(
     """
 
     pool = request.app.state.pool
-    enums = request.app.state.enums
 
     try:
         UUID(entity_id)
@@ -410,10 +352,6 @@ async def get_entity(
 
     if entity_scopes and not any(s in auth_scopes for s in entity_scopes):
         api_error("FORBIDDEN", "Entity not in your scopes", 403)
-
-    if entity.get("metadata"):
-        scope_names = [enums.scopes.id_to_name.get(s, "") for s in auth_scopes]
-        entity["metadata"] = filter_context_segments(entity["metadata"], scope_names)
 
     return success(entity)
 
@@ -626,15 +564,7 @@ async def query_entities(
         limit,
         offset,
     )
-    scope_names = [enums.scopes.id_to_name.get(s, "") for s in scope_ids]
-    results = []
-    for row in rows:
-        entity = dict(row)
-        if entity.get("metadata"):
-            entity["metadata"] = filter_context_segments(
-                entity["metadata"], scope_names
-            )
-        results.append(entity)
+    results = [dict(row) for row in rows]
     return paginated(results, len(results), limit, offset)
 
 
@@ -669,13 +599,6 @@ async def update_entity(
 
     change = payload.model_dump()
     change["entity_id"] = entity_id
-    if change.get("metadata") is None:
-        change.pop("metadata", None)
-    else:
-        try:
-            change["metadata"] = validate_metadata_payload(change["metadata"])
-        except ValueError as exc:
-            api_error("INVALID_INPUT", str(exc), 400)
     if auth["caller_type"] == "agent" and change.get("scopes") is not None:
         allowed = scope_names_from_ids(auth.get("scopes", []), enums)
         try:
@@ -695,44 +618,4 @@ async def update_entity(
         result = await execute_update_entity(pool, enums, change)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    _normalize_entity_metadata(result)
     return success(result)
-
-
-@router.post("/search")
-async def search_by_metadata(
-    payload: MetadataSearchBody,
-    request: Request,
-    auth: dict = Depends(require_auth),
-) -> dict[str, Any]:
-    """Search entities by metadata fields.
-
-    Args:
-        payload: Metadata search payload.
-        request: FastAPI request.
-        auth: Auth context.
-
-    Returns:
-        API response with matching entities.
-    """
-
-    pool = request.app.state.pool
-    enums = request.app.state.enums
-    scope_ids = _list_scope_ids(auth, enums)
-
-    rows = await pool.fetch(
-        QUERIES["entities/search_by_metadata"],
-        json.dumps(payload.metadata_query),
-        payload.limit,
-        scope_ids,
-    )
-    scope_names = [enums.scopes.id_to_name.get(s, "") for s in scope_ids]
-    results = []
-    for row in rows:
-        entity = dict(row)
-        if entity.get("metadata"):
-            entity["metadata"] = filter_context_segments(
-                entity["metadata"], scope_names
-            )
-        results.append(entity)
-    return success(results)

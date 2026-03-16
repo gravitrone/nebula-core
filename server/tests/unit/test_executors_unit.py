@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock
 
 # Third-Party
 import pytest
+from pydantic import ValidationError
 
 # Local
 import nebula_mcp.executors as executors
@@ -101,31 +102,6 @@ def test_scope_name_from_id_returns_uuid_text_for_unknown_uuid(mock_enums):
     assert executors._scope_name_from_id(mock_enums, unknown_scope) == str(unknown_scope)
 
 
-def test_decode_json_object_handles_double_encoded_payload():
-    """Double-encoded JSON objects should decode into dicts."""
-
-    assert executors._decode_json_object("\"{\\\"k\\\": 1}\"") == {"k": 1}
-
-
-def test_decode_json_object_handles_invalid_payloads():
-    """Invalid/non-object values should normalize to empty dicts."""
-
-    assert executors._decode_json_object("{bad json}") == {}
-    assert executors._decode_json_object("\"plain-string\"") == {}
-    assert executors._decode_json_object(42) == {}
-
-
-def test_decode_json_object_handles_none():
-    """None payloads should normalize to empty dict."""
-
-    assert executors._decode_json_object(None) == {}
-
-
-def test_normalize_entity_row_handles_none():
-    """Entity row normalizer should return empty dict for missing rows."""
-
-    assert executors._normalize_entity_row(None) == {}
-
 
 @pytest.mark.asyncio
 async def test_execute_create_entity_uses_explicit_transaction_when_not_in_tx(mock_enums):
@@ -134,7 +110,7 @@ async def test_execute_create_entity_uses_explicit_transaction_when_not_in_tx(mo
     pool = _PoolStub(
         fetchrow_rows=[
             None,
-            {"id": str(uuid4()), "name": "n", "metadata": "{\"ok\": true}"},
+            {"id": str(uuid4()), "name": "n"},
         ],
         in_transaction=False,
     )
@@ -151,7 +127,7 @@ async def test_execute_create_entity_uses_explicit_transaction_when_not_in_tx(mo
     )
 
     assert pool.transaction_calls == 1
-    assert result["metadata"] == {"ok": True}
+    assert result["name"] == "n"
 
 
 @pytest.mark.asyncio
@@ -176,7 +152,7 @@ async def test_execute_create_entity_uses_pool_acquire_branch(mock_enums, monkey
             return _AcquireCtx(self._conn)
 
     conn = _PoolStub(
-        fetchrow_rows=[None, {"id": str(uuid4()), "name": "acq", "metadata": "{}"}],
+        fetchrow_rows=[None, {"id": str(uuid4()), "name": "acq"}],
         in_transaction=True,
     )
     pool_like = _PoolAcquireLike(conn)
@@ -197,8 +173,8 @@ async def test_execute_create_entity_uses_pool_acquire_branch(mock_enums, monkey
 
 
 @pytest.mark.asyncio
-async def test_execute_update_context_raises_when_metadata_target_missing(mock_enums):
-    """Metadata updates should fail when the target context item does not exist."""
+async def test_execute_update_context_raises_when_target_missing(mock_enums):
+    """Updates should fail when the target context item does not exist."""
 
     pool = _PoolStub(fetchrow_rows=[None])
 
@@ -206,7 +182,7 @@ async def test_execute_update_context_raises_when_metadata_target_missing(mock_e
         await executors.execute_update_context(
             pool,
             mock_enums,
-            {"context_id": str(uuid4()), "metadata": {"k": "v"}},
+            {"context_id": str(uuid4()), "title": "missing"},
         )
 
 
@@ -218,7 +194,7 @@ async def test_execute_create_context_parses_json_change_details(mock_enums):
     pool = _PoolStub(
         fetchrow_rows=[
             None,
-            {"id": context_id, "metadata": '{"ok": true}'},
+            {"id": context_id},
         ]
     )
 
@@ -231,13 +207,11 @@ async def test_execute_create_context_parses_json_change_details(mock_enums):
                 "url": "https://example.com",
                 "source_type": "note",
                 "scopes": ["public"],
-                "metadata": {"ok": True},
             }
         ),
     )
 
     assert result["id"] == context_id
-    assert result["metadata"] == {"ok": True}
 
 
 @pytest.mark.asyncio
@@ -279,12 +253,12 @@ async def test_execute_create_context_returns_empty_dict_when_insert_missing(moc
 
 
 @pytest.mark.asyncio
-async def test_execute_create_entity_rejects_context_segment_without_scopes(mock_enums):
-    """Context segment metadata must include non-empty scopes."""
+async def test_execute_create_entity_rejects_metadata_payload(mock_enums):
+    """Entity payloads should reject metadata keys."""
 
     pool = _PoolStub()
 
-    with pytest.raises(ValueError, match="Context segment scopes required"):
+    with pytest.raises(ValidationError):
         await executors.execute_create_entity(
             pool,
             mock_enums,
@@ -303,12 +277,7 @@ async def test_execute_update_context_status_and_scope_paths(mock_enums):
     """Status/scopes branches should be exercised for context updates."""
 
     context_id = str(uuid4())
-    pool = _PoolStub(
-        fetchrow_rows=[
-            {"id": context_id, "metadata": {"nested": {"a": 1}}},
-            {"id": context_id, "metadata": {"nested": {"a": 2}}},
-        ]
-    )
+    pool = _PoolStub(fetchrow_rows=[{"id": context_id}])
 
     result = await executors.execute_update_context(
         pool,
@@ -317,12 +286,14 @@ async def test_execute_update_context_status_and_scope_paths(mock_enums):
             "context_id": context_id,
             "status": "active",
             "scopes": ["public"],
-            "metadata": {"nested": {"a": 2}},
         },
     )
 
     assert result["id"] == context_id
-    assert len(pool.fetchrow_calls) == 2
+    assert len(pool.fetchrow_calls) == 1
+    call = pool.fetchrow_calls[0]
+    assert call[6] is not None
+    assert call[8] is not None
 
 
 @pytest.mark.asyncio
@@ -330,7 +301,7 @@ async def test_execute_update_context_string_payload_path(mock_enums):
     """String payloads should decode for update_context."""
 
     context_id = str(uuid4())
-    pool = _PoolStub(fetchrow_rows=[{"id": context_id, "metadata": {}}])
+    pool = _PoolStub(fetchrow_rows=[{"id": context_id}])
 
     result = await executors.execute_update_context(
         pool,
@@ -410,7 +381,7 @@ async def test_execute_create_relationship_string_payload_success(mock_enums):
     """String payloads should decode for create_relationship success path."""
 
     relationship_id = str(uuid4())
-    pool = _PoolStub(fetchrow_rows=[{"id": relationship_id, "metadata": "{}"}])
+    pool = _PoolStub(fetchrow_rows=[{"id": relationship_id, "properties": {}}])
 
     result = await executors.execute_create_relationship(
         pool,
@@ -427,7 +398,7 @@ async def test_execute_create_relationship_string_payload_success(mock_enums):
     )
 
     assert result["id"] == relationship_id
-    assert result["metadata"] == {}
+    assert result["properties"] == {}
 
 
 @pytest.mark.asyncio
@@ -645,17 +616,11 @@ async def test_execute_update_log_log_type_and_status_branches(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_execute_update_entity_string_payload_with_metadata_merge(mock_enums):
-    """String payloads should decode and merge metadata for update_entity."""
+async def test_execute_update_entity_string_payload_decodes(mock_enums):
+    """String payloads should decode for update_entity."""
 
     entity_id = str(uuid4())
-    type_id = mock_enums.entity_types.name_to_id["project"]
-    pool = _PoolStub(
-        fetchrow_rows=[
-            {"type_id": type_id, "metadata": {"existing": {"a": 1}}},
-            {"id": entity_id, "metadata": '{"existing":{"a":1},"new":{"b":2}}'},
-        ]
-    )
+    pool = _PoolStub(fetchrow_rows=[{"id": entity_id}])
 
     result = await executors.execute_update_entity(
         pool,
@@ -664,21 +629,19 @@ async def test_execute_update_entity_string_payload_with_metadata_merge(mock_enu
             {
                 "entity_id": entity_id,
                 "status": "active",
-                "metadata": {"new": {"b": 2}},
             }
         ),
     )
 
     assert result["id"] == entity_id
-    assert result["metadata"]["new"] == {"b": 2}
 
 
 @pytest.mark.asyncio
-async def test_execute_update_entity_raises_when_metadata_target_missing(mock_enums):
-    """Metadata updates should fail when the entity row cannot be loaded."""
+async def test_execute_update_entity_rejects_metadata_payload(mock_enums):
+    """Update payloads should reject metadata keys."""
 
-    pool = _PoolStub(fetchrow_rows=[None])
-    with pytest.raises(ValueError, match="Entity not found"):
+    pool = _PoolStub()
+    with pytest.raises(ValidationError):
         await executors.execute_update_entity(
             pool,
             mock_enums,
@@ -837,49 +800,6 @@ async def test_execute_create_entity_json_payload_duplicate_raises(mock_enums):
             ),
         )
 
-
-@pytest.mark.asyncio
-async def test_execute_create_entity_rejects_unknown_context_segment_scope(mock_enums):
-    """Context segment scopes must exist in enum registry."""
-
-    pool = _PoolStub(fetchrow_rows=[None])
-    with pytest.raises(ValueError, match="Unknown scope: ghost-scope"):
-        await executors.execute_create_entity(
-            pool,
-            mock_enums,
-            {
-                "name": "bad-scope",
-                "type": "project",
-                "status": "active",
-                "scopes": ["public"],
-                "metadata": {
-                    "context_segments": [{"text": "x", "scopes": ["ghost-scope"]}]
-                },
-            },
-        )
-
-
-@pytest.mark.asyncio
-async def test_execute_create_entity_rejects_segment_scope_outside_entity_scopes(
-    mock_enums,
-):
-    """Context segment scopes must be a subset of entity scopes."""
-
-    pool = _PoolStub(fetchrow_rows=[None])
-    with pytest.raises(ValueError, match="not in entity scopes"):
-        await executors.execute_create_entity(
-            pool,
-            mock_enums,
-            {
-                "name": "bad-subset",
-                "type": "project",
-                "status": "active",
-                "scopes": ["public"],
-                "metadata": {
-                    "context_segments": [{"text": "x", "scopes": ["private"]}]
-                },
-            },
-        )
 
 
 @pytest.mark.asyncio

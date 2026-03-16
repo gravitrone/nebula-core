@@ -1,7 +1,6 @@
-"""Red team tests for context metadata privacy filtering."""
+"""Red team tests for context-of privacy filtering via MCP tool."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 
@@ -9,11 +8,11 @@ from uuid import UUID, uuid4
 import pytest
 
 # Local
-from nebula_mcp.models import QueryContextInput
-from nebula_mcp.server import query_context
+from nebula_mcp.models import ListContextByOwnerInput
+from nebula_mcp.server import list_context_by_owner
 
 
-async def _make_context(pool, enums, agent):
+def _build_ctx(pool, enums, agent) -> MagicMock:
     """Build MCP context with a specific agent."""
 
     normalized_agent = dict(agent)
@@ -26,24 +25,6 @@ async def _make_context(pool, enums, agent):
     normalized_agent.setdefault("requires_approval", False)
     normalized_agent.setdefault("scopes", [enums.scopes.name_to_id["public"]])
 
-    await pool.execute(
-        """
-        INSERT INTO agents (id, name, description, scopes, requires_approval, status_id)
-        VALUES ($1::uuid, $2, $3, $4, $5, $6::uuid)
-        ON CONFLICT (id) DO UPDATE
-        SET name = EXCLUDED.name,
-            scopes = EXCLUDED.scopes,
-            requires_approval = EXCLUDED.requires_approval,
-            status_id = EXCLUDED.status_id
-        """,
-        agent_id,
-        normalized_agent["name"],
-        "test context metadata helper",
-        normalized_agent["scopes"],
-        normalized_agent["requires_approval"],
-        enums.statuses.name_to_id["active"],
-    )
-
     ctx = MagicMock()
     ctx.request_context.lifespan_context = {
         "pool": pool,
@@ -53,16 +34,74 @@ async def _make_context(pool, enums, agent):
     return ctx
 
 
-async def _make_context_item(db_pool, enums, title, scopes, metadata):
-    """Insert a context item for metadata filtering tests."""
+async def _ensure_context_of_type(db_pool) -> str:
+    """Ensure context-of relationship type exists and return its id."""
+
+    row = await db_pool.fetchrow(
+        "SELECT id FROM relationship_types WHERE name = 'context-of'"
+    )
+    if row:
+        return str(row["id"])
+    created = await db_pool.fetchrow(
+        """
+        INSERT INTO relationship_types (name, description, is_symmetric, is_builtin, is_active, metadata)
+        VALUES ('context-of', 'Context item used as scoped metadata for an owner', false, true, true, '{}'::jsonb)
+        RETURNING id
+        """
+    )
+    return str(created["id"])
+
+
+async def _make_agent(db_pool, enums, name: str, scopes: list[str]) -> dict:
+    """Insert a test agent for context-of filtering."""
 
     status_id = enums.statuses.name_to_id["active"]
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
-
     row = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO agents (name, description, scopes, requires_approval, status_id)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *
+        """,
+        name,
+        "redteam agent",
+        scope_ids,
+        False,
+        status_id,
+    )
+    return dict(row)
+
+
+async def _make_entity(db_pool, enums, name: str, scopes: list[str]) -> dict:
+    """Insert a test entity."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    type_id = enums.entity_types.name_to_id["person"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5)
+        RETURNING *
+        """,
+        name,
+        type_id,
+        status_id,
+        scope_ids,
+        ["redteam"],
+    )
+    return dict(row)
+
+
+async def _make_context_item(db_pool, enums, title: str, scopes: list[str]) -> dict:
+    """Insert a context item for context-of filtering tests."""
+
+    status_id = enums.statuses.name_to_id["active"]
+    scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
+    row = await db_pool.fetchrow(
+        """
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         title,
@@ -71,34 +110,64 @@ async def _make_context_item(db_pool, enums, title, scopes, metadata):
         scope_ids,
         status_id,
         ["test"],
-        json.dumps(metadata),
     )
     return dict(row)
 
 
-@pytest.mark.asyncio
-async def test_query_context_filters_context_segments(db_pool, enums):
-    """Query results should not include context segments outside agent scopes."""
+async def _link_context(db_pool, enums, owner_id: str, context_id: str) -> None:
+    """Create a context-of relationship between entity and context."""
 
-    metadata = {
-        "context_segments": [
-            {"text": "public info", "scopes": ["public"]},
-            {"text": "private info", "scopes": ["private"]},
-        ]
-    }
-    await _make_context_item(
-        db_pool, enums, "Mixed Scope", ["public", "private"], metadata
+    type_id = await _ensure_context_of_type(db_pool)
+    status_id = enums.statuses.name_to_id["active"]
+    await db_pool.execute(
+        """
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
+        VALUES ('entity', $1::uuid, 'context', $2::uuid, $3::uuid, $4::uuid, '{}'::jsonb)
+        """,
+        owner_id,
+        context_id,
+        type_id,
+        status_id,
     )
 
-    public_agent = {
-        "id": "public-agent",
-        "scopes": [enums.scopes.name_to_id["public"]],
-    }
-    ctx = await _make_context(db_pool, enums, public_agent)
 
-    payload = QueryContextInput(scopes=["public"])
-    rows = await query_context(payload, ctx)
-    assert rows
-    segments = rows[0]["metadata"].get("context_segments", [])
+@pytest.mark.asyncio
+async def test_list_context_by_owner_filters_scopes(db_pool, enums):
+    """Public agents should only see public context-of items."""
 
-    assert all("private" not in seg.get("scopes", []) for seg in segments)
+    entity = await _make_entity(db_pool, enums, "Owner", ["public"])
+    ctx_public = await _make_context_item(db_pool, enums, "Public Note", ["public"])
+    ctx_private = await _make_context_item(db_pool, enums, "Private Note", ["private"])
+    await _link_context(db_pool, enums, entity["id"], ctx_public["id"])
+    await _link_context(db_pool, enums, entity["id"], ctx_private["id"])
+
+    agent = await _make_agent(db_pool, enums, "public-agent", ["public"])
+    ctx = _build_ctx(db_pool, enums, agent)
+
+    payload = ListContextByOwnerInput(owner_type="entity", owner_id=str(entity["id"]))
+    rows = await list_context_by_owner(payload, ctx)
+    ids = {str(row["id"]) for row in rows}
+
+    assert str(ctx_public["id"]) in ids
+    assert str(ctx_private["id"]) not in ids
+
+
+@pytest.mark.asyncio
+async def test_list_context_by_owner_includes_private_scopes(db_pool, enums):
+    """Agents with private scope should see private context-of items."""
+
+    entity = await _make_entity(db_pool, enums, "Owner Two", ["public", "private"])
+    ctx_public = await _make_context_item(db_pool, enums, "Public Note", ["public"])
+    ctx_private = await _make_context_item(db_pool, enums, "Private Note", ["private"])
+    await _link_context(db_pool, enums, entity["id"], ctx_public["id"])
+    await _link_context(db_pool, enums, entity["id"], ctx_private["id"])
+
+    agent = await _make_agent(db_pool, enums, "private-agent", ["public", "private"])
+    ctx = _build_ctx(db_pool, enums, agent)
+
+    payload = ListContextByOwnerInput(owner_type="entity", owner_id=str(entity["id"]))
+    rows = await list_context_by_owner(payload, ctx)
+    ids = {str(row["id"]) for row in rows}
+
+    assert str(ctx_public["id"]) in ids
+    assert str(ctx_private["id"]) in ids

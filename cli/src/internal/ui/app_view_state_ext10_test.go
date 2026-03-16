@@ -21,10 +21,14 @@ func TestAppViewStateKeyAdditionalBranches(t *testing.T) {
 
 	app.inbox.confirming = false
 	app.tab = tabEntities
-	app.entities.metaInspect = true
-	assert.Equal(t, fmt.Sprintf("tab:%d:entities:meta-inspect", tabEntities), app.viewStateKey())
-
-	app.entities.metaInspect = false
+	app.entities.view = entitiesViewDetail
+	app.entities.modeFocus = true
+	app.entities.filtering = false
+	assert.Equal(
+		t,
+		fmt.Sprintf("tab:%d:entities:%d:mode=%t:filter=%t", tabEntities, entitiesViewDetail, true, false),
+		app.viewStateKey(),
+	)
 	app.tab = tabLogs
 	app.logs.view = logsViewAdd
 	app.logs.modeFocus = true

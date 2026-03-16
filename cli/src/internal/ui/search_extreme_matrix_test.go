@@ -156,6 +156,7 @@ func TestRenderSearchPreviewShowsEntityContextAndJobDetails(t *testing.T) {
 	assert.Contains(t, previewEntity, "Tags")
 
 	link := "https://example.com/runbook"
+	content := "deploy checklist"
 	previewContext := components.SanitizeText(model.renderSearchPreview(searchEntry{
 		kind:  "context",
 		id:    "ctx-1",
@@ -166,27 +167,28 @@ func TestRenderSearchPreviewShowsEntityContextAndJobDetails(t *testing.T) {
 			Status:     "active",
 			URL:        &link,
 			Tags:       []string{"ops"},
-			Metadata:   api.JSONMap{"snippet": "deploy checklist"},
+			Content:    &content,
 		},
 	}, 56))
 	assert.Contains(t, previewContext, "Source")
 	assert.Contains(t, previewContext, "URL")
-	assert.Contains(t, previewContext, "Snippet")
+	assert.Contains(t, previewContext, "Preview")
 
 	priority := "high"
+	desc := "incident response"
 	previewJob := components.SanitizeText(model.renderSearchPreview(searchEntry{
 		kind:  "job",
 		id:    "job-1",
 		label: "Fix outage",
 		desc:  "job info",
 		job: &api.Job{
-			Status:   "active",
-			Priority: &priority,
-			Metadata: api.JSONMap{"summary": "incident response"},
+			Status:      "active",
+			Priority:    &priority,
+			Description: &desc,
 		},
 	}, 56))
 	assert.Contains(t, previewJob, "Priority")
-	assert.Contains(t, previewJob, "Meta")
+	assert.Contains(t, previewJob, "Description")
 }
 
 func TestSearchViewRendersTableAndPreviewContent(t *testing.T) {

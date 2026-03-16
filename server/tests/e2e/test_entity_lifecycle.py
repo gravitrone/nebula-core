@@ -23,10 +23,6 @@ async def test_entity_full_lifecycle(db_pool, enums):
         "status": "active",
         "scopes": ["public"],
         "tags": ["lifecycle", "test"],
-        "metadata": {
-            "description": "A test project for lifecycle validation",
-            "repository": "https://github.com/test/lifecycle",
-        },
     }
 
     created = await execute_create_entity(db_pool, enums, create_payload)
@@ -43,11 +39,6 @@ async def test_entity_full_lifecycle(db_pool, enums):
     # --- Update ---
     update_payload = {
         "entity_id": entity_id,
-        "metadata": {
-            "description": "Updated description",
-            "repository": "https://github.com/test/lifecycle",
-            "tech_stack": ["python", "postgres"],
-        },
         "tags": ["lifecycle", "test", "updated"],
     }
 

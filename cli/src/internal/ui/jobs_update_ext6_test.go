@@ -19,11 +19,6 @@ func TestJobsUpdateMessageBranchesMatrix(t *testing.T) {
 	assert.Len(t, model.allItems, 1)
 	require.Nil(t, cmd)
 
-	scopes := []string{"public"}
-	model, cmd = model.Update(jobsScopesLoadedMsg{options: scopes})
-	require.Nil(t, cmd)
-	assert.Equal(t, scopes, model.scopeOptions)
-
 	model.detail = &api.Job{ID: "job-1"}
 	model, cmd = model.Update(jobRelationshipsLoadedMsg{id: "job-1", relationships: []api.Relationship{{ID: "rel-1"}}})
 	require.Nil(t, cmd)
@@ -95,21 +90,9 @@ func TestJobsUpdateMessageBranchesMatrix(t *testing.T) {
 func TestJobsUpdateKeyRoutingBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 
-	model.addMeta.Active = true
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
-	require.Nil(t, cmd)
-	assert.True(t, updated.addMeta.Active)
-
-	model = NewJobsModel(nil)
-	model.editMeta.Active = true
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
-	require.Nil(t, cmd)
-	assert.True(t, updated.editMeta.Active)
-
-	model = NewJobsModel(nil)
 	model.creatingSubtask = true
 	model.subtaskBuf = "a"
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Empty(t, updated.subtaskBuf)
 
@@ -148,7 +131,7 @@ func TestJobsUpdateKeyRoutingBranches(t *testing.T) {
 
 	model = NewJobsModel(nil)
 	model.view = jobsViewEdit
-	model.detail = &api.Job{ID: "job-1", Status: "pending", Metadata: api.JSONMap{}}
+	model.detail = &api.Job{ID: "job-1", Status: "pending"}
 	model.startEdit()
 	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	require.Nil(t, cmd)
@@ -172,21 +155,12 @@ func TestJobsViewBranchMatrix(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.width = 90
 
-	model.addMeta.Active = true
-	_ = components.SanitizeText(model.View())
-
-	model = NewJobsModel(nil)
-	model.width = 90
-	model.editMeta.Active = true
-	out := components.SanitizeText(model.View())
-	_ = out
-
 	model = NewJobsModel(nil)
 	model.width = 90
 	model.creatingSubtask = true
 	model.detail = &api.Job{ID: "job-1"}
 	model.subtaskBuf = "Subtask"
-	out = components.SanitizeText(model.View())
+	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "New Subtask Title")
 
 	model = NewJobsModel(nil)
@@ -229,7 +203,7 @@ func TestJobsViewBranchMatrix(t *testing.T) {
 	model.width = 90
 	model.unlinkingRel = true
 	model.view = jobsViewEdit
-	model.detail = &api.Job{Status: "pending", Metadata: api.JSONMap{}}
+	model.detail = &api.Job{Status: "pending"}
 	model.startEdit()
 	model.detail = nil
 	_ = components.SanitizeText(model.View())

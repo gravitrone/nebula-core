@@ -6,7 +6,6 @@ SELECT
     s.name AS status,
     e.privacy_scope_ids,
     e.tags,
-    e.metadata,
     e.created_at,
     e.updated_at
 FROM entities e
@@ -17,7 +16,7 @@ WHERE
     AND ($2::text[] IS NULL OR e.tags && $2)
     AND (
         $3::text IS NULL
-        OR to_tsvector('english', e.name || ' ' || COALESCE(e.metadata::text, '')) @@ plainto_tsquery('english', $3)
+        OR to_tsvector('english', e.name) @@ plainto_tsquery('english', $3)
         OR e.name ILIKE '%' || $3 || '%'
     )
     AND s.category = $4

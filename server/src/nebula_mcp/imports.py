@@ -153,6 +153,8 @@ def normalize_entity(item: dict[str, Any], defaults: dict[str, Any] | None) -> d
     """
 
     merged = merge_defaults(item, defaults)
+    if "metadata" in merged:
+        raise ValueError("Entity metadata is not supported")
     name = coerce_text(merged.get("name"))
     entity_type = coerce_text(merged.get("type"))
     if not name or not entity_type:
@@ -168,7 +170,6 @@ def normalize_entity(item: dict[str, Any], defaults: dict[str, Any] | None) -> d
         "status": coerce_text(merged.get("status")) or "active",
         "scopes": scopes,
         "tags": coerce_list(merged.get("tags")),
-        "metadata": coerce_json(merged.get("metadata")),
         "source_path": coerce_text(merged.get("source_path")),
     }
 
@@ -188,6 +189,8 @@ def normalize_context(item: dict[str, Any], defaults: dict[str, Any] | None) -> 
     """
 
     merged = merge_defaults(item, defaults)
+    if "metadata" in merged:
+        raise ValueError("Context metadata is not supported")
     title = coerce_text(merged.get("title"))
     source_type = coerce_text(merged.get("source_type"))
     if not title or not source_type:
@@ -209,7 +212,6 @@ def normalize_context(item: dict[str, Any], defaults: dict[str, Any] | None) -> 
         "content": coerce_text(merged.get("content")),
         "scopes": scopes,
         "tags": coerce_list(merged.get("tags")),
-        "metadata": coerce_json(merged.get("metadata")),
     }
 
 
@@ -274,5 +276,4 @@ def normalize_job(item: dict[str, Any], defaults: dict[str, Any] | None) -> dict
         "priority": coerce_text(merged.get("priority")) or "medium",
         "parent_job_id": coerce_text(merged.get("parent_job_id")),
         "due_at": coerce_text(merged.get("due_at")),
-        "metadata": coerce_json(merged.get("metadata")),
     }

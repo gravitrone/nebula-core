@@ -36,40 +36,6 @@ func TestUpdateEntity(t *testing.T) {
 	assert.Equal(t, "updated name", entity.Name)
 }
 
-// TestSearchEntities handles test search entities.
-func TestSearchEntities(t *testing.T) {
-	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, "/api/entities/search", r.URL.Path)
-
-		var body map[string]any
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		assert.NotNil(t, body["metadata_query"])
-
-		_, err := w.Write(jsonResponse([]map[string]any{
-			{"id": "1", "name": "match1", "tags": []string{}},
-			{"id": "2", "name": "match2", "tags": []string{}},
-		}))
-		require.NoError(t, err)
-	})
-
-	results, err := client.SearchEntities(map[string]any{"role": "professor"})
-	require.NoError(t, err)
-	assert.Len(t, results, 2)
-}
-
-// TestSearchEntitiesEmpty handles test search entities empty.
-func TestSearchEntitiesEmpty(t *testing.T) {
-	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write(jsonResponse([]map[string]any{}))
-		require.NoError(t, err)
-	})
-
-	results, err := client.SearchEntities(map[string]any{})
-	require.NoError(t, err)
-	assert.Len(t, results, 0)
-}
-
 // TestGetEntityNotFound handles test get entity not found.
 func TestGetEntityNotFound(t *testing.T) {
 	_, client := testServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -140,18 +106,18 @@ func TestGetEntityHistory(t *testing.T) {
 		assert.Equal(t, "0", r.URL.Query().Get("offset"))
 
 		now := time.Now().UTC().Format(time.RFC3339)
-			_, err := w.Write(jsonResponse([]map[string]any{
-				{
-					"id":             "audit-1",
-					"table_name":     "entities",
+		_, err := w.Write(jsonResponse([]map[string]any{
+			{
+				"id":             "audit-1",
+				"table_name":     "entities",
 				"record_id":      "ent-1",
 				"action":         "update",
 				"changed_fields": []string{"tags"},
-					"changed_at":     now,
-				},
-			}))
-			require.NoError(t, err)
-		})
+				"changed_at":     now,
+			},
+		}))
+		require.NoError(t, err)
+	})
 
 	rows, err := client.GetEntityHistory("ent-1", 50, 0)
 	require.NoError(t, err)

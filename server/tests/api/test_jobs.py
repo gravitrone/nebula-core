@@ -529,15 +529,14 @@ async def test_untrusted_agent_update_job_status_returns_approval_required(
     public_scope = enums.scopes.name_to_id["public"]
     job = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, agent_id, status_id, priority, metadata, privacy_scope_ids)
-        VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb, $6::uuid[])
+        INSERT INTO jobs (title, agent_id, status_id, priority, privacy_scope_ids)
+        VALUES ($1, $2::uuid, $3::uuid, $4, $5::uuid[])
         RETURNING id
         """,
         "Status Approval Job",
         untrusted_agent_row["id"],
         in_progress,
         "medium",
-        "{}",
         [public_scope],
     )
     job_id = job["id"]
@@ -572,15 +571,14 @@ async def test_untrusted_agent_update_job_returns_approval_required(
     public_scope = enums.scopes.name_to_id["public"]
     job = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, agent_id, status_id, priority, metadata, privacy_scope_ids)
-        VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb, $6::uuid[])
+        INSERT INTO jobs (title, agent_id, status_id, priority, privacy_scope_ids)
+        VALUES ($1, $2::uuid, $3::uuid, $4, $5::uuid[])
         RETURNING id
         """,
         "Patch Approval Job",
         untrusted_agent_row["id"],
         in_progress,
         "medium",
-        "{}",
         [public_scope],
     )
     job_id = job["id"]
@@ -615,15 +613,14 @@ async def test_untrusted_agent_create_subtask_returns_approval_required(
     public_scope = enums.scopes.name_to_id["public"]
     parent = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, agent_id, status_id, priority, metadata, privacy_scope_ids)
-        VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb, $6::uuid[])
+        INSERT INTO jobs (title, agent_id, status_id, priority, privacy_scope_ids)
+        VALUES ($1, $2::uuid, $3::uuid, $4, $5::uuid[])
         RETURNING id
         """,
         "Parent Queue Job",
         untrusted_agent_row["id"],
         in_progress,
         "medium",
-        "{}",
         [public_scope],
     )
     parent_id = parent["id"]

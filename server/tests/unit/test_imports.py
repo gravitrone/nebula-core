@@ -157,15 +157,24 @@ def test_normalize_entity_requires_name_and_type():
 
 
 def test_normalize_entity_applies_defaults_and_coercions():
-    """Entity normalization should set defaults and parse metadata."""
+    """Entity normalization should set defaults and drop extra fields."""
 
     result = normalize_entity(
-        {"name": "alpha", "type": "project", "metadata": '{"ok":true}'},
+        {"name": "alpha", "type": "project"},
         None,
     )
     assert result["status"] == "active"
     assert result["scopes"] == ["public"]
-    assert result["metadata"] == {"ok": True}
+
+
+def test_normalize_entity_rejects_metadata_payloads():
+    """Entity metadata should be rejected in bulk imports."""
+
+    with pytest.raises(ValueError, match="Entity metadata is not supported"):
+        normalize_entity(
+            {"name": "alpha", "type": "project", "metadata": '{"ok":true}'},
+            None,
+        )
 
 
 def test_normalize_context_requires_title_and_source_type():
@@ -190,6 +199,16 @@ def test_normalize_context_defaults_scopes_to_public():
 
     result = normalize_context({"title": "x", "source_type": "note"}, None)
     assert result["scopes"] == ["public"]
+
+
+def test_normalize_context_rejects_metadata_payloads():
+    """Context metadata should be rejected in bulk imports."""
+
+    with pytest.raises(ValueError, match="Context metadata is not supported"):
+        normalize_context(
+            {"title": "x", "source_type": "note", "metadata": {"x": 1}},
+            None,
+        )
 
 
 def test_normalize_relationship_requires_core_fields():

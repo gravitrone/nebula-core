@@ -37,7 +37,6 @@ func TestEntitiesRenderListCountLineSelectionAndPreviewBranches(t *testing.T) {
 			UpdatedAt:       now,
 			Tags:            []string{"demo"},
 			PrivacyScopeIDs: []string{"scope-1"},
-			Metadata:        api.JSONMap{"profile": map[string]any{"title": "builder"}},
 		},
 		{
 			ID:        "ent-2",

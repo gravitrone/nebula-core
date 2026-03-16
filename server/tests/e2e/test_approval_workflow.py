@@ -1,7 +1,6 @@
 """E2E test: full approval workflow."""
 
 # Standard Library
-import json
 import pytest
 
 from nebula_mcp.helpers import (
@@ -71,7 +70,6 @@ async def test_approve_creates_entity(db_pool, enums):
         "status": "active",
         "scopes": ["public"],
         "tags": ["approved"],
-        "metadata": {"description": "Created via approval"},
     }
 
     approval = await create_approval_request(
@@ -92,9 +90,6 @@ async def test_approve_creates_entity(db_pool, enums):
     )
     assert row is not None
     assert row["name"] == "Approved Entity"
-    decoded = json.loads(row["metadata"])
-    assert isinstance(decoded, dict)
-    assert decoded.get("description") == "Created via approval"
 
 
 @pytest.mark.asyncio
@@ -110,7 +105,6 @@ async def test_reject_does_not_create_entity(db_pool, enums):
         "status": "active",
         "scopes": ["public"],
         "tags": ["rejected"],
-        "metadata": {},
     }
 
     approval = await create_approval_request(
@@ -144,7 +138,6 @@ async def test_approve_bad_payload_marks_failed(db_pool, enums):
         "status": "active",
         "scopes": ["public"],
         "tags": [],
-        "metadata": {},
     }
 
     approval = await create_approval_request(

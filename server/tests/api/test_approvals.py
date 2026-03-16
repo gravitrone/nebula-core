@@ -52,7 +52,6 @@ async def pending_approval(db_pool, untrusted_agent):
                 "type": "person",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
                 "source_path": None,
                 "status": "active",
             }
@@ -131,9 +130,9 @@ async def test_get_approval_enriches_relationship_endpoints_with_labels(
     target = await db_pool.fetchrow(
         """
         INSERT INTO entities
-            (name, type_id, status_id, privacy_scope_ids, tags, metadata)
+            (name, type_id, status_id, privacy_scope_ids, tags)
         VALUES
-            ($1, $2, $3, $4, $5, $6::jsonb)
+            ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Approval target",
@@ -141,7 +140,6 @@ async def test_get_approval_enriches_relationship_endpoints_with_labels(
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         [],
-        "{}",
     )
 
     approval = await db_pool.fetchrow(

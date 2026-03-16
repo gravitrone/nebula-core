@@ -18,7 +18,6 @@ func TestEntitiesRenderAddBranchMatrix(t *testing.T) {
 	model.addStatusIdx = 1
 	model.addTags = []string{"alpha"}
 	model.addScopes = []string{"public"}
-	model.addMeta.Buffer = `{"profile":{"name":"Alpha"}}`
 	model.addFields[addFieldName].value = "Alpha"
 	model.addFields[addFieldType].value = "person"
 
@@ -44,11 +43,6 @@ func TestEntitiesRenderAddBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "Scopes:")
 	assert.Contains(t, out, "public")
 
-	model.addFocus = addFieldMetadata
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Metadata:")
-	assert.Contains(t, out, "profile")
-
 	model.addFocus = addFieldName
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Name:")
@@ -61,14 +55,6 @@ func TestEntitiesRenderAddBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "Name:")
 	assert.Contains(t, out, "-")
 
-	// Empty metadata preview fallback branch.
-	model.addMeta.Buffer = ""
-	model.addMeta.Scopes = nil
-	model.addFocus = addFieldMetadata
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Metadata:")
-	assert.Contains(t, out, "-")
-
 	model.errText = "boom"
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Error")
@@ -76,7 +62,7 @@ func TestEntitiesRenderAddBranchMatrix(t *testing.T) {
 }
 
 func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
-	t.Run("name type and metadata validation errors", func(t *testing.T) {
+	t.Run("name and type validation errors", func(t *testing.T) {
 		model := NewEntitiesModel(nil)
 
 		next, cmd := model.saveAdd()
@@ -89,10 +75,6 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 		assert.Equal(t, "Type is required", next.errText)
 
 		model.addFields[addFieldType].value = "person"
-		model.addMeta.Buffer = "{"
-		next, cmd = model.saveAdd()
-		assert.Nil(t, cmd)
-		assert.NotEmpty(t, next.errText)
 	})
 
 	t.Run("successful save defaults scopes and commits tag buffer", func(t *testing.T) {
@@ -120,7 +102,6 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 		model.addStatusIdx = 1
 		model.addTagBuf = "alpha"
 		model.addScopes = nil
-		model.addMeta.Buffer = ""
 
 		next, cmd := model.saveAdd()
 		require.NotNil(t, cmd)

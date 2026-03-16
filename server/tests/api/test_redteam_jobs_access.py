@@ -41,14 +41,13 @@ async def _make_job(db_pool, enums, agent_id):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
-        VALUES ($1, $2, $3, $4::jsonb, $5)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "API Private Job",
         status_id,
         agent_id,
-        json.dumps({"secret": "job"}),
         scope_ids,
     )
     return dict(row)
@@ -62,8 +61,8 @@ async def _make_entity(db_pool, enums, name, scopes=None):
     scope_ids = [enums.scopes.name_to_id[s] for s in (scopes or ["public"])]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -71,7 +70,6 @@ async def _make_entity(db_pool, enums, name, scopes=None):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"note": "user"}),
     )
     return dict(row)
 

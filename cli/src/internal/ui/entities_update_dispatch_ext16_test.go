@@ -48,8 +48,6 @@ func TestEntitiesUpdateDispatchAdditionalBranches(t *testing.T) {
 	require.NotNil(t, withScopes.scopeNames)
 	assert.Equal(t, "public", withScopes.scopeNames["scope-1"])
 	assert.Equal(t, []string{"private", "public"}, withScopes.scopeOptions)
-	assert.Equal(t, []string{"private", "public"}, withScopes.addMeta.scopeOptions)
-	assert.Equal(t, []string{"private", "public"}, withScopes.editMeta.scopeOptions)
 
 	withScopes.loading = true
 	withScopes.relLoading = true
@@ -70,26 +68,11 @@ func TestEntitiesUpdateDispatchAdditionalBranches(t *testing.T) {
 	assert.Contains(t, withErr.errText, "boom")
 }
 
-func TestEntitiesInitRecreatesNilMetadataList(t *testing.T) {
+func TestEntitiesUpdateKeyDispatchWithEditView(t *testing.T) {
 	model := NewEntitiesModel(nil)
-	model.metaList = nil
-
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-}
-
-func TestEntitiesUpdateKeyDispatchWithMetadataEditorsAndEditView(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.addMeta.Active = true
 
 	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	require.Nil(t, cmd)
-	assert.False(t, updated.addMeta.Active)
-
-	updated.editMeta.Active = true
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
-	require.Nil(t, cmd)
-	assert.False(t, updated.editMeta.Active)
 
 	updated.view = entitiesViewEdit
 	updated.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Status: "active", Type: "person"}

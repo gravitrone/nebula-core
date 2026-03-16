@@ -54,8 +54,8 @@ async def _make_entity(db_pool, enums, name):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -63,7 +63,6 @@ async def _make_entity(db_pool, enums, name):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"note": "self"}),
     )
     return dict(row)
 

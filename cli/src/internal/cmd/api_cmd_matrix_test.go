@@ -118,15 +118,15 @@ func TestAPICmdReadDetailMatrixAgainstMockServer(t *testing.T) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/entities/e1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{"smoke"}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{"smoke"}, "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/context/c1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "c1", "title": "Context", "name": "Context", "source_type": "note", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "c1", "title": "Context", "name": "Context", "source_type": "note", "tags": []string{}, "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/jobs/j1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "j1", "title": "Job", "status": "pending", "priority": "low", "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "j1", "title": "Job", "status": "pending", "priority": "low", "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/logs/l1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
@@ -172,19 +172,17 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/api/entities":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{}, "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/api/entities/"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{}, "metadata": map[string]any{"phase": "updated"}, "created_at": now, "updated_at": now,
+				"id": "e1", "name": "Entity", "type": "person", "status": "inactive", "tags": []string{}, "created_at": now, "updated_at": now,
 			}}))
-		case r.Method == http.MethodPost && r.URL.Path == "/api/entities/search":
-			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/history"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/revert"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "e1", "name": "Entity", "type": "person", "status": "active", "tags": []string{}, "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/entities/bulk/tags":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"updated": 1, "entity_ids": []string{"e1"}}}))
@@ -192,11 +190,11 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"updated": 1, "entity_ids": []string{"e1"}}}))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/context":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "c1", "title": "Context", "name": "Context", "source_type": "note", "tags": []string{}, "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "c1", "title": "Context", "name": "Context", "source_type": "note", "tags": []string{}, "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/api/context/"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "c1", "title": "Context", "name": "Context", "source_type": "note", "tags": []string{}, "metadata": map[string]any{"phase": "updated"}, "created_at": now, "updated_at": now,
+				"id": "c1", "title": "Context Updated", "name": "Context Updated", "source_type": "note", "tags": []string{}, "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/link"):
 			_, _ = w.Write([]byte(`{"ok":true}`))
@@ -212,19 +210,19 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/jobs":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "j1", "title": "Job", "status": "pending", "priority": "low", "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "j1", "title": "Job", "status": "pending", "priority": "low", "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/api/jobs/") && strings.HasSuffix(r.URL.Path, "/status"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "j1", "title": "Job", "status": "completed", "priority": "low", "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "j1", "title": "Job", "status": "completed", "priority": "low", "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/api/jobs/"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "j1", "title": "Job", "status": "pending", "priority": "low", "metadata": map[string]any{"phase": "updated"}, "created_at": now, "updated_at": now,
+				"id": "j1", "title": "Job Updated", "status": "pending", "priority": "low", "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/subtasks"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "j2", "title": "Subtask", "status": "pending", "priority": "low", "metadata": map[string]any{}, "created_at": now, "updated_at": now,
+				"id": "j2", "title": "Subtask", "status": "pending", "priority": "low", "created_at": now, "updated_at": now,
 			}}))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/logs":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
@@ -292,24 +290,23 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 	}))
 	t.Cleanup(shutdown)
 
-	runAPISubcommand(t, "entities", "create", "--input", `{"scopes":["public"],"name":"Entity","type":"person","status":"active","tags":[],"metadata":{}}`)
-	runAPISubcommand(t, "entities", "update", "e1", "--input", `{"metadata":{"phase":"updated"}}`)
-	runAPISubcommand(t, "entities", "search", "--input", `{"board":"nebula-core"}`)
+	runAPISubcommand(t, "entities", "create", "--input", `{"scopes":["public"],"name":"Entity","type":"person","status":"active","tags":[]}`)
+	runAPISubcommand(t, "entities", "update", "e1", "--input", `{"status":"inactive"}`)
 	runAPISubcommand(t, "entities", "history", "e1", "--limit", "10", "--offset", "0")
 	runAPISubcommand(t, "entities", "revert", "e1", "--audit-id", "a1")
 	runAPISubcommand(t, "entities", "bulk-tags", "--input", `{"entity_ids":["e1"],"tags":["smoke"],"op":"add"}`)
 	runAPISubcommand(t, "entities", "bulk-scopes", "--input", `{"entity_ids":["e1"],"scopes":["public"],"op":"replace"}`)
 
-	runAPISubcommand(t, "context", "create", "--input", `{"title":"Ctx","source_type":"note","content":"x","scopes":["public"],"tags":[],"metadata":{}}`)
-	runAPISubcommand(t, "context", "update", "c1", "--input", `{"metadata":{"phase":"updated"}}`)
-	runAPISubcommand(t, "context", "link", "c1", "--entity-id", "e1")
+	runAPISubcommand(t, "context", "create", "--input", `{"title":"Ctx","source_type":"note","content":"x","scopes":["public"],"tags":[]}`)
+	runAPISubcommand(t, "context", "update", "c1", "--input", `{"title":"Ctx Updated"}`)
+	runAPISubcommand(t, "context", "link", "c1", "--owner-type", "entity", "--owner-id", "e1")
 
 	runAPISubcommand(t, "relationships", "create", "--input", `{"source_type":"entity","source_id":"e1","target_type":"entity","target_id":"e2","relationship_type":"related-to","properties":{}}`)
 	runAPISubcommand(t, "relationships", "update", "r1", "--input", `{"properties":{"phase":"updated"}}`)
 	runAPISubcommand(t, "relationships", "for-source", "entity", "e1")
 
-	runAPISubcommand(t, "jobs", "create", "--input", `{"title":"Job","status":"pending","priority":"low","metadata":{}}`)
-	runAPISubcommand(t, "jobs", "update", "j1", "--input", `{"metadata":{"phase":"updated"}}`)
+	runAPISubcommand(t, "jobs", "create", "--input", `{"title":"Job","status":"pending","priority":"low"}`)
+	runAPISubcommand(t, "jobs", "update", "j1", "--input", `{"title":"Job Updated"}`)
 	runAPISubcommand(t, "jobs", "set-status", "j1", "--status", "completed")
 	runAPISubcommand(t, "jobs", "subtask", "j1", "--input", `{"title":"Subtask"}`)
 

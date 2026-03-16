@@ -4,7 +4,6 @@ SELECT
     e.name,
     et.name AS type,
     e.tags,
-    e.metadata,
     e.privacy_scope_ids,
     e.created_at,
     e.updated_at

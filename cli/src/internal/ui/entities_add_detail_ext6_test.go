@@ -5,7 +5,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
-	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -120,15 +119,6 @@ func TestEntitiesHandleAddKeysBranchMatrix(t *testing.T) {
 		next, _ = next.handleAddKeys(tea.KeyMsg{Type: tea.KeySpace})
 		assert.True(t, next.addScopeSelecting)
 
-		// Metadata delete/activate branches.
-		next.addScopeSelecting = false
-		next.addFocus = addFieldMetadata
-		next.addMeta.Buffer = "abc"
-		next, _ = next.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
-		assert.Equal(t, "ab", next.addMeta.Buffer)
-		next, _ = next.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
-		assert.True(t, next.addMeta.Active)
-
 		// Default field input/delete branches.
 		next.addFocus = addFieldType
 		next.addFields[addFieldType].value = "pers"
@@ -145,184 +135,60 @@ func TestEntitiesHandleAddKeysBranchMatrix(t *testing.T) {
 	})
 }
 
-func TestEntitiesHandleDetailKeysBranchMatrix(t *testing.T) {
-	restoreClipboard := copyEntityMetadataClipboard
-	defer func() { copyEntityMetadataClipboard = restoreClipboard }()
-	copyEntityMetadataClipboard = func(s string) error { return nil }
-
+func TestEntitiesHandleDetailKeysContextPromptsAndShortcuts(t *testing.T) {
 	model := NewEntitiesModel(nil)
-	model.width = 90
-	model.height = 30
 	model.view = entitiesViewDetail
-	model.detail = &api.Entity{
-		ID:   "ent-1",
-		Name: "Alpha",
-		Type: "person",
-		Metadata: map[string]any{
-			"profile": map[string]any{
-				"name": "Alpha",
-				"bio":  "line1\nline2\nline3\nline4\nline5\nline6\nline7",
-			},
-		},
-	}
-	model.metaExpanded = true
-	model.syncDetailMetadataRows()
-	require.Greater(t, len(model.metaRows), 0)
-	require.NotNil(t, model.metaList)
+	model.detail = &api.Entity{ID: "ent-1", Name: "Alpha"}
+	model.width = 90
 
-	t.Run("meta inspect navigation and copy", func(t *testing.T) {
-		model.metaInspect = true
-		model.metaInspectI = 0
-		model.metaInspectO = 0
+	// link prompt
+	linked, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'l'}})
+	require.Nil(t, cmd)
+	assert.True(t, linked.contextLinking)
+	linked, _ = linked.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	assert.Equal(t, "c", linked.contextLinkBuf)
+	linked, _ = linked.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	assert.False(t, linked.contextLinking)
+	assert.Equal(t, "", linked.contextLinkBuf)
 
-		next, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyDown})
-		assert.Nil(t, cmd)
-		assert.GreaterOrEqual(t, next.metaInspectO, 0)
+	// create prompt
+	created, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	require.Nil(t, cmd)
+	assert.True(t, created.contextCreating)
+	created, _ = created.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'N'}})
+	assert.Equal(t, "N", created.contextCreateBuf)
+	created, _ = created.handleDetailKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	assert.Equal(t, "", created.contextCreateBuf)
+	created, _ = created.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	assert.False(t, created.contextCreating)
+	assert.Equal(t, "", created.contextCreateBuf)
 
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
-		assert.Nil(t, cmd)
-		assert.Equal(t, 0, next.metaInspectO)
+	// shortcuts
+	shortcuts, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, entitiesViewEdit, shortcuts.view)
 
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEnter})
-		require.NotNil(t, cmd)
-		msg := cmd()
-		copied, ok := msg.(entityMetadataCopiedMsg)
-		require.True(t, ok)
-		assert.Equal(t, 1, copied.count)
+	shortcuts.view = entitiesViewDetail
+	shortcuts, cmd = shortcuts.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	require.NotNil(t, cmd)
+	assert.Equal(t, entitiesViewRelationships, shortcuts.view)
+	assert.True(t, shortcuts.relLoading)
 
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
-		assert.Nil(t, cmd)
-		assert.False(t, next.metaInspect)
-	})
+	shortcuts.view = entitiesViewDetail
+	shortcuts, cmd = shortcuts.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	require.NotNil(t, cmd)
+	assert.Equal(t, entitiesViewHistory, shortcuts.view)
+	assert.True(t, shortcuts.historyLoading)
 
-	t.Run("expanded metadata selection and copy flows", func(t *testing.T) {
-		next := model
-		next.metaInspect = false
-		next.metaExpanded = true
-		next.metaSelected = map[int]bool{}
-		next.metaSelectMode = false
-		next.metaList = components.NewList(8)
-		syncMetadataList(next.metaList, next.metaRows, metadataPanelPageSize(true))
+	shortcuts.view = entitiesViewDetail
+	shortcuts, cmd = shortcuts.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	require.Nil(t, cmd)
+	assert.Equal(t, entitiesViewConfirm, shortcuts.view)
+	assert.Equal(t, "entity-archive", shortcuts.confirmKind)
 
-		next, cmd := next.handleDetailKeys(tea.KeyMsg{Type: tea.KeySpace})
-		assert.Nil(t, cmd)
-		assert.True(t, next.metaSelectMode)
-		assert.NotEmpty(t, next.metaSelected)
-
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
-		assert.Nil(t, cmd)
-		assert.Equal(t, len(next.metaRows), len(next.metaSelected))
-
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
-		require.NotNil(t, cmd)
-		msg := cmd()
-		copied, ok := msg.(entityMetadataCopiedMsg)
-		require.True(t, ok)
-		assert.Equal(t, len(next.metaRows), copied.count)
-
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
-		assert.Nil(t, cmd)
-		assert.False(t, next.metaSelectMode)
-		assert.Empty(t, next.metaSelected)
-	})
-
-	t.Run("selection mode exits when toggles clear all rows", func(t *testing.T) {
-		next := model
-		next.metaInspect = false
-		next.metaExpanded = true
-		next.syncDetailMetadataRows()
-		require.Greater(t, len(next.metaRows), 0)
-		next.metaList = components.NewList(8)
-		syncMetadataList(next.metaList, next.metaRows, metadataPanelPageSize(true))
-		next.metaList.Cursor = 0
-
-		next.metaSelectMode = true
-		next.metaSelected = map[int]bool{0: true}
-		afterSpace, cmd := next.handleDetailKeys(tea.KeyMsg{Type: tea.KeySpace})
-		assert.Nil(t, cmd)
-		assert.False(t, afterSpace.metaSelectMode)
-		assert.Empty(t, afterSpace.metaSelected)
-
-		afterSpace.metaSelectMode = true
-		afterSpace.metaSelected = make(map[int]bool, len(afterSpace.metaRows))
-		for i := range afterSpace.metaRows {
-			afterSpace.metaSelected[i] = true
-		}
-		afterBulk, cmd := afterSpace.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
-		assert.Nil(t, cmd)
-		assert.False(t, afterBulk.metaSelectMode)
-		assert.Empty(t, afterBulk.metaSelected)
-	})
-
-	t.Run("expanded metadata list arrows and inspect open", func(t *testing.T) {
-		next := model
-		next.metaInspect = false
-		next.metaExpanded = true
-		next.metaSelectMode = true
-		next.metaSelected = map[int]bool{}
-		next.syncDetailMetadataRows()
-
-		next, cmd := next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyDown})
-		assert.Nil(t, cmd)
-		assert.GreaterOrEqual(t, next.metaList.Selected(), 0)
-
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
-		assert.Nil(t, cmd)
-		assert.GreaterOrEqual(t, next.metaList.Selected(), 0)
-
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEnter})
-		assert.Nil(t, cmd)
-		assert.True(t, next.metaInspect)
-
-		next.metaInspect = false
-		next.metaSelectMode = true
-		next.metaSelected = map[int]bool{}
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
-		assert.Nil(t, cmd)
-		assert.False(t, next.metaSelectMode)
-		assert.Empty(t, next.metaSelected)
-	})
-
-	t.Run("detail-level shortcuts route to expected views", func(t *testing.T) {
-		next := model
-		next.metaInspect = true
-		next.metaExpanded = true
-		next.metaSelected = map[int]bool{0: true}
-		next.metaSelectMode = true
-
-		next, cmd := next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
-		assert.Nil(t, cmd)
-		assert.False(t, next.metaExpanded)
-		assert.False(t, next.metaInspect)
-		assert.Empty(t, next.metaSelected)
-
-		next.metaExpanded = false
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-		assert.Nil(t, cmd)
-		assert.Equal(t, entitiesViewEdit, next.view)
-
-		next.view = entitiesViewDetail
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
-		assert.Nil(t, cmd)
-		assert.Equal(t, entitiesViewConfirm, next.view)
-		assert.Equal(t, "entity-archive", next.confirmKind)
-
-		next.view = entitiesViewDetail
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
-		assert.Equal(t, entitiesViewRelationships, next.view)
-		assert.True(t, next.relLoading)
-		require.NotNil(t, cmd)
-
-		next.view = entitiesViewDetail
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
-		assert.Equal(t, entitiesViewHistory, next.view)
-		assert.True(t, next.historyLoading)
-		require.NotNil(t, cmd)
-
-		next.view = entitiesViewDetail
-		next, cmd = next.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
-		assert.Nil(t, cmd)
-		assert.Equal(t, entitiesViewList, next.view)
-		assert.Nil(t, next.detail)
-	})
+	shortcuts.view = entitiesViewDetail
+	shortcuts, cmd = shortcuts.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	require.Nil(t, cmd)
+	assert.Equal(t, entitiesViewList, shortcuts.view)
+	assert.Nil(t, shortcuts.detail)
 }

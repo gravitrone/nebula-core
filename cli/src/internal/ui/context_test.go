@@ -29,9 +29,9 @@ func TestContextSaveLinksEntities(t *testing.T) {
 		case r.URL.Path == "/api/context" && r.Method == http.MethodPost:
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "k-1", "name": "note"}}))
 		case strings.HasPrefix(r.URL.Path, "/api/context/") && strings.HasSuffix(r.URL.Path, "/link"):
-			var body map[string]string
+			var body api.LinkContextInput
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-			linked = append(linked, body["entity_id"])
+			linked = append(linked, body.OwnerID)
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{}}))
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -197,13 +197,8 @@ func TestContextRenderEditShowsTagsAndScopes(t *testing.T) {
 	model.view = contextViewEdit
 	model.editTags = []string{"alpha"}
 	model.editScopes = []string{"public"}
-	model.editMeta.Buffer = "profile | timezone | Europe/Warsaw"
-	model.editMeta.Scopes = []string{"public"}
 
 	out := model.renderEdit()
 	assert.Contains(t, out, "alpha")
 	assert.Contains(t, out, "public")
-	assert.Contains(t, out, "profile | timezone | Europe/Warsaw")
-	assert.Contains(t, out, "profile")
-	assert.Contains(t, out, "timezone")
 }

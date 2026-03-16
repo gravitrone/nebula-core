@@ -65,7 +65,6 @@ from nebula_mcp.helpers import (
     create_enrollment_session,
     enforce_scope_subset,
     ensure_approval_capacity,
-    filter_context_segments,
     normalize_bulk_operation,
     redeem_enrollment_key,
     sanitize_relationship_properties,
@@ -144,6 +143,7 @@ from nebula_mcp.models import (
     ListAgentsInput,
     ListAllKeysInput,
     ListAuditActorsInput,
+    ListContextByOwnerInput,
     ListTaxonomyInput,
     LoginInput,
     PendingApprovalsInput,
@@ -158,7 +158,6 @@ from nebula_mcp.models import (
     RejectRequestInput,
     RevertEntityInput,
     RevokeKeyInput,
-    SearchEntitiesByMetadataInput,
     SemanticSearchInput,
     ToggleTaxonomyInput,
     UpdateAgentInput,
@@ -465,14 +464,12 @@ def _entity_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
         Result value from the operation.
     """
 
-    metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     text = " ".join(
         [
             str(row.get("name", "")),
             str(row.get("type", "")),
             " ".join(str(t) for t in tags),
-            json.dumps(metadata, sort_keys=True),
         ]
     ).strip()
     subtitle = str(row.get("type", "") or "entity")
@@ -499,7 +496,6 @@ def _context_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
         Result value from the operation.
     """
 
-    metadata = row.get("metadata") or {}
     tags = row.get("tags") or []
     content = str(row.get("content") or "")
     text = " ".join(
@@ -508,7 +504,6 @@ def _context_semantic_candidate(row: dict[str, Any]) -> dict[str, Any]:
             str(row.get("source_type", "")),
             content,
             " ".join(str(t) for t in tags),
-            json.dumps(metadata, sort_keys=True),
         ]
     ).strip()
     subtitle = str(row.get("source_type", "") or "context")
@@ -1123,15 +1118,7 @@ async def export_data(payload: ExportDataInput, ctx: Context) -> dict:
             limit,
             offset,
         )
-        out_rows: list[dict[str, Any]] = []
-        visible_scope_names = scope_names_from_ids(scope_ids or [], enums)
-        for row in rows:
-            item = dict(row)
-            if item.get("metadata"):
-                item["metadata"] = filter_context_segments(
-                    item["metadata"], visible_scope_names
-                )
-            out_rows.append(item)
+        out_rows = [dict(row) for row in rows]
         return _export_response_rows(out_rows, payload.format)
 
     if payload.resource == "context":
@@ -1150,12 +1137,6 @@ async def export_data(payload: ExportDataInput, ctx: Context) -> dict:
             offset,
         )
         out_rows = [dict(row) for row in rows]
-        visible_scope_names = scope_names_from_ids(scope_ids or [], enums)
-        for item in out_rows:
-            if item.get("metadata"):
-                item["metadata"] = filter_context_segments(
-                    item["metadata"], visible_scope_names
-                )
         return _export_response_rows(out_rows, payload.format)
 
     if payload.resource == "relationships":
@@ -1409,7 +1390,6 @@ async def login_user(payload: LoginInput, ctx: Context) -> dict:
             require_entity_type("person", enums),
             status_id,
             [],
-            "{}",
             None,
         )
     else:
@@ -1705,7 +1685,7 @@ async def get_entity(payload: GetEntityInput, ctx: Context) -> dict:
         ctx: MCP request context.
 
     Returns:
-        Entity dict with filtered metadata.
+        Entity dict.
 
     Raises:
         ValueError: If entity not found or access denied.
@@ -1727,11 +1707,6 @@ async def get_entity(payload: GetEntityInput, ctx: Context) -> dict:
 
     if entity_scopes and not any(s in agent_scopes for s in entity_scopes):
         raise ValueError("Access denied: entity not in agent scopes")
-
-    # Filter context segments
-    if entity.get("metadata"):
-        scope_names = [enums.scopes.id_to_name.get(s, "") for s in agent_scopes]
-        entity["metadata"] = filter_context_segments(entity["metadata"], scope_names)
 
     return entity
 
@@ -1759,15 +1734,7 @@ async def query_entities(payload: QueryEntitiesInput, ctx: Context) -> list[dict
         limit,
         offset,
     )
-    results = []
-    for row in rows:
-        entity = dict(row)
-        if entity.get("metadata"):
-            entity["metadata"] = filter_context_segments(
-                entity["metadata"], allowed_scopes
-            )
-        results.append(entity)
-    return results
+    return [dict(row) for row in rows]
 
 
 @mcp.tool()
@@ -1802,7 +1769,7 @@ async def semantic_search(payload: SemanticSearchInput, ctx: Context) -> list[di
 
 @mcp.tool()
 async def update_entity(payload: UpdateEntityInput, ctx: Context) -> dict:
-    """Update entity metadata, tags, or status."""
+    """Update entity tags or status."""
 
     pool, enums, agent = await require_context(ctx)
 
@@ -1864,34 +1831,6 @@ async def bulk_update_entity_scopes(
         pool, enums, payload.entity_ids, requested_scopes, op
     )
     return {"updated": len(updated), "entity_ids": updated}
-
-
-@mcp.tool()
-async def search_entities_by_metadata(
-    payload: SearchEntitiesByMetadataInput, ctx: Context
-) -> list[dict]:
-    """Search entities by JSONB metadata containment."""
-
-    pool, enums, agent = await require_context(ctx)
-    scope_ids = agent.get("scopes", [])
-    limit = _clamp_limit(payload.limit)
-    scope_names = scope_names_from_ids(scope_ids, enums)
-
-    rows = await pool.fetch(
-        QUERIES["entities/search_by_metadata"],
-        json.dumps(payload.metadata_query),
-        limit,
-        scope_ids,
-    )
-    results = []
-    for row in rows:
-        entity = dict(row)
-        if entity.get("metadata"):
-            entity["metadata"] = filter_context_segments(
-                entity["metadata"], scope_names
-            )
-        results.append(entity)
-    return results
 
 
 @mcp.tool()
@@ -2018,11 +1957,7 @@ async def get_context(payload: GetContextInput, ctx: Context) -> dict:
     row = await pool.fetchrow(QUERIES["context/get"], payload.context_id, scope_ids)
     if not row:
         raise ValueError("Context not found")
-    item = dict(row)
-    if item.get("metadata"):
-        scope_names = scope_names_from_ids(scope_ids or [], enums)
-        item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-    return item
+    return dict(row)
 
 
 @mcp.tool()
@@ -2116,24 +2051,17 @@ async def query_context(payload: QueryContextInput, ctx: Context) -> list[dict]:
         limit,
         offset,
     )
-    scope_names = scope_names_from_ids(scope_ids, enums)
-    results = []
-    for row in rows:
-        item = dict(row)
-        if item.get("metadata"):
-            item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-        results.append(item)
-    return results
+    return [dict(row) for row in rows]
 
 
 @mcp.tool()
-async def link_context_to_entity(payload: LinkContextInput, ctx: Context) -> dict:
-    """Link context item to entity via relationship."""
+async def link_context_to_owner(payload: LinkContextInput, ctx: Context) -> dict:
+    """Link a context item to an owner via context-of relationship."""
 
     pool, enums, agent = await require_context(ctx)
 
     _require_uuid(payload.context_id, "context")
-    _require_uuid(payload.entity_id, "entity")
+    _require_uuid(payload.owner_id, "owner")
 
     await _validate_relationship_node(
         pool,
@@ -2141,33 +2069,71 @@ async def link_context_to_entity(payload: LinkContextInput, ctx: Context) -> dic
         agent,
         "context",
         payload.context_id,
-        "Source",
+        "Context",
         require_write=True,
     )
     await _validate_relationship_node(
         pool,
         enums,
         agent,
-        "entity",
-        payload.entity_id,
-        "Target",
+        payload.owner_type,
+        payload.owner_id,
+        "Owner",
         require_write=True,
     )
     relationship_payload = {
-        "source_type": "context",
-        "source_id": payload.context_id,
-        "target_type": "entity",
-        "target_id": payload.entity_id,
-        "relationship_type": payload.relationship_type,
+        "source_type": payload.owner_type,
+        "source_id": payload.owner_id,
+        "target_type": "context",
+        "target_id": payload.context_id,
+        "relationship_type": "context-of",
         "properties": {},
     }
-    require_relationship_type(payload.relationship_type, enums)
+    require_relationship_type("context-of", enums)
     if resp := await maybe_require_approval(
         pool, agent, "create_relationship", relationship_payload
     ):
         return resp
 
     return await execute_create_relationship(pool, enums, relationship_payload)
+
+
+@mcp.tool()
+async def list_context_by_owner(
+    payload: ListContextByOwnerInput, ctx: Context
+) -> list[dict]:
+    """List context items linked to an owner via context-of."""
+
+    pool, enums, agent = await require_context(ctx)
+    if payload.owner_type == "job":
+        _require_job_id(payload.owner_id, "owner")
+    else:
+        _require_uuid(payload.owner_id, "owner")
+
+    await _validate_relationship_node(
+        pool,
+        enums,
+        agent,
+        payload.owner_type,
+        payload.owner_id,
+        "Owner",
+        require_write=False,
+    )
+
+    scope_filter = _scope_filter_ids(agent, enums)
+    type_id = require_relationship_type("context-of", enums)
+    limit = _clamp_limit(payload.limit)
+    offset = max(0, payload.offset)
+    rows = await pool.fetch(
+        QUERIES["context/by_owner"],
+        payload.owner_type,
+        payload.owner_id,
+        type_id,
+        scope_filter,
+        limit,
+        offset,
+    )
+    return [dict(row) for row in rows]
 
 
 # --- Log Tools ---
@@ -2636,7 +2602,6 @@ async def create_subtask(payload: CreateSubtaskInput, ctx: Context) -> dict:
         "scopes": parent_scopes or ["public"],
         "parent_job_id": payload.parent_job_id,
         "due_at": payload.due_at,
-        "metadata": {},
     }
     if subtask_payload.get("priority") not in JOB_PRIORITY_VALUES:
         raise ValueError(f"Invalid priority: {subtask_payload['priority']}")

@@ -18,9 +18,6 @@ from nebula_api.routes.context import (
     _require_context_write_access,
     _require_entity_write_access,
     _validate_tag_list,
-    create_context,
-    get_context,
-    update_context,
 )
 from nebula_mcp.models import MAX_TAG_LENGTH
 
@@ -100,85 +97,6 @@ async def test_require_context_write_access_scope_denied_maps_403(mock_enums):
 
     assert exc.value.status_code == 403
     assert exc.value.detail == "Forbidden"
-
-
-@pytest.mark.asyncio
-async def test_create_context_metadata_validation_error_maps_400(
-    monkeypatch, mock_enums
-):
-    """Metadata validator failures should map to 400."""
-
-    payload = CreateContextBody(title="note", scopes=["public"])
-    pool = SimpleNamespace()
-    auth = {"caller_type": "user", "scopes": []}
-
-    monkeypatch.setattr(
-        "nebula_api.routes.context.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await create_context(payload, _request(pool, mock_enums), auth=auth)
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail == "bad metadata"
-
-
-@pytest.mark.asyncio
-async def test_get_context_filters_metadata_segments(monkeypatch, mock_enums):
-    """Context reads should run metadata through scope filtering."""
-
-    context_id = str(uuid4())
-    pool = SimpleNamespace(
-        fetchrow=AsyncMock(
-            return_value={
-                "id": context_id,
-                "title": "ctx",
-                "metadata": {"context_segments": [{"text": "x", "scopes": ["public"]}]},
-            }
-        )
-    )
-    auth = {"scopes": [mock_enums.scopes.name_to_id["public"]]}
-    filtered = {"safe": True}
-    monkeypatch.setattr(
-        "nebula_api.routes.context.filter_context_segments",
-        lambda _metadata, _scope_names: filtered,
-    )
-
-    result = await get_context(context_id, _request(pool, mock_enums), auth=auth)
-
-    assert result["data"]["metadata"] == filtered
-
-
-@pytest.mark.asyncio
-async def test_update_context_metadata_validation_error_maps_400(
-    monkeypatch, mock_enums
-):
-    """Update metadata validator failures should map to 400."""
-
-    context_id = str(uuid4())
-    payload = UpdateContextBody(metadata={"k": "v"})
-    pool = SimpleNamespace()
-    auth = {"caller_type": "user", "scopes": [mock_enums.scopes.name_to_id["public"]]}
-
-    monkeypatch.setattr(
-        "nebula_api.routes.context._require_context_write_access", AsyncMock()
-    )
-    monkeypatch.setattr(
-        "nebula_api.routes.context.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad update metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await update_context(
-            context_id,
-            payload,
-            _request(pool, mock_enums),
-            auth=auth,
-        )
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail == "bad update metadata"
 
 
 def test_validate_tag_list_rejects_too_long_tag():

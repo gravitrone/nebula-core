@@ -50,7 +50,6 @@ func TestAPICmdEntitiesQueryPrintsCleanJSON(t *testing.T) {
 					"type":       "person",
 					"status":     "active",
 					"tags":       []string{"cat"},
-					"metadata":   map[string]any{"mood": "sleepy"},
 					"created_at": now,
 					"updated_at": now,
 				},
@@ -82,8 +81,7 @@ func TestAPICmdEntitiesCreateFromInputFile(t *testing.T) {
   "name": "Alex",
   "type": "person",
   "status": "active",
-  "tags": ["founder"],
-  "metadata": {"city":"warsaw"}
+  "tags": ["founder"]
 }`), 0o600))
 
 	now := time.Now().UTC()
@@ -103,7 +101,6 @@ func TestAPICmdEntitiesCreateFromInputFile(t *testing.T) {
 				"type":       "person",
 				"status":     "active",
 				"tags":       []string{"founder"},
-				"metadata":   map[string]any{"city": "warsaw"},
 				"created_at": now,
 				"updated_at": now,
 			},
@@ -118,7 +115,6 @@ func TestAPICmdEntitiesCreateFromInputFile(t *testing.T) {
 	cmd.SetArgs([]string{"entities", "create", "--input-file", inputPath})
 	require.NoError(t, cmd.Execute())
 	assert.Contains(t, out.String(), "\"id\": \"ent-2\"")
-	assert.Contains(t, out.String(), "\"city\": \"warsaw\"")
 }
 
 func TestAPICmdApprovalsRejectRequiresNotes(t *testing.T) {

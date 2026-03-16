@@ -284,18 +284,11 @@ async def test_export_schema_returns_contract(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_export_data_context_filters_metadata_segments(monkeypatch, mock_enums):
-    """export_data(context) should filter context metadata by visible scopes."""
+async def test_export_data_context_returns_rows(monkeypatch, mock_enums):
+    """export_data(context) should return context rows."""
 
     pool = _PoolStub(
-        fetch_rows=[
-            [
-                {
-                    "id": str(uuid4()),
-                    "metadata": {"context_segments": [{"text": "x", "scopes": ["public"]}]},
-                }
-            ]
-        ]
+        fetch_rows=[[{"id": str(uuid4())}]]
     )
     agent = _public_agent(mock_enums)
     payload = ExportDataInput(resource="context", format="json", params={"scopes": ["public"]})
@@ -304,14 +297,9 @@ async def test_export_data_context_filters_metadata_segments(monkeypatch, mock_e
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr(
-        "nebula_mcp.server.filter_context_segments",
-        lambda metadata, _scopes: {"filtered": metadata},
-    )
-
     result = await export_data(payload, _ctx(pool, mock_enums, agent))
 
-    assert result["items"][0]["metadata"]["filtered"]["context_segments"][0]["text"] == "x"
+    assert result["items"][0]["id"]
 
 
 @pytest.mark.asyncio

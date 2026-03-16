@@ -5,7 +5,6 @@ SELECT
     k.source_type,
     k.content,
     k.tags,
-    k.metadata,
     k.privacy_scope_ids,
     k.created_at,
     k.updated_at

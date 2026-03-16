@@ -93,8 +93,8 @@ async def _create_person_entity(
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -102,7 +102,6 @@ async def _create_person_entity(
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         [],
-        "{}",
     )
     return dict(row)
 
@@ -133,8 +132,8 @@ async def test_login_user_reuses_existing_entity_and_adds_baseline_scopes(
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "reuse-login-user",
@@ -142,7 +141,6 @@ async def test_login_user_reuses_existing_entity_and_adds_baseline_scopes(
         enums.statuses.name_to_id["active"],
         [enums.scopes.name_to_id["public"]],
         [],
-        "{}",
     )
     assert row is not None
 

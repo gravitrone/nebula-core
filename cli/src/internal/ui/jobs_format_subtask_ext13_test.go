@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"encoding/json"
-	"net/http"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -54,66 +52,16 @@ func TestJobsHandleSubtaskInputTypingBackspaceAndEmptyEnter(t *testing.T) {
 	assert.Equal(t, "", updated.subtaskBuf)
 }
 
-func TestFormatJobLineIncludesPriorityAndMetadataPreview(t *testing.T) {
+func TestFormatJobLineIncludesPriority(t *testing.T) {
 	priority := "high"
 	line := formatJobLine(api.Job{
 		Title:    "\x1b[31mBuild\x1b[0m",
 		Status:   "active",
 		Priority: &priority,
-		Metadata: api.JSONMap{"summary": "  ship clean output  "},
 	})
 	assert.Contains(t, line, "Build")
 	assert.Contains(t, line, "active")
 	assert.Contains(t, line, "high")
-	assert.Contains(t, line, "ship clean output")
-}
-
-func TestFormatJobLineMetadataFallsBackToSortedKey(t *testing.T) {
-	line := formatJobLine(api.Job{
-		Title:    "Batch",
-		Status:   "pending",
-		Metadata: api.JSONMap{"z": "later", "a": "first"},
-	})
-	assert.Contains(t, line, "Batch · pending")
-	assert.Contains(t, line, "first")
-}
-
-func TestJobsLoadScopeOptionsNilSuccessAndError(t *testing.T) {
-	model := NewJobsModel(nil)
-	assert.Nil(t, model.loadScopeOptions())
-
-	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/audit/scopes" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		err := json.NewEncoder(w).Encode(map[string]any{
-			"data": []map[string]any{
-				{"id": "scope-2", "name": "private"},
-				{"id": "scope-1", "name": "public"},
-			},
-		})
-		require.NoError(t, err)
-	})
-
-	model = NewJobsModel(client)
-	cmd := model.loadScopeOptions()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	out, ok := msg.(jobsScopesLoadedMsg)
-	require.True(t, ok)
-	assert.Equal(t, []string{"private", "public"}, out.options)
-
-	_, failingClient := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, `{"error":{"code":"SCOPES_FAIL","message":"no scopes"}}`, http.StatusInternalServerError)
-	})
-	model = NewJobsModel(failingClient)
-	cmd = model.loadScopeOptions()
-	require.NotNil(t, cmd)
-	msg = cmd()
-	errOut, ok := msg.(errMsg)
-	require.True(t, ok)
-	assert.ErrorContains(t, errOut.err, "SCOPES_FAIL")
 }
 
 func TestJobsHandleLinkInputTypingBackspaceAndBack(t *testing.T) {

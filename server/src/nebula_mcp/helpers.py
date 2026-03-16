@@ -1044,11 +1044,6 @@ async def revert_entity(pool: Pool, entity_id: str, audit_id: str) -> dict:
     if isinstance(snapshot, str):
         snapshot = json.loads(snapshot)
 
-    metadata = snapshot.get("metadata")
-    metadata_json = None
-    if metadata is not None:
-        metadata_json = json.dumps(metadata)
-
     row = await pool.fetchrow(
         QUERIES["entities/revert"],
         entity_id,
@@ -1059,7 +1054,6 @@ async def revert_entity(pool: Pool, entity_id: str, audit_id: str) -> dict:
         snapshot.get("status_changed_at"),
         snapshot.get("status_reason"),
         snapshot.get("tags") or [],
-        metadata_json,
         snapshot.get("source_path"),
     )
     return dict(row) if row else {}

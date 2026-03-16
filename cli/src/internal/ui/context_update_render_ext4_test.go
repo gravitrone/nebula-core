@@ -105,14 +105,6 @@ func TestContextViewEarlyReturnBranches(t *testing.T) {
 	assert.Contains(t, out, "Context saved!")
 
 	model.saved = false
-	model.editMeta.Active = true
-	_ = components.SanitizeText(model.View())
-
-	model.editMeta.Active = false
-	model.metaEditor.Active = true
-	_ = components.SanitizeText(model.View())
-
-	model.metaEditor.Active = false
 	model.linkSearching = true
 	model.linkQuery = "alpha"
 	model.linkResults = nil
@@ -137,7 +129,6 @@ func TestContextRenderAddBranchMatrix(t *testing.T) {
 	model.tagBuf = "beta"
 	model.scopes = []string{"public"}
 	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
-	model.metaEditor.Buffer = "meta | key | value"
 
 	model.focus = fieldType
 	model.typeSelecting = true
@@ -167,10 +158,6 @@ func TestContextRenderAddBranchMatrix(t *testing.T) {
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Entity One")
 
-	model.focus = fieldMeta
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "meta | key | value")
-
 	model.focus = fieldTitle
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Title A")
@@ -197,7 +184,6 @@ func TestContextRenderEditBranchMatrix(t *testing.T) {
 	model.editTags = []string{"alpha"}
 	model.editTagBuf = "beta"
 	model.editScopes = []string{"public"}
-	model.editMeta.Buffer = "group | field | value"
 
 	model.editFocus = contextEditFieldType
 	model.editTypeSelecting = true
@@ -226,9 +212,9 @@ func TestContextRenderEditBranchMatrix(t *testing.T) {
 	out = components.SanitizeText(model.renderEdit())
 	assert.Contains(t, out, "Scopes:")
 
-	model.editFocus = contextEditFieldMeta
+	model.editFocus = contextEditFieldNotes
 	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "group | field | value")
+	assert.Contains(t, out, "notes edit")
 
 	model.editFocus = contextEditFieldTitle
 	out = components.SanitizeText(model.renderEdit())
@@ -336,15 +322,7 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkSearching)
 
-	// Field-meta enter opens metadata editor.
-	updated.linkSearching = false
-	updated.focus = fieldMeta
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	require.Nil(t, cmd)
-	assert.True(t, updated.metaEditor.Active)
-
 	// Entities typing starts link search and emits command.
-	updated.metaEditor.Active = false
 	updated.focus = fieldEntities
 	updated.linkSearching = false
 	updated.linkQuery = ""

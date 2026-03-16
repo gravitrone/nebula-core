@@ -86,8 +86,8 @@ async def test_get_pending_approvals_enriches_relationship_endpoint_names(
 
     target = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id, name
         """,
         "Target Person",
@@ -95,7 +95,6 @@ async def test_get_pending_approvals_enriches_relationship_endpoint_names(
         status_id,
         scope_ids,
         ["test"],
-        "{}",
     )
 
     await create_approval_request(
@@ -459,63 +458,6 @@ async def test_approve_mixed_entity_updates_do_not_fail_with_missing_id(
     assert bulk_result["entity"]["updated"] == 1
     assert update_result["approval"]["status"] == "approved"
     assert "bulk-approved" in (update_result["entity"].get("tags") or [])
-
-
-async def test_approve_update_entity_metadata_patch_merges_existing(
-    db_pool, enums, untrusted_agent, test_entity
-):
-    """update_entity approvals should deep-merge metadata patches."""
-
-    status_id = enums.statuses.name_to_id["active"]
-    type_id = enums.entity_types.name_to_id["person"]
-    scope_ids = [enums.scopes.name_to_id["public"]]
-
-    row = await db_pool.fetchrow(
-        """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2::uuid, $3::uuid, $4::uuid[], $5, $6::jsonb)
-        RETURNING id
-        """,
-        "Metadata Merge Approval Entity",
-        type_id,
-        status_id,
-        scope_ids,
-        [],
-        json.dumps(
-            {
-                "owner": "alxx",
-                "profile": {"timezone": "Europe/Warsaw", "language": "en"},
-            }
-        ),
-    )
-
-    approval = await create_approval_request(
-        db_pool,
-        str(untrusted_agent["id"]),
-        "update_entity",
-        {
-            "entity_id": str(row["id"]),
-            "metadata": {"profile": {"timezone": "UTC"}, "seed_version": "v2"},
-        },
-    )
-
-    result = await approve_request(
-        db_pool,
-        enums,
-        str(approval["id"]),
-        str(test_entity["id"]),
-    )
-    assert result["approval"]["status"] == "approved"
-
-    stored = await db_pool.fetchval(
-        "SELECT metadata FROM entities WHERE id = $1::uuid",
-        str(row["id"]),
-    )
-    decoded = json.loads(stored) if isinstance(stored, str) else stored
-    assert decoded["owner"] == "alxx"
-    assert decoded["profile"]["language"] == "en"
-    assert decoded["profile"]["timezone"] == "UTC"
-    assert decoded["seed_version"] == "v2"
 
 
 async def test_approve_revert_entity_executes(

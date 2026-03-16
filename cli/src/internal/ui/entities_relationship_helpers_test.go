@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestEntitiesHandleEditScopesAndMetaSelectionHelpers handles test entities handle edit scopes and meta selection helpers.
-func TestEntitiesHandleEditScopesAndMetaSelectionHelpers(t *testing.T) {
+// TestEntitiesHandleEditScopesHelpers handles test entities handle edit scopes helpers.
+func TestEntitiesHandleEditScopesHelpers(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.scopeOptions = []string{"public", "private"}
 	model.editFocus = editFieldScopes
@@ -34,19 +34,6 @@ func TestEntitiesHandleEditScopesAndMetaSelectionHelpers(t *testing.T) {
 	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.False(t, updated.editScopeSelecting)
 
-	updated.metaRows = []metadataDisplayRow{
-		{field: "a", value: "1"},
-		{field: "b", value: "2"},
-	}
-	updated.metaSelected = map[int]bool{0: true}
-	updated.toggleMetaSelectAll()
-	assert.Len(t, updated.metaSelected, 2)
-	updated.toggleMetaSelectAll()
-	assert.Empty(t, updated.metaSelected)
-
-	updated.metaSelected = map[int]bool{0: true}
-	updated.clearMetaSelection()
-	assert.Empty(t, updated.metaSelected)
 }
 
 // TestEntitiesRelationshipRenderAndEditHelpers handles test entities relationship render and edit helpers.
@@ -88,9 +75,6 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 			Type:   "person",
 			Status: "active",
 			Tags:   []string{"core"},
-			Metadata: api.JSONMap{
-				"summary": "linked entity",
-			},
 		},
 	}
 	model.relateList.SetItems([]string{"Beta"})
@@ -101,7 +85,6 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	assert.Contains(t, preview, "Selected")
 	assert.Contains(t, preview, "Type")
 	assert.Contains(t, preview, "Status")
-	assert.Contains(t, preview, "Meta")
 
 	model.startRelEdit()
 	model.view = entitiesViewRelEdit

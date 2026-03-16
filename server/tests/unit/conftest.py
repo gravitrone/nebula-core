@@ -58,6 +58,7 @@ def mock_enums():
                 "blocks",
                 "assigned-to",
                 "owns",
+                "context-of",
             ]
         ),
         entity_types=_make_section(

@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestEntitiesAddViewRendersTagsScopesAndMetadataPreview handles test entities add view renders tags scopes and metadata preview.
-func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
+// TestEntitiesAddViewRendersTagsAndScopes handles test entities add view renders tags and scopes.
+func TestEntitiesAddViewRendersTagsAndScopes(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 80
 	model.view = entitiesViewAdd
@@ -18,7 +18,6 @@ func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	model.addStatusIdx = statusIndex(entityStatusOptions, "active")
 	model.addTags = []string{"demo"}
 	model.addScopes = []string{"public", "private"}
-	model.addMeta.Buffer = "profile | role | founder\nprofile | location | warsaw"
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Name")
@@ -30,9 +29,7 @@ func TestEntitiesAddViewRendersTagsScopesAndMetadataPreview(t *testing.T) {
 	assert.Contains(t, out, "Scopes")
 	assert.Contains(t, out, "public")
 	assert.Contains(t, out, "private")
-	assert.Contains(t, out, "Metadata")
-	assert.Contains(t, out, "profile | role | founder")
-	assert.Contains(t, out, "profile | location | warsaw")
+	assert.NotContains(t, out, "Metadata")
 }
 
 // TestEntitiesCommitAddScopeNormalizesAndDedupes handles test entities commit add scope normalizes and dedupes.

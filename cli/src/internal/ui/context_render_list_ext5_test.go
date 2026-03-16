@@ -58,27 +58,25 @@ func TestContextLoadContextListAndDetailBranches(t *testing.T) {
 		case "/api/context":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{{
-					"id":         "ctx-1",
-					"title":      "Alpha Context",
+					"id":          "ctx-1",
+					"title":       "Alpha Context",
 					"source_type": "note",
-					"status":     "active",
-					"tags":       []string{"demo"},
-					"metadata":   map[string]any{},
-					"created_at": now,
-					"updated_at": now,
+					"status":      "active",
+					"tags":        []string{"demo"},
+					"created_at":  now,
+					"updated_at":  now,
 				}},
 			}))
 		case "/api/context/ctx-1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
-					"id":         "ctx-1",
-					"title":      "Alpha Context",
+					"id":          "ctx-1",
+					"title":       "Alpha Context",
 					"source_type": "note",
-					"status":     "active",
-					"tags":       []string{"demo"},
-					"metadata":   map[string]any{},
-					"created_at": now,
-					"updated_at": now,
+					"status":      "active",
+					"tags":        []string{"demo"},
+					"created_at":  now,
+					"updated_at":  now,
 				},
 			}))
 		case "/api/relationships/context/ctx-1":

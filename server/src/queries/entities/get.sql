@@ -6,7 +6,6 @@ SELECT
     s.name AS status,
     e.privacy_scope_ids,
     e.tags,
-    e.metadata,
     e.source_path,
     e.created_at,
     e.updated_at

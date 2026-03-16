@@ -19,15 +19,14 @@ async def test_approve_invalid_enum_marks_approved_failed(
     public_scope_id = enums.scopes.name_to_id["public"]
     job = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, agent_id, status_id, priority, metadata, privacy_scope_ids)
-        VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb, $6::uuid[])
+        INSERT INTO jobs (title, agent_id, status_id, priority, privacy_scope_ids)
+        VALUES ($1, $2::uuid, $3::uuid, $4, $5::uuid[])
         RETURNING id
         """,
         "approval-poison-job",
         untrusted_agent_row["id"],
         in_progress,
         "medium",
-        json.dumps({}),
         [public_scope_id],
     )
     job_id = job["id"]

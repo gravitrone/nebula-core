@@ -8,7 +8,6 @@ SELECT
     k.privacy_scope_ids,
     s.name AS status,
     k.tags,
-    k.metadata,
     k.source_path,
     k.created_at,
     k.updated_at

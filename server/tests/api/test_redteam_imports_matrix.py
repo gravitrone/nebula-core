@@ -56,14 +56,12 @@ async def test_import_entities_partial_failure_reports_rows(api):
                 "status": "active",
                 "scopes": ["public"],
                 "tags": ["ok"],
-                "metadata": {},
             },
             {
                 "name": "Bad Entity Missing Type",
                 "status": "active",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
             },
         ],
     }
@@ -78,10 +76,10 @@ async def test_import_entities_partial_failure_reports_rows(api):
 
 
 @pytest.mark.asyncio
-async def test_import_entities_csv_bad_metadata_reports_error(api):
-    """CSV rows with invalid JSON metadata should surface as row errors, not 500."""
+async def test_import_entities_csv_missing_type_reports_error(api):
+    """CSV rows missing required fields should surface row errors, not 500."""
 
-    csv_data = "name,type,metadata\nAlpha,person,{bad json}\n"
+    csv_data = "name,type,scopes\nAlpha,,public\n"
     payload = {"format": "csv", "data": csv_data}
     resp = await api.post("/api/import/entities", json=payload)
     assert resp.status_code == 200
@@ -141,14 +139,12 @@ async def test_import_entities_untrusted_agent_returns_approval_required(
                 "status": "active",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
             },
             {
                 "name": "Queued Bad Missing Type",
                 "status": "active",
                 "scopes": ["public"],
                 "tags": [],
-                "metadata": {},
             },
         ],
     }

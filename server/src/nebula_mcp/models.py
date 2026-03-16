@@ -10,7 +10,6 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    StrictInt,
     field_validator,
     model_validator,
 )
@@ -151,7 +150,7 @@ def _reject_metadata_keys(value: object) -> None:
             if isinstance(key, str) and key == "visibility":
                 raise ValueError(
                     "Metadata key 'visibility' is not supported. "
-                    "Use context_segments with explicit scopes."
+                    "Use scoped context items linked with context-of."
                 )
             if isinstance(key, str) and key in BANNED_METADATA_KEYS:
                 raise ValueError(f"Metadata key '{key}' is not allowed")
@@ -179,7 +178,7 @@ def _sanitize_metadata(value: dict | None) -> dict | None:
     if "visibility" in value:
         raise ValueError(
             "Metadata key 'visibility' is not supported. "
-            "Use context_segments with explicit scopes."
+            "Use scoped context items linked with context-of."
         )
     _reject_metadata_keys(value)
     return value
@@ -278,14 +277,13 @@ def parse_optional_datetime(
 class CreateEntityInput(BaseModel):
     """Input payload for creating an entity."""
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(..., description="Display name for the entity")
     type: str = Field(..., description="Entity type name")
     status: str = Field(..., description="Status name")
     scopes: list[str] = Field(..., description="Privacy scope names")
     tags: list[str] = Field(default_factory=list, description="Kebab-case tags")
-    metadata: dict = Field(
-        default_factory=dict, description="Flexible metadata payload"
-    )
     source_path: str | None = Field(default=None, description="Source path")
 
     @field_validator("name", "type", mode="before")
@@ -316,20 +314,6 @@ class CreateEntityInput(BaseModel):
 
         return _sanitize_tags(v)
 
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean metadata.
-
-        Args:
-            v: Input parameter for _clean_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
-
     @field_validator("source_path", mode="before")
     @classmethod
     def _clean_source_path(cls, v: str | None) -> str | None:
@@ -343,184 +327,6 @@ class CreateEntityInput(BaseModel):
         """
 
         return _sanitize_source_path(v)
-
-
-# --- Shared Metadata Models ---
-
-
-class ContextSegment(BaseModel):
-    """A single scoped context segment."""
-
-    text: str
-    scopes: list[str]
-
-
-class BaseMetadata(BaseModel):
-    """Base metadata shared across entity types."""
-
-    # Allow extra keys to support schema evolution without blocking writes
-    model_config = ConfigDict(extra="allow")
-
-    description: str | None = None
-    urls: list[str] | None = None
-    aliases: list[str] | None = None
-    context_segments: list[ContextSegment] | None = None
-
-
-# --- Type-Specific Metadata Models ---
-
-
-class PersonMetadata(BaseMetadata):
-    """Person metadata with optional structured name and birth fields."""
-
-    first_name: str | None = None
-    second_name: str | None = None
-    last_name: str | None = None
-
-    birth_year: StrictInt | None = None
-    birth_month: StrictInt | None = None
-    birth_day: StrictInt | None = None
-
-    location: str | None = None
-    uni: str | None = None
-    relation: str | None = None
-    contact: dict | None = None
-
-    @field_validator("birth_month")
-    @classmethod
-    def _month_range(cls, v: StrictInt | None) -> StrictInt | None:
-        """Validate that birth month is within 1-12 when provided."""
-
-        if v is None:
-            return v
-        if v < 1 or v > 12:
-            raise ValueError("Birth month out of range")
-        return v
-
-    @field_validator("birth_day")
-    @classmethod
-    def _day_range(cls, v: StrictInt | None) -> StrictInt | None:
-        """Validate that birth day is within 1-31 when provided."""
-
-        if v is None:
-            return v
-        if v < 1 or v > 31:
-            raise ValueError("Birth day out of range")
-        return v
-
-    @model_validator(mode="after")
-    def _validate_date_combo(self) -> Self:
-        """Validate day ranges for the given month, including leap years."""
-
-        if self.birth_month is not None and self.birth_day is not None:
-            max_day = 31
-            if self.birth_month in {4, 6, 9, 11}:
-                max_day = 30
-            elif self.birth_month == 2:
-                if self.birth_year and (
-                    self.birth_year % 400 == 0
-                    or (self.birth_year % 4 == 0 and self.birth_year % 100 != 0)
-                ):
-                    max_day = 29
-                else:
-                    max_day = 28
-            if self.birth_day > max_day:
-                raise ValueError("Birth day invalid for birth month")
-        return self
-
-
-class ProjectMetadata(BaseMetadata):
-    """Lightweight project metadata."""
-
-    repository: str | None = None
-    tech_stack: list[str] | None = None
-    status_note: str | None = None
-    start_date: str | None = None
-
-
-class ToolMetadata(BaseMetadata):
-    """Lightweight tool metadata."""
-
-    vendor: str | None = None
-    license: str | None = None
-    category: str | None = None
-
-
-class OrganizationMetadata(BaseMetadata):
-    """Lightweight organization metadata."""
-
-    industry: str | None = None
-    location: str | None = None
-    website: str | None = None
-
-
-class CourseMetadata(BaseMetadata):
-    """Lightweight course metadata."""
-
-    institution: str | None = None
-    term: str | None = None
-    instructor: str | None = None
-
-
-class IdeaMetadata(BaseMetadata):
-    """Lightweight idea metadata."""
-
-    stage: str | None = None
-    priority: str | None = None
-
-
-class FrameworkMetadata(BaseMetadata):
-    """Lightweight framework metadata."""
-
-    language: str | None = None
-    version: str | None = None
-
-
-class PaperMetadata(BaseMetadata):
-    """Lightweight paper metadata."""
-
-    authors: list[str] | None = None
-    year: StrictInt | None = None
-    venue: str | None = None
-
-
-class UniversityMetadata(BaseMetadata):
-    """Lightweight university metadata."""
-
-    country: str | None = None
-    city: str | None = None
-
-
-# --- Metadata Validation Helpers ---
-
-
-def validate_entity_metadata(entity_type: str, metadata: dict) -> dict:
-    """Validate metadata by entity type and return a normalized dict.
-
-    Args:
-        entity_type: Type name to select validation model.
-        metadata: Raw metadata dict to validate.
-
-    Returns:
-        Normalized metadata dict with None values excluded.
-    """
-
-    type_map: dict[str, type[BaseMetadata]] = {
-        "person": PersonMetadata,
-        "project": ProjectMetadata,
-        "tool": ToolMetadata,
-        "organization": OrganizationMetadata,
-        "course": CourseMetadata,
-        "idea": IdeaMetadata,
-        "framework": FrameworkMetadata,
-        "paper": PaperMetadata,
-        "university": UniversityMetadata,
-    }
-
-    model_cls = type_map.get(entity_type, BaseMetadata)
-    model = model_cls.model_validate(metadata or {})
-    return model.model_dump(exclude_none=True)
-
 
 # --- Approval Workflow Models ---
 
@@ -698,8 +504,9 @@ class SemanticSearchInput(BaseModel):
 class UpdateEntityInput(BaseModel):
     """Input payload for updating an entity."""
 
+    model_config = ConfigDict(extra="forbid")
+
     entity_id: str = Field(..., description="Entity UUID to update")
-    metadata: dict | None = Field(default=None, description="Updated metadata")
     tags: list[str] | None = Field(default=None, description="Updated tags")
     status: str | None = Field(default=None, description="New status name")
     status_reason: str | None = Field(
@@ -719,20 +526,6 @@ class UpdateEntityInput(BaseModel):
         """
 
         return _sanitize_tags(v)
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_update_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean update metadata.
-
-        Args:
-            v: Input parameter for _clean_update_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
 
 class BulkUpdateEntityTagsInput(BaseModel):
@@ -803,20 +596,13 @@ class ListAuditActorsInput(BaseModel):
     actor_type: str | None = Field(default=None, description="agent, entity, system")
 
 
-class SearchEntitiesByMetadataInput(BaseModel):
-    """Input payload for searching entities by metadata fields."""
-
-    metadata_query: dict = Field(..., description="JSONB query object")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
-
-
 # --- Context Input Models ---
 
 
 class CreateContextInput(BaseModel):
     """Input payload for creating a context item."""
+
+    model_config = ConfigDict(extra="forbid")
 
     title: str = Field(..., description="Context item title")
     url: str | None = Field(default=None, description="Source URL")
@@ -824,7 +610,6 @@ class CreateContextInput(BaseModel):
     content: str | None = Field(default=None, description="Full text content")
     scopes: list[str] = Field(..., description="Privacy scope names")
     tags: list[str] = Field(default_factory=list, description="Kebab-case tags")
-    metadata: dict = Field(default_factory=dict, description="Additional metadata")
 
     @field_validator("title", "source_type", mode="before")
     @classmethod
@@ -877,23 +662,10 @@ class CreateContextInput(BaseModel):
 
         return _sanitize_tags(v)
 
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_context_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean context metadata.
-
-        Args:
-            v: Input parameter for _clean_context_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
-
-
 class UpdateContextInput(BaseModel):
     """Input payload for updating a context item."""
+
+    model_config = ConfigDict(extra="forbid")
 
     context_id: str = Field(..., description="Context item UUID")
     title: str | None = Field(default=None, description="Updated title")
@@ -903,7 +675,6 @@ class UpdateContextInput(BaseModel):
     status: str | None = Field(default=None, description="Updated status name")
     tags: list[str] | None = Field(default=None, description="Updated tags")
     scopes: list[str] | None = Field(default=None, description="Updated scopes")
-    metadata: dict | None = Field(default=None, description="Updated metadata")
 
     @field_validator("title", "source_type", mode="before")
     @classmethod
@@ -956,20 +727,6 @@ class UpdateContextInput(BaseModel):
 
         return _sanitize_tags(v)
 
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_update_context_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean update context metadata.
-
-        Args:
-            v: Input parameter for _clean_update_context_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
-
 
 class QueryContextInput(BaseModel):
     """Input payload for searching context items."""
@@ -999,11 +756,56 @@ class QueryContextInput(BaseModel):
 
 
 class LinkContextInput(BaseModel):
-    """Input payload for linking context to entity."""
+    """Input payload for linking context to an owner."""
 
     context_id: str = Field(..., description="Context item UUID")
-    entity_id: str = Field(..., description="Entity UUID")
-    relationship_type: str = Field(..., description="about, mentions, created-by")
+    owner_type: str = Field(..., description="entity or job")
+    owner_id: str = Field(..., description="Owner UUID")
+
+    @field_validator("owner_type", mode="before")
+    @classmethod
+    def _clean_owner_type(cls, v: str | None) -> str | None:
+        """Handle clean owner type.
+
+        Args:
+            v: Input parameter for _clean_owner_type.
+
+        Returns:
+            Result value from the operation.
+        """
+
+        value = _sanitize_text(v)
+        if value and value not in {"entity", "job"}:
+            raise ValueError("Owner type must be entity or job")
+        return value
+
+
+class ListContextByOwnerInput(BaseModel):
+    """Input payload for listing context items by owner."""
+
+    owner_type: str = Field(..., description="entity or job")
+    owner_id: str = Field(..., description="Owner UUID")
+    limit: int = Field(
+        default=100, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
+    )
+    offset: int = Field(default=0, ge=0, description="Pagination offset")
+
+    @field_validator("owner_type", mode="before")
+    @classmethod
+    def _clean_list_owner_type(cls, v: str | None) -> str | None:
+        """Handle clean list owner type.
+
+        Args:
+            v: Input parameter for _clean_list_owner_type.
+
+        Returns:
+            Result value from the operation.
+        """
+
+        value = _sanitize_text(v)
+        if value and value not in {"entity", "job"}:
+            raise ValueError("Owner type must be entity or job")
+        return value
 
 
 class GetContextInput(BaseModel):
@@ -1345,21 +1147,6 @@ class CreateJobInput(BaseModel):
         default=None, description="Parent job ID for subtasks"
     )
     due_at: str | None = Field(default=None, description="ISO8601 due date")
-    metadata: dict = Field(default_factory=dict, description="Additional metadata")
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_job_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean job metadata.
-
-        Args:
-            v: Input parameter for _clean_job_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
 
 class GetJobInput(BaseModel):
@@ -1415,21 +1202,6 @@ class UpdateJobInput(BaseModel):
     priority: str | None = Field(default=None, description="Updated priority")
     assigned_to: str | None = Field(default=None, description="Updated assignee UUID")
     due_at: str | None = Field(default=None, description="ISO8601 due date")
-    metadata: dict | None = Field(default=None, description="Updated metadata")
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_update_job_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean update job metadata.
-
-        Args:
-            v: Input parameter for _clean_update_job_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
 
 class CreateSubtaskInput(BaseModel):

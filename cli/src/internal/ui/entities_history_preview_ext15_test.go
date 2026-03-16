@@ -67,12 +67,12 @@ func TestRenderEntityHistoryPreviewReturnsEmptyForZeroWidth(t *testing.T) {
 
 func TestEntitiesStartEditNoDetailIsNoop(t *testing.T) {
 	model := NewEntitiesModel(nil)
-	model.editFocus = editFieldMetadata
+	model.editFocus = editFieldTags
 	model.editTagBuf = "keep"
 
 	model.startEdit()
 
-	assert.Equal(t, editFieldMetadata, model.editFocus)
+	assert.Equal(t, editFieldTags, model.editFocus)
 	assert.Equal(t, "keep", model.editTagBuf)
 	require.Nil(t, model.detail)
 }

@@ -140,7 +140,6 @@ async def login(payload: LoginInput, request: Request) -> dict[str, Any]:
             person_type_id,
             status_id,
             [],
-            "{}",
             None,
         )
     else:

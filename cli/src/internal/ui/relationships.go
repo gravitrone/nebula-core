@@ -57,7 +57,6 @@ type relationshipCreateCandidate struct {
 	Kind     string
 	Status   string
 	Tags     []string
-	Metadata map[string]any
 }
 
 // --- Relationships Model ---
@@ -1161,9 +1160,6 @@ func (m RelationshipsModel) renderCreateNodePreview(candidate relationshipCreate
 	if len(candidate.Tags) > 0 {
 		lines = append(lines, renderPreviewRow("Tags", strings.Join(candidate.Tags, ", "), width))
 	}
-	if metaPreview := metadataPreview(candidate.Metadata, 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
-	}
 
 	return padPreviewLines(lines, width)
 }
@@ -1531,7 +1527,6 @@ func combineCreateCandidates(entities []api.Entity, contextItems []api.Context, 
 			Kind:     "entity/" + kind,
 			Status:   status,
 			Tags:     append([]string{}, entity.Tags...),
-			Metadata: map[string]any(entity.Metadata),
 		})
 	}
 	for _, contextItem := range contextItems {
@@ -1557,7 +1552,6 @@ func combineCreateCandidates(entities []api.Entity, contextItems []api.Context, 
 			Kind:     "context/" + kind,
 			Status:   status,
 			Tags:     append([]string{}, contextItem.Tags...),
-			Metadata: map[string]any(contextItem.Metadata),
 		})
 	}
 	for _, job := range jobs {
@@ -1579,7 +1573,6 @@ func combineCreateCandidates(entities []api.Entity, contextItems []api.Context, 
 			Name:     name,
 			Kind:     kind,
 			Status:   status,
-			Metadata: map[string]any(job.Metadata),
 		})
 	}
 	return candidates

@@ -2,7 +2,6 @@
 
 # Standard Library
 import asyncio
-import json
 
 # Third-Party
 import pytest
@@ -24,7 +23,6 @@ async def test_concurrent_create_entity_duplicate(mock_mcp_context, db_pool):
         status="active",
         scopes=["public"],
         tags=["test"],
-        metadata={},
     )
 
     results = await asyncio.gather(
@@ -67,8 +65,8 @@ async def test_cycle_relationship_blocked(db_pool, enums, mock_mcp_context):
     for name in ["Node A", "Node B", "Node C"]:
         row = await db_pool.fetchrow(
             """
-            INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+            INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+            VALUES ($1, $2, $3, $4, $5)
             RETURNING *
             """,
             name,
@@ -76,7 +74,6 @@ async def test_cycle_relationship_blocked(db_pool, enums, mock_mcp_context):
             status_id,
             scope_ids,
             ["test"],
-            json.dumps({}),
         )
         rows.append(dict(row))
 
@@ -108,7 +105,7 @@ async def test_concurrent_entity_updates_do_not_error(test_entity, mock_mcp_cont
 
         payload = UpdateEntityInput(
             entity_id=str(test_entity["id"]),
-            metadata={"iteration": i},
+            tags=[f"iter-{i}"],
         )
         return await update_entity(payload, mock_mcp_context)
 

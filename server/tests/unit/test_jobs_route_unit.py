@@ -153,26 +153,6 @@ async def test_create_job_invalid_scopes_map_400(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_create_job_metadata_validation_error_maps_400(monkeypatch, mock_enums):
-    """Metadata validation failures should map to HTTP 400 during create."""
-
-    pool = SimpleNamespace()
-    payload = CreateJobBody(title="job", scopes=["public"], metadata={"bad": True})
-    auth = _admin_auth(mock_enums)
-
-    monkeypatch.setattr(
-        "nebula_api.routes.jobs.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await create_job(payload, _request(pool, mock_enums), auth=auth)
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
-
-
-@pytest.mark.asyncio
 async def test_create_job_user_cannot_set_agent_id(mock_enums):
     """User callers should be forbidden from setting agent_id explicitly."""
 
@@ -287,27 +267,6 @@ async def test_update_job_invalid_status_maps_400(monkeypatch, mock_enums):
     monkeypatch.setattr(
         "nebula_api.routes.jobs.require_status",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(ValueError("bad status")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await update_job(str(uuid4()), payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
-
-
-@pytest.mark.asyncio
-async def test_update_job_metadata_validation_error_maps_400(monkeypatch, mock_enums):
-    """Metadata validation failures should map to HTTP 400 during update."""
-
-    pool = SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"id": str(uuid4()), "privacy_scope_ids": [], "agent_id": None})
-    )
-    payload = UpdateJobBody(metadata={"bad": True})
-
-    monkeypatch.setattr(
-        "nebula_api.routes.jobs.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
     )
 
     with pytest.raises(HTTPException) as exc:

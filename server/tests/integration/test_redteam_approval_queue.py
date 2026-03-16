@@ -98,7 +98,6 @@ async def test_create_entity_allows_neutral_source_path(mock_mcp_context):
         status="active",
         scopes=["public"],
         tags=["test"],
-        metadata={},
         source_path="../../../../etc/passwd",
     )
     assert payload.source_path == "../../../../etc/passwd"
@@ -117,13 +116,12 @@ async def test_create_context_rejects_javascript_url(mock_mcp_context):
             status="active",
             scopes=["public"],
             tags=["test"],
-            metadata={},
         )
 
 
 @pytest.mark.asyncio
 async def test_create_entity_rejects_proto_pollution(mock_mcp_context):
-    """Entities should reject prototype pollution keys in metadata."""
+    """Entities should reject unexpected metadata payloads."""
 
     with pytest.raises(ValidationError):
         CreateEntityInput(
@@ -148,7 +146,6 @@ async def test_bulk_import_requires_per_item_approval(db_pool, untrusted_mcp_con
                 "status": "active",
                 "scopes": ["public"],
                 "tags": ["test"],
-                "metadata": {},
             },
             {
                 "name": "Beta",
@@ -156,7 +153,6 @@ async def test_bulk_import_requires_per_item_approval(db_pool, untrusted_mcp_con
                 "status": "active",
                 "scopes": ["public"],
                 "tags": ["test"],
-                "metadata": {},
             },
         ]
     )
@@ -182,7 +178,6 @@ async def test_approval_queue_rate_limit(db_pool, untrusted_mcp_context, monkeyp
                 status="active",
                 scopes=["public"],
                 tags=["redteam"],
-                metadata={},
             )
             await create_entity(payload, untrusted_mcp_context)
         except ValueError as exc:

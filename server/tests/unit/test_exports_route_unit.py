@@ -84,10 +84,10 @@ async def test_job_visible_empty_job_scope_returns_true(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_export_snapshot_filters_context_metadata_and_hides_target_job(
+async def test_export_snapshot_hides_target_job_and_keeps_context_rows(
     monkeypatch, mock_enums
 ):
-    """Snapshot export should filter context metadata and skip hidden target jobs."""
+    """Snapshot export should skip hidden target jobs and include context rows."""
 
     public_id = mock_enums.scopes.name_to_id["public"]
     auth = {"scopes": [public_id]}
@@ -103,25 +103,14 @@ async def test_export_snapshot_filters_context_metadata_and_hides_target_job(
     pool = SimpleNamespace(
         fetch=AsyncMock(
             side_effect=[
-                [{"id": str(uuid4()), "metadata": None}],  # entities rows
-                [  # context rows
-                    {
-                        "id": context_id,
-                        "metadata": {
-                            "context_segments": [{"text": "ctx", "scopes": ["public"]}]
-                        },
-                    }
-                ],
+                [{"id": str(uuid4())}],  # entities rows
+                [{"id": context_id}],  # context rows
                 [relationship_row],  # relationships rows
                 [],  # jobs rows
             ]
         )
     )
 
-    monkeypatch.setattr(
-        "nebula_api.routes.exports.filter_context_segments",
-        lambda _metadata, _scopes: {"filtered": True},
-    )
     monkeypatch.setattr(
         "nebula_api.routes.exports._job_visible",
         AsyncMock(return_value=False),
@@ -133,5 +122,5 @@ async def test_export_snapshot_filters_context_metadata_and_hides_target_job(
         format="json",
     )
 
-    assert result["data"]["context"][0]["metadata"] == {"filtered": True}
+    assert result["data"]["context"][0]["id"] == context_id
     assert result["data"]["relationships"] == []

@@ -120,15 +120,11 @@ func TestFormatEntityLineWidthNormalizesWidthTypeAndSegments(t *testing.T) {
 		Type:   "",
 		Status: "",
 		Tags:   []string{"tag-a", "tag-b", "tag-c"},
-		Metadata: api.JSONMap{
-			"summary": "metadata preview should show",
-		},
 	}, maxEntityLineLen+200))
 
 	assert.Contains(t, line, "Alpha Entity")
 	assert.Contains(t, line, "?")
 	assert.Contains(t, line, "tag-a, tag-b +1")
-	assert.Contains(t, line, "metadata preview should show")
 	assert.LessOrEqual(t, len([]rune(line)), maxEntityLineLen)
 
 	compact := stripANSI(formatEntityLineWidth(api.Entity{Name: "Alpha", Type: "person"}, 0))

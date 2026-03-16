@@ -37,6 +37,7 @@ MIGRATION_FILES = [
     "018_context_core_rename.sql",
     "019_source_refs_and_files_uri.sql",
     "020_requires_approval_defaults.sql",
+    "021_context_of_and_drop_metadata.sql",
 ]
 
 TEST_DB = os.getenv("NEBULA_TEST_DB", "postgres")

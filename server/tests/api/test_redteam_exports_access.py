@@ -12,7 +12,7 @@ from nebula_api.app import app
 from nebula_api.auth import require_auth
 
 
-async def _make_entity(db_pool, enums, name, scopes, metadata):
+async def _make_entity(db_pool, enums, name, scopes):
     """Insert an entity for export access tests."""
 
     status_id = enums.statuses.name_to_id["active"]
@@ -21,8 +21,8 @@ async def _make_entity(db_pool, enums, name, scopes, metadata):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -30,7 +30,6 @@ async def _make_entity(db_pool, enums, name, scopes, metadata):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps(metadata),
     )
     return dict(row)
 
@@ -64,20 +63,19 @@ async def _make_job(db_pool, enums, agent_id, scopes):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, status_id, agent_id, metadata, privacy_scope_ids)
-        VALUES ($1, $2, $3, $4::jsonb, $5)
+        INSERT INTO jobs (title, status_id, agent_id, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "Export Private Job",
         status_id,
         agent_id,
-        json.dumps({"secret": "job"}),
         scope_ids,
     )
     return dict(row)
 
 
-async def _make_context(db_pool, enums, title, scopes, metadata):
+async def _make_context(db_pool, enums, title, scopes):
     """Insert context for export access tests."""
 
     status_id = enums.statuses.name_to_id["active"]
@@ -85,8 +83,8 @@ async def _make_context(db_pool, enums, title, scopes, metadata):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         title,
@@ -95,7 +93,6 @@ async def _make_context(db_pool, enums, title, scopes, metadata):
         scope_ids,
         status_id,
         ["test"],
-        json.dumps(metadata),
     )
     return dict(row)
 
@@ -147,39 +144,10 @@ def _auth_override(agent_id, enums):
 
 
 @pytest.mark.asyncio
-async def test_export_entities_filters_context_segments(db_pool, enums):
-    """Entity exports should filter context_segments by caller scopes."""
-
-    metadata = {
-        "context_segments": [
-            {"text": "public info", "scopes": ["public"]},
-            {"text": "private info", "scopes": ["private"]},
-        ]
-    }
-    await _make_entity(db_pool, enums, "Mixed Scope", ["public", "private"], metadata)
-
-    agent = await _make_agent(db_pool, enums, "export-viewer")
-    app.dependency_overrides[require_auth] = _auth_override(agent["id"], enums)
-    app.state.pool = db_pool
-    app.state.enums = enums
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.get("/api/export/entities")
-    app.dependency_overrides.pop(require_auth, None)
-
-    assert resp.status_code == 200
-    data = resp.json()["data"]["items"]
-    assert data
-    segments = data[0]["metadata"].get("context_segments", [])
-    assert all("private" not in seg.get("scopes", []) for seg in segments)
-
-
-@pytest.mark.asyncio
 async def test_export_entities_denies_scope_override(db_pool, enums):
     """Export entities should not allow requesting scopes outside caller access."""
 
-    metadata = {"context_segments": [{"text": "secret", "scopes": ["private"]}]}
-    await _make_entity(db_pool, enums, "Sensitive", ["private"], metadata)
+    await _make_entity(db_pool, enums, "Sensitive", ["private"])
 
     viewer = await _make_agent(db_pool, enums, "export-scope-viewer")
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -225,9 +193,7 @@ async def test_export_snapshot_filters_job_relationships(db_pool, enums):
 
     owner = await _make_agent(db_pool, enums, "job-owner-export-rel")
     viewer = await _make_agent(db_pool, enums, "job-viewer-export-rel")
-    entity = await _make_entity(
-        db_pool, enums, "Public Link", ["public"], {"note": "public"}
-    )
+    entity = await _make_entity(db_pool, enums, "Public Link", ["public"])
     public_job = await _make_job(db_pool, enums, owner["id"], ["public"])
     private_job = await _make_job(db_pool, enums, owner["id"], ["private"])
     public_rel = await _make_relationship(
@@ -277,40 +243,10 @@ async def test_export_jobs_filters_by_agent(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_export_context_filters_context_segments(db_pool, enums):
-    """Context exports should filter metadata context segments."""
-
-    metadata = {
-        "context_segments": [
-            {"text": "public info", "scopes": ["public"]},
-            {"text": "private info", "scopes": ["private"]},
-        ]
-    }
-    await _make_context(
-        db_pool, enums, "Context Mixed", ["public", "private"], metadata
-    )
-
-    viewer = await _make_agent(db_pool, enums, "context-export-viewer")
-    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
-    app.state.pool = db_pool
-    app.state.enums = enums
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.get("/api/export/context")
-    app.dependency_overrides.pop(require_auth, None)
-
-    assert resp.status_code == 200
-    items = resp.json()["data"]["items"]
-    segments = items[0]["metadata"].get("context_segments", [])
-    assert all("private" not in seg.get("scopes", []) for seg in segments)
-
-
-@pytest.mark.asyncio
 async def test_export_context_denies_scope_override(db_pool, enums):
     """Export context should not allow requesting scopes outside caller access."""
 
-    metadata = {"context_segments": [{"text": "secret", "scopes": ["private"]}]}
-    await _make_context(db_pool, enums, "Sensitive Context", ["private"], metadata)
+    await _make_context(db_pool, enums, "Sensitive Context", ["private"])
 
     viewer = await _make_agent(db_pool, enums, "context-scope-viewer")
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -334,9 +270,7 @@ async def test_export_relationships_filters_job_ownership(db_pool, enums):
     viewer = await _make_agent(db_pool, enums, "rel-job-viewer")
     public_job = await _make_job(db_pool, enums, owner["id"], ["public"])
     private_job = await _make_job(db_pool, enums, owner["id"], ["private"])
-    entity = await _make_entity(
-        db_pool, enums, "Public Link", ["public"], {"note": "public"}
-    )
+    entity = await _make_entity(db_pool, enums, "Public Link", ["public"])
 
     public_rel = await _make_relationship(
         db_pool, enums, "job", public_job["id"], "entity", str(entity["id"])

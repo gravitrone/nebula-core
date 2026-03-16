@@ -1,7 +1,6 @@
 """Red team tests for context link isolation."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 
 # Third-Party
@@ -9,7 +8,7 @@ import pytest
 
 # Local
 from nebula_mcp.models import LinkContextInput
-from nebula_mcp.server import link_context_to_entity
+from nebula_mcp.server import link_context_to_owner
 
 
 def _make_context(pool, enums, agent):
@@ -54,8 +53,8 @@ async def _make_entity(db_pool, enums, name, scopes):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         name,
@@ -63,7 +62,6 @@ async def _make_entity(db_pool, enums, name, scopes):
         status_id,
         scope_ids,
         ["test"],
-        json.dumps({"context_segments": [{"text": "secret", "scopes": scopes}]}),
     )
     return dict(row)
 
@@ -76,8 +74,8 @@ async def _make_context_item(db_pool, enums, title, scopes):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         title,
@@ -86,7 +84,6 @@ async def _make_context_item(db_pool, enums, title, scopes):
         scope_ids,
         status_id,
         ["test"],
-        json.dumps({"note": "secret"}),
     )
     return dict(row)
 
@@ -102,12 +99,12 @@ async def test_link_context_denies_private_entity(db_pool, enums):
 
     payload = LinkContextInput(
         context_id=str(context["id"]),
-        entity_id=str(private_entity["id"]),
-        relationship_type="related-to",
+        owner_type="entity",
+        owner_id=str(private_entity["id"]),
     )
 
     with pytest.raises(ValueError):
-        await link_context_to_entity(payload, ctx)
+        await link_context_to_owner(payload, ctx)
 
 
 @pytest.mark.asyncio
@@ -121,16 +118,16 @@ async def test_link_context_duplicate_returns_clean_error(db_pool, enums):
 
     payload = LinkContextInput(
         context_id=str(context["id"]),
-        entity_id=str(entity["id"]),
-        relationship_type="related-to",
+        owner_type="entity",
+        owner_id=str(entity["id"]),
     )
 
-    first = await link_context_to_entity(payload, ctx)
-    assert first["source_type"] == "context"
-    assert first["target_type"] == "entity"
+    first = await link_context_to_owner(payload, ctx)
+    assert first["source_type"] == "entity"
+    assert first["target_type"] == "context"
 
     with pytest.raises(ValueError) as exc_info:
-        await link_context_to_entity(payload, ctx)
+        await link_context_to_owner(payload, ctx)
 
     message = str(exc_info.value).lower()
     assert "relationship already exists" in message

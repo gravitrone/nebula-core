@@ -23,8 +23,8 @@ async def test_graph_cycle_neighbors(db_pool, enums):
     rel_type_id = next(iter(enums.relationship_types.name_to_id.values()))
 
     a = await db_pool.fetchval(
-        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)"
-        " VALUES ($1, $2, $3, $4, $5, '{}'::jsonb) RETURNING id",
+        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)"
+        " VALUES ($1, $2, $3, $4, $5) RETURNING id",
         "node-a",
         type_id,
         status_id,
@@ -32,8 +32,8 @@ async def test_graph_cycle_neighbors(db_pool, enums):
         [],
     )
     b = await db_pool.fetchval(
-        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)"
-        " VALUES ($1, $2, $3, $4, $5, '{}'::jsonb) RETURNING id",
+        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)"
+        " VALUES ($1, $2, $3, $4, $5) RETURNING id",
         "node-b",
         type_id,
         status_id,
@@ -41,8 +41,8 @@ async def test_graph_cycle_neighbors(db_pool, enums):
         [],
     )
     c = await db_pool.fetchval(
-        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)"
-        " VALUES ($1, $2, $3, $4, $5, '{}'::jsonb) RETURNING id",
+        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)"
+        " VALUES ($1, $2, $3, $4, $5) RETURNING id",
         "node-c",
         type_id,
         status_id,
@@ -100,8 +100,8 @@ async def test_graph_shortest_path_cycle(db_pool, enums):
     rel_type_id = next(iter(enums.relationship_types.name_to_id.values()))
 
     n1 = await db_pool.fetchval(
-        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)"
-        " VALUES ($1, $2, $3, $4, $5, '{}'::jsonb) RETURNING id",
+        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)"
+        " VALUES ($1, $2, $3, $4, $5) RETURNING id",
         "path-1",
         type_id,
         status_id,
@@ -109,8 +109,8 @@ async def test_graph_shortest_path_cycle(db_pool, enums):
         [],
     )
     n2 = await db_pool.fetchval(
-        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)"
-        " VALUES ($1, $2, $3, $4, $5, '{}'::jsonb) RETURNING id",
+        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)"
+        " VALUES ($1, $2, $3, $4, $5) RETURNING id",
         "path-2",
         type_id,
         status_id,
@@ -118,8 +118,8 @@ async def test_graph_shortest_path_cycle(db_pool, enums):
         [],
     )
     n3 = await db_pool.fetchval(
-        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)"
-        " VALUES ($1, $2, $3, $4, $5, '{}'::jsonb) RETURNING id",
+        "INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)"
+        " VALUES ($1, $2, $3, $4, $5) RETURNING id",
         "path-3",
         type_id,
         status_id,

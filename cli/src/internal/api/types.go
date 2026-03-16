@@ -53,7 +53,6 @@ type Entity struct {
 	Status          string    `json:"status,omitempty"`
 	PrivacyScopeIDs []string  `json:"privacy_scope_ids,omitempty"`
 	Tags            []string  `json:"tags"`
-	Metadata        JSONMap   `json:"metadata"`
 	SourcePath      *string   `json:"source_path,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
@@ -61,21 +60,19 @@ type Entity struct {
 
 // CreateEntityInput defines the fields required to create a new entity.
 type CreateEntityInput struct {
-	Scopes   []string       `json:"scopes"`
-	Name     string         `json:"name"`
-	Type     string         `json:"type"`
-	Status   string         `json:"status"`
-	Tags     []string       `json:"tags"`
-	Metadata map[string]any `json:"metadata"`
+	Scopes []string `json:"scopes"`
+	Name   string   `json:"name"`
+	Type   string   `json:"type"`
+	Status string   `json:"status"`
+	Tags   []string `json:"tags"`
 }
 
 // UpdateEntityInput defines the fields for updating an existing entity.
 type UpdateEntityInput struct {
-	Name         *string        `json:"name,omitempty"`
-	Status       *string        `json:"status,omitempty"`
-	Tags         *[]string      `json:"tags,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
-	StatusReason *string        `json:"status_reason,omitempty"`
+	Name         *string   `json:"name,omitempty"`
+	Status       *string   `json:"status,omitempty"`
+	Tags         *[]string `json:"tags,omitempty"`
+	StatusReason *string   `json:"status_reason,omitempty"`
 }
 
 // BulkUpdateEntityTagsInput defines the fields for bulk tag updates.
@@ -111,7 +108,6 @@ type Context struct {
 	PrivacyScopeIDs []string  `json:"privacy_scope_ids,omitempty"`
 	Status          string    `json:"status,omitempty"`
 	Tags            []string  `json:"tags"`
-	Metadata        JSONMap   `json:"metadata"`
 	SourcePath      *string   `json:"source_path,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
@@ -136,25 +132,29 @@ func (c *Context) UnmarshalJSON(data []byte) error {
 
 // CreateContextInput defines the fields required to create new context.
 type CreateContextInput struct {
-	Title      string         `json:"title"`
-	URL        string         `json:"url,omitempty"`
-	SourceType string         `json:"source_type"`
-	Content    string         `json:"content,omitempty"`
-	Scopes     []string       `json:"scopes"`
-	Tags       []string       `json:"tags"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
+	Title      string   `json:"title"`
+	URL        string   `json:"url,omitempty"`
+	SourceType string   `json:"source_type"`
+	Content    string   `json:"content,omitempty"`
+	Scopes     []string `json:"scopes"`
+	Tags       []string `json:"tags"`
 }
 
 // UpdateContextInput defines the fields for updating context.
 type UpdateContextInput struct {
-	Title      *string        `json:"title,omitempty"`
-	URL        *string        `json:"url,omitempty"`
-	SourceType *string        `json:"source_type,omitempty"`
-	Content    *string        `json:"content,omitempty"`
-	Status     *string        `json:"status,omitempty"`
-	Scopes     *[]string      `json:"scopes,omitempty"`
-	Tags       *[]string      `json:"tags,omitempty"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
+	Title      *string   `json:"title,omitempty"`
+	URL        *string   `json:"url,omitempty"`
+	SourceType *string   `json:"source_type,omitempty"`
+	Content    *string   `json:"content,omitempty"`
+	Status     *string   `json:"status,omitempty"`
+	Scopes     *[]string `json:"scopes,omitempty"`
+	Tags       *[]string `json:"tags,omitempty"`
+}
+
+// LinkContextInput defines the fields for linking context to an owner.
+type LinkContextInput struct {
+	OwnerType string `json:"owner_type"`
+	OwnerID   string `json:"owner_id"`
 }
 
 // --- Protocol ---
@@ -329,27 +329,24 @@ type Job struct {
 	Description *string   `json:"description"`
 	Status      string    `json:"status"`
 	Priority    *string   `json:"priority"`
-	Metadata    JSONMap   `json:"metadata"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // CreateJobInput defines the fields required to create a new job.
 type CreateJobInput struct {
-	Title       string         `json:"title"`
-	Description string         `json:"description,omitempty"`
-	Status      string         `json:"status"`
-	Priority    string         `json:"priority,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Title       string `json:"title"`
+	Description string `json:"description,omitempty"`
+	Status      string `json:"status"`
+	Priority    string `json:"priority,omitempty"`
 }
 
 // UpdateJobInput defines the fields for updating an existing job.
 type UpdateJobInput struct {
-	Title       *string        `json:"title,omitempty"`
-	Description *string        `json:"description,omitempty"`
-	Status      *string        `json:"status,omitempty"`
-	Priority    *string        `json:"priority,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Title       *string `json:"title,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	Priority    *string `json:"priority,omitempty"`
 }
 
 // --- Approval ---

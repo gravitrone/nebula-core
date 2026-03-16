@@ -1,7 +1,6 @@
 """Unit tests for entities route helper and edge branches."""
 
 # Standard Library
-import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -17,7 +16,6 @@ from nebula_api.routes.entities import (
     CreateEntityBody,
     RevertEntityBody,
     _list_scope_ids,
-    _normalize_entity_metadata,
     _require_entity_write_access,
     _validate_tag_list,
     bulk_update_entity_scopes,
@@ -37,14 +35,6 @@ def _request(pool, enums):
     """Build a minimal request with app state."""
 
     return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(pool=pool, enums=enums)))
-
-
-def test_normalize_entity_metadata_double_encoded_invalid_inner_json():
-    """Double encoded metadata with invalid inner JSON should normalize to an object."""
-
-    entity = {"metadata": json.dumps("{bad")}
-    out = _normalize_entity_metadata(entity)
-    assert out["metadata"] == {}
 
 
 def test_list_scope_ids_user_falls_back_to_public_scope(mock_enums):
@@ -141,43 +131,6 @@ async def test_revert_entity_sets_and_resets_runtime_markers(monkeypatch, mock_e
 
 
 @pytest.mark.asyncio
-async def test_update_entity_agent_scope_subset_error_maps_400(
-    monkeypatch, mock_enums
-):
-    """Agent scope update failures should map to INVALID_INPUT."""
-
-    class _Payload:
-        def model_dump(self):
-            return {"metadata": None, "scopes": ["private"]}
-
-    entity_id = str(uuid4())
-    pool = SimpleNamespace()
-    auth = {
-        "caller_type": "agent",
-        "scopes": [mock_enums.scopes.name_to_id["public"]],
-    }
-
-    monkeypatch.setattr(
-        "nebula_api.routes.entities._require_entity_write_access", AsyncMock()
-    )
-    monkeypatch.setattr(
-        "nebula_api.routes.entities.enforce_scope_subset",
-        lambda scopes, allowed: (_ for _ in ()).throw(ValueError("scope denied")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await update_entity(
-            entity_id,
-            _Payload(),
-            _request(pool, mock_enums),
-            auth=auth,
-        )
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
-
-
-@pytest.mark.asyncio
 async def test_require_entity_write_access_invalid_id_maps_400(mock_enums):
     """Invalid entity ids should map to INVALID_INPUT."""
 
@@ -204,34 +157,6 @@ async def test_require_entity_write_access_admin_short_circuits(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_create_entity_metadata_validation_error_maps_400(
-    monkeypatch, mock_enums
-):
-    """Create metadata validation failures should map to INVALID_INPUT."""
-
-    payload = CreateEntityBody(
-        name="Entity",
-        type="person",
-        status="active",
-        scopes=["public"],
-        metadata={"k": "v"},
-    )
-    pool = SimpleNamespace()
-    auth = {"caller_type": "user", "scopes": [mock_enums.scopes.name_to_id["public"]]}
-
-    monkeypatch.setattr(
-        "nebula_api.routes.entities.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad entity metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await create_entity(payload, _request(pool, mock_enums), auth=auth)
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
-
-
-@pytest.mark.asyncio
 async def test_create_entity_approval_short_circuit_returns_payload(
     monkeypatch, mock_enums
 ):
@@ -242,7 +167,6 @@ async def test_create_entity_approval_short_circuit_returns_payload(
         type="person",
         status="active",
         scopes=["public"],
-        metadata={},
     )
     pool = SimpleNamespace()
     auth = {"caller_type": "agent", "scopes": [mock_enums.scopes.name_to_id["public"]]}
@@ -297,40 +221,6 @@ async def test_get_entity_history_forbidden_scope_maps_403(mock_enums):
 
     assert exc.value.status_code == 403
     assert exc.value.detail["error"]["code"] == "FORBIDDEN"
-
-
-@pytest.mark.asyncio
-async def test_update_entity_metadata_validation_error_maps_400(
-    monkeypatch, mock_enums
-):
-    """Update metadata validation failures should map to INVALID_INPUT."""
-
-    class _Payload:
-        def model_dump(self):
-            return {"metadata": {"k": "v"}, "scopes": None, "status": None}
-
-    entity_id = str(uuid4())
-    pool = SimpleNamespace()
-    auth = {"caller_type": "user", "scopes": [mock_enums.scopes.name_to_id["public"]]}
-
-    monkeypatch.setattr(
-        "nebula_api.routes.entities._require_entity_write_access", AsyncMock()
-    )
-    monkeypatch.setattr(
-        "nebula_api.routes.entities.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad update entity metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await update_entity(
-            entity_id,
-            _Payload(),
-            _request(pool, mock_enums),
-            auth=auth,
-        )
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
 
 
 @pytest.mark.asyncio

@@ -16,7 +16,6 @@ from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_entity_type, require_scopes
 from nebula_mcp.helpers import (
     enforce_scope_subset,
-    filter_context_segments,
     sanitize_relationship_properties,
     scope_names_from_ids,
 )
@@ -259,13 +258,7 @@ async def export_entities(
         limit,
         offset,
     )
-    scope_names = scope_names_from_ids(scope_ids or [], enums)
-    results = []
-    for row in rows:
-        item = dict(row)
-        if item.get("metadata"):
-            item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-        results.append(item)
+    results = [dict(row) for row in rows]
     return _export_response(results, format)
 
 
@@ -312,13 +305,7 @@ async def export_context(
         limit,
         offset,
     )
-    scope_names = scope_names_from_ids(scope_ids or [], enums)
-    results = []
-    for row in rows:
-        item = dict(row)
-        if item.get("metadata"):
-            item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-        results.append(item)
+    results = [dict(row) for row in rows]
     return _export_response(results, format)
 
 
@@ -506,18 +493,8 @@ async def export_snapshot(
     )
 
     scope_names = _visible_scope_names(auth, enums, scope_ids)
-    entities = []
-    for row in entities_rows:
-        item = dict(row)
-        if item.get("metadata"):
-            item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-        entities.append(item)
-    context = []
-    for row in context_rows:
-        item = dict(row)
-        if item.get("metadata"):
-            item["metadata"] = filter_context_segments(item["metadata"], scope_names)
-        context.append(item)
+    entities = [dict(row) for row in entities_rows]
+    context = [dict(row) for row in context_rows]
     relationships = []
     for row in relationships_rows:
         if not _is_admin(auth, enums):

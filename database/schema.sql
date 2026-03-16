@@ -22,6 +22,7 @@
 -- - 018_context_core_rename.sql
 -- - 019_source_refs_and_files_uri.sql
 -- - 020_requires_approval_defaults.sql
+-- - 021_context_of_and_drop_metadata.sql
 --
 -- Generated from a clean temporary database (nebula_schema_snapshot) on 2026-02-20 13:57:40Z.
 -- Source migrations dir: database/migrations/
@@ -527,12 +528,10 @@ CREATE TABLE public.context_items (
     status_changed_at timestamp with time zone,
     status_reason text,
     tags text[] DEFAULT '{}'::text[],
-    metadata jsonb DEFAULT '{}'::jsonb,
     source_path text,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT context_items_tags_limit CHECK ((COALESCE(array_length(tags, 1), 0) <= 50)),
-    CONSTRAINT metadata_is_object CHECK ((jsonb_typeof(metadata) = 'object'::text))
+    CONSTRAINT context_items_tags_limit CHECK ((COALESCE(array_length(tags, 1), 0) <= 50))
 );
 
 
@@ -548,14 +547,12 @@ CREATE TABLE public.entities (
     status_changed_at timestamp with time zone,
     status_reason text,
     tags text[] DEFAULT '{}'::text[],
-    metadata jsonb DEFAULT '{}'::jsonb,
     embedding public.vector(1536),
     source_path text,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     type_id uuid NOT NULL,
-    CONSTRAINT entities_tags_limit CHECK ((COALESCE(array_length(tags, 1), 0) <= 50)),
-    CONSTRAINT metadata_is_object CHECK ((jsonb_typeof(metadata) = 'object'::text))
+    CONSTRAINT entities_tags_limit CHECK ((COALESCE(array_length(tags, 1), 0) <= 50))
 );
 
 
@@ -635,14 +632,12 @@ CREATE TABLE public.jobs (
     parent_job_id text,
     due_at timestamp with time zone,
     completed_at timestamp with time zone,
-    metadata jsonb DEFAULT '{}'::jsonb,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
     status_reason text,
     status_changed_at timestamp with time zone,
     privacy_scope_ids uuid[] DEFAULT '{}'::uuid[] NOT NULL,
-    CONSTRAINT jobs_priority_check CHECK ((priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text]))),
-    CONSTRAINT metadata_is_object CHECK ((jsonb_typeof(metadata) = 'object'::text))
+    CONSTRAINT jobs_priority_check CHECK ((priority = ANY (ARRAY['low'::text, 'medium'::text, 'high'::text, 'critical'::text])))
 );
 
 
@@ -1161,13 +1156,6 @@ CREATE INDEX idx_audit_table_record ON public.audit_log USING btree (table_name,
 
 
 --
--- Name: idx_context_metadata; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_context_metadata ON public.context_items USING gin (metadata);
-
-
---
 -- Name: idx_context_privacy; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1178,7 +1166,7 @@ CREATE INDEX idx_context_privacy ON public.context_items USING gin (privacy_scop
 -- Name: idx_context_search; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_context_search ON public.context_items USING gin (to_tsvector('english'::regconfig, ((((title || ' '::text) || COALESCE(content, ''::text)) || ' '::text) || COALESCE((metadata)::text, ''::text))));
+CREATE INDEX idx_context_search ON public.context_items USING gin (to_tsvector('english'::regconfig, ((title || ' '::text) || COALESCE(content, ''::text))));
 
 
 --
@@ -1210,12 +1198,6 @@ CREATE INDEX idx_entities_embedding ON public.entities USING ivfflat (embedding 
 
 
 --
--- Name: idx_entities_metadata; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_entities_metadata ON public.entities USING gin (metadata);
-
-
 --
 -- Name: idx_entities_privacy; Type: INDEX; Schema: public; Owner: -
 --
@@ -1227,7 +1209,7 @@ CREATE INDEX idx_entities_privacy ON public.entities USING gin (privacy_scope_id
 -- Name: idx_entities_search; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_entities_search ON public.entities USING gin (to_tsvector('english'::regconfig, ((name || ' '::text) || COALESCE((metadata)::text, ''::text))));
+CREATE INDEX idx_entities_search ON public.entities USING gin (to_tsvector('english'::regconfig, name));
 
 
 --
@@ -1978,4 +1960,3 @@ ALTER TABLE ONLY public.relationships
 --
 
 \unrestrict JHjZmUYDj96H6T96jEgpQLtKOJLZ2ha4XckyCh33fGmkMeyKaLIusqbfNm0P7EO
-

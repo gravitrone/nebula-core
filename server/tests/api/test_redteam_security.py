@@ -41,8 +41,8 @@ async def test_relationships_hide_private_targets(api, db_pool, enums, test_enti
 
     private_entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Private Person",
@@ -50,7 +50,6 @@ async def test_relationships_hide_private_targets(api, db_pool, enums, test_enti
         status_id,
         [private_scope_id],
         ["private"],
-        json.dumps({"context_segments": [{"text": "secret", "scopes": ["sensitive"]}]}),
     )
 
     relationship_type_id = enums.relationship_types.name_to_id["related-to"]

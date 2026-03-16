@@ -10,7 +10,7 @@ async def test_api_update_entity_rejects_invalid_uuid(api):
 
     resp = await api.patch(
         "/api/entities/not-a-uuid",
-        json={"metadata": {"note": "bad"}},
+        json={"tags": ["bad"]},
     )
     assert resp.status_code in {400, 404}
 

@@ -23,8 +23,8 @@ async def test_graph_neighbors_hides_private_nodes(
 
     private_entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Private Node",
@@ -32,7 +32,6 @@ async def test_graph_neighbors_hides_private_nodes(
         status_id,
         [private_scope_id],
         ["private"],
-        json.dumps({"context_segments": [{"text": "secret", "scopes": ["sensitive"]}]}),
     )
 
     relationship_type_id = enums.relationship_types.name_to_id["related-to"]
@@ -72,8 +71,8 @@ async def test_graph_neighbors_hides_private_context(
 
     context = await db_pool.fetchrow(
         """
-        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO context_items (title, source_type, content, privacy_scope_ids, status_id, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         "Private Context",
@@ -82,7 +81,6 @@ async def test_graph_neighbors_hides_private_context(
         [private_scope_id],
         status_id,
         ["private"],
-        json.dumps({"context_segments": [{"text": "secret", "scopes": ["sensitive"]}]}),
     )
 
     relationship_type_id = enums.relationship_types.name_to_id["related-to"]
@@ -123,8 +121,8 @@ async def test_graph_shortest_path_hides_private_entity(
 
     private_entity = await db_pool.fetchrow(
         """
-        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO entities (name, type_id, status_id, privacy_scope_ids, tags)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         "Private Path Node",
@@ -132,7 +130,6 @@ async def test_graph_shortest_path_hides_private_entity(
         status_id,
         [private_scope_id],
         ["private"],
-        json.dumps({"context_segments": [{"text": "secret", "scopes": ["sensitive"]}]}),
     )
 
     relationship_type_id = enums.relationship_types.name_to_id["related-to"]

@@ -12,7 +12,7 @@ func TestAPICmdValidationGuardsMatrix(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
 	runAPISubcommandExpectError(t, "missing --audit-id", "entities", "revert", "e1")
-	runAPISubcommandExpectError(t, "missing --entity-id", "context", "link", "c1")
+	runAPISubcommandExpectError(t, "missing --owner-id", "context", "link", "c1")
 	runAPISubcommandExpectError(t, "missing --status", "jobs", "set-status", "j1")
 	runAPISubcommandExpectError(t, "missing --query", "search", "semantic")
 }
@@ -34,26 +34,25 @@ func TestAPICmdServerErrorMatrix(t *testing.T) {
 		{want: "health check", args: []string{"health"}},
 		{want: "query entities", args: []string{"entities", "query", "--param", "limit=1"}},
 		{want: "get entity", args: []string{"entities", "get", "e1"}},
-		{want: "create entity", args: []string{"entities", "create", "--input", `{"scopes":["public"],"name":"Entity","type":"person","status":"active","tags":[],"metadata":{}}`}},
-		{want: "update entity", args: []string{"entities", "update", "e1", "--input", `{"metadata":{"phase":"updated"}}`}},
-		{want: "search entities", args: []string{"entities", "search", "--input", `{"board":"nebula-core"}`}},
+		{want: "create entity", args: []string{"entities", "create", "--input", `{"scopes":["public"],"name":"Entity","type":"person","status":"active","tags":[]}`}},
+		{want: "update entity", args: []string{"entities", "update", "e1", "--input", `{"status":"inactive"}`}},
 		{want: "entity history", args: []string{"entities", "history", "e1", "--limit", "10"}},
 		{want: "revert entity", args: []string{"entities", "revert", "e1", "--audit-id", "a1"}},
 		{want: "bulk update tags", args: []string{"entities", "bulk-tags", "--input", `{"entity_ids":["e1"],"tags":["smoke"],"op":"add"}`}},
 		{want: "bulk update scopes", args: []string{"entities", "bulk-scopes", "--input", `{"entity_ids":["e1"],"scopes":["public"],"op":"replace"}`}},
 		{want: "query context", args: []string{"context", "query", "--param", "limit=1"}},
 		{want: "get context", args: []string{"context", "get", "c1"}},
-		{want: "create context", args: []string{"context", "create", "--input", `{"title":"Ctx","source_type":"note","content":"x","scopes":["public"],"tags":[],"metadata":{}}`}},
-		{want: "update context", args: []string{"context", "update", "c1", "--input", `{"metadata":{"phase":"updated"}}`}},
-		{want: "link context", args: []string{"context", "link", "c1", "--entity-id", "e1"}},
+		{want: "create context", args: []string{"context", "create", "--input", `{"title":"Ctx","source_type":"note","content":"x","scopes":["public"],"tags":[]}`}},
+		{want: "update context", args: []string{"context", "update", "c1", "--input", `{"title":"Updated"}`}},
+		{want: "link context", args: []string{"context", "link", "c1", "--owner-type", "entity", "--owner-id", "e1"}},
 		{want: "query relationships", args: []string{"relationships", "query", "--param", "limit=1"}},
 		{want: "get relationships", args: []string{"relationships", "for-source", "entity", "e1"}},
 		{want: "create relationship", args: []string{"relationships", "create", "--input", `{"source_type":"entity","source_id":"e1","target_type":"entity","target_id":"e2","relationship_type":"related-to","properties":{}}`}},
 		{want: "update relationship", args: []string{"relationships", "update", "r1", "--input", `{"properties":{"phase":"updated"}}`}},
 		{want: "query jobs", args: []string{"jobs", "query", "--param", "limit=1"}},
 		{want: "get job", args: []string{"jobs", "get", "j1"}},
-		{want: "create job", args: []string{"jobs", "create", "--input", `{"title":"Job","status":"pending","priority":"low","metadata":{}}`}},
-		{want: "update job", args: []string{"jobs", "update", "j1", "--input", `{"metadata":{"phase":"updated"}}`}},
+		{want: "create job", args: []string{"jobs", "create", "--input", `{"title":"Job","status":"pending","priority":"low"}`}},
+		{want: "update job", args: []string{"jobs", "update", "j1", "--input", `{"status":"completed"}`}},
 		{want: "set job status", args: []string{"jobs", "set-status", "j1", "--status", "completed"}},
 		{want: "create subtask", args: []string{"jobs", "subtask", "j1", "--input", `{"title":"Subtask"}`}},
 		{want: "query logs", args: []string{"logs", "query", "--param", "limit=1"}},
@@ -107,4 +106,3 @@ func TestAPICmdServerErrorMatrix(t *testing.T) {
 		runAPISubcommandExpectError(t, tc.want, tc.args...)
 	}
 }
-

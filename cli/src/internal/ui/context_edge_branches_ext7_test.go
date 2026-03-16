@@ -11,26 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestContextUpdateDelegatesToActiveMetadataEditors(t *testing.T) {
-	model := NewContextModel(nil)
-	model.focus = fieldTitle
-	model.fields[fieldTitle].value = "keep"
-	model.metaEditor.Active = true
-
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
-	require.Nil(t, cmd)
-	assert.Equal(t, "keep", updated.fields[fieldTitle].value)
-
-	model = NewContextModel(nil)
-	model.focus = fieldTitle
-	model.fields[fieldTitle].value = "keep"
-	model.editMeta.Active = true
-
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
-	require.Nil(t, cmd)
-	assert.Equal(t, "keep", updated.fields[fieldTitle].value)
-}
-
 func TestContextUpdateBackspaceTagBufferBeforeRemovingTags(t *testing.T) {
 	model := NewContextModel(nil)
 	model.focus = fieldTags

@@ -41,14 +41,12 @@ func TestContextCommitTagAndToggleModeAdditionalBranches(t *testing.T) {
 	model.view = contextViewDetail
 	model.modeFocus = true
 	model.detail = &apiContextFixture
-	model.metaExpanded = true
 	model.contentExpanded = true
 	model.sourcePathExpanded = true
 	updated, cmd := model.toggleMode()
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Nil(t, updated.detail)
-	assert.False(t, updated.metaExpanded)
 	assert.False(t, updated.contentExpanded)
 	assert.False(t, updated.sourcePathExpanded)
 	assert.Equal(t, contextViewList, updated.view)
