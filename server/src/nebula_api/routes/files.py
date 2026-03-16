@@ -1,16 +1,13 @@
 """File API routes."""
 
-# Standard Library
 import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, require_status
@@ -82,9 +79,7 @@ def _is_admin(auth: dict, enums: EnumRegistry) -> bool:
     return bool(scope_ids.intersection(allowed_ids))
 
 
-async def _file_visible(
-    pool: Any, enums: EnumRegistry, auth: dict, file_id: str
-) -> bool:
+async def _file_visible(pool: Any, enums: EnumRegistry, auth: dict, file_id: str) -> bool:
     """Handle file visible.
 
     Args:
@@ -101,9 +96,7 @@ async def _file_visible(
     if _is_admin(auth, enums):
         return True
     scope_ids = auth.get("scopes", []) or []
-    all_rows = await pool.fetch(
-        QUERIES["relationships/get"], "file", file_id, "both", None, None
-    )
+    all_rows = await pool.fetch(QUERIES["relationships/get"], "file", file_id, "both", None, None)
     if not all_rows:
         return True
     for rel in all_rows:

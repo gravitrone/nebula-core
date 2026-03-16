@@ -47,9 +47,7 @@ async def _make_agent(db_pool, enums, name: str) -> dict:
     return dict(row)
 
 
-async def _make_job(
-    db_pool, enums, *, title: str, agent_id: str, scopes: list[str]
-) -> dict:
+async def _make_job(db_pool, enums, *, title: str, agent_id: str, scopes: list[str]) -> dict:
     """Create and return a job row with explicit scopes."""
 
     row = await db_pool.fetchrow(
@@ -66,9 +64,7 @@ async def _make_job(
     return dict(row)
 
 
-async def _make_relationship_with_segments(
-    db_pool, enums, source_id: str, target_id: str
-):
+async def _make_relationship_with_segments(db_pool, enums, source_id: str, target_id: str):
     """Create and return a relationship with mixed-scope context segments."""
 
     props = {
@@ -191,9 +187,7 @@ async def test_export_relationships_filters_properties_context_segments(
 
 
 @pytest.mark.asyncio
-async def test_export_relationships_properties_payload_is_object(
-    api_no_auth, db_pool, enums
-):
+async def test_export_relationships_properties_payload_is_object(api_no_auth, db_pool, enums):
     """Relationships export should return properties as structured object."""
 
     source = await _make_entity(db_pool, enums, "Export API Type Src")
@@ -280,11 +274,7 @@ async def test_export_snapshot_relationship_properties_payload_is_object(
 
     assert resp.status_code == 200
     row = next(
-        (
-            item
-            for item in resp.json()["data"]["relationships"]
-            if item["id"] == str(rel["id"])
-        ),
+        (item for item in resp.json()["data"]["relationships"] if item["id"] == str(rel["id"])),
         None,
     )
     assert row is not None
@@ -332,9 +322,7 @@ async def test_export_relationships_hides_out_of_scope_job_links_for_user(
 
 
 @pytest.mark.asyncio
-async def test_export_snapshot_hides_out_of_scope_job_links_for_user(
-    api_no_auth, db_pool, enums
-):
+async def test_export_snapshot_hides_out_of_scope_job_links_for_user(api_no_auth, db_pool, enums):
     """Snapshot export should hide private job links for user callers."""
 
     source = await _make_entity(db_pool, enums, "Snapshot API Job Src")

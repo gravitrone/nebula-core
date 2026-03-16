@@ -97,9 +97,7 @@ async def _make_context(db_pool, enums, title, scopes):
     return dict(row)
 
 
-async def _make_relationship(
-    db_pool, enums, source_type, source_id, target_type, target_id
-):
+async def _make_relationship(db_pool, enums, source_type, source_id, target_type, target_id):
     """Insert a relationship for export access tests."""
 
     status_id = enums.statuses.name_to_id["active"]

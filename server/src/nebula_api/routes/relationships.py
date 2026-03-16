@@ -1,17 +1,14 @@
 """Relationship API routes."""
 
-# Standard Library
 import json
 import re
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, require_relationship_type, require_status
@@ -117,18 +114,14 @@ async def _validate_relationship_node(
         row = await pool.fetchrow(QUERIES["entities/get"], node_id)
         if not row:
             api_error("NOT_FOUND", "Entity not found", 404)
-        if not _has_write_scopes(
-            auth.get("scopes", []), row.get("privacy_scope_ids") or []
-        ):
+        if not _has_write_scopes(auth.get("scopes", []), row.get("privacy_scope_ids") or []):
             api_error("FORBIDDEN", "Access denied", 403)
         return
     if node_type == "context":
         row = await pool.fetchrow(QUERIES["context/get"], node_id, None)
         if not row:
             api_error("NOT_FOUND", "Context not found", 404)
-        if not _has_write_scopes(
-            auth.get("scopes", []), row.get("privacy_scope_ids") or []
-        ):
+        if not _has_write_scopes(auth.get("scopes", []), row.get("privacy_scope_ids") or []):
             api_error("FORBIDDEN", "Access denied", 403)
         return
     if node_type == "job":
@@ -150,9 +143,7 @@ def _normalize_relationship_row(row: Any, scope_names: list[str]) -> dict[str, A
     """
 
     item = dict(row)
-    item["properties"] = sanitize_relationship_properties(
-        item.get("properties"), scope_names
-    )
+    item["properties"] = sanitize_relationship_properties(item.get("properties"), scope_names)
     return item
 
 
@@ -175,8 +166,7 @@ def _visible_scope_names(auth: dict, enums: EnumRegistry) -> list[str]:
     except AttributeError:
         # Unit tests may use lightweight enum stubs without id_to_name mapping.
         reverse = {
-            scope_id: name
-            for name, scope_id in getattr(enums.scopes, "name_to_id", {}).items()
+            scope_id: name for name, scope_id in getattr(enums.scopes, "name_to_id", {}).items()
         }
         names: list[str] = []
         for scope_id in auth.get("scopes", []) or []:
@@ -267,20 +257,14 @@ async def create_relationship(
     data = payload.model_dump()
     if data.get("properties") is None:
         data["properties"] = {}
-    await _validate_relationship_node(
-        pool, enums, auth, data["source_type"], data["source_id"]
-    )
-    await _validate_relationship_node(
-        pool, enums, auth, data["target_type"], data["target_id"]
-    )
+    await _validate_relationship_node(pool, enums, auth, data["source_type"], data["source_id"])
+    await _validate_relationship_node(pool, enums, auth, data["target_type"], data["target_id"])
     # Validate taxonomy-backed fields before queuing approvals.
     try:
         require_relationship_type(data["relationship_type"], enums)
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    if resp := await maybe_check_agent_approval(
-        pool, auth, "create_relationship", data
-    ):
+    if resp := await maybe_check_agent_approval(pool, auth, "create_relationship", data):
         return resp
     try:
         result = await execute_create_relationship(pool, enums, data)
@@ -432,20 +416,14 @@ async def update_relationship(
     row = await pool.fetchrow(QUERIES["relationships/get_by_id"], relationship_id)
     if not row:
         api_error("NOT_FOUND", "Relationship not found", 404)
-    await _validate_relationship_node(
-        pool, enums, auth, row["source_type"], row["source_id"]
-    )
-    await _validate_relationship_node(
-        pool, enums, auth, row["target_type"], row["target_id"]
-    )
+    await _validate_relationship_node(pool, enums, auth, row["source_type"], row["source_id"])
+    await _validate_relationship_node(pool, enums, auth, row["target_type"], row["target_id"])
     # Validate taxonomy-backed fields before queuing approvals.
     try:
         status_id = require_status(payload.status, enums) if payload.status else None
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    if resp := await maybe_check_agent_approval(
-        pool, auth, "update_relationship", change
-    ):
+    if resp := await maybe_check_agent_approval(pool, auth, "update_relationship", change):
         return resp
 
     row = await pool.fetchrow(

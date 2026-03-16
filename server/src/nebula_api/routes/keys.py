@@ -1,15 +1,12 @@
 """API key management and login routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import generate_api_key, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_entity_type, require_scopes, require_status
@@ -213,9 +210,7 @@ async def create_key(
 
 
 @router.get("/all")
-async def list_all_keys(
-    request: Request, auth: dict = Depends(require_auth)
-) -> dict[str, Any]:
+async def list_all_keys(request: Request, auth: dict = Depends(require_auth)) -> dict[str, Any]:
     """List all active API keys with owner info.
 
     Args:
@@ -235,9 +230,7 @@ async def list_all_keys(
 
 
 @router.get("/")
-async def list_keys(
-    request: Request, auth: dict = Depends(require_auth)
-) -> dict[str, Any]:
+async def list_keys(request: Request, auth: dict = Depends(require_auth)) -> dict[str, Any]:
     """List all active API keys for the authenticated user.
 
     Args:

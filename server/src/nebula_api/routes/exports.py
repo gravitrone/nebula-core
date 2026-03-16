@@ -1,16 +1,13 @@
 """Export API routes."""
 
-# Standard Library
 import csv
 import io
 import json
 from pathlib import Path
 from typing import Any
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_entity_type, require_scopes
@@ -88,9 +85,7 @@ def _visible_scope_names(auth: dict, enums: Any, scope_ids: list | None) -> list
     return scope_names_from_ids(scope_ids or [], enums)
 
 
-def _normalize_relationship_export_row(
-    row: Any, scope_names: list[str]
-) -> dict[str, Any]:
+def _normalize_relationship_export_row(row: Any, scope_names: list[str]) -> dict[str, Any]:
     """Handle normalize relationship export row.
 
     Args:
@@ -102,9 +97,7 @@ def _normalize_relationship_export_row(
     """
 
     item = dict(row)
-    item["properties"] = sanitize_relationship_properties(
-        item.get("properties"), scope_names
-    )
+    item["properties"] = sanitize_relationship_properties(item.get("properties"), scope_names)
     return item
 
 

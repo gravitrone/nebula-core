@@ -1,14 +1,11 @@
 """Protocol API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 
-# Third-Party
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import paginated, success
 from nebula_mcp.enums import require_status

@@ -39,9 +39,7 @@ async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str]):
     return out
 
 
-async def _insert_context(
-    db_pool, enums, *, title: str, scopes: list[str], content: str
-):
+async def _insert_context(db_pool, enums, *, title: str, scopes: list[str], content: str):
     """Handle insert context.
 
     Args:

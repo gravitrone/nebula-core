@@ -102,9 +102,10 @@ def test_scope_name_from_id_returns_uuid_text_for_unknown_uuid(mock_enums):
     assert executors._scope_name_from_id(mock_enums, unknown_scope) == str(unknown_scope)
 
 
-
 @pytest.mark.asyncio
-async def test_execute_create_entity_uses_explicit_transaction_when_not_in_tx(mock_enums):
+async def test_execute_create_entity_uses_explicit_transaction_when_not_in_tx(
+    mock_enums,
+):
     """Non-transactional connection stubs should wrap create in transaction()."""
 
     pool = _PoolStub(
@@ -234,7 +235,9 @@ async def test_execute_create_context_duplicate_url_raises(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_execute_create_context_returns_empty_dict_when_insert_missing(mock_enums):
+async def test_execute_create_context_returns_empty_dict_when_insert_missing(
+    mock_enums,
+):
     """Create context should normalize missing insert rows to empty dict."""
 
     pool = _PoolStub(fetchrow_rows=[None, None])
@@ -423,9 +426,7 @@ async def test_execute_create_relationship_rejects_self_reference(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_execute_create_relationship_duplicate_maps_value_error(
-    monkeypatch, mock_enums
-):
+async def test_execute_create_relationship_duplicate_maps_value_error(monkeypatch, mock_enums):
     """Known relationship duplicate constraint should map to ValueError."""
 
     class _FakeUniqueViolation(Exception):
@@ -435,9 +436,7 @@ async def test_execute_create_relationship_duplicate_maps_value_error(
 
     pool = _PoolStub(
         fetchrow_rows=[
-            _FakeUniqueViolation(
-                "relationships_source_type_source_id_target_type_target_id_t_key"
-            )
+            _FakeUniqueViolation("relationships_source_type_source_id_target_type_target_id_t_key")
         ],
     )
     monkeypatch.setattr(executors, "UniqueViolationError", _FakeUniqueViolation)
@@ -672,7 +671,9 @@ async def test_execute_create_log_defaults_timestamp_and_maps_types(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_execute_bulk_update_entity_tags_falls_back_to_first_row_value(mock_enums):
+async def test_execute_bulk_update_entity_tags_falls_back_to_first_row_value(
+    mock_enums,
+):
     """Bulk tag update should collect ids even when row key is not named 'id'."""
 
     raw_id = str(uuid4())
@@ -801,7 +802,6 @@ async def test_execute_create_entity_json_payload_duplicate_raises(mock_enums):
         )
 
 
-
 @pytest.mark.asyncio
 async def test_execute_string_payload_paths_for_core_mutations(mock_enums):
     """String change_details should decode across create/update executors."""
@@ -898,9 +898,7 @@ async def test_execute_string_payload_paths_for_core_mutations(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_execute_bulk_update_and_import_string_payload_wrappers(
-    monkeypatch, mock_enums
-):
+async def test_execute_bulk_update_and_import_string_payload_wrappers(monkeypatch, mock_enums):
     """String payload wrappers should forward decoded dicts to underlying executors."""
 
     captured: dict[str, dict] = {}
@@ -940,12 +938,8 @@ async def test_execute_bulk_update_and_import_string_payload_wrappers(
     assert tags_result == {"updated": 1, "entity_ids": ["ent-1"]}
     assert scopes_result == {"updated": 1, "entity_ids": ["ent-2"]}
 
-    ent = await executors.execute_bulk_import_entities(
-        pool, mock_enums, {"name": "alpha"}
-    )
-    ctx = await executors.execute_bulk_import_context(
-        pool, mock_enums, {"title": "ctx"}
-    )
+    ent = await executors.execute_bulk_import_entities(pool, mock_enums, {"name": "alpha"})
+    ctx = await executors.execute_bulk_import_context(pool, mock_enums, {"title": "ctx"})
     rel = await executors.execute_bulk_import_relationships(
         pool, mock_enums, {"relationship_type": "related-to"}
     )

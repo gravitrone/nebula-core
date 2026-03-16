@@ -287,9 +287,7 @@ async def test_export_schema_returns_contract(monkeypatch, mock_enums):
 async def test_export_data_context_returns_rows(monkeypatch, mock_enums):
     """export_data(context) should return context rows."""
 
-    pool = _PoolStub(
-        fetch_rows=[[{"id": str(uuid4())}]]
-    )
+    pool = _PoolStub(fetch_rows=[[{"id": str(uuid4())}]])
     agent = _public_agent(mock_enums)
     payload = ExportDataInput(resource="context", format="json", params={"scopes": ["public"]})
 
@@ -554,9 +552,7 @@ async def test_get_entity_history_allowed_returns_rows(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_bulk_import_context_valid_scopes_routes_to_approvals(
-    monkeypatch, mock_enums
-):
+async def test_bulk_import_context_valid_scopes_routes_to_approvals(monkeypatch, mock_enums):
     """Valid context rows should queue approvals for untrusted agents."""
 
     pool = _PoolStub()

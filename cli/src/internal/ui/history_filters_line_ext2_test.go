@@ -25,9 +25,9 @@ func TestFormatAuditLineActionFallbackAndUppercase(t *testing.T) {
 	actorType := "agent"
 	actorID := "ag-123456789"
 	entry = api.AuditEntry{
-		ChangedAt:    ts,
-		TableName:    "jobs",
-		Action:       "archive",
+		ChangedAt:     ts,
+		TableName:     "jobs",
+		Action:        "archive",
 		ChangedByType: &actorType,
 		ChangedByID:   &actorID,
 	}

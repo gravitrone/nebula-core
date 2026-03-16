@@ -1,15 +1,13 @@
 """Bulk import API routes."""
 
-# Standard Library
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-# Third-Party
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import (
@@ -109,9 +107,7 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
     return set(node_scopes).issubset(set(agent_scopes))
 
 
-async def _require_entity_write_access(
-    pool: Any, enums: Any, auth: dict, entity_id: str
-) -> None:
+async def _require_entity_write_access(pool: Any, enums: Any, auth: dict, entity_id: str) -> None:
     """Handle require entity write access.
 
     Args:
@@ -126,15 +122,11 @@ async def _require_entity_write_access(
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
     if not row:
         raise ValueError("Entity not found")
-    if not _has_write_scopes(
-        auth.get("scopes", []), row.get("privacy_scope_ids") or []
-    ):
+    if not _has_write_scopes(auth.get("scopes", []), row.get("privacy_scope_ids") or []):
         raise ValueError("Access denied")
 
 
-async def _require_context_write_access(
-    pool: Any, enums: Any, auth: dict, context_id: str
-) -> None:
+async def _require_context_write_access(pool: Any, enums: Any, auth: dict, context_id: str) -> None:
     """Handle require context write access.
 
     Args:
@@ -149,9 +141,7 @@ async def _require_context_write_access(
     row = await pool.fetchrow(QUERIES["context/get"], context_id, None)
     if not row:
         raise ValueError("Context not found")
-    if not _has_write_scopes(
-        auth.get("scopes", []), row.get("privacy_scope_ids") or []
-    ):
+    if not _has_write_scopes(auth.get("scopes", []), row.get("privacy_scope_ids") or []):
         raise ValueError("Access denied")
 
 
@@ -171,9 +161,7 @@ async def _require_job_owner(pool: Any, auth: dict, job_id: str) -> None:
     caller_scopes = auth.get("scopes", []) or []
     if job_scopes and not any(scope in caller_scopes for scope in job_scopes):
         raise ValueError("Access denied")
-    if auth.get("caller_type") == "agent" and row.get("agent_id") != auth.get(
-        "agent_id"
-    ):
+    if auth.get("caller_type") == "agent" and row.get("agent_id") != auth.get("agent_id"):
         raise ValueError("Access denied")
 
 
@@ -312,56 +300,49 @@ async def _run_import(
     created: list[dict[str, Any]] = []
     errors: list[dict[str, Any]] = []
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            if auth["caller_type"] == "user":
-                await conn.execute(
-                    QUERIES["runtime/set_changed_by_type"], "entity"
-                )
-                await conn.execute(
-                    QUERIES["runtime/set_changed_by_id"],
-                    str(auth["entity_id"]),
-                )
-            else:
-                await conn.execute(
-                    QUERIES["runtime/set_changed_by_type"], "agent"
-                )
-                await conn.execute(
-                    QUERIES["runtime/set_changed_by_id"],
-                    str(auth["agent_id"]),
-                )
+    async with pool.acquire() as conn, conn.transaction():
+        if auth["caller_type"] == "user":
+            await conn.execute(QUERIES["runtime/set_changed_by_type"], "entity")
+            await conn.execute(
+                QUERIES["runtime/set_changed_by_id"],
+                str(auth["entity_id"]),
+            )
+        else:
+            await conn.execute(QUERIES["runtime/set_changed_by_type"], "agent")
+            await conn.execute(
+                QUERIES["runtime/set_changed_by_id"],
+                str(auth["agent_id"]),
+            )
 
-            for idx, item in enumerate(items, start=1):
-                try:
-                    normalized = normalizer(item, payload.defaults)
-                    if "scopes" in normalized:
-                        normalized["scopes"] = enforce_scope_subset(
-                            normalized["scopes"], allowed_scopes
-                        )
-                    if approval_action == "bulk_import_jobs" and not _is_admin(
-                        auth, enums
-                    ):
-                        agent_id = auth.get("agent_id")
-                        normalized["agent_id"] = str(agent_id) if agent_id else None
-                    if approval_action == "bulk_import_relationships":
-                        await _validate_relationship_node(
-                            conn,
-                            enums,
-                            auth,
-                            normalized.get("source_type", ""),
-                            normalized.get("source_id", ""),
-                        )
-                        await _validate_relationship_node(
-                            conn,
-                            enums,
-                            auth,
-                            normalized.get("target_type", ""),
-                            normalized.get("target_id", ""),
-                        )
-                    result = await executor(conn, enums, normalized)
-                    created.append(result)
-                except Exception as exc:
-                    errors.append({"row": idx, "error": str(exc)})
+        for idx, item in enumerate(items, start=1):
+            try:
+                normalized = normalizer(item, payload.defaults)
+                if "scopes" in normalized:
+                    normalized["scopes"] = enforce_scope_subset(
+                        normalized["scopes"], allowed_scopes
+                    )
+                if approval_action == "bulk_import_jobs" and not _is_admin(auth, enums):
+                    agent_id = auth.get("agent_id")
+                    normalized["agent_id"] = str(agent_id) if agent_id else None
+                if approval_action == "bulk_import_relationships":
+                    await _validate_relationship_node(
+                        conn,
+                        enums,
+                        auth,
+                        normalized.get("source_type", ""),
+                        normalized.get("source_id", ""),
+                    )
+                    await _validate_relationship_node(
+                        conn,
+                        enums,
+                        auth,
+                        normalized.get("target_type", ""),
+                        normalized.get("target_id", ""),
+                    )
+                result = await executor(conn, enums, normalized)
+                created.append(result)
+            except Exception as exc:
+                errors.append({"row": idx, "error": str(exc)})
 
     return success(
         {

@@ -1,14 +1,11 @@
 """Enum registry and validators for Nebula MCP."""
 
-# Standard Library
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID
 
-# Third-Party
 from asyncpg import Pool
 
-# Local
 from .query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[1] / "queries")
@@ -48,9 +45,7 @@ async def _load_section(pool: Pool, query_name: str) -> EnumSection:
             raw_name = row["name"]
             value_id = row["id"]
         except KeyError as exc:
-            raise ValueError(
-                f"invalid enum row in {query_name}: missing {exc.args[0]}"
-            ) from exc
+            raise ValueError(f"invalid enum row in {query_name}: missing {exc.args[0]}") from exc
         except TypeError as exc:
             raise ValueError(f"invalid enum row in {query_name}: {row!r}") from exc
 

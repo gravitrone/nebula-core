@@ -93,9 +93,7 @@ async def test_scope_lifecycle_updates_schema_and_validation(api_admin):
 
     schema_after = await api_admin.get("/api/schema/")
     assert schema_after.status_code == 200, schema_after.text
-    scopes_after = {
-        row["name"] for row in schema_after.json()["data"]["taxonomy"]["scopes"]
-    }
+    scopes_after = {row["name"] for row in schema_after.json()["data"]["taxonomy"]["scopes"]}
     assert "lifecycle-scope" not in scopes_after
 
     rejected = await api_admin.post(

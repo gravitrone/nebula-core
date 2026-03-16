@@ -1,13 +1,11 @@
 """Simple in-memory sliding window rate limiter."""
 
-# Standard Library
 import time
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
 from functools import wraps
 from typing import Any
 
-# Third-Party
 from fastapi import HTTPException, Request
 
 _buckets: dict[str, list[float]] = defaultdict(list)

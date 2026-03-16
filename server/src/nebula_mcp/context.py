@@ -1,16 +1,13 @@
 """Context extraction and validation helpers for MCP tools."""
 
-# Standard Library
 import json
 import os
 from pathlib import Path
 from typing import Any
 
-# Third-Party
 from asyncpg import Pool
 from mcp.server.fastmcp import Context
 
-# Local
 from .db import get_agent
 from .enums import EnumRegistry
 from .query_loader import QueryLoader
@@ -193,8 +190,7 @@ async def authenticate_agent(pool: Pool) -> AgentDict:
     api_key = os.environ.get("NEBULA_API_KEY")
     if not api_key:
         raise ValueError(
-            "NEBULA_API_KEY environment variable is required for "
-            "MCP server authentication"
+            "NEBULA_API_KEY environment variable is required for MCP server authentication"
         )
 
     return await authenticate_agent_with_key(pool, api_key, key_name="NEBULA_API_KEY")
@@ -261,9 +257,7 @@ def _local_insecure_agent_name() -> str:
     return LOCAL_INSECURE_DEFAULT_AGENT
 
 
-async def _get_or_create_local_insecure_agent(
-    pool: Pool, enums: EnumRegistry
-) -> AgentDict:
+async def _get_or_create_local_insecure_agent(pool: Pool, enums: EnumRegistry) -> AgentDict:
     """Handle get or create local insecure agent.
 
     Args:

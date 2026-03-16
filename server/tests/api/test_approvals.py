@@ -304,9 +304,7 @@ async def test_approve_non_register_rejects_grant_fields(
 
 
 @pytest.mark.asyncio
-async def test_approve_register_agent_accepts_grant_fields(
-    api, db_pool, auth_override, enums
-):
+async def test_approve_register_agent_accepts_grant_fields(api, db_pool, auth_override, enums):
     """Reviewer grants should override requested register_agent scopes and trust."""
 
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
@@ -752,9 +750,7 @@ async def test_approve_request_handles_executor_runtime_error(
 
 
 @pytest.mark.asyncio
-async def test_get_approval_diff_create_job(
-    api, db_pool, untrusted_agent, auth_override, enums
-):
+async def test_get_approval_diff_create_job(api, db_pool, untrusted_agent, auth_override, enums):
     """Approval diff should include create_job fields."""
 
     auth_override["scopes"] = [enums.scopes.name_to_id["admin"]]
@@ -794,9 +790,7 @@ async def test_get_approval_diff_create_context(
         """,
         "create_context",
         untrusted_agent["id"],
-        json.dumps(
-            {"title": "Diff Context", "source_type": "note", "scopes": ["public"]}
-        ),
+        json.dumps({"title": "Diff Context", "source_type": "note", "scopes": ["public"]}),
         "pending",
     )
 

@@ -222,9 +222,7 @@ async def test_untrusted_create_remains_visible_after_approval(
         app.dependency_overrides.pop(require_auth, None)
 
 
-async def test_queued_create_log_preserves_metadata_after_approval(
-    db_pool, enums
-):
+async def test_queued_create_log_preserves_metadata_after_approval(db_pool, enums):
     """Queued log creates should preserve nested metadata after approval."""
 
     public_scope = enums.scopes.name_to_id["public"]
@@ -305,9 +303,9 @@ async def test_queued_create_log_preserves_metadata_after_approval(
         assert response.json()["data"]["metadata"] == payload["metadata"]
     finally:
         app.dependency_overrides.pop(require_auth, None)
-async def test_queued_create_file_preserves_metadata_after_approval(
-    db_pool, enums
-):
+
+
+async def test_queued_create_file_preserves_metadata_after_approval(db_pool, enums):
     """Queued file creates should preserve nested metadata after approval."""
 
     public_scope = enums.scopes.name_to_id["public"]
@@ -385,9 +383,9 @@ async def test_queued_create_file_preserves_metadata_after_approval(
         assert response.json()["data"]["metadata"] == payload["metadata"]
     finally:
         app.dependency_overrides.pop(require_auth, None)
-async def test_queued_update_log_preserves_metadata_after_approval(
-    db_pool, enums
-):
+
+
+async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enums):
     """Queued log updates should preserve metadata and return object payloads."""
 
     public_scope = enums.scopes.name_to_id["public"]
@@ -489,9 +487,9 @@ async def test_queued_update_log_preserves_metadata_after_approval(
         assert isinstance(listed_row["value"], dict)
     finally:
         app.dependency_overrides.pop(require_auth, None)
-async def test_queued_update_file_preserves_metadata_after_approval(
-    db_pool, enums
-):
+
+
+async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enums):
     """Queued file updates should preserve metadata and return object payloads."""
 
     public_scope = enums.scopes.name_to_id["public"]

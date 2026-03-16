@@ -1,17 +1,14 @@
 """Taxonomy management API routes."""
 
-# Standard Library
 import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from asyncpg import UniqueViolationError
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, load_enums
@@ -141,9 +138,7 @@ async def _usage_count(pool: Any, cfg: dict[str, Any], item_id: str) -> int:
     return int(value)
 
 
-async def _fetch_taxonomy_row(
-    pool: Any, kind: str, item_id: str
-) -> dict[str, Any] | None:
+async def _fetch_taxonomy_row(pool: Any, kind: str, item_id: str) -> dict[str, Any] | None:
     """Handle fetch taxonomy row.
 
     Args:
@@ -163,9 +158,7 @@ async def _fetch_taxonomy_row(
     return dict(row) if row else None
 
 
-async def _ensure_can_archive(
-    pool: Any, kind: str, cfg: dict[str, Any], item_id: str
-) -> None:
+async def _ensure_can_archive(pool: Any, kind: str, cfg: dict[str, Any], item_id: str) -> None:
     """Handle ensure can archive.
 
     Args:
@@ -353,11 +346,7 @@ async def update_taxonomy(
                 item_id,
                 name,
                 payload.description,
-                (
-                    json.dumps(payload.value_schema)
-                    if payload.value_schema is not None
-                    else None
-                ),
+                (json.dumps(payload.value_schema) if payload.value_schema is not None else None),
             )
     except UniqueViolationError:
         api_error("DUPLICATE", f"{kind} entry already exists", 409)

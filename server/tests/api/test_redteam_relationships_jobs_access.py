@@ -97,9 +97,7 @@ async def _make_job(db_pool, enums, title, agent_id, scopes):
     return dict(row)
 
 
-async def _make_relationship(
-    db_pool, enums, source_type, source_id, target_type, target_id
-):
+async def _make_relationship(db_pool, enums, source_type, source_id, target_type, target_id):
     """Insert a relationship linking entities/jobs for API access checks."""
 
     status_id = enums.statuses.name_to_id["active"]
@@ -174,9 +172,7 @@ async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api")
     entity = await _make_entity(db_pool, enums, "Public Node")
     public_job = await _make_job(db_pool, enums, "Public Job", owner["id"], ["public"])
-    private_job = await _make_job(
-        db_pool, enums, "Private Job", owner["id"], ["private"]
-    )
+    private_job = await _make_job(db_pool, enums, "Private Job", owner["id"], ["private"])
     public_rel = await _make_relationship(
         db_pool, enums, "entity", str(entity["id"]), "job", public_job["id"]
     )
@@ -199,15 +195,11 @@ async def test_get_relationships_hides_foreign_job_links(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_denies_private_entity_for_public_agent(
-    db_pool, enums
-):
+async def test_create_relationship_denies_private_entity_for_public_agent(db_pool, enums):
     """Public agents should not create links from private entities."""
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-private-entity")
-    private_entity = await _make_entity(
-        db_pool, enums, "Sensitive Node", scopes=["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Sensitive Node", scopes=["sensitive"])
     public_entity = await _make_entity(db_pool, enums, "Public Node 3")
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -231,15 +223,11 @@ async def test_create_relationship_denies_private_entity_for_public_agent(
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_denies_private_context_for_public_agent(
-    db_pool, enums
-):
+async def test_create_relationship_denies_private_context_for_public_agent(db_pool, enums):
     """Public agents should not create links from private context items."""
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-private-context")
-    private_context = await _make_context(
-        db_pool, enums, "Sensitive Context", scopes=["sensitive"]
-    )
+    private_context = await _make_context(db_pool, enums, "Sensitive Context", scopes=["sensitive"])
     public_entity = await _make_entity(db_pool, enums, "Public Node 4")
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
@@ -263,15 +251,11 @@ async def test_create_relationship_denies_private_context_for_public_agent(
 
 
 @pytest.mark.asyncio
-async def test_update_relationship_denies_private_source_for_public_agent(
-    db_pool, enums
-):
+async def test_update_relationship_denies_private_source_for_public_agent(db_pool, enums):
     """Public agents should not update links attached to private entities."""
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-update-private")
-    private_entity = await _make_entity(
-        db_pool, enums, "Sensitive Node 2", scopes=["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Sensitive Node 2", scopes=["sensitive"])
     public_entity = await _make_entity(db_pool, enums, "Public Node 5")
     relationship = await _make_relationship(
         db_pool,
@@ -303,12 +287,8 @@ async def test_query_relationships_hides_foreign_job_links(db_pool, enums):
     owner = await _make_agent(db_pool, enums, "rel-owner-api-2")
     viewer = await _make_agent(db_pool, enums, "rel-viewer-api-2")
     entity = await _make_entity(db_pool, enums, "Public Node 2")
-    public_job = await _make_job(
-        db_pool, enums, "Public Job 2", owner["id"], ["public"]
-    )
-    private_job = await _make_job(
-        db_pool, enums, "Private Job 2", owner["id"], ["private"]
-    )
+    public_job = await _make_job(db_pool, enums, "Public Job 2", owner["id"], ["public"])
+    private_job = await _make_job(db_pool, enums, "Private Job 2", owner["id"], ["private"])
     public_rel = await _make_relationship(
         db_pool, enums, "job", public_job["id"], "entity", str(entity["id"])
     )
@@ -338,9 +318,7 @@ async def test_get_relationships_hides_foreign_job_links_for_user(db_pool, enums
 
     owner = await _make_agent(db_pool, enums, "rel-owner-api-user-get")
     entity = await _make_entity(db_pool, enums, "Public Node User Get")
-    private_job = await _make_job(
-        db_pool, enums, "Private Job User Get", owner["id"], ["private"]
-    )
+    private_job = await _make_job(db_pool, enums, "Private Job User Get", owner["id"], ["private"])
     rel = await _make_relationship(
         db_pool, enums, "entity", str(entity["id"]), "job", private_job["id"]
     )

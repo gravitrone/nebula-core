@@ -36,9 +36,7 @@ async def test_valid_key(api_no_auth, api_key_row):
     """Test valid key."""
 
     raw_key, row = api_key_row
-    r = await api_no_auth.get(
-        "/api/entities", headers={"Authorization": f"Bearer {raw_key}"}
-    )
+    r = await api_no_auth.get("/api/entities", headers={"Authorization": f"Bearer {raw_key}"})
     assert r.status_code == 200
 
 
@@ -49,9 +47,7 @@ async def test_wrong_key_hash(api_no_auth, api_key_row):
     raw_key, row = api_key_row
     # same prefix but wrong body
     bad_key = raw_key[:8] + "x" * (len(raw_key) - 8)
-    r = await api_no_auth.get(
-        "/api/entities", headers={"Authorization": f"Bearer {bad_key}"}
-    )
+    r = await api_no_auth.get("/api/entities", headers={"Authorization": f"Bearer {bad_key}"})
     assert r.status_code == 401
 
 
@@ -60,12 +56,8 @@ async def test_revoked_key(api_no_auth, api_key_row, db_pool):
     """Test revoked key."""
 
     raw_key, row = api_key_row
-    await db_pool.execute(
-        "UPDATE api_keys SET revoked_at = NOW() WHERE id = $1", row["id"]
-    )
-    r = await api_no_auth.get(
-        "/api/entities", headers={"Authorization": f"Bearer {raw_key}"}
-    )
+    await db_pool.execute("UPDATE api_keys SET revoked_at = NOW() WHERE id = $1", row["id"])
+    r = await api_no_auth.get("/api/entities", headers={"Authorization": f"Bearer {raw_key}"})
     assert r.status_code == 401
 
 
@@ -78,9 +70,7 @@ async def test_expired_key(api_no_auth, api_key_row, db_pool):
         "UPDATE api_keys SET expires_at = NOW() - INTERVAL '1 hour' WHERE id = $1",
         row["id"],
     )
-    r = await api_no_auth.get(
-        "/api/entities", headers={"Authorization": f"Bearer {raw_key}"}
-    )
+    r = await api_no_auth.get("/api/entities", headers={"Authorization": f"Bearer {raw_key}"})
     assert r.status_code == 401
 
 
@@ -90,12 +80,8 @@ async def test_last_used_at_updated(api_no_auth, api_key_row, db_pool):
 
     raw_key, row = api_key_row
     assert row["last_used_at"] is None
-    await api_no_auth.get(
-        "/api/entities", headers={"Authorization": f"Bearer {raw_key}"}
-    )
-    updated = await db_pool.fetchval(
-        "SELECT last_used_at FROM api_keys WHERE id = $1", row["id"]
-    )
+    await api_no_auth.get("/api/entities", headers={"Authorization": f"Bearer {raw_key}"})
+    updated = await db_pool.fetchval("SELECT last_used_at FROM api_keys WHERE id = $1", row["id"])
     assert updated is not None
 
 
@@ -105,8 +91,6 @@ async def test_nonexistent_prefix(api_no_auth):
 
     r = await api_no_auth.get(
         "/api/entities",
-        headers={
-            "Authorization": "Bearer nbl_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
-        },
+        headers={"Authorization": "Bearer nbl_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"},
     )
     assert r.status_code == 401

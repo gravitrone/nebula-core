@@ -78,9 +78,7 @@ def _user_auth_override(entity_row, enums, scopes=None):
     """Build auth override for user scoped job requests."""
 
     scope_ids = [
-        enums.scopes.name_to_id[s]
-        for s in (scopes or ["public"])
-        if s in enums.scopes.name_to_id
+        enums.scopes.name_to_id[s] for s in (scopes or ["public"]) if s in enums.scopes.name_to_id
     ]
     auth_dict = {
         "key_id": None,

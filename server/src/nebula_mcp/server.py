@@ -1,16 +1,14 @@
 """Nebula MCP Server."""
 
-# Standard Library
 import json
 import re
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID
 
-# Third-Party
 from asyncpg import Pool, UniqueViolationError
 from dotenv import load_dotenv
 from mcp.server.fastmcp import Context, FastMCP
@@ -19,7 +17,6 @@ from mcp.server.fastmcp import Context, FastMCP
 if __package__ in (None, ""):
     sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-# Local
 from nebula_api.auth import generate_api_key
 from nebula_mcp.context import (
     authenticate_agent_optional,
@@ -378,9 +375,7 @@ def _export_response_rows(rows: list[dict[str, Any]], fmt: str) -> dict[str, Any
     return {"format": "json", "items": rows, "count": len(rows)}
 
 
-def _resolve_scope_ids_for_export(
-    agent: dict, enums: Any, scope_names: list[str]
-) -> list[Any]:
+def _resolve_scope_ids_for_export(agent: dict, enums: Any, scope_names: list[str]) -> list[Any]:
     """Handle resolve scope ids for export.
 
     Args:
@@ -431,9 +426,7 @@ def _scope_filter_ids(agent: dict, enums: Any) -> list | None:
     return agent.get("scopes", []) or []
 
 
-def _visible_scope_names(
-    agent: dict, enums: Any, scope_ids: list | None = None
-) -> list[str]:
+def _visible_scope_names(agent: dict, enums: Any, scope_ids: list | None = None) -> list[str]:
     """Resolve caller-visible scope names, with admin seeing all scopes."""
 
     if _is_admin(agent, enums):
@@ -442,9 +435,7 @@ def _visible_scope_names(
     return scope_names_from_ids(ids, enums)
 
 
-def _normalize_relationship_row(
-    row: Any, visible_scope_names: list[str]
-) -> dict[str, Any]:
+def _normalize_relationship_row(row: Any, visible_scope_names: list[str]) -> dict[str, Any]:
     """Normalize relationship payload shape and scope-filter properties."""
 
     item = dict(row)
@@ -778,9 +769,7 @@ async def _has_hidden_relationships(
         return True
     for rel in all_rows:
         if rel["source_type"] == "job" or rel["target_type"] == "job":
-            job_id = (
-                rel["source_id"] if rel["source_type"] == "job" else rel["target_id"]
-            )
+            job_id = rel["source_id"] if rel["source_type"] == "job" else rel["target_id"]
             job_row = await pool.fetchrow(QUERIES["jobs/get"], job_id)
             if not job_row:
                 return True
@@ -791,9 +780,7 @@ async def _has_hidden_relationships(
     return False
 
 
-async def _node_allowed(
-    pool: Pool, enums: Any, agent: dict, node_type: str, node_id: str
-) -> bool:
+async def _node_allowed(pool: Pool, enums: Any, agent: dict, node_type: str, node_id: str) -> bool:
     """Handle node allowed.
 
     Args:
@@ -831,9 +818,7 @@ async def _node_allowed(
             return False
         return True
     if node_type in {"file", "log"}:
-        return not await _has_hidden_relationships(
-            pool, enums, agent, node_type, node_id
-        )
+        return not await _has_hidden_relationships(pool, enums, agent, node_type, node_id)
     return True
 
 
@@ -865,9 +850,7 @@ async def _validate_relationship_node(
         if not row:
             raise ValueError(f"{label} entity not found")
         if require_write:
-            if not _has_write_scopes(
-                agent.get("scopes", []), row.get("privacy_scope_ids") or []
-            ):
+            if not _has_write_scopes(agent.get("scopes", []), row.get("privacy_scope_ids") or []):
                 raise ValueError("Access denied")
         elif not await _node_allowed(pool, enums, agent, node_type, node_id):
             raise ValueError("Access denied")
@@ -965,9 +948,7 @@ async def _run_bulk_import(
             require_scopes(list(normalized.get("scopes") or []), enums)
             return
         if action == "bulk_import_relationships":
-            require_relationship_type(
-                str(normalized.get("relationship_type") or ""), enums
-            )
+            require_relationship_type(str(normalized.get("relationship_type") or ""), enums)
             return
         if action == "bulk_import_jobs":
             priority = normalized.get("priority")
@@ -1024,45 +1005,42 @@ async def _run_bulk_import(
             "status": "approval_required",
         }
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            await conn.execute(QUERIES["runtime/set_changed_by_type"], "agent")
-            await conn.execute(
-                QUERIES["runtime/set_changed_by_id"], str(agent["id"])
-            )
+    async with pool.acquire() as conn, conn.transaction():
+        await conn.execute(QUERIES["runtime/set_changed_by_type"], "agent")
+        await conn.execute(QUERIES["runtime/set_changed_by_id"], str(agent["id"]))
 
-            for idx, item in enumerate(items, start=1):
-                try:
-                    normalized = normalizer(item, payload.defaults)
-                    if "scopes" in normalized:
-                        normalized["scopes"] = enforce_scope_subset(
-                            normalized["scopes"], allowed_scopes
-                        )
-                    if action == "bulk_import_jobs" and not _is_admin(agent, enums):
-                        normalized["agent_id"] = agent.get("id")
-                    if action == "bulk_import_relationships":
-                        await _validate_relationship_node(
-                            conn,
-                            enums,
-                            agent,
-                            normalized.get("source_type", ""),
-                            normalized.get("source_id", ""),
-                            "Source",
-                            require_write=True,
-                        )
-                        await _validate_relationship_node(
-                            conn,
-                            enums,
-                            agent,
-                            normalized.get("target_type", ""),
-                            normalized.get("target_id", ""),
-                            "Target",
-                            require_write=True,
-                        )
-                    result = await executor(conn, enums, normalized)
-                    created.append(result)
-                except Exception as exc:
-                    errors.append({"row": idx, "error": str(exc)})
+        for idx, item in enumerate(items, start=1):
+            try:
+                normalized = normalizer(item, payload.defaults)
+                if "scopes" in normalized:
+                    normalized["scopes"] = enforce_scope_subset(
+                        normalized["scopes"], allowed_scopes
+                    )
+                if action == "bulk_import_jobs" and not _is_admin(agent, enums):
+                    normalized["agent_id"] = agent.get("id")
+                if action == "bulk_import_relationships":
+                    await _validate_relationship_node(
+                        conn,
+                        enums,
+                        agent,
+                        normalized.get("source_type", ""),
+                        normalized.get("source_id", ""),
+                        "Source",
+                        require_write=True,
+                    )
+                    await _validate_relationship_node(
+                        conn,
+                        enums,
+                        agent,
+                        normalized.get("target_type", ""),
+                        normalized.get("target_id", ""),
+                        "Target",
+                        require_write=True,
+                    )
+                result = await executor(conn, enums, normalized)
+                created.append(result)
+            except Exception as exc:
+                errors.append({"row": idx, "error": str(exc)})
 
     return {
         "created": len(created),
@@ -1238,46 +1216,45 @@ async def agent_enroll_start(payload: AgentEnrollStartInput, ctx: Context) -> di
     requested_scope_ids = require_scopes(requested_scopes, enums)
     inactive_status_id = require_status("inactive", enums)
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            existing = await conn.fetchrow(QUERIES["agents/check_name"], payload.name)
-            if existing:
-                raise ValueError(f"Agent '{payload.name}' already exists")
+    async with pool.acquire() as conn, conn.transaction():
+        existing = await conn.fetchrow(QUERIES["agents/check_name"], payload.name)
+        if existing:
+            raise ValueError(f"Agent '{payload.name}' already exists")
 
-            created_agent = await conn.fetchrow(
-                QUERIES["agents/create"],
-                payload.name,
-                payload.description,
-                requested_scope_ids,
-                payload.capabilities,
-                inactive_status_id,
-                payload.requested_requires_approval,
-            )
-            if not created_agent:
-                raise ValueError("Failed to create enrollment agent")
+        created_agent = await conn.fetchrow(
+            QUERIES["agents/create"],
+            payload.name,
+            payload.description,
+            requested_scope_ids,
+            payload.capabilities,
+            inactive_status_id,
+            payload.requested_requires_approval,
+        )
+        if not created_agent:
+            raise ValueError("Failed to create enrollment agent")
 
-            approval = await create_approval_request(
-                pool,
-                str(created_agent["id"]),
-                "register_agent",
-                {
-                    "agent_id": str(created_agent["id"]),
-                    "name": payload.name,
-                    "description": payload.description,
-                    "requested_scopes": requested_scopes,
-                    "requested_requires_approval": payload.requested_requires_approval,
-                    "capabilities": payload.capabilities,
-                },
-                conn=conn,
-            )
-            session = await create_enrollment_session(
-                pool,
-                agent_id=str(created_agent["id"]),
-                approval_request_id=str(approval["id"]),
-                requested_scope_ids=requested_scope_ids,
-                requested_requires_approval=payload.requested_requires_approval,
-                conn=conn,
-            )
+        approval = await create_approval_request(
+            pool,
+            str(created_agent["id"]),
+            "register_agent",
+            {
+                "agent_id": str(created_agent["id"]),
+                "name": payload.name,
+                "description": payload.description,
+                "requested_scopes": requested_scopes,
+                "requested_requires_approval": payload.requested_requires_approval,
+                "capabilities": payload.capabilities,
+            },
+            conn=conn,
+        )
+        session = await create_enrollment_session(
+            pool,
+            agent_id=str(created_agent["id"]),
+            approval_request_id=str(approval["id"]),
+            requested_scope_ids=requested_scope_ids,
+            requested_requires_approval=payload.requested_requires_approval,
+            conn=conn,
+        )
 
     return {
         "registration_id": str(session["id"]),
@@ -1373,9 +1350,7 @@ async def login_user(payload: LoginInput, ctx: Context) -> dict:
     if agent is not None:
         raise ValueError("Agent already authenticated")
 
-    baseline_scope_ids = require_scopes(
-        ["public", "private", "sensitive", "admin"], enums
-    )
+    baseline_scope_ids = require_scopes(["public", "private", "sensitive", "admin"], enums)
     entity = await pool.fetchrow(
         QUERIES["entities/find_by_name_type"],
         payload.username,
@@ -1506,23 +1481,19 @@ async def get_pending_approvals(ctx: Context) -> list[dict]:
         List of pending approval request dicts.
     """
 
-    pool, enums, agent = await require_context(ctx)
+    pool, _enums, agent = await require_context(ctx)
 
     rows = await pool.fetch(QUERIES["approvals/get_pending_by_agent"], agent["id"])
     return [dict(r) for r in rows]
 
 
 @mcp.tool()
-async def get_pending_approvals_all(
-    payload: PendingApprovalsInput, ctx: Context
-) -> list[dict]:
+async def get_pending_approvals_all(payload: PendingApprovalsInput, ctx: Context) -> list[dict]:
     """List all pending approvals for admin review."""
 
     pool, enums, agent = await require_context(ctx)
     _require_admin(agent, enums)
-    return await fetch_pending_approvals_all(
-        pool, limit=payload.limit, offset=payload.offset
-    )
+    return await fetch_pending_approvals_all(pool, limit=payload.limit, offset=payload.offset)
 
 
 @mcp.tool()
@@ -1546,9 +1517,7 @@ async def approve_request(payload: ApproveRequestInput, ctx: Context) -> dict:
     _require_admin(agent, enums)
     _require_uuid(payload.approval_id, "approval")
 
-    approval_row = await pool.fetchrow(
-        QUERIES["approvals/get_request"], payload.approval_id
-    )
+    approval_row = await pool.fetchrow(QUERIES["approvals/get_request"], payload.approval_id)
     if not approval_row:
         raise ValueError("Approval request not found")
     approval = dict(approval_row)
@@ -1568,8 +1537,7 @@ async def approve_request(payload: ApproveRequestInput, ctx: Context) -> dict:
 
     if has_grants and not is_register:
         raise ValueError(
-            "grant_scopes and grant_requires_approval are only valid for "
-            "register_agent approvals"
+            "grant_scopes and grant_requires_approval are only valid for register_agent approvals"
         )
 
     reviewed_by = payload.reviewed_by
@@ -1691,7 +1659,7 @@ async def get_entity(payload: GetEntityInput, ctx: Context) -> dict:
         ValueError: If entity not found or access denied.
     """
 
-    pool, enums, agent = await require_context(ctx)
+    pool, _enums, agent = await require_context(ctx)
 
     _require_uuid(payload.entity_id, "entity")
 
@@ -1779,18 +1747,14 @@ async def update_entity(payload: UpdateEntityInput, ctx: Context) -> dict:
     if payload.status is not None:
         require_status(payload.status, enums)
 
-    if resp := await maybe_require_approval(
-        pool, agent, "update_entity", payload.model_dump()
-    ):
+    if resp := await maybe_require_approval(pool, agent, "update_entity", payload.model_dump()):
         return resp
 
     return await execute_update_entity(pool, enums, payload.model_dump())
 
 
 @mcp.tool()
-async def bulk_update_entity_tags(
-    payload: BulkUpdateEntityTagsInput, ctx: Context
-) -> dict:
+async def bulk_update_entity_tags(payload: BulkUpdateEntityTagsInput, ctx: Context) -> dict:
     """Bulk update entity tags."""
 
     pool, enums, agent = await require_context(ctx)
@@ -1802,16 +1766,12 @@ async def bulk_update_entity_tags(
         return resp
 
     op = normalize_bulk_operation(payload.op)
-    updated = await do_bulk_update_entity_tags(
-        pool, payload.entity_ids, payload.tags, op
-    )
+    updated = await do_bulk_update_entity_tags(pool, payload.entity_ids, payload.tags, op)
     return {"updated": len(updated), "entity_ids": updated}
 
 
 @mcp.tool()
-async def bulk_update_entity_scopes(
-    payload: BulkUpdateEntityScopesInput, ctx: Context
-) -> dict:
+async def bulk_update_entity_scopes(payload: BulkUpdateEntityScopesInput, ctx: Context) -> dict:
     """Bulk update entity privacy scopes."""
 
     pool, enums, agent = await require_context(ctx)
@@ -1823,9 +1783,7 @@ async def bulk_update_entity_scopes(
     require_scopes(requested_scopes, enums)
     data = payload.model_dump()
     data["scopes"] = requested_scopes
-    if resp := await maybe_require_approval(
-        pool, agent, "bulk_update_entity_scopes", data
-    ):
+    if resp := await maybe_require_approval(pool, agent, "bulk_update_entity_scopes", data):
         return resp
     updated = await do_bulk_update_entity_scopes(
         pool, enums, payload.entity_ids, requested_scopes, op
@@ -1854,9 +1812,7 @@ async def create_entity(payload: CreateEntityInput, ctx: Context) -> dict:
 
 
 @mcp.tool()
-async def get_entity_history(
-    payload: GetEntityHistoryInput, ctx: Context
-) -> list[dict]:
+async def get_entity_history(payload: GetEntityHistoryInput, ctx: Context) -> list[dict]:
     """List audit history entries for an entity."""
 
     pool, enums, agent = await require_context(ctx)
@@ -1916,7 +1872,7 @@ async def list_audit_actors(payload: ListAuditActorsInput, ctx: Context) -> list
 async def revert_entity(payload: RevertEntityInput, ctx: Context) -> dict:
     """Revert an entity to a historical audit entry."""
 
-    pool, enums, agent = await require_context(ctx)
+    pool, _enums, agent = await require_context(ctx)
     try:
         UUID(str(payload.audit_id))
     except ValueError as exc:
@@ -1929,9 +1885,7 @@ async def revert_entity(payload: RevertEntityInput, ctx: Context) -> dict:
     if audit_row.get("record_id") != payload.entity_id:
         raise ValueError("Audit entry does not match entity")
 
-    if resp := await maybe_require_approval(
-        pool, agent, "revert_entity", payload.model_dump()
-    ):
+    if resp := await maybe_require_approval(pool, agent, "revert_entity", payload.model_dump()):
         return resp
 
     async with pool.acquire() as conn:
@@ -2099,9 +2053,7 @@ async def link_context_to_owner(payload: LinkContextInput, ctx: Context) -> dict
 
 
 @mcp.tool()
-async def list_context_by_owner(
-    payload: ListContextByOwnerInput, ctx: Context
-) -> list[dict]:
+async def list_context_by_owner(payload: ListContextByOwnerInput, ctx: Context) -> list[dict]:
     """List context items linked to an owner via context-of."""
 
     pool, enums, agent = await require_context(ctx)
@@ -2146,9 +2098,7 @@ async def create_log(payload: CreateLogInput, ctx: Context) -> dict:
     pool, enums, agent = await require_context(ctx)
     require_log_type(payload.log_type, enums)
     require_status(payload.status, enums)
-    if resp := await maybe_require_approval(
-        pool, agent, "create_log", payload.model_dump()
-    ):
+    if resp := await maybe_require_approval(pool, agent, "create_log", payload.model_dump()):
         return resp
     return await execute_create_log(pool, enums, payload.model_dump())
 
@@ -2206,9 +2156,7 @@ async def update_log(payload: UpdateLogInput, ctx: Context) -> dict:
         require_log_type(payload.log_type, enums)
     if payload.status is not None:
         require_status(payload.status, enums)
-    if resp := await maybe_require_approval(
-        pool, agent, "update_log", payload.model_dump()
-    ):
+    if resp := await maybe_require_approval(pool, agent, "update_log", payload.model_dump()):
         return resp
     return await execute_update_log(pool, enums, payload.model_dump())
 
@@ -2280,9 +2228,7 @@ async def get_relationships(payload: GetRelationshipsInput, ctx: Context) -> lis
 
 
 @mcp.tool()
-async def query_relationships(
-    payload: QueryRelationshipsInput, ctx: Context
-) -> list[dict]:
+async def query_relationships(payload: QueryRelationshipsInput, ctx: Context) -> list[dict]:
     """Search relationships with filters."""
 
     pool, enums, agent = await require_context(ctx)
@@ -2319,9 +2265,7 @@ async def update_relationship(payload: UpdateRelationshipInput, ctx: Context) ->
 
     _require_uuid(payload.relationship_id, "relationship")
 
-    row = await pool.fetchrow(
-        QUERIES["relationships/get_by_id"], payload.relationship_id
-    )
+    row = await pool.fetchrow(QUERIES["relationships/get_by_id"], payload.relationship_id)
     if not row:
         raise ValueError("Relationship not found")
 
@@ -2394,9 +2338,7 @@ async def graph_neighbors(payload: GraphNeighborsInput, ctx: Context) -> list[di
     limit = _clamp_limit(payload.limit)
     _require_node_id(payload.source_type, payload.source_id, "source")
 
-    if not await _node_allowed(
-        pool, enums, agent, payload.source_type, payload.source_id
-    ):
+    if not await _node_allowed(pool, enums, agent, payload.source_type, payload.source_id):
         raise ValueError("Access denied")
 
     rows = await pool.fetch(
@@ -2436,13 +2378,9 @@ async def graph_shortest_path(payload: GraphShortestPathInput, ctx: Context) -> 
     _require_node_id(payload.source_type, payload.source_id, "source")
     _require_node_id(payload.target_type, payload.target_id, "target")
 
-    if not await _node_allowed(
-        pool, enums, agent, payload.source_type, payload.source_id
-    ):
+    if not await _node_allowed(pool, enums, agent, payload.source_type, payload.source_id):
         raise ValueError("Access denied")
-    if not await _node_allowed(
-        pool, enums, agent, payload.target_type, payload.target_id
-    ):
+    if not await _node_allowed(pool, enums, agent, payload.target_type, payload.target_id):
         raise ValueError("Access denied")
 
     row = await pool.fetchrow(
@@ -2563,9 +2501,7 @@ async def update_job_status(payload: UpdateJobStatusInput, ctx: Context) -> dict
     _require_job_owner(agent, enums, job)
     status_id = require_status(payload.status, enums)
     completed_at = parse_optional_datetime(payload.completed_at, "completed_at")
-    if resp := await maybe_require_approval(
-        pool, agent, "update_job_status", payload.model_dump()
-    ):
+    if resp := await maybe_require_approval(pool, agent, "update_job_status", payload.model_dump()):
         return resp
 
     row = await pool.fetchrow(
@@ -2589,9 +2525,7 @@ async def create_subtask(payload: CreateSubtaskInput, ctx: Context) -> dict:
     parent_job = await _get_job_row(pool, payload.parent_job_id)
     _require_job_owner(agent, enums, parent_job)
     parse_optional_datetime(payload.due_at, "due_at")
-    parent_scopes = scope_names_from_ids(
-        parent_job.get("privacy_scope_ids") or [], enums
-    )
+    parent_scopes = scope_names_from_ids(parent_job.get("privacy_scope_ids") or [], enums)
     subtask_payload = {
         "title": payload.title,
         "description": payload.description,
@@ -2621,9 +2555,7 @@ async def create_file(payload: CreateFileInput, ctx: Context) -> dict:
     pool, enums, agent = await require_context(ctx)
 
     require_status(payload.status, enums)
-    if resp := await maybe_require_approval(
-        pool, agent, "create_file", payload.model_dump()
-    ):
+    if resp := await maybe_require_approval(pool, agent, "create_file", payload.model_dump()):
         return resp
 
     return await execute_create_file(pool, enums, payload.model_dump())
@@ -2689,9 +2621,7 @@ async def update_file(payload: UpdateFileInput, ctx: Context) -> dict:
     return result
 
 
-async def _attach_file(
-    ctx: Context, target_type: str, payload: AttachFileInput
-) -> dict:
+async def _attach_file(ctx: Context, target_type: str, payload: AttachFileInput) -> dict:
     """Attach a file to a target entity or context item.
 
     Args:
@@ -2889,9 +2819,7 @@ async def update_agent(payload: UpdateAgentInput, ctx: Context) -> dict:
     _require_uuid(payload.agent_id, "agent")
 
     is_self = str(agent.get("id")) == payload.agent_id
-    if is_self and (
-        payload.scopes is not None or payload.requires_approval is not None
-    ):
+    if is_self and (payload.scopes is not None or payload.requires_approval is not None):
         _require_admin(agent, enums)
     if not is_self:
         _require_admin(agent, enums)
@@ -2923,46 +2851,45 @@ async def register_agent(payload: AgentEnrollStartInput, ctx: Context) -> dict:
     requested_scope_ids = require_scopes(payload.requested_scopes, enums)
     inactive_status_id = require_status("inactive", enums)
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            existing = await conn.fetchrow(QUERIES["agents/check_name"], payload.name)
-            if existing:
-                raise ValueError(f"Agent '{payload.name}' already exists")
+    async with pool.acquire() as conn, conn.transaction():
+        existing = await conn.fetchrow(QUERIES["agents/check_name"], payload.name)
+        if existing:
+            raise ValueError(f"Agent '{payload.name}' already exists")
 
-            created_agent = await conn.fetchrow(
-                QUERIES["agents/create"],
-                payload.name,
-                payload.description,
-                requested_scope_ids,
-                payload.capabilities,
-                inactive_status_id,
-                payload.requested_requires_approval,
-            )
-            if not created_agent:
-                raise ValueError("Failed to create enrollment agent")
+        created_agent = await conn.fetchrow(
+            QUERIES["agents/create"],
+            payload.name,
+            payload.description,
+            requested_scope_ids,
+            payload.capabilities,
+            inactive_status_id,
+            payload.requested_requires_approval,
+        )
+        if not created_agent:
+            raise ValueError("Failed to create enrollment agent")
 
-            approval = await create_approval_request(
-                pool,
-                str(created_agent["id"]),
-                "register_agent",
-                {
-                    "agent_id": str(created_agent["id"]),
-                    "name": payload.name,
-                    "description": payload.description,
-                    "requested_scopes": payload.requested_scopes,
-                    "requested_requires_approval": payload.requested_requires_approval,
-                    "capabilities": payload.capabilities,
-                },
-                conn=conn,
-            )
-            session = await create_enrollment_session(
-                pool,
-                agent_id=str(created_agent["id"]),
-                approval_request_id=str(approval["id"]),
-                requested_scope_ids=requested_scope_ids,
-                requested_requires_approval=payload.requested_requires_approval,
-                conn=conn,
-            )
+        approval = await create_approval_request(
+            pool,
+            str(created_agent["id"]),
+            "register_agent",
+            {
+                "agent_id": str(created_agent["id"]),
+                "name": payload.name,
+                "description": payload.description,
+                "requested_scopes": payload.requested_scopes,
+                "requested_requires_approval": payload.requested_requires_approval,
+                "capabilities": payload.capabilities,
+            },
+            conn=conn,
+        )
+        session = await create_enrollment_session(
+            pool,
+            agent_id=str(created_agent["id"]),
+            approval_request_id=str(approval["id"]),
+            requested_scope_ids=requested_scope_ids,
+            requested_requires_approval=payload.requested_requires_approval,
+            conn=conn,
+        )
 
     return {
         "agent_id": str(created_agent["id"]),
@@ -3031,11 +2958,7 @@ async def create_taxonomy(payload: CreateTaxonomyInput, ctx: Context) -> dict:
                 QUERIES[cfg["create"]],
                 name,
                 payload.description,
-                (
-                    json.dumps(payload.value_schema)
-                    if payload.value_schema is not None
-                    else None
-                ),
+                (json.dumps(payload.value_schema) if payload.value_schema is not None else None),
             )
     except UniqueViolationError as exc:
         raise ValueError(f"{payload.kind} entry already exists") from exc
@@ -3091,9 +3014,7 @@ async def update_taxonomy(payload: UpdateTaxonomyInput, ctx: Context) -> dict:
                 payload.item_id,
                 name,
                 payload.description,
-                json.dumps(payload.value_schema)
-                if payload.value_schema is not None
-                else None,
+                json.dumps(payload.value_schema) if payload.value_schema is not None else None,
             )
     except UniqueViolationError as exc:
         raise ValueError(f"{payload.kind} entry already exists") from exc
@@ -3116,15 +3037,12 @@ async def archive_taxonomy(payload: ToggleTaxonomyInput, ctx: Context) -> dict:
     usage = await _taxonomy_usage_count(pool, cfg, payload.item_id)
     if usage > 0:
         raise ValueError(
-            "Cannot archive "
-            f"{payload.kind} entry while it is referenced ({usage} records)"
+            f"Cannot archive {payload.kind} entry while it is referenced ({usage} records)"
         )
 
     row = await pool.fetchrow(QUERIES[cfg["set_active"]], payload.item_id, False)
     if not row:
-        raise ValueError(
-            f"{payload.kind} entry not found or cannot archive built-in entry"
-        )
+        raise ValueError(f"{payload.kind} entry not found or cannot archive built-in entry")
     await _refresh_enums_in_context(ctx, pool)
     return dict(row)
 

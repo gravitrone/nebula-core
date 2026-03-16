@@ -86,9 +86,7 @@ async def _create_agent(
     return dict(row)
 
 
-async def _create_person_entity(
-    db_pool: Any, enums: Any, *, name: str
-) -> dict[str, Any]:
+async def _create_person_entity(db_pool: Any, enums: Any, *, name: str) -> dict[str, Any]:
     """Insert and return a person entity."""
 
     row = await db_pool.fetchrow(
@@ -106,14 +104,10 @@ async def _create_person_entity(
     return dict(row)
 
 
-async def test_login_user_bootstrap_creates_entity_and_key(
-    bootstrap_mcp_context, db_pool, enums
-):
+async def test_login_user_bootstrap_creates_entity_and_key(bootstrap_mcp_context, db_pool, enums):
     """login_user should create a person entity and return an API key in bootstrap mode."""
 
-    result = await login_user(
-        LoginInput(username="mcp-login-user"), bootstrap_mcp_context
-    )
+    result = await login_user(LoginInput(username="mcp-login-user"), bootstrap_mcp_context)
     assert result["username"] == "mcp-login-user"
     assert result["api_key"].startswith("nbl_")
 
@@ -144,9 +138,7 @@ async def test_login_user_reuses_existing_entity_and_adds_baseline_scopes(
     )
     assert row is not None
 
-    result = await login_user(
-        LoginInput(username="reuse-login-user"), bootstrap_mcp_context
-    )
+    result = await login_user(LoginInput(username="reuse-login-user"), bootstrap_mcp_context)
     assert result["entity_id"] == str(row["id"])
 
     refreshed = await db_pool.fetchrow(
@@ -231,9 +223,7 @@ async def test_list_all_api_keys_requires_admin(db_pool, enums):
         ),
     ],
 )
-async def test_admin_tools_forbidden_for_non_admin_matrix(
-    db_pool, enums, tool_name, invoker
-):
+async def test_admin_tools_forbidden_for_non_admin_matrix(db_pool, enums, tool_name, invoker):
     """All admin-only MCP tools should reject non-admin agents consistently."""
 
     public_agent = await _create_agent(
@@ -370,9 +360,7 @@ async def test_get_approval_requires_admin(untrusted_mcp_context, db_pool, enums
     assert approval_id
 
     with pytest.raises(ValueError, match="Admin scope required"):
-        await get_approval(
-            GetApprovalInput(approval_id=approval_id), untrusted_mcp_context
-        )
+        await get_approval(GetApprovalInput(approval_id=approval_id), untrusted_mcp_context)
 
     admin_agent = await _create_agent(
         db_pool,
@@ -534,9 +522,7 @@ async def test_pending_approvals_all_requires_admin_and_paginates(db_pool, enums
     assert len(page) == 2
 
 
-async def test_query_protocols_non_admin_limit_starvation_on_trusted_rows(
-    db_pool, enums
-):
+async def test_query_protocols_non_admin_limit_starvation_on_trusted_rows(db_pool, enums):
     """Non-admin query should not starve untrusted rows when trusted rows lead."""
 
     admin_agent = await _create_agent(

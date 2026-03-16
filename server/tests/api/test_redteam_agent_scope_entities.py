@@ -83,9 +83,7 @@ async def test_api_agent_query_entities_hides_private(db_pool, enums):
     private_entity = await _make_entity(db_pool, enums, "Private", ["private"])
     agent = await _make_agent(db_pool, enums, "public-agent", ["public"])
 
-    app.dependency_overrides[require_auth] = _auth_override(
-        agent["id"], enums, ["public"]
-    )
+    app.dependency_overrides[require_auth] = _auth_override(agent["id"], enums, ["public"])
     app.state.pool = db_pool
     app.state.enums = enums
     transport = ASGITransport(app=app)
@@ -108,9 +106,7 @@ async def test_api_agent_get_entity_denies_private(db_pool, enums):
     private_entity = await _make_entity(db_pool, enums, "Private 2", ["private"])
     agent = await _make_agent(db_pool, enums, "public-agent-2", ["public"])
 
-    app.dependency_overrides[require_auth] = _auth_override(
-        agent["id"], enums, ["public"]
-    )
+    app.dependency_overrides[require_auth] = _auth_override(agent["id"], enums, ["public"])
     app.state.pool = db_pool
     app.state.enums = enums
     transport = ASGITransport(app=app)

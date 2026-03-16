@@ -4,14 +4,11 @@ This module exposes a canonical "schema" view of active taxonomy and core enum
 constraints. Agents should query this before inventing scope/type/status values.
 """
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 
-# Third-Party
 from asyncpg import Pool
 
-# Local
 from .query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[1] / "queries")
@@ -64,17 +61,12 @@ async def load_schema_contract(pool: Pool) -> dict[str, Any]:
         [dict(r) for r in await pool.fetch(QUERIES["schema/list_active_entity_types"])]
     )
     relationship_types = _stringify_ids(
-        [
-            dict(r)
-            for r in await pool.fetch(QUERIES["schema/list_active_relationship_types"])
-        ]
+        [dict(r) for r in await pool.fetch(QUERIES["schema/list_active_relationship_types"])]
     )
     log_types = _stringify_ids(
         [dict(r) for r in await pool.fetch(QUERIES["schema/list_active_log_types"])]
     )
-    statuses = _stringify_ids(
-        [dict(r) for r in await pool.fetch(QUERIES["schema/list_statuses"])]
-    )
+    statuses = _stringify_ids([dict(r) for r in await pool.fetch(QUERIES["schema/list_statuses"])])
 
     return {
         "taxonomy": {
@@ -120,9 +112,7 @@ def load_export_schema_contract() -> dict[str, Any]:
             "formats": ["json", "csv"],
         },
         "context": {
-            "description": (
-                "Context rows with source type, scopes, and content"
-            ),
+            "description": ("Context rows with source type, scopes, and content"),
             "filter_params": [
                 "source_type",
                 "tags",
@@ -160,9 +150,7 @@ def load_export_schema_contract() -> dict[str, Any]:
             "formats": ["json", "csv"],
         },
         "snapshot": {
-            "description": (
-                "Workspace snapshot with entities/context/relationships/jobs"
-            ),
+            "description": ("Workspace snapshot with entities/context/relationships/jobs"),
             "filter_params": ["limit", "offset"],
             "formats": ["json"],
         },

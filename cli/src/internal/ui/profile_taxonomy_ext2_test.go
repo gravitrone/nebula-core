@@ -98,8 +98,8 @@ func TestSubmitTaxonomyPromptEditDescriptionCommandSuccessAndError(t *testing.T)
 		patchedID = strings.TrimPrefix(r.URL.Path, "/api/taxonomy/scopes/")
 		var body map[string]any
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		patchedName = body["name"].(string)           //nolint:forcetypeassert
-		patchedDesc = body["description"].(string)    //nolint:forcetypeassert
+		patchedName = body["name"].(string)        //nolint:forcetypeassert
+		patchedDesc = body["description"].(string) //nolint:forcetypeassert
 		err := json.NewEncoder(w).Encode(map[string]any{
 			"data": map[string]any{
 				"id":          patchedID,

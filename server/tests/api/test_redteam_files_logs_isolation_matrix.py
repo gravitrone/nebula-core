@@ -179,9 +179,7 @@ def _user_auth_override(entity_row, enums, scopes=None):
     """Build an auth override for a user caller with explicit scopes."""
 
     scope_ids = [
-        enums.scopes.name_to_id[s]
-        for s in (scopes or ["public"])
-        if s in enums.scopes.name_to_id
+        enums.scopes.name_to_id[s] for s in (scopes or ["public"]) if s in enums.scopes.name_to_id
     ]
     auth_dict = {
         "key_id": None,
@@ -236,9 +234,7 @@ async def test_api_file_hidden_when_attached_to_out_of_scope_job(db_pool, enums)
     viewer = await _make_agent(db_pool, enums, "file-job-viewer", ["public"])
     job = await _make_job(db_pool, enums, "Owner Job", owner["id"], ["private"])
     file_row = await _make_file(db_pool, enums)
-    await _attach_relationship(
-        db_pool, enums, "job", job["id"], "file", file_row["id"], "has-file"
-    )
+    await _attach_relationship(db_pool, enums, "job", job["id"], "file", file_row["id"], "has-file")
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
     app.state.pool = db_pool
@@ -296,9 +292,7 @@ async def test_api_log_hidden_when_attached_to_out_of_scope_job(db_pool, enums):
     viewer = await _make_agent(db_pool, enums, "log-job-viewer", ["public"])
     job = await _make_job(db_pool, enums, "Owner Job", owner["id"], ["private"])
     log_row = await _make_log(db_pool, enums)
-    await _attach_relationship(
-        db_pool, enums, "log", log_row["id"], "job", job["id"], "related-to"
-    )
+    await _attach_relationship(db_pool, enums, "log", log_row["id"], "job", job["id"], "related-to")
 
     app.dependency_overrides[require_auth] = _auth_override(viewer["id"], enums)
     app.state.pool = db_pool
@@ -322,18 +316,14 @@ async def test_api_log_hidden_when_attached_to_out_of_scope_job(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_api_file_hidden_for_public_user_when_attached_to_private_job(
-    db_pool, enums
-):
+async def test_api_file_hidden_for_public_user_when_attached_to_private_job(db_pool, enums):
     """Public-scoped user should not read/list/update file linked to private job."""
 
     owner = await _make_agent(db_pool, enums, "file-user-owner", ["public"])
     entity_user = await _make_entity(db_pool, enums, "file-user-viewer")
     job = await _make_job(db_pool, enums, "Owner File Job", owner["id"], ["private"])
     file_row = await _make_file(db_pool, enums)
-    await _attach_relationship(
-        db_pool, enums, "job", job["id"], "file", file_row["id"], "has-file"
-    )
+    await _attach_relationship(db_pool, enums, "job", job["id"], "file", file_row["id"], "has-file")
 
     app.dependency_overrides[require_auth] = _user_auth_override(entity_user, enums)
     app.state.pool = db_pool
@@ -357,18 +347,14 @@ async def test_api_file_hidden_for_public_user_when_attached_to_private_job(
 
 
 @pytest.mark.asyncio
-async def test_api_log_hidden_for_public_user_when_attached_to_private_job(
-    db_pool, enums
-):
+async def test_api_log_hidden_for_public_user_when_attached_to_private_job(db_pool, enums):
     """Public-scoped user should not read/list/update log linked to private job."""
 
     owner = await _make_agent(db_pool, enums, "log-user-owner", ["public"])
     entity_user = await _make_entity(db_pool, enums, "log-user-viewer")
     job = await _make_job(db_pool, enums, "Owner Log Job", owner["id"], ["private"])
     log_row = await _make_log(db_pool, enums)
-    await _attach_relationship(
-        db_pool, enums, "log", log_row["id"], "job", job["id"], "related-to"
-    )
+    await _attach_relationship(db_pool, enums, "log", log_row["id"], "job", job["id"], "related-to")
 
     app.dependency_overrides[require_auth] = _user_auth_override(entity_user, enums)
     app.state.pool = db_pool

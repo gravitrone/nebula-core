@@ -1,16 +1,13 @@
 """Executor functions for approved actions."""
 
-# Standard Library
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
-# Third-Party
 from asyncpg import Pool, UniqueViolationError
 
-# Local
 from .enums import (
     EnumRegistry,
     require_relationship_type,
@@ -67,9 +64,7 @@ def _advisory_lock_key(*parts: str) -> int:
     return int.from_bytes(digest[:8], "big", signed=True)
 
 
-async def execute_create_entity(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_create_entity(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute entity creation from approved request.
 
     Args:
@@ -112,9 +107,7 @@ async def execute_create_entity(
         if payload.source_path:
             lock_parts.append(payload.source_path)
 
-        await conn.execute(
-            QUERIES["runtime/advisory_lock"], _advisory_lock_key(*lock_parts)
-        )
+        await conn.execute(QUERIES["runtime/advisory_lock"], _advisory_lock_key(*lock_parts))
 
         # LAYER 1: Name + Type + Scopes dedup (likely duplicate)
         existing = await conn.fetchrow(
@@ -140,9 +133,8 @@ async def execute_create_entity(
         return dict(row) if row else {}
 
     if isinstance(pool, Pool):
-        async with pool.acquire() as conn:
-            async with conn.transaction():
-                return await _run(conn)
+        async with pool.acquire() as conn, conn.transaction():
+            return await _run(conn)
 
     if pool.is_in_transaction():
         return await _run(pool)
@@ -151,9 +143,7 @@ async def execute_create_entity(
         return await _run(pool)
 
 
-async def execute_create_context(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_create_context(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute context item creation from approved request.
 
     Args:
@@ -201,9 +191,7 @@ async def execute_create_context(
     return dict(row) if row else {}
 
 
-async def execute_update_context(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_context(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute context item update from approved request.
 
     Args:
@@ -270,10 +258,7 @@ async def execute_create_relationship(
 
     type_id = require_relationship_type(payload.relationship_type, enums)
     status_id = require_status("active", enums)
-    if (
-        payload.source_type == payload.target_type
-        and payload.source_id == payload.target_id
-    ):
+    if payload.source_type == payload.target_type and payload.source_id == payload.target_id:
         raise ValueError("Self-referential relationships are not allowed")
     if payload.relationship_type in CYCLE_SENSITIVE_REL_TYPES:
         from .models import MAX_GRAPH_HOPS
@@ -311,9 +296,7 @@ async def execute_create_relationship(
     return dict(row) if row else {}
 
 
-async def execute_create_job(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_create_job(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute job creation from approved request.
 
     Args:
@@ -352,9 +335,7 @@ async def execute_create_job(
     return dict(row) if row else {}
 
 
-async def execute_update_job(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_job(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute job update from approved request.
 
     Args:
@@ -431,9 +412,7 @@ async def execute_update_relationship(
     return dict(row)
 
 
-async def execute_update_job_status(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_job_status(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute job status update from approved request.
 
     Args:
@@ -467,9 +446,7 @@ async def execute_update_job_status(
     return dict(row)
 
 
-async def execute_create_file(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_create_file(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute file metadata creation from approved request.
 
     Args:
@@ -506,9 +483,7 @@ async def execute_create_file(
     return dict(row) if row else {}
 
 
-async def execute_update_file(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_file(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute file metadata update from approved request."""
 
     from .models import UpdateFileInput
@@ -539,9 +514,7 @@ async def execute_update_file(
     return dict(row) if row else {}
 
 
-async def execute_create_protocol(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_create_protocol(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute protocol creation from approved request."""
 
     from .models import CreateProtocolInput
@@ -570,9 +543,7 @@ async def execute_create_protocol(
     return dict(row) if row else {}
 
 
-async def execute_update_protocol(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_protocol(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute protocol update from approved request."""
 
     from .models import UpdateProtocolInput
@@ -603,9 +574,7 @@ async def execute_update_protocol(
     return dict(row) if row else {}
 
 
-async def execute_create_log(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_create_log(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute log creation from approved request."""
 
     from .enums import require_log_type
@@ -617,7 +586,7 @@ async def execute_create_log(
     payload = CreateLogInput(**change_details)
     log_type_id = require_log_type(payload.log_type, enums)
     status_id = require_status(payload.status, enums)
-    timestamp = payload.timestamp or datetime.now(timezone.utc)
+    timestamp = payload.timestamp or datetime.now(UTC)
 
     row = await pool.fetchrow(
         QUERIES["logs/create"],
@@ -632,9 +601,7 @@ async def execute_create_log(
     return dict(row) if row else {}
 
 
-async def execute_update_log(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_log(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute log update from approved request."""
 
     from .enums import require_log_type
@@ -665,9 +632,7 @@ async def execute_update_log(
     return dict(row) if row else {}
 
 
-async def execute_update_entity(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_update_entity(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute entity update from approved request.
 
     Args:
@@ -730,7 +695,7 @@ async def execute_bulk_update_entity_tags(
     for row in rows:
         row_id = row.get("id")
         if row_id is None and len(row.values()) > 0:
-            row_id = list(row.values())[0]
+            row_id = next(iter(row.values()))
         if row_id is not None:
             updated_ids.append(str(row_id))
     return {"updated": len(updated_ids), "entity_ids": updated_ids}
@@ -760,7 +725,7 @@ async def execute_bulk_update_entity_scopes(
     for row in rows:
         row_id = row.get("id")
         if row_id is None and len(row.values()) > 0:
-            row_id = list(row.values())[0]
+            row_id = next(iter(row.values()))
         if row_id is not None:
             updated_ids.append(str(row_id))
     return {"updated": len(updated_ids), "entity_ids": updated_ids}
@@ -797,12 +762,10 @@ async def execute_register_agent(
 
     agent_id = change_details["agent_id"]
     requested_scopes = change_details.get("requested_scopes") or ["public"]
-    existing_trust_row = await pool.fetchrow(
-        QUERIES["agents/get_requires_approval"], agent_id
+    existing_trust_row = await pool.fetchrow(QUERIES["agents/get_requires_approval"], agent_id)
+    existing_requires_approval = (
+        bool(existing_trust_row["requires_approval"]) if existing_trust_row else False
     )
-    existing_requires_approval = bool(
-        existing_trust_row["requires_approval"]
-    ) if existing_trust_row else False
     requested_requires_approval = bool(
         change_details.get("requested_requires_approval", existing_requires_approval)
     )
@@ -844,9 +807,7 @@ async def execute_register_agent(
             reviewed_by,
         )
 
-    granted_scope_names = [
-        _scope_name_from_id(enums, scope_id) for scope_id in granted_scope_ids
-    ]
+    granted_scope_names = [_scope_name_from_id(enums, scope_id) for scope_id in granted_scope_ids]
     return {
         "id": str(agent["id"]),
         "name": agent["name"],
@@ -881,17 +842,13 @@ async def execute_bulk_import_relationships(
     return await execute_create_relationship(pool, enums, change_details)
 
 
-async def execute_bulk_import_jobs(
-    pool: Pool, enums: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_bulk_import_jobs(pool: Pool, enums: EnumRegistry, change_details: dict) -> dict:
     """Execute a single job import row created via bulk import approvals."""
 
     return await execute_create_job(pool, enums, change_details)
 
 
-async def execute_revert_entity(
-    pool: Pool, _: EnumRegistry, change_details: dict
-) -> dict:
+async def execute_revert_entity(pool: Pool, _: EnumRegistry, change_details: dict) -> dict:
     """Execute an entity revert from an approved request."""
 
     from .helpers import revert_entity as do_revert_entity

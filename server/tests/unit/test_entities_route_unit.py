@@ -157,9 +157,7 @@ async def test_require_entity_write_access_admin_short_circuits(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_create_entity_approval_short_circuit_returns_payload(
-    monkeypatch, mock_enums
-):
+async def test_create_entity_approval_short_circuit_returns_payload(monkeypatch, mock_enums):
     """Approval short-circuit payloads should return directly."""
 
     payload = CreateEntityBody(
@@ -224,9 +222,7 @@ async def test_get_entity_history_forbidden_scope_maps_403(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_bulk_update_entity_scopes_direct_update_returns_counts(
-    monkeypatch, mock_enums
-):
+async def test_bulk_update_entity_scopes_direct_update_returns_counts(monkeypatch, mock_enums):
     """Bulk scope updates should return updated counts on direct path."""
 
     entity_id = str(uuid4())
@@ -234,9 +230,7 @@ async def test_bulk_update_entity_scopes_direct_update_returns_counts(
     pool = SimpleNamespace()
     auth = {"caller_type": "user", "scopes": [mock_enums.scopes.name_to_id["public"]]}
 
-    monkeypatch.setattr(
-        "nebula_api.routes.entities._require_entity_write_access", AsyncMock()
-    )
+    monkeypatch.setattr("nebula_api.routes.entities._require_entity_write_access", AsyncMock())
     monkeypatch.setattr(
         "nebula_api.routes.entities.maybe_check_agent_approval",
         AsyncMock(return_value=None),

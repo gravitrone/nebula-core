@@ -24,9 +24,7 @@ async def test_get_schema_includes_enterprise_taxonomy(api):
         "log_types",
     }
 
-    builtin_scopes = {
-        row["name"] for row in taxonomy["scopes"] if row.get("is_builtin") is True
-    }
+    builtin_scopes = {row["name"] for row in taxonomy["scopes"] if row.get("is_builtin") is True}
     assert builtin_scopes == {"admin", "private", "public", "sensitive"}
 
     builtin_entity_types = {
@@ -41,9 +39,7 @@ async def test_get_schema_includes_enterprise_taxonomy(api):
     }
 
     builtin_relationship_types = {
-        row["name"]
-        for row in taxonomy["relationship_types"]
-        if row.get("is_builtin") is True
+        row["name"] for row in taxonomy["relationship_types"] if row.get("is_builtin") is True
     }
     assert builtin_relationship_types == {
         "about",

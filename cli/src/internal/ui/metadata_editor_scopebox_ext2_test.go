@@ -24,4 +24,3 @@ func TestMetadataEditorRenderScopeBoxBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "[public]")
 	assert.Contains(t, out, "[admin]")
 }
-

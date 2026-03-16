@@ -132,9 +132,7 @@ async def test_get_relationships_direction_filter(api):
         },
     )
 
-    r = await api.get(
-        f"/api/relationships/entity/{e1['id']}", params={"direction": "outgoing"}
-    )
+    r = await api.get(f"/api/relationships/entity/{e1['id']}", params={"direction": "outgoing"})
     assert r.status_code == 200
 
 
@@ -236,9 +234,7 @@ async def test_update_relationship_accepts_archived_alias(api, db_pool):
 
     archived_names = {
         row["name"]
-        for row in await db_pool.fetch(
-            "SELECT name FROM statuses WHERE category = 'archived'"
-        )
+        for row in await db_pool.fetch("SELECT name FROM statuses WHERE category = 'archived'")
     }
 
     resp = await api.patch(

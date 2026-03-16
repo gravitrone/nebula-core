@@ -18,8 +18,6 @@ async def test_get_schema_returns_taxonomy_and_constraints(mock_mcp_context):
     assert "statuses" in result
 
     builtin_scopes = {
-        row["name"]
-        for row in result["taxonomy"]["scopes"]
-        if row.get("is_builtin") is True
+        row["name"] for row in result["taxonomy"]["scopes"] if row.get("is_builtin") is True
     }
     assert builtin_scopes == {"admin", "private", "public", "sensitive"}

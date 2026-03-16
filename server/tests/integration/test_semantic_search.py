@@ -45,9 +45,7 @@ async def _insert_entity(db_pool, enums, *, name: str, scopes: list[str], summar
     return str(row["id"])
 
 
-async def _insert_context(
-    db_pool, enums, *, title: str, scopes: list[str], content: str
-):
+async def _insert_context(db_pool, enums, *, title: str, scopes: list[str], content: str):
     """Handle insert context.
 
     Args:
@@ -106,9 +104,7 @@ async def test_semantic_search_tool_happy_path(mock_mcp_context, db_pool, enums)
     assert context_id in ids
 
 
-async def test_semantic_search_tool_scope_enforced(
-    untrusted_mcp_context, db_pool, enums
-):
+async def test_semantic_search_tool_scope_enforced(untrusted_mcp_context, db_pool, enums):
     """MCP semantic search should not return nodes outside agent scopes."""
 
     public_id = await _insert_entity(

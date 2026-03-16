@@ -1,6 +1,5 @@
 """Deterministic semantic scoring helpers used by API and MCP search flows."""
 
-# Standard Library
 import hashlib
 import math
 import re

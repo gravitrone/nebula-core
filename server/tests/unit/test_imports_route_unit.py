@@ -89,9 +89,7 @@ async def test_require_entity_write_access_scope_denied_raises(mock_enums):
 
     private_scope = mock_enums.scopes.name_to_id["private"]
     public_scope = mock_enums.scopes.name_to_id["public"]
-    pool = SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"privacy_scope_ids": [private_scope]})
-    )
+    pool = SimpleNamespace(fetchrow=AsyncMock(return_value={"privacy_scope_ids": [private_scope]}))
     auth = {"scopes": [public_scope], "caller_type": "user"}
 
     with pytest.raises(ValueError, match="Access denied"):
@@ -104,9 +102,7 @@ async def test_require_context_write_access_scope_denied_raises(mock_enums):
 
     private_scope = mock_enums.scopes.name_to_id["private"]
     public_scope = mock_enums.scopes.name_to_id["public"]
-    pool = SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"privacy_scope_ids": [private_scope]})
-    )
+    pool = SimpleNamespace(fetchrow=AsyncMock(return_value={"privacy_scope_ids": [private_scope]}))
     auth = {"scopes": [public_scope], "caller_type": "user"}
 
     with pytest.raises(ValueError, match="Access denied"):

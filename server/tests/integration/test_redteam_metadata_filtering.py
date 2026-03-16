@@ -37,9 +37,7 @@ def _build_ctx(pool, enums, agent) -> MagicMock:
 async def _ensure_context_of_type(db_pool) -> str:
     """Ensure context-of relationship type exists and return its id."""
 
-    row = await db_pool.fetchrow(
-        "SELECT id FROM relationship_types WHERE name = 'context-of'"
-    )
+    row = await db_pool.fetchrow("SELECT id FROM relationship_types WHERE name = 'context-of'")
     if row:
         return str(row["id"])
     created = await db_pool.fetchrow(

@@ -135,9 +135,7 @@ async def test_get_relationships_hides_private_entities(db_pool, enums):
 
     public_entity = await _make_entity(db_pool, enums, "Public", ["public"])
     private_entity = await _make_entity(db_pool, enums, "Private", ["sensitive"])
-    rel = await _make_relationship(
-        db_pool, enums, public_entity["id"], private_entity["id"]
-    )
+    rel = await _make_relationship(db_pool, enums, public_entity["id"], private_entity["id"])
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer", ["public"])
     ctx = _make_context(db_pool, enums, viewer)
@@ -160,9 +158,7 @@ async def test_query_relationships_hides_private_entities(db_pool, enums):
 
     public_entity = await _make_entity(db_pool, enums, "Public 2", ["public"])
     private_entity = await _make_entity(db_pool, enums, "Private 2", ["sensitive"])
-    rel = await _make_relationship(
-        db_pool, enums, public_entity["id"], private_entity["id"]
-    )
+    rel = await _make_relationship(db_pool, enums, public_entity["id"], private_entity["id"])
 
     viewer = await _make_agent(db_pool, enums, "rel-viewer-2", ["public"])
     ctx = _make_context(db_pool, enums, viewer)

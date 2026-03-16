@@ -25,4 +25,3 @@ func TestFormatAuditValueAdditionalDefaultAndStructuredBranches(t *testing.T) {
 	assert.Contains(t, asStructuredList, "v")
 	assert.Contains(t, asStructuredList, "x")
 }
-

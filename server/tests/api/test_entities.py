@@ -377,9 +377,7 @@ async def test_create_entity_allows_same_name_with_different_type(api):
 
 
 @pytest.mark.asyncio
-async def test_update_entity_executor_value_error_returns_400(
-    api, test_entity, monkeypatch
-):
+async def test_update_entity_executor_value_error_returns_400(api, test_entity, monkeypatch):
     """Update route should normalize executor value errors."""
 
     async def _boom(*_args, **_kwargs):
@@ -483,9 +481,7 @@ async def test_bulk_update_tags_agent_entity_not_found_returns_404(db_pool, enum
         False,
         status_id,
     )
-    app.dependency_overrides[require_auth] = _agent_auth_override(
-        dict(agent), [public_scope]
-    )
+    app.dependency_overrides[require_auth] = _agent_auth_override(dict(agent), [public_scope])
     app.state.pool = db_pool
     app.state.enums = enums
     transport = ASGITransport(app=app)
@@ -577,9 +573,7 @@ async def test_bulk_update_tags_allows_entities_without_scopes(db_pool, enums):
         False,
         status_id,
     )
-    app.dependency_overrides[require_auth] = _agent_auth_override(
-        dict(agent), [public_scope]
-    )
+    app.dependency_overrides[require_auth] = _agent_auth_override(dict(agent), [public_scope])
     app.state.pool = db_pool
     app.state.enums = enums
     transport = ASGITransport(app=app)

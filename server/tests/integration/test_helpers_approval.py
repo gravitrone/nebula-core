@@ -220,9 +220,7 @@ async def test_approve_request_normalizes_request_type_variants(
 async def test_approve_nonexistent_raises(db_pool, enums, test_entity):
     """Approving a nonexistent approval ID should raise ValueError."""
 
-    with pytest.raises(
-        ValueError, match="Approval request not found or already processed"
-    ):
+    with pytest.raises(ValueError, match="Approval request not found or already processed"):
         await approve_request(
             db_pool,
             enums,
@@ -303,9 +301,7 @@ async def test_approve_request_race_only_one_executes(
     assert len(failures) == 1
 
 
-async def test_approve_unknown_executor_type_raises(
-    db_pool, enums, untrusted_agent, test_entity
-):
+async def test_approve_unknown_executor_type_raises(db_pool, enums, untrusted_agent, test_entity):
     """Approving a request with an unknown executor type should raise ValueError."""
 
     approval = await create_approval_request(
@@ -353,9 +349,7 @@ async def test_approve_request_type_matrix_has_executor_mapping(
     assert "No executor for" not in (row["execution_error"] or "")
 
 
-async def test_approve_with_bad_data_marks_failed(
-    db_pool, enums, untrusted_agent, test_entity
-):
+async def test_approve_with_bad_data_marks_failed(db_pool, enums, untrusted_agent, test_entity):
     """Approving a request with invalid data should mark it as approved-failed."""
 
     approval = await create_approval_request(
@@ -460,9 +454,7 @@ async def test_approve_mixed_entity_updates_do_not_fail_with_missing_id(
     assert "bulk-approved" in (update_result["entity"].get("tags") or [])
 
 
-async def test_approve_revert_entity_executes(
-    db_pool, enums, untrusted_agent, test_entity
-):
+async def test_approve_revert_entity_executes(db_pool, enums, untrusted_agent, test_entity):
     """revert_entity approvals should execute via executor registry."""
 
     await db_pool.execute(
@@ -542,9 +534,7 @@ async def test_reject_request_success(db_pool, enums, untrusted_agent, test_enti
 async def test_reject_nonexistent_raises(db_pool, enums, test_entity):
     """Rejecting a nonexistent approval ID should raise ValueError."""
 
-    with pytest.raises(
-        ValueError, match="Approval request not found or already processed"
-    ):
+    with pytest.raises(ValueError, match="Approval request not found or already processed"):
         await reject_request(
             db_pool,
             "00000000-0000-0000-0000-000000000000",

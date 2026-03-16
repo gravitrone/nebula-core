@@ -144,9 +144,7 @@ async def test_bulk_import_entities_scope_escalation(db_pool, enums):
     """Agents should not bulk import entities with private scopes."""
 
     agent = await _make_agent(db_pool, enums, "bulk-import-viewer", ["public"], False)
-    app.dependency_overrides[require_auth] = _auth_override(
-        agent["id"], ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _auth_override(agent["id"], ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -185,9 +183,7 @@ async def test_bulk_import_jobs_agent_spoofing(db_pool, enums):
     owner = await _make_agent(db_pool, enums, "bulk-owner", ["public"], False)
     viewer = await _make_agent(db_pool, enums, "bulk-viewer", ["public"], False)
 
-    app.dependency_overrides[require_auth] = _auth_override(
-        viewer["id"], ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -225,9 +221,7 @@ async def test_bulk_import_relationships_private_target(db_pool, enums):
     public_entity = await _make_entity(db_pool, enums, "Public", ["public"])
     viewer = await _make_agent(db_pool, enums, "bulk-linker", ["public"], False)
 
-    app.dependency_overrides[require_auth] = _auth_override(
-        viewer["id"], ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -264,9 +258,7 @@ async def test_bulk_import_context_scope_escalation(db_pool, enums):
     """Agents should not bulk import context with private scopes."""
 
     agent = await _make_agent(db_pool, enums, "bulk-context-viewer", ["public"], False)
-    app.dependency_overrides[require_auth] = _auth_override(
-        agent["id"], ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _auth_override(agent["id"], ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -316,17 +308,11 @@ async def test_bulk_import_relationships_private_context_denied_for_agent(
 ):
     """Public agents should not import relationships that mutate private context."""
 
-    private_context = await _make_context(
-        db_pool, enums, "Private Agent Context", ["sensitive"]
-    )
-    public_entity = await _make_entity(
-        db_pool, enums, "Public Agent Entity", ["public"]
-    )
+    private_context = await _make_context(db_pool, enums, "Private Agent Context", ["sensitive"])
+    public_entity = await _make_entity(db_pool, enums, "Public Agent Entity", ["public"])
     viewer = await _make_agent(db_pool, enums, "bulk-context-linker", ["public"], False)
 
-    app.dependency_overrides[require_auth] = _auth_override(
-        viewer["id"], ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _auth_override(viewer["id"], ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -336,15 +322,11 @@ async def test_bulk_import_relationships_private_context_denied_for_agent(
             {
                 "source_type": source_type,
                 "source_id": (
-                    str(private_context["id"])
-                    if source_private
-                    else str(public_entity["id"])
+                    str(private_context["id"]) if source_private else str(public_entity["id"])
                 ),
                 "target_type": target_type,
                 "target_id": (
-                    str(private_context["id"])
-                    if target_private
-                    else str(public_entity["id"])
+                    str(private_context["id"]) if target_private else str(public_entity["id"])
                 ),
                 "relationship_type": "related-to",
             }
@@ -366,15 +348,11 @@ async def test_bulk_import_relationships_private_context_denied_for_agent(
 async def test_bulk_import_relationships_private_target_denied_for_user(db_pool, enums):
     """Public-scoped users should not import relationships to private entities."""
 
-    private_entity = await _make_entity(
-        db_pool, enums, "Private User Target", ["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Private User Target", ["sensitive"])
     public_entity = await _make_entity(db_pool, enums, "Public User Source", ["public"])
     user_entity = await _make_entity(db_pool, enums, "Import User", ["public"])
 
-    app.dependency_overrides[require_auth] = _user_auth_override(
-        user_entity, ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -406,20 +384,12 @@ async def test_bulk_import_relationships_private_target_denied_for_user(db_pool,
 async def test_bulk_import_relationships_private_job_denied_for_user(db_pool, enums):
     """Public-scoped users should not import relationships from private jobs."""
 
-    owner = await _make_agent(
-        db_pool, enums, "bulk-import-job-owner", ["public"], False
-    )
-    private_job = await _make_job(
-        db_pool, enums, "Private User Job", owner["id"], ["private"]
-    )
-    public_entity = await _make_entity(
-        db_pool, enums, "Public User Target 2", ["public"]
-    )
+    owner = await _make_agent(db_pool, enums, "bulk-import-job-owner", ["public"], False)
+    private_job = await _make_job(db_pool, enums, "Private User Job", owner["id"], ["private"])
+    public_entity = await _make_entity(db_pool, enums, "Public User Target 2", ["public"])
     user_entity = await _make_entity(db_pool, enums, "Import User 2", ["public"])
 
-    app.dependency_overrides[require_auth] = _user_auth_override(
-        user_entity, ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -448,22 +418,16 @@ async def test_bulk_import_relationships_private_job_denied_for_user(db_pool, en
 
 
 @pytest.mark.asyncio
-async def test_bulk_import_relationships_private_source_context_denied_for_user(
-    db_pool, enums
-):
+async def test_bulk_import_relationships_private_source_context_denied_for_user(db_pool, enums):
     """Public users should not import relationships from private context nodes."""
 
     private_context = await _make_context(
         db_pool, enums, "Private User Source Context", ["sensitive"]
     )
-    public_entity = await _make_entity(
-        db_pool, enums, "Public User Target 3", ["public"]
-    )
+    public_entity = await _make_entity(db_pool, enums, "Public User Target 3", ["public"])
     user_entity = await _make_entity(db_pool, enums, "Import User 3", ["public"])
 
-    app.dependency_overrides[require_auth] = _user_auth_override(
-        user_entity, ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 
@@ -492,22 +456,16 @@ async def test_bulk_import_relationships_private_source_context_denied_for_user(
 
 
 @pytest.mark.asyncio
-async def test_bulk_import_relationships_private_target_context_denied_for_user(
-    db_pool, enums
-):
+async def test_bulk_import_relationships_private_target_context_denied_for_user(db_pool, enums):
     """Public users should not import relationships to private context nodes."""
 
-    public_entity = await _make_entity(
-        db_pool, enums, "Public User Source 4", ["public"]
-    )
+    public_entity = await _make_entity(db_pool, enums, "Public User Source 4", ["public"])
     private_context = await _make_context(
         db_pool, enums, "Private User Target Context", ["private"]
     )
     user_entity = await _make_entity(db_pool, enums, "Import User 4", ["public"])
 
-    app.dependency_overrides[require_auth] = _user_auth_override(
-        user_entity, ["public"], enums
-    )
+    app.dependency_overrides[require_auth] = _user_auth_override(user_entity, ["public"], enums)
     app.state.pool = db_pool
     app.state.enums = enums
 

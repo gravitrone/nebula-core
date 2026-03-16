@@ -101,9 +101,7 @@ def _user_auth_override(entity_row, enums, scopes=None):
     """Build an auth override for public-scoped user API requests."""
 
     scope_ids = [
-        enums.scopes.name_to_id[s]
-        for s in (scopes or ["public"])
-        if s in enums.scopes.name_to_id
+        enums.scopes.name_to_id[s] for s in (scopes or ["public"]) if s in enums.scopes.name_to_id
     ]
     auth_dict = {
         "key_id": None,
@@ -178,16 +176,12 @@ async def test_api_update_relationship_denies_private_target(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_api_update_relationship_requires_approval_for_untrusted_agent(
-    db_pool, enums
-):
+async def test_api_update_relationship_requires_approval_for_untrusted_agent(db_pool, enums):
     """Untrusted agents should route relationship updates through approval."""
 
     entity_a = await _make_entity(db_pool, enums, "Public A", ["public"])
     entity_b = await _make_entity(db_pool, enums, "Public B", ["public"])
-    relationship = await _make_relationship(
-        db_pool, enums, entity_a["id"], entity_b["id"]
-    )
+    relationship = await _make_relationship(db_pool, enums, entity_a["id"], entity_b["id"])
     untrusted = await _make_agent(db_pool, enums, "rel-untrusted", ["public"], True)
 
     app.dependency_overrides[require_auth] = _auth_override(untrusted["id"], enums)
@@ -210,9 +204,7 @@ async def test_api_create_relationship_denies_private_target_for_user(db_pool, e
     """Public-scoped user should not create relationships to private entities."""
 
     public_entity = await _make_entity(db_pool, enums, "Public User Src", ["public"])
-    private_entity = await _make_entity(
-        db_pool, enums, "Private User Dst", ["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Private User Dst", ["sensitive"])
     user_entity = await _make_entity(db_pool, enums, "User Actor", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
@@ -240,12 +232,8 @@ async def test_api_create_relationship_denies_private_target_for_user(db_pool, e
 async def test_api_update_relationship_denies_private_target_for_user(db_pool, enums):
     """Public-scoped user should not update relationships touching private entities."""
 
-    public_entity = await _make_entity(
-        db_pool, enums, "Public User Upd Src", ["public"]
-    )
-    private_entity = await _make_entity(
-        db_pool, enums, "Private User Upd Dst", ["sensitive"]
-    )
+    public_entity = await _make_entity(db_pool, enums, "Public User Upd Src", ["public"])
+    private_entity = await _make_entity(db_pool, enums, "Private User Upd Dst", ["sensitive"])
     relationship = await _make_relationship(
         db_pool, enums, public_entity["id"], private_entity["id"]
     )

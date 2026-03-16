@@ -50,9 +50,7 @@ async def test_login_ensures_admin_scope(api_no_auth, db_pool, enums):
         [],
     )
 
-    r = await api_no_auth.post(
-        "/api/keys/login", json={"username": "login-admin-scope-user"}
-    )
+    r = await api_no_auth.post("/api/keys/login", json={"username": "login-admin-scope-user"})
     assert r.status_code == 200
     entity_id = r.json()["data"]["entity_id"]
     assert entity_id == str(existing["id"])
@@ -64,9 +62,7 @@ async def test_login_ensures_admin_scope(api_no_auth, db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_login_existing_user_backfills_baseline_scopes(
-    api_no_auth, db_pool, enums
-):
+async def test_login_existing_user_backfills_baseline_scopes(api_no_auth, db_pool, enums):
     """Login should backfill baseline scopes for existing users."""
 
     status_id = enums.statuses.name_to_id["active"]
@@ -92,9 +88,7 @@ async def test_login_existing_user_backfills_baseline_scopes(
         [],
     )
 
-    r = await api_no_auth.post(
-        "/api/keys/login", json={"username": "login-baseline-backfill-user"}
-    )
+    r = await api_no_auth.post("/api/keys/login", json={"username": "login-baseline-backfill-user"})
     assert r.status_code == 200
     assert r.json()["data"]["entity_id"] == str(existing["id"])
 
@@ -105,9 +99,7 @@ async def test_login_existing_user_backfills_baseline_scopes(
 
 
 @pytest.mark.asyncio
-async def test_login_returns_service_unavailable_when_baseline_scope_missing(
-    api_no_auth, enums
-):
+async def test_login_returns_service_unavailable_when_baseline_scope_missing(api_no_auth, enums):
     """Login returns 503 when required baseline scope is unavailable."""
 
     removed_id = enums.scopes.name_to_id.pop("admin", None)
@@ -115,9 +107,7 @@ async def test_login_returns_service_unavailable_when_baseline_scope_missing(
         enums.scopes.id_to_name.pop(removed_id, None)
 
     try:
-        r = await api_no_auth.post(
-            "/api/keys/login", json={"username": "missing-admin-scope-user"}
-        )
+        r = await api_no_auth.post("/api/keys/login", json={"username": "missing-admin-scope-user"})
         assert r.status_code == 503
         err = r.json()["detail"]["error"]
         assert err["code"] == "SERVICE_UNAVAILABLE"
@@ -129,9 +119,7 @@ async def test_login_returns_service_unavailable_when_baseline_scope_missing(
 
 
 @pytest.mark.asyncio
-async def test_login_returns_service_unavailable_when_person_type_missing(
-    api_no_auth, enums
-):
+async def test_login_returns_service_unavailable_when_person_type_missing(api_no_auth, enums):
     """Login returns 503 when required person entity type is unavailable."""
 
     removed_id = enums.entity_types.name_to_id.pop("person", None)
@@ -139,9 +127,7 @@ async def test_login_returns_service_unavailable_when_person_type_missing(
         enums.entity_types.id_to_name.pop(removed_id, None)
 
     try:
-        r = await api_no_auth.post(
-            "/api/keys/login", json={"username": "missing-person-type-user"}
-        )
+        r = await api_no_auth.post("/api/keys/login", json={"username": "missing-person-type-user"})
         assert r.status_code == 503
         err = r.json()["detail"]["error"]
         assert err["code"] == "SERVICE_UNAVAILABLE"
@@ -153,9 +139,7 @@ async def test_login_returns_service_unavailable_when_person_type_missing(
 
 
 @pytest.mark.asyncio
-async def test_login_returns_service_unavailable_when_active_status_missing(
-    api_no_auth, enums
-):
+async def test_login_returns_service_unavailable_when_active_status_missing(api_no_auth, enums):
     """Login returns 503 when required active status is unavailable."""
 
     removed_id = enums.statuses.name_to_id.pop("active", None)
@@ -209,9 +193,7 @@ async def test_revoke_key(api, db_pool, auth_override):
     assert r.status_code == 200
     assert r.json()["data"]["revoked"] is True
 
-    row = await db_pool.fetchrow(
-        "SELECT revoked_at FROM api_keys WHERE id = $1::uuid", key_id
-    )
+    row = await db_pool.fetchrow("SELECT revoked_at FROM api_keys WHERE id = $1::uuid", key_id)
     assert row["revoked_at"] is not None
 
 

@@ -80,14 +80,10 @@ async def test_approve_creates_entity(db_pool, enums):
     )
     assert approval["status"] == "pending"
 
-    result = await approve_request(
-        db_pool, enums, str(approval["id"]), str(reviewer["id"])
-    )
+    result = await approve_request(db_pool, enums, str(approval["id"]), str(reviewer["id"]))
     entity_id = str(result["entity"]["id"])
 
-    row = await db_pool.fetchrow(
-        "SELECT * FROM entities WHERE id = $1::uuid", entity_id
-    )
+    row = await db_pool.fetchrow("SELECT * FROM entities WHERE id = $1::uuid", entity_id)
     assert row is not None
     assert row["name"] == "Approved Entity"
 
@@ -114,14 +110,10 @@ async def test_reject_does_not_create_entity(db_pool, enums):
         change_details,
     )
 
-    rejected = await reject_request(
-        db_pool, str(approval["id"]), str(reviewer["id"]), "Not needed"
-    )
+    rejected = await reject_request(db_pool, str(approval["id"]), str(reviewer["id"]), "Not needed")
     assert rejected["status"] == "rejected"
 
-    count = await db_pool.fetchval(
-        "SELECT COUNT(*) FROM entities WHERE name = 'Rejected Entity'"
-    )
+    count = await db_pool.fetchval("SELECT COUNT(*) FROM entities WHERE name = 'Rejected Entity'")
     assert count == 0
 
 

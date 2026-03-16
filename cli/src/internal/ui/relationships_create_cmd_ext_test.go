@@ -102,4 +102,3 @@ func TestRelationshipsSelectedRelationshipEmptyAndWhitespaceFilterBranches(t *te
 	model.applyListFilter()
 	require.Len(t, model.items, 1)
 }
-

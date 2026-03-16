@@ -23,9 +23,7 @@ async def test_authenticate_agent_missing_env_var_raises(monkeypatch):
     pool = MagicMock()
     pool.fetchrow = AsyncMock()
 
-    with pytest.raises(
-        ValueError, match="NEBULA_API_KEY environment variable is required"
-    ):
+    with pytest.raises(ValueError, match="NEBULA_API_KEY environment variable is required"):
         await authenticate_agent(pool)
 
     pool.fetchrow.assert_not_awaited()

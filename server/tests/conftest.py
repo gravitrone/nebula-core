@@ -122,9 +122,7 @@ async def test_db_dsn():
         reliability, tests run in an isolated schema within a configurable DB.
     """
 
-    conn, dsn = await _connect_with_port_fallback(
-        _test_dsn, server_settings=ADMIN_SERVER_SETTINGS
-    )
+    conn, dsn = await _connect_with_port_fallback(_test_dsn, server_settings=ADMIN_SERVER_SETTINGS)
     try:
         # Fresh schema per run.
         await conn.execute(f"DROP SCHEMA IF EXISTS {TEST_SCHEMA} CASCADE")

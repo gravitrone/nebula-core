@@ -710,9 +710,7 @@ class TestApprovalCapacityAndCreation:
     """Async coverage for approval queue helper branches."""
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fetchval_fallback_accepts(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_fetchval_fallback_accepts(self, monkeypatch):
         """Fallback fetchval path should pass when queue is below cap."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -721,9 +719,7 @@ class TestApprovalCapacityAndCreation:
         assert len(pool.calls) == 1
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fetchval_fallback_rejects(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_fetchval_fallback_rejects(self, monkeypatch):
         """Fallback fetchval path should reject when queue exceeds cap."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -739,9 +735,7 @@ class TestApprovalCapacityAndCreation:
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fallback_handles_none_count(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_fallback_handles_none_count(self, monkeypatch):
         """Fallback fetchval path should no-op on None count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -749,9 +743,7 @@ class TestApprovalCapacityAndCreation:
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=1)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fallback_handles_non_int_count(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_fallback_handles_non_int_count(self, monkeypatch):
         """Fallback fetchval path should no-op on non-int count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -767,9 +759,7 @@ class TestApprovalCapacityAndCreation:
         await ensure_approval_capacity(pool=pool, agent_id="agent-1", requested=0)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_fallback_when_acquire_is_async(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_fallback_when_acquire_is_async(self, monkeypatch):
         """Async acquire should route to fallback fetchval path."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -787,21 +777,15 @@ class TestApprovalCapacityAndCreation:
 
         overflow = _DummyPoolWithAcquire(_DummyConn(fetchval_result=10))
         with pytest.raises(ValueError):
-            await ensure_approval_capacity(
-                pool=overflow, agent_id="agent-1", requested=1
-            )
+            await ensure_approval_capacity(pool=overflow, agent_id="agent-1", requested=1)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_conn_branch_requested_zero(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_conn_branch_requested_zero(self, monkeypatch):
         """Conn branch should no-op when requested is zero."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result=10)
-        await ensure_approval_capacity(
-            pool=None, agent_id="agent-1", requested=0, conn=conn
-        )
+        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=0, conn=conn)
         assert len(conn.executed) == 1  # advisory lock still acquired
 
     @pytest.mark.asyncio
@@ -811,33 +795,23 @@ class TestApprovalCapacityAndCreation:
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result=10)
         with pytest.raises(ValueError):
-            await ensure_approval_capacity(
-                pool=None, agent_id="agent-1", requested=1, conn=conn
-            )
+            await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_conn_branch_handles_none_count(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_conn_branch_handles_none_count(self, monkeypatch):
         """Conn branch should no-op on None count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result=None)
-        await ensure_approval_capacity(
-            pool=None, agent_id="agent-1", requested=1, conn=conn
-        )
+        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
 
     @pytest.mark.asyncio
-    async def test_ensure_approval_capacity_conn_branch_handles_non_int_count(
-        self, monkeypatch
-    ):
+    async def test_ensure_approval_capacity_conn_branch_handles_non_int_count(self, monkeypatch):
         """Conn branch should no-op on non-int count."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
         conn = _DummyConn(fetchval_result="oops")
-        await ensure_approval_capacity(
-            pool=None, agent_id="agent-1", requested=1, conn=conn
-        )
+        await ensure_approval_capacity(pool=None, agent_id="agent-1", requested=1, conn=conn)
 
     @pytest.mark.asyncio
     async def test_create_approval_request_with_conn(self, monkeypatch):
@@ -881,9 +855,7 @@ class TestApprovalCapacityAndCreation:
         assert len(conn.fetchrow_calls) == 1
 
     @pytest.mark.asyncio
-    async def test_create_approval_request_returns_empty_on_missing_row(
-        self, monkeypatch
-    ):
+    async def test_create_approval_request_returns_empty_on_missing_row(self, monkeypatch):
         """create_approval_request should return empty dict when row is missing."""
 
         monkeypatch.setattr("nebula_mcp.helpers.MAX_PENDING_APPROVALS", 10)
@@ -991,9 +963,7 @@ class TestEnrollmentHelpers:
         """Expiration helper should handle no row, live row, and expired row."""
 
         assert (
-            await maybe_expire_enrollment(
-                _EnrollmentPool(fetchrow_results=[None]), "sess-missing"
-            )
+            await maybe_expire_enrollment(_EnrollmentPool(fetchrow_results=[None]), "sess-missing")
             is None
         )
 
@@ -1156,9 +1126,7 @@ class TestEnrollmentHelpers:
             )
 
     @pytest.mark.asyncio
-    async def test_redeem_enrollment_key_success_and_mark_redeemed_failure(
-        self, monkeypatch
-    ):
+    async def test_redeem_enrollment_key_success_and_mark_redeemed_failure(self, monkeypatch):
         """Redeem helper should mint key once and fail if mark_redeemed is missing."""
 
         raw_token, token_hash = generate_enrollment_token()
@@ -1217,9 +1185,7 @@ class TestEnrollmentHelpers:
             )
 
     @pytest.mark.asyncio
-    async def test_redeem_enrollment_key_defaults_requires_approval_to_false(
-        self, monkeypatch
-    ):
+    async def test_redeem_enrollment_key_defaults_requires_approval_to_false(self, monkeypatch):
         """Redeem helper should default trust mode to False when session value is absent."""
 
         raw_token, token_hash = generate_enrollment_token()
@@ -1521,9 +1487,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
             await revert_entity(wrong_record, "entity-1", "audit-1")
 
         empty_snapshot = _EnrollmentPool(
-            fetchrow_results=[
-                {"table_name": "entities", "record_id": "entity-1", "new_data": None}
-            ]
+            fetchrow_results=[{"table_name": "entities", "record_id": "entity-1", "new_data": None}]
         )
         with pytest.raises(ValueError):
             await revert_entity(empty_snapshot, "entity-1", "audit-1")
@@ -1583,11 +1547,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
         enums = type(
             "Enums",
             (),
-            {
-                "scopes": type(
-                    "Scopes", (), {"name_to_id": {"public": "scope-public"}}
-                )()
-            },
+            {"scopes": type("Scopes", (), {"name_to_id": {"public": "scope-public"}})()},
         )()
         scopes = await bulk_update_entity_scopes(
             pool,
@@ -1656,9 +1616,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
             ]
         )
         with pytest.raises(ValueError):
-            await get_approval_diff(
-                missing_entity_id_pool, "approval-update-missing-id"
-            )
+            await get_approval_diff(missing_entity_id_pool, "approval-update-missing-id")
 
         missing_entity_pool = _EnrollmentPool(
             fetchrow_results=[
@@ -1670,9 +1628,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
             ]
         )
         with pytest.raises(ValueError):
-            await get_approval_diff(
-                missing_entity_pool, "approval-update-missing-entity"
-            )
+            await get_approval_diff(missing_entity_pool, "approval-update-missing-entity")
 
         missing_rel_id_pool = _EnrollmentPool(
             fetchrow_results=[
@@ -1791,9 +1747,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert _normalize_diff_value("plain") == "plain"
 
     @pytest.mark.asyncio
-    async def test_approve_request_register_agent_with_system_actor_variants(
-        self, monkeypatch
-    ):
+    async def test_approve_request_register_agent_with_system_actor_variants(self, monkeypatch):
         """Register-agent approvals should normalize malformed review_details."""
 
         from nebula_mcp import executors as executor_mod
@@ -1838,9 +1792,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert result_invalid["entity"]["id"] == "agent-created"
 
         # JSON list -> normalized to {}
-        pool_list = _EnrollmentPool(
-            fetchrow_results=[{**approval_base, "review_details": "[]"}]
-        )
+        pool_list = _EnrollmentPool(fetchrow_results=[{**approval_base, "review_details": "[]"}])
         await approve_request(
             pool_list,
             enums=None,
@@ -1853,12 +1805,9 @@ class TestApprovalEnrichmentAndAuditHelpers:
         assert all("_reviewed_by" not in item for item in seen)
         # system actor path should set + reset change tracking keys.
         assert any(
-            "set_config('app.changed_by_type'" in call[0]
-            for call in pool_invalid.execute_calls
+            "set_config('app.changed_by_type'" in call[0] for call in pool_invalid.execute_calls
         )
-        assert any(
-            "RESET app.changed_by_id" in call[0] for call in pool_invalid.execute_calls
-        )
+        assert any("RESET app.changed_by_id" in call[0] for call in pool_invalid.execute_calls)
 
     @pytest.mark.asyncio
     async def test_approve_request_error_and_non_register_paths(self, monkeypatch):
@@ -1921,9 +1870,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
 
             raise RuntimeError("boom")
 
-        monkeypatch.setitem(
-            executor_mod.EXECUTORS, "create_entity", _create_entity_exec
-        )
+        monkeypatch.setitem(executor_mod.EXECUTORS, "create_entity", _create_entity_exec)
         good_pool = _EnrollmentPool(
             fetchrow_results=[
                 {
@@ -1942,13 +1889,9 @@ class TestApprovalEnrichmentAndAuditHelpers:
         )
         assert result["entity"]["id"] == "entity-1"
         assert any(
-            "set_config('app.changed_by_type'" in call[0]
-            for call in good_pool.execute_calls
+            "set_config('app.changed_by_type'" in call[0] for call in good_pool.execute_calls
         )
-        assert (
-            any("_reviewed_by" in str(call[1]) for call in good_pool.fetchval_calls)
-            is False
-        )
+        assert any("_reviewed_by" in str(call[1]) for call in good_pool.fetchval_calls) is False
 
         monkeypatch.setitem(executor_mod.EXECUTORS, "create_entity", _raise_exec)
         fail_pool = _EnrollmentPool(
@@ -1968,14 +1911,10 @@ class TestApprovalEnrichmentAndAuditHelpers:
                 approval_id="approval-fail",
                 reviewed_by="reviewer-1",
             )
-        assert any(
-            str(call[1][0]) == "boom" for call in fail_pool.execute_calls if call[1]
-        )
+        assert any(str(call[1][0]) == "boom" for call in fail_pool.execute_calls if call[1])
 
     @pytest.mark.asyncio
-    async def test_approve_request_register_agent_with_reviewed_by_sets_marker(
-        self, monkeypatch
-    ):
+    async def test_approve_request_register_agent_with_reviewed_by_sets_marker(self, monkeypatch):
         """register_agent approvals should include reviewed-by marker when set."""
 
         from nebula_mcp import executors as executor_mod

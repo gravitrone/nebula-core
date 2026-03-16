@@ -84,9 +84,7 @@ async def test_job_visible_empty_job_scope_returns_true(mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_export_snapshot_hides_target_job_and_keeps_context_rows(
-    monkeypatch, mock_enums
-):
+async def test_export_snapshot_hides_target_job_and_keeps_context_rows(monkeypatch, mock_enums):
     """Snapshot export should skip hidden target jobs and include context rows."""
 
     public_id = mock_enums.scopes.name_to_id["public"]

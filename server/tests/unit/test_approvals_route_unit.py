@@ -105,7 +105,9 @@ async def test_approve_non_register_with_grants_maps_400(mock_enums):
     from nebula_api.routes import approvals as mod
 
     original = mod.get_approval_request
-    mod.get_approval_request = AsyncMock(return_value={"id": approval_id, "request_type": "create_entity"})
+    mod.get_approval_request = AsyncMock(
+        return_value={"id": approval_id, "request_type": "create_entity"}
+    )
     try:
         with pytest.raises(HTTPException) as exc:
             await approve(approval_id, _request(pool, mock_enums), payload=payload, auth=auth)
@@ -128,7 +130,9 @@ async def test_approve_register_invalid_grant_scope_maps_400(mock_enums):
     from nebula_api.routes import approvals as mod
 
     original = mod.get_approval_request
-    mod.get_approval_request = AsyncMock(return_value={"id": approval_id, "request_type": "register_agent"})
+    mod.get_approval_request = AsyncMock(
+        return_value={"id": approval_id, "request_type": "register_agent"}
+    )
     try:
         with pytest.raises(HTTPException) as exc:
             await approve(approval_id, _request(pool, mock_enums), payload=payload, auth=auth)

@@ -254,7 +254,9 @@ def test_require_job_read_and_write_matrix(mock_enums):
     _require_job_write(admin, mock_enums, {"privacy_scope_ids": [private], "agent_id": "x"})
 
     with pytest.raises(ValueError, match="Job not in your scopes"):
-        _require_job_read(owner, mock_enums, {"privacy_scope_ids": [private], "agent_id": "agent-1"})
+        _require_job_read(
+            owner, mock_enums, {"privacy_scope_ids": [private], "agent_id": "agent-1"}
+        )
     with pytest.raises(ValueError, match="Access denied"):
         _require_job_write(outsider, mock_enums, job)
 
@@ -412,9 +414,7 @@ async def test_require_entity_write_access_matrix(mock_enums):
     with pytest.raises(ValueError, match="Access denied"):
         await _require_entity_write_access(
             _ServerPoolStub(
-                fetch_queue=[
-                    [{"id": str(uuid4()), "privacy_scope_ids": [private_id]}]
-                ]
+                fetch_queue=[[{"id": str(uuid4()), "privacy_scope_ids": [private_id]}]]
             ),
             mock_enums,
             user,
@@ -423,9 +423,7 @@ async def test_require_entity_write_access_matrix(mock_enums):
 
     # happy path
     await _require_entity_write_access(
-        _ServerPoolStub(
-            fetch_queue=[[{"id": str(uuid4()), "privacy_scope_ids": [public_id]}]]
-        ),
+        _ServerPoolStub(fetch_queue=[[{"id": str(uuid4()), "privacy_scope_ids": [public_id]}]]),
         mock_enums,
         user,
         [str(uuid4())],
@@ -442,7 +440,12 @@ async def test_has_hidden_relationships_non_file_log_branches(mock_enums):
     admin = _agent_with_scopes(mock_enums, "admin")
 
     # admin bypass
-    assert await _has_hidden_relationships(_ServerPoolStub(), mock_enums, admin, "entity", str(uuid4())) is False
+    assert (
+        await _has_hidden_relationships(
+            _ServerPoolStub(), mock_enums, admin, "entity", str(uuid4())
+        )
+        is False
+    )
 
     # no rows
     assert (
@@ -711,9 +714,7 @@ async def test_validate_relationship_node_matrix(mock_enums):
 
     with pytest.raises(ValueError, match="Access denied"):
         await _validate_relationship_node(
-            _ServerPoolStub(
-                fetchrow_map={entity_id: {"privacy_scope_ids": [private_id]}}
-            ),
+            _ServerPoolStub(fetchrow_map={entity_id: {"privacy_scope_ids": [private_id]}}),
             mock_enums,
             user,
             "entity",
@@ -734,9 +735,7 @@ async def test_validate_relationship_node_matrix(mock_enums):
 
     with pytest.raises(ValueError, match="Access denied"):
         await _validate_relationship_node(
-            _ServerPoolStub(
-                fetchrow_map={context_id: {"privacy_scope_ids": [private_id]}}
-            ),
+            _ServerPoolStub(fetchrow_map={context_id: {"privacy_scope_ids": [private_id]}}),
             mock_enums,
             user,
             "context",
@@ -759,7 +758,11 @@ async def test_validate_relationship_node_matrix(mock_enums):
         await _validate_relationship_node(
             _ServerPoolStub(
                 fetchrow_map={
-                    job_id: {"id": job_id, "privacy_scope_ids": [private_id], "agent_id": user["id"]}
+                    job_id: {
+                        "id": job_id,
+                        "privacy_scope_ids": [private_id],
+                        "agent_id": user["id"],
+                    }
                 }
             ),
             mock_enums,
@@ -790,7 +793,11 @@ async def test_validate_relationship_node_matrix(mock_enums):
     await _validate_relationship_node(
         _ServerPoolStub(
             fetchrow_map={
-                job_id: {"id": job_id, "privacy_scope_ids": [public_id], "agent_id": user["id"]}
+                job_id: {
+                    "id": job_id,
+                    "privacy_scope_ids": [public_id],
+                    "agent_id": user["id"],
+                }
             }
         ),
         mock_enums,

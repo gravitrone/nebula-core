@@ -205,7 +205,12 @@ async def test_update_job_status_missing_job_maps_404(mock_enums):
     payload = UpdateJobStatusBody(status="active")
 
     with pytest.raises(HTTPException) as exc:
-        await update_job_status(str(uuid4()), payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
+        await update_job_status(
+            str(uuid4()),
+            payload,
+            _request(pool, mock_enums),
+            auth=_admin_auth(mock_enums),
+        )
 
     assert exc.value.status_code == 404
     assert exc.value.detail["error"]["code"] == "NOT_FOUND"
@@ -235,7 +240,12 @@ async def test_update_job_status_second_lookup_missing_maps_404(monkeypatch, moc
     )
 
     with pytest.raises(HTTPException) as exc:
-        await update_job_status(str(uuid4()), payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
+        await update_job_status(
+            str(uuid4()),
+            payload,
+            _request(pool, mock_enums),
+            auth=_admin_auth(mock_enums),
+        )
 
     assert exc.value.status_code == 404
     assert exc.value.detail["error"]["code"] == "NOT_FOUND"
@@ -249,7 +259,12 @@ async def test_update_job_missing_job_maps_404(mock_enums):
     payload = UpdateJobBody(description="x")
 
     with pytest.raises(HTTPException) as exc:
-        await update_job(str(uuid4()), payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
+        await update_job(
+            str(uuid4()),
+            payload,
+            _request(pool, mock_enums),
+            auth=_admin_auth(mock_enums),
+        )
 
     assert exc.value.status_code == 404
     assert exc.value.detail["error"]["code"] == "NOT_FOUND"
@@ -260,7 +275,9 @@ async def test_update_job_invalid_status_maps_400(monkeypatch, mock_enums):
     """Invalid status values should map to HTTP 400 during update."""
 
     pool = SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"id": str(uuid4()), "privacy_scope_ids": [], "agent_id": None})
+        fetchrow=AsyncMock(
+            return_value={"id": str(uuid4()), "privacy_scope_ids": [], "agent_id": None}
+        )
     )
     payload = UpdateJobBody(status="bad")
 
@@ -270,7 +287,12 @@ async def test_update_job_invalid_status_maps_400(monkeypatch, mock_enums):
     )
 
     with pytest.raises(HTTPException) as exc:
-        await update_job(str(uuid4()), payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
+        await update_job(
+            str(uuid4()),
+            payload,
+            _request(pool, mock_enums),
+            auth=_admin_auth(mock_enums),
+        )
 
     assert exc.value.status_code == 400
     assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
@@ -281,7 +303,9 @@ async def test_update_job_executor_valueerror_maps_400(monkeypatch, mock_enums):
     """Executor ValueErrors should map to HTTP 400 during update."""
 
     pool = SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"id": str(uuid4()), "privacy_scope_ids": [], "agent_id": None})
+        fetchrow=AsyncMock(
+            return_value={"id": str(uuid4()), "privacy_scope_ids": [], "agent_id": None}
+        )
     )
     payload = UpdateJobBody(description="x")
 
@@ -295,7 +319,12 @@ async def test_update_job_executor_valueerror_maps_400(monkeypatch, mock_enums):
     )
 
     with pytest.raises(HTTPException) as exc:
-        await update_job(str(uuid4()), payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
+        await update_job(
+            str(uuid4()),
+            payload,
+            _request(pool, mock_enums),
+            auth=_admin_auth(mock_enums),
+        )
 
     assert exc.value.status_code == 400
     assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
@@ -307,7 +336,9 @@ async def test_create_subtask_executor_valueerror_maps_400(monkeypatch, mock_enu
 
     parent_id = str(uuid4())
     pool = SimpleNamespace(
-        fetchrow=AsyncMock(return_value={"id": parent_id, "privacy_scope_ids": [], "agent_id": None})
+        fetchrow=AsyncMock(
+            return_value={"id": parent_id, "privacy_scope_ids": [], "agent_id": None}
+        )
     )
     payload = CreateSubtaskBody(title="child")
 
@@ -321,7 +352,9 @@ async def test_create_subtask_executor_valueerror_maps_400(monkeypatch, mock_enu
     )
 
     with pytest.raises(HTTPException) as exc:
-        await create_subtask(parent_id, payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums))
+        await create_subtask(
+            parent_id, payload, _request(pool, mock_enums), auth=_admin_auth(mock_enums)
+        )
 
     assert exc.value.status_code == 400
     assert exc.value.detail["error"]["code"] == "INVALID_INPUT"

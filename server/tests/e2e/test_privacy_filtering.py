@@ -124,9 +124,7 @@ async def _link_context_to_entity(pool, entity_id, context_id):
 async def test_agent_denied_when_scope_mismatch(db_pool, enums):
     """Agent with only public scope cannot access a private entity."""
 
-    agent = await _make_agent_with_scopes(
-        db_pool, enums, "public-only-agent", ["public"]
-    )
+    agent = await _make_agent_with_scopes(db_pool, enums, "public-only-agent", ["public"])
 
     private_scope_id = enums.scopes.name_to_id["private"]
     status_id = enums.statuses.name_to_id["active"]
@@ -159,9 +157,7 @@ async def test_context_by_owner_filters_scopes(db_pool, enums):
 
     agent = await _make_agent_with_scopes(db_pool, enums, "public-agent", ["public"])
 
-    entity = await _make_entity(
-        db_pool, enums, "multi-scope-person", ["public", "private"]
-    )
+    entity = await _make_entity(db_pool, enums, "multi-scope-person", ["public", "private"])
     public_ctx = await _make_context_item(db_pool, enums, "public-note", ["public"])
     private_ctx = await _make_context_item(db_pool, enums, "private-note", ["private"])
     await _link_context_to_entity(db_pool, entity["id"], public_ctx["id"])
@@ -183,13 +179,9 @@ async def test_context_by_owner_filters_scopes(db_pool, enums):
 async def test_context_by_owner_with_all_scopes_sees_all(db_pool, enums):
     """Agent with both public and private scopes sees all context items."""
 
-    agent = await _make_agent_with_scopes(
-        db_pool, enums, "all-scope-agent", ["public", "private"]
-    )
+    agent = await _make_agent_with_scopes(db_pool, enums, "all-scope-agent", ["public", "private"])
 
-    entity = await _make_entity(
-        db_pool, enums, "full-scope-person", ["public", "private"]
-    )
+    entity = await _make_entity(db_pool, enums, "full-scope-person", ["public", "private"])
     public_ctx = await _make_context_item(db_pool, enums, "public-note", ["public"])
     private_ctx = await _make_context_item(db_pool, enums, "private-note", ["private"])
     await _link_context_to_entity(db_pool, entity["id"], public_ctx["id"])

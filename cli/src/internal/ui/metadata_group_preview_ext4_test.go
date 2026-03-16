@@ -40,4 +40,3 @@ func TestRenderMetadataEditorPreviewWidthClampBranches(t *testing.T) {
 	assert.Contains(t, narrow, "profile | note |")
 	assert.Contains(t, narrow, "+1 more rows")
 }
-

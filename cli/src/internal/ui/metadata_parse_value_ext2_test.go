@@ -34,4 +34,3 @@ func TestRenderMetadataEditorPreviewHandlesEmptyAndRootRows(t *testing.T) {
 	out := components.SanitizeText(renderMetadataEditorPreview("owner:\n  ", nil, 120, 3))
 	assert.True(t, strings.Contains(out, "root | owner | None") || strings.Contains(out, "root | owner | {}"))
 }
-

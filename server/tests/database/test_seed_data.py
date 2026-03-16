@@ -39,9 +39,7 @@ async def test_status_exists(db_pool, status_name):
 async def test_active_statuses_have_active_category(db_pool, status_name):
     """Active statuses have category = 'active'."""
 
-    row = await db_pool.fetchrow(
-        "SELECT category FROM statuses WHERE name = $1", status_name
-    )
+    row = await db_pool.fetchrow("SELECT category FROM statuses WHERE name = $1", status_name)
     assert row["category"] == "active"
 
 
@@ -53,9 +51,7 @@ async def test_active_statuses_have_active_category(db_pool, status_name):
 async def test_archived_statuses_have_archived_category(db_pool, status_name):
     """Archived statuses have category = 'archived'."""
 
-    row = await db_pool.fetchrow(
-        "SELECT category FROM statuses WHERE name = $1", status_name
-    )
+    row = await db_pool.fetchrow("SELECT category FROM statuses WHERE name = $1", status_name)
     assert row["category"] == "archived"
 
 

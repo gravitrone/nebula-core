@@ -247,9 +247,7 @@ async def test_lifespan_yields_context_and_closes_pool(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_run_bulk_import_context_scope_validation_error_is_collected(
-    monkeypatch, mock_enums
-):
+async def test_run_bulk_import_context_scope_validation_error_is_collected(monkeypatch, mock_enums):
     """bulk_import_context should report invalid scope rows in approval mode."""
 
     pool = _PoolStub()
@@ -281,9 +279,7 @@ async def test_run_bulk_import_context_scope_validation_error_is_collected(
 
 
 @pytest.mark.asyncio
-async def test_run_bulk_import_relationships_validates_both_nodes(
-    monkeypatch, mock_enums
-):
+async def test_run_bulk_import_relationships_validates_both_nodes(monkeypatch, mock_enums):
     """bulk_import_relationships should validate source and target nodes."""
 
     pool = _PoolStub()
@@ -330,9 +326,7 @@ async def test_run_bulk_import_relationships_validates_both_nodes(
 
 
 @pytest.mark.asyncio
-async def test_run_bulk_import_jobs_invalid_priority_is_collected(
-    monkeypatch, mock_enums
-):
+async def test_run_bulk_import_jobs_invalid_priority_is_collected(monkeypatch, mock_enums):
     """bulk_import_jobs should reject invalid priority before approval enqueue."""
 
     pool = _PoolStub()
@@ -614,9 +608,7 @@ async def test_update_context_missing_row_raises(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_create_context_invalid_url_guard_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_create_context_invalid_url_guard_via_model_construct(monkeypatch, mock_enums):
     """Server-level URL guard should catch invalid urls when model validation is bypassed."""
 
     pool = _PoolStub()
@@ -641,9 +633,7 @@ async def test_create_context_invalid_url_guard_via_model_construct(
 
 
 @pytest.mark.asyncio
-async def test_create_context_non_string_url_guard_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_create_context_non_string_url_guard_via_model_construct(monkeypatch, mock_enums):
     """Server-level create guard should reject non-string URL payloads."""
 
     pool = _PoolStub()
@@ -697,9 +687,7 @@ async def test_create_context_approval_short_circuit(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_update_context_invalid_url_guard_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_update_context_invalid_url_guard_via_model_construct(monkeypatch, mock_enums):
     """Server-level update URL guard should reject invalid protocols."""
 
     pool = _PoolStub()
@@ -722,16 +710,17 @@ async def test_update_context_invalid_url_guard_via_model_construct(
     )
     monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
-    monkeypatch.setattr("nebula_mcp.server.execute_update_context", AsyncMock(return_value={"id": payload.context_id}))
+    monkeypatch.setattr(
+        "nebula_mcp.server.execute_update_context",
+        AsyncMock(return_value={"id": payload.context_id}),
+    )
 
     with pytest.raises(ValueError, match="URL must start with http:// or https://"):
         await update_context(payload, _ctx(pool, mock_enums, agent))
 
 
 @pytest.mark.asyncio
-async def test_update_context_non_string_url_guard_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_update_context_non_string_url_guard_via_model_construct(monkeypatch, mock_enums):
     """Server-level update guard should reject non-string URL payloads."""
 
     pool = _PoolStub()
@@ -753,9 +742,7 @@ async def test_update_context_non_string_url_guard_via_model_construct(
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
     monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
-    monkeypatch.setattr(
-        "nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None)
-    )
+    monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
     monkeypatch.setattr(
         "nebula_mcp.server.execute_update_context",
         AsyncMock(return_value={"id": payload.context_id}),
@@ -766,9 +753,7 @@ async def test_update_context_non_string_url_guard_via_model_construct(
 
 
 @pytest.mark.asyncio
-async def test_update_context_status_scope_and_approval_short_circuit(
-    monkeypatch, mock_enums
-):
+async def test_update_context_status_scope_and_approval_short_circuit(monkeypatch, mock_enums):
     """update_context should run status/scope checks and return approval payload."""
 
     pool = _PoolStub()
@@ -784,7 +769,9 @@ async def test_update_context_status_scope_and_approval_short_circuit(
         metadata=None,
         url=None,
     )
-    maybe_approval = AsyncMock(return_value={"status": "approval_required", "approval_request_id": "x"})
+    maybe_approval = AsyncMock(
+        return_value={"status": "approval_required", "approval_request_id": "x"}
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -831,9 +818,7 @@ async def test_create_context_valid_url_trim_direct_path(monkeypatch, mock_enums
 
 
 @pytest.mark.asyncio
-async def test_create_context_empty_url_allowed_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_create_context_empty_url_allowed_via_model_construct(monkeypatch, mock_enums):
     """create_context should allow explicit empty URL to clear/omit link."""
 
     pool = _PoolStub()
@@ -866,9 +851,7 @@ async def test_create_context_empty_url_allowed_via_model_construct(
 
 
 @pytest.mark.asyncio
-async def test_create_context_whitespace_url_rejected_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_create_context_whitespace_url_rejected_via_model_construct(monkeypatch, mock_enums):
     """create_context should reject whitespace-only URL when validation is bypassed."""
 
     pool = _PoolStub()
@@ -927,9 +910,7 @@ async def test_update_context_valid_url_trim_direct_path(monkeypatch, mock_enums
 
 
 @pytest.mark.asyncio
-async def test_update_context_empty_url_allowed_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_update_context_empty_url_allowed_via_model_construct(monkeypatch, mock_enums):
     """update_context should allow explicit empty URL for clearing."""
 
     context_id = str(uuid4())
@@ -966,9 +947,7 @@ async def test_update_context_empty_url_allowed_via_model_construct(
 
 
 @pytest.mark.asyncio
-async def test_update_context_whitespace_url_rejected_via_model_construct(
-    monkeypatch, mock_enums
-):
+async def test_update_context_whitespace_url_rejected_via_model_construct(monkeypatch, mock_enums):
     """update_context should reject whitespace-only URL when validation is bypassed."""
 
     context_id = str(uuid4())
@@ -1027,9 +1006,7 @@ async def test_query_context_clamps_offset(monkeypatch, mock_enums):
     """query_context should clamp negative offsets."""
 
     row_id = str(uuid4())
-    pool = _PoolStub(
-        fetch_rows=[[{"id": row_id}, {"id": str(uuid4())}]]
-    )
+    pool = _PoolStub(fetch_rows=[[{"id": row_id}, {"id": str(uuid4())}]])
     agent = _public_agent(mock_enums)
     payload = QueryContextInput(scopes=["public"], limit=1000, offset=-25)
 
@@ -1098,7 +1075,9 @@ async def test_link_context_to_owner_direct_create(monkeypatch, mock_enums):
     )
     monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
-    monkeypatch.setattr("nebula_mcp.server.require_relationship_type", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        "nebula_mcp.server.require_relationship_type", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         "nebula_mcp.server.execute_create_relationship",
         AsyncMock(return_value={"id": str(uuid4())}),
@@ -1120,7 +1099,9 @@ async def test_bulk_update_entity_tags_approval_short_circuit(monkeypatch, mock_
         tags=["a", "b"],
         op="add",
     )
-    maybe_approval = AsyncMock(return_value={"status": "approval_required", "approval_request_id": "x"})
+    maybe_approval = AsyncMock(
+        return_value={"status": "approval_required", "approval_request_id": "x"}
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -1155,7 +1136,10 @@ async def test_bulk_update_entity_tags_direct_update(monkeypatch, mock_enums):
     monkeypatch.setattr("nebula_mcp.server._require_entity_write_access", AsyncMock())
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
     monkeypatch.setattr("nebula_mcp.server.normalize_bulk_operation", lambda op: op)
-    monkeypatch.setattr("nebula_mcp.server.do_bulk_update_entity_tags", AsyncMock(return_value=[entity_id]))
+    monkeypatch.setattr(
+        "nebula_mcp.server.do_bulk_update_entity_tags",
+        AsyncMock(return_value=[entity_id]),
+    )
 
     result = await bulk_update_entity_tags(payload, _ctx(pool, mock_enums, agent))
 
@@ -1315,7 +1299,9 @@ async def test_create_log_approval_short_circuit(monkeypatch, mock_enums):
         tags=[],
         metadata={},
     )
-    maybe_approval = AsyncMock(return_value={"status": "approval_required", "approval_request_id": "a1"})
+    maybe_approval = AsyncMock(
+        return_value={"status": "approval_required", "approval_request_id": "a1"}
+    )
     execute_log = AsyncMock()
 
     monkeypatch.setattr(
@@ -1428,7 +1414,9 @@ async def test_update_log_approval_short_circuit(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr(
         "nebula_mcp.server.maybe_require_approval",
         AsyncMock(return_value={"status": "approval_required", "approval_request_id": "a1"}),
@@ -1483,7 +1471,9 @@ async def test_get_log_direct_returns_row(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
 
     result = await get_log(payload, _ctx(pool, mock_enums, agent))
 
@@ -1503,7 +1493,9 @@ async def test_update_log_log_type_validation_and_direct_return(monkeypatch, moc
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
     monkeypatch.setattr(
         "nebula_mcp.server.execute_update_log",
@@ -1554,9 +1546,24 @@ async def test_get_relationships_filters_job_rows_by_node_allowed(monkeypatch, m
     allowed_job = "2026Q1-ABCE"
     entity_id = str(uuid4())
     rows = [
-        {"source_type": "job", "source_id": blocked_job, "target_type": "entity", "target_id": entity_id},
-        {"source_type": "entity", "source_id": entity_id, "target_type": "job", "target_id": allowed_job},
-        {"source_type": "entity", "source_id": entity_id, "target_type": "entity", "target_id": str(uuid4())},
+        {
+            "source_type": "job",
+            "source_id": blocked_job,
+            "target_type": "entity",
+            "target_id": entity_id,
+        },
+        {
+            "source_type": "entity",
+            "source_id": entity_id,
+            "target_type": "job",
+            "target_id": allowed_job,
+        },
+        {
+            "source_type": "entity",
+            "source_id": entity_id,
+            "target_type": "entity",
+            "target_id": str(uuid4()),
+        },
     ]
     pool = _PoolStub(fetch_rows=[rows])
     agent = _public_agent(mock_enums)
@@ -1577,7 +1584,10 @@ async def test_get_relationships_filters_job_rows_by_node_allowed(monkeypatch, m
     monkeypatch.setattr("nebula_mcp.server._node_allowed", _allowed)
     monkeypatch.setattr(
         "nebula_mcp.server._normalize_relationship_row",
-        lambda row, _scopes: {"source_id": row["source_id"], "target_id": row["target_id"]},
+        lambda row, _scopes: {
+            "source_id": row["source_id"],
+            "target_id": row["target_id"],
+        },
     )
 
     result = await get_relationships(payload, _ctx(pool, mock_enums, agent))
@@ -1592,8 +1602,18 @@ async def test_query_relationships_filters_blocked_target_jobs(monkeypatch, mock
 
     blocked_job = "2026Q2-ABCD"
     rows = [
-        {"source_type": "entity", "source_id": str(uuid4()), "target_type": "job", "target_id": blocked_job},
-        {"source_type": "entity", "source_id": str(uuid4()), "target_type": "entity", "target_id": str(uuid4())},
+        {
+            "source_type": "entity",
+            "source_id": str(uuid4()),
+            "target_type": "job",
+            "target_id": blocked_job,
+        },
+        {
+            "source_type": "entity",
+            "source_id": str(uuid4()),
+            "target_type": "entity",
+            "target_id": str(uuid4()),
+        },
     ]
     pool = _PoolStub(fetch_rows=[rows])
     agent = _public_agent(mock_enums)
@@ -1636,9 +1656,7 @@ async def test_update_relationship_not_found_raises(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_update_relationship_direct_update_returns_empty_when_no_row(
-    monkeypatch, mock_enums
-):
+async def test_update_relationship_direct_update_returns_empty_when_no_row(monkeypatch, mock_enums):
     """update_relationship should return empty dict when update query returns no row."""
 
     relationship_row = {
@@ -1687,7 +1705,9 @@ async def test_graph_neighbors_denies_inaccessible_source(monkeypatch, mock_enum
 
     pool = _PoolStub()
     agent = _public_agent(mock_enums)
-    payload = GraphNeighborsInput(source_type="entity", source_id=str(uuid4()), max_hops=2, limit=10)
+    payload = GraphNeighborsInput(
+        source_type="entity", source_id=str(uuid4()), max_hops=2, limit=10
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -1778,7 +1798,11 @@ async def test_graph_shortest_path_blocked_path_node_raises(monkeypatch, mock_en
         fetchrow_rows=[
             {
                 "depth": 2,
-                "path": [f"entity:{source_id}", f"entity:{blocked_id}", f"entity:{target_id}"],
+                "path": [
+                    f"entity:{source_id}",
+                    f"entity:{blocked_id}",
+                    f"entity:{target_id}",
+                ],
             }
         ]
     )
@@ -1900,7 +1924,13 @@ async def test_update_job_invalid_assignee_raises(monkeypatch, mock_enums):
     )
     monkeypatch.setattr(
         "nebula_mcp.server._get_job_row",
-        AsyncMock(return_value={"id": "2026Q1-ABCD", "privacy_scope_ids": [], "agent_id": agent["id"]}),
+        AsyncMock(
+            return_value={
+                "id": "2026Q1-ABCD",
+                "privacy_scope_ids": [],
+                "agent_id": agent["id"],
+            }
+        ),
     )
     monkeypatch.setattr("nebula_mcp.server._require_job_owner", lambda a, e, j: None)
 
@@ -1922,7 +1952,13 @@ async def test_update_job_status_not_found_raises(monkeypatch, mock_enums):
     )
     monkeypatch.setattr(
         "nebula_mcp.server._get_job_row",
-        AsyncMock(return_value={"id": "2026Q1-ABCD", "privacy_scope_ids": [], "agent_id": agent["id"]}),
+        AsyncMock(
+            return_value={
+                "id": "2026Q1-ABCD",
+                "privacy_scope_ids": [],
+                "agent_id": agent["id"],
+            }
+        ),
     )
     monkeypatch.setattr("nebula_mcp.server._require_job_owner", lambda a, e, j: None)
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
@@ -1945,7 +1981,13 @@ async def test_create_subtask_invalid_priority_raises(monkeypatch, mock_enums):
     )
     monkeypatch.setattr(
         "nebula_mcp.server._get_job_row",
-        AsyncMock(return_value={"id": "2026Q1-ABCD", "privacy_scope_ids": [], "agent_id": agent["id"]}),
+        AsyncMock(
+            return_value={
+                "id": "2026Q1-ABCD",
+                "privacy_scope_ids": [],
+                "agent_id": agent["id"],
+            }
+        ),
     )
     monkeypatch.setattr("nebula_mcp.server._require_job_owner", lambda a, e, j: None)
 
@@ -2028,7 +2070,13 @@ async def test_update_job_invalid_priority_raises(monkeypatch, mock_enums):
     )
     monkeypatch.setattr(
         "nebula_mcp.server._get_job_row",
-        AsyncMock(return_value={"id": "2026Q1-ABCD", "privacy_scope_ids": [], "agent_id": agent["id"]}),
+        AsyncMock(
+            return_value={
+                "id": "2026Q1-ABCD",
+                "privacy_scope_ids": [],
+                "agent_id": agent["id"],
+            }
+        ),
     )
     monkeypatch.setattr("nebula_mcp.server._require_job_owner", lambda a, e, j: None)
 
@@ -2050,7 +2098,13 @@ async def test_update_job_status_approval_short_circuit(monkeypatch, mock_enums)
     )
     monkeypatch.setattr(
         "nebula_mcp.server._get_job_row",
-        AsyncMock(return_value={"id": "2026Q1-ABCD", "privacy_scope_ids": [], "agent_id": agent["id"]}),
+        AsyncMock(
+            return_value={
+                "id": "2026Q1-ABCD",
+                "privacy_scope_ids": [],
+                "agent_id": agent["id"],
+            }
+        ),
     )
     monkeypatch.setattr("nebula_mcp.server._require_job_owner", lambda a, e, j: None)
     monkeypatch.setattr(
@@ -2195,7 +2249,9 @@ async def test_get_file_direct_returns_row(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
 
     result = await get_file(payload, _ctx(pool, mock_enums, agent))
 
@@ -2266,7 +2322,9 @@ async def test_update_file_approval_short_circuit(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr(
         "nebula_mcp.server.maybe_require_approval",
         AsyncMock(return_value={"status": "approval_required", "approval_request_id": "f2"}),
@@ -2291,7 +2349,9 @@ async def test_update_file_missing_row_raises(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
     monkeypatch.setattr("nebula_mcp.server.execute_update_file", AsyncMock(return_value={}))
 
@@ -2312,7 +2372,9 @@ async def test_update_file_direct_path_returns_row(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
     monkeypatch.setattr(
         "nebula_mcp.server.execute_update_file",
@@ -2330,7 +2392,9 @@ async def test_attach_file_to_job_invalid_file_id_raises(monkeypatch, mock_enums
 
     pool = _PoolStub()
     agent = _public_agent(mock_enums)
-    payload = AttachFileInput(file_id="bad-id", target_id="2026Q1-ABCD", relationship_type="references")
+    payload = AttachFileInput(
+        file_id="bad-id", target_id="2026Q1-ABCD", relationship_type="references"
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -2347,7 +2411,9 @@ async def test_attach_file_to_job_missing_file_raises(monkeypatch, mock_enums):
 
     pool = _PoolStub(fetchrow_rows=[None])
     agent = _public_agent(mock_enums)
-    payload = AttachFileInput(file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references")
+    payload = AttachFileInput(
+        file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references"
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -2364,7 +2430,9 @@ async def test_attach_file_to_job_access_denied_when_hidden(monkeypatch, mock_en
 
     pool = _PoolStub(fetchrow_rows=[{"id": str(uuid4())}])
     agent = _public_agent(mock_enums)
-    payload = AttachFileInput(file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references")
+    payload = AttachFileInput(
+        file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references"
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -2382,14 +2450,18 @@ async def test_attach_file_to_job_approval_short_circuit(monkeypatch, mock_enums
 
     pool = _PoolStub(fetchrow_rows=[{"id": str(uuid4())}])
     agent = _public_agent(mock_enums)
-    payload = AttachFileInput(file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references")
+    payload = AttachFileInput(
+        file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references"
+    )
     execute_rel = AsyncMock()
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
     monkeypatch.setattr(
         "nebula_mcp.server.maybe_require_approval",
@@ -2409,13 +2481,17 @@ async def test_attach_file_to_job_direct_create(monkeypatch, mock_enums):
 
     pool = _PoolStub(fetchrow_rows=[{"id": str(uuid4())}])
     agent = _public_agent(mock_enums)
-    payload = AttachFileInput(file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references")
+    payload = AttachFileInput(
+        file_id=str(uuid4()), target_id="2026Q1-ABCD", relationship_type="references"
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "nebula_mcp.server._has_hidden_relationships", AsyncMock(return_value=False)
+    )
     monkeypatch.setattr("nebula_mcp.server._validate_relationship_node", AsyncMock())
     monkeypatch.setattr("nebula_mcp.server.maybe_require_approval", AsyncMock(return_value=None))
     monkeypatch.setattr(
@@ -2536,7 +2612,9 @@ async def test_update_protocol_non_admin_forces_untrusted_approval(monkeypatch, 
     agent = _public_agent(mock_enums)
     payload = UpdateProtocolInput(name="p1", trusted=True)
     execute_protocol = AsyncMock()
-    maybe_approval = AsyncMock(return_value={"status": "approval_required", "approval_request_id": "p1"})
+    maybe_approval = AsyncMock(
+        return_value={"status": "approval_required", "approval_request_id": "p1"}
+    )
 
     monkeypatch.setattr(
         "nebula_mcp.server.require_context",
@@ -2706,9 +2784,7 @@ async def test_update_agent_missing_after_update_raises(monkeypatch, mock_enums)
 
 
 @pytest.mark.asyncio
-async def test_register_agent_rejects_when_already_authenticated(
-    monkeypatch, mock_enums
-):
+async def test_register_agent_rejects_when_already_authenticated(monkeypatch, mock_enums):
     """register_agent should fail when an authenticated agent is present."""
 
     pool = _PoolStub()
@@ -2951,9 +3027,7 @@ async def test_create_taxonomy_log_types_branch_success(monkeypatch, mock_enums)
 
 
 @pytest.mark.asyncio
-async def test_create_taxonomy_unique_violation_maps_to_value_error(
-    monkeypatch, mock_enums
-):
+async def test_create_taxonomy_unique_violation_maps_to_value_error(monkeypatch, mock_enums):
     """create_taxonomy should map unique violations to user-facing errors."""
 
     class _FakeUniqueViolation(Exception):
@@ -3035,9 +3109,7 @@ async def test_update_taxonomy_log_types_branch_success(monkeypatch, mock_enums)
 
 
 @pytest.mark.asyncio
-async def test_update_taxonomy_unique_violation_maps_to_value_error(
-    monkeypatch, mock_enums
-):
+async def test_update_taxonomy_unique_violation_maps_to_value_error(monkeypatch, mock_enums):
     """update_taxonomy should map unique violations to clear user-facing errors."""
 
     class _FakeUniqueViolation(Exception):

@@ -174,9 +174,7 @@ async def test_mcp_relationships_hide_private_nodes(
     rows = await get_relationships(payload, untrusted_mcp_context)
     private_id = str(private_entity["id"])
 
-    assert all(
-        private_id not in (row.get("source_id"), row.get("target_id")) for row in rows
-    )
+    assert all(private_id not in (row.get("source_id"), row.get("target_id")) for row in rows)
 
 
 @pytest.mark.asyncio
@@ -211,9 +209,7 @@ async def test_mcp_query_relationships_hides_private_nodes(
     rows = await query_relationships(payload, untrusted_mcp_context)
     private_id = str(private_entity["id"])
 
-    assert all(
-        private_id not in (row.get("source_id"), row.get("target_id")) for row in rows
-    )
+    assert all(private_id not in (row.get("source_id"), row.get("target_id")) for row in rows)
 
 
 @pytest.mark.asyncio

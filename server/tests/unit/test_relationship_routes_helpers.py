@@ -153,9 +153,7 @@ def test_has_write_scopes_happy_and_edge_cases():
 
     assert _has_write_scopes(["scope-public"], []) is True
     assert _has_write_scopes([], ["scope-public"]) is False
-    assert (
-        _has_write_scopes(["scope-public", "scope-private"], ["scope-public"]) is True
-    )
+    assert _has_write_scopes(["scope-public", "scope-private"], ["scope-public"]) is True
     assert _has_write_scopes(["scope-public"], ["scope-private"]) is False
 
 
@@ -314,9 +312,7 @@ async def test_validate_relationship_node_ignores_other_node_types(enums):
     """Non-guarded node types should pass through validation."""
 
     pool = _DummyPool({})
-    await _validate_relationship_node(
-        pool, enums, _auth(scopes=["scope-public"]), "file", "x"
-    )
+    await _validate_relationship_node(pool, enums, _auth(scopes=["scope-public"]), "file", "x")
 
 
 @pytest.mark.asyncio
@@ -353,18 +349,14 @@ async def test_create_relationship_returns_pending_approval_payload(enums, monke
 
         return {"requires_approval": True, "approval_id": "appr-1"}
 
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
-    )
+    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
     result = await create_relationship(payload, req, auth=auth)
     assert result["requires_approval"] is True
     assert result["approval_id"] == "appr-1"
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_maps_value_error_to_invalid_input(
-    enums, monkeypatch
-):
+async def test_create_relationship_maps_value_error_to_invalid_input(enums, monkeypatch):
     """create_relationship should convert executor ValueError to INVALID_INPUT."""
 
     pool = _RoutePool(
@@ -406,12 +398,8 @@ async def test_create_relationship_maps_value_error_to_invalid_input(
 
         raise ValueError("bad relationship payload")
 
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
-    )
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.execute_create_relationship", _raise
-    )
+    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
+    monkeypatch.setattr("nebula_api.routes.relationships.execute_create_relationship", _raise)
 
     with pytest.raises(HTTPException) as exc:
         await create_relationship(payload, req, auth=auth)
@@ -465,12 +453,8 @@ async def test_create_relationship_success_payload(enums, monkeypatch):
 
         return {"id": "rel-1", "source_type": "entity"}
 
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
-    )
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.execute_create_relationship", _ok
-    )
+    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
+    monkeypatch.setattr("nebula_api.routes.relationships.execute_create_relationship", _ok)
     result = await create_relationship(payload, req, auth=auth)
     assert result["data"]["id"] == "rel-1"
 
@@ -573,9 +557,7 @@ async def test_update_relationship_returns_pending_approval_payload(enums, monke
 
         return {"requires_approval": True, "approval_id": "appr-update"}
 
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
-    )
+    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
     result = await update_relationship(
         "5a898df8-7f2f-478f-b796-bf013dc5172a",
         UpdateRelationshipBody(properties={"note": "ok"}, status="active"),
@@ -618,9 +600,7 @@ async def test_update_relationship_success_payload(enums, monkeypatch):
 
         return None
 
-    monkeypatch.setattr(
-        "nebula_api.routes.relationships.maybe_check_agent_approval", _approval
-    )
+    monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
     result = await update_relationship(
         "5a898df8-7f2f-478f-b796-bf013dc5172a",
         UpdateRelationshipBody(properties={"note": "ok"}, status="active"),

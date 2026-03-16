@@ -1,17 +1,14 @@
 """Log API routes."""
 
-# Standard Library
 import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_log_type, require_status
@@ -102,9 +99,7 @@ async def _log_visible(pool: Any, enums: Any, auth: dict, log_id: str) -> bool:
     if _is_admin(auth, enums):
         return True
     scope_ids = auth.get("scopes", []) or []
-    all_rows = await pool.fetch(
-        QUERIES["relationships/get"], "log", log_id, "both", None, None
-    )
+    all_rows = await pool.fetch(QUERIES["relationships/get"], "log", log_id, "both", None, None)
     if not all_rows:
         return True
     for rel in all_rows:

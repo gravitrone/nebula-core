@@ -184,9 +184,7 @@ async def test_taxonomy_builtin_archive_is_rejected(api_admin):
 
 
 @pytest.mark.asyncio
-async def test_taxonomy_scope_archive_conflict_when_referenced(
-    api_admin, db_pool, enums
-):
+async def test_taxonomy_scope_archive_conflict_when_referenced(api_admin, db_pool, enums):
     """Archiving a scope in active use returns conflict."""
 
     created = await api_admin.post(
@@ -215,9 +213,7 @@ async def test_taxonomy_scope_archive_conflict_when_referenced(
 
 
 @pytest.mark.asyncio
-async def test_taxonomy_entity_type_archive_conflict_when_referenced(
-    api_admin, db_pool, enums
-):
+async def test_taxonomy_entity_type_archive_conflict_when_referenced(api_admin, db_pool, enums):
     """Archiving an entity type in active use returns conflict."""
 
     created = await api_admin.post(
@@ -239,9 +235,7 @@ async def test_taxonomy_entity_type_archive_conflict_when_referenced(
         ["sdk"],
     )
 
-    resp = await api_admin.post(
-        f"/api/taxonomy/entity-types/{entity_type['id']}/archive"
-    )
+    resp = await api_admin.post(f"/api/taxonomy/entity-types/{entity_type['id']}/archive")
     assert resp.status_code == 409
 
 
@@ -293,16 +287,12 @@ async def test_taxonomy_relationship_type_archive_conflict_when_referenced(
         enums.statuses.name_to_id["active"],
     )
 
-    resp = await api_admin.post(
-        f"/api/taxonomy/relationship-types/{rel_type['id']}/archive"
-    )
+    resp = await api_admin.post(f"/api/taxonomy/relationship-types/{rel_type['id']}/archive")
     assert resp.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_taxonomy_log_type_archive_conflict_when_referenced(
-    api_admin, db_pool, enums
-):
+async def test_taxonomy_log_type_archive_conflict_when_referenced(api_admin, db_pool, enums):
     """Archiving a log type in active use returns conflict."""
 
     created = await api_admin.post(

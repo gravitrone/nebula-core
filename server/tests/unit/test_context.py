@@ -55,10 +55,7 @@ class TestRequireContext:
         _, _, agent = await require_context(mock_context)
 
         assert agent == refreshed
-        assert (
-            mock_context.request_context.lifespan_context["agent"]["name"]
-            == "fresh-agent"
-        )
+        assert mock_context.request_context.lifespan_context["agent"]["name"] == "fresh-agent"
         assert mock_pool.fetchrow.await_args.args[1] == str(refreshed["id"])
 
     async def test_no_pool_raises(self, mock_enums, mock_agent):
@@ -116,9 +113,7 @@ class TestRequireContext:
         assert enums is mock_enums
         assert agent is None
 
-    async def test_bootstrap_missing_agent_raises_enrollment_required(
-        self, mock_pool, mock_enums
-    ):
+    async def test_bootstrap_missing_agent_raises_enrollment_required(self, mock_pool, mock_enums):
         """Return ENROLLMENT_REQUIRED when bootstrap agent is not authenticated."""
 
         ctx = MagicMock()
@@ -266,9 +261,7 @@ class TestAuthenticateAgentOptional:
 
     @patch.dict("os.environ", {"NEBULA_API_KEY": "nbl_test"})
     @patch("nebula_mcp.context.authenticate_agent")
-    async def test_key_uses_strict_auth(
-        self, mock_authenticate_agent, mock_pool, mock_enums
-    ):
+    async def test_key_uses_strict_auth(self, mock_authenticate_agent, mock_pool, mock_enums):
         """Present key should authenticate and disable bootstrap mode."""
 
         mock_authenticate_agent.return_value = {"id": uuid4(), "name": "agent"}
@@ -304,9 +297,7 @@ class TestAuthenticateAgentWithKey:
         """Short-key validation should include provided key label."""
 
         with pytest.raises(ValueError, match="Custom key is too short"):
-            await authenticate_agent_with_key(
-                mock_pool, "short", key_name="Custom key"
-            )
+            await authenticate_agent_with_key(mock_pool, "short", key_name="Custom key")
 
     async def test_rejects_unknown_prefix(self, mock_pool):
         """Unknown key prefix should return invalid or revoked."""
@@ -326,7 +317,10 @@ class TestAuthenticateAgentWithKey:
         with pytest.raises(Exception, match="boom"):
             await authenticate_agent_with_key(mock_pool, "nbl_abcdef123456")
 
-    @patch("argon2.PasswordHasher.verify", side_effect=__import__("argon2").exceptions.VerifyMismatchError)
+    @patch(
+        "argon2.PasswordHasher.verify",
+        side_effect=__import__("argon2").exceptions.VerifyMismatchError,
+    )
     async def test_rejects_hash_mismatch(self, _verify, mock_pool):
         """Argon2 mismatches should return a clear hash-mismatch error."""
 
@@ -406,9 +400,7 @@ class TestAuthenticateAgent:
         mock_auth.return_value = {"id": uuid4(), "name": "agent-env"}
         agent = await authenticate_agent(mock_pool)
         assert agent["name"] == "agent-env"
-        mock_auth.assert_awaited_once_with(
-            mock_pool, "nbl_env_key", key_name="NEBULA_API_KEY"
-        )
+        mock_auth.assert_awaited_once_with(mock_pool, "nbl_env_key", key_name="NEBULA_API_KEY")
 
 
 class TestEnrollmentErrorPayload:
@@ -469,9 +461,7 @@ class TestLocalInsecureHelpers:
         assert _local_insecure_agent_name() == "local-dev-agent"
 
     @patch.dict("os.environ", {"NEBULA_MCP_LOCAL_AGENT_NAME": "local-existing"}, clear=True)
-    async def test_get_or_create_local_insecure_agent_returns_existing(
-        self, mock_pool, mock_enums
-    ):
+    async def test_get_or_create_local_insecure_agent_returns_existing(self, mock_pool, mock_enums):
         """Existing local agent should be returned without creation."""
 
         mock_pool.fetchrow.return_value = {"id": uuid4(), "name": "local-existing"}
@@ -479,9 +469,7 @@ class TestLocalInsecureHelpers:
         assert agent["name"] == "local-existing"
 
     @patch.dict("os.environ", {"NEBULA_MCP_LOCAL_AGENT_NAME": "local-new"}, clear=True)
-    async def test_get_or_create_local_insecure_agent_requires_scope(
-        self, mock_pool, mock_enums
-    ):
+    async def test_get_or_create_local_insecure_agent_requires_scope(self, mock_pool, mock_enums):
         """Missing all known scopes should fail with explicit error."""
 
         mock_pool.fetchrow.side_effect = [None]
@@ -511,9 +499,7 @@ class TestLocalInsecureHelpers:
             await _get_or_create_local_insecure_agent(mock_pool, mock_enums)
 
     @patch.dict("os.environ", {"NEBULA_MCP_LOCAL_AGENT_NAME": "local-new"}, clear=True)
-    async def test_get_or_create_local_insecure_agent_create_success(
-        self, mock_pool, mock_enums
-    ):
+    async def test_get_or_create_local_insecure_agent_create_success(self, mock_pool, mock_enums):
         """Missing local agent should be created and returned."""
 
         created = {"id": uuid4(), "name": "local-new", "requires_approval": False}

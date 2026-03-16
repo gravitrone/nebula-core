@@ -40,9 +40,7 @@ def test_create_job_rejects_unknown_status_field_before_queue():
 
 
 @pytest.mark.asyncio
-async def test_revert_entity_rejects_invalid_audit_id(
-    test_entity, untrusted_mcp_context
-):
+async def test_revert_entity_rejects_invalid_audit_id(test_entity, untrusted_mcp_context):
     """Nonexistent audit ids should be rejected before approval queue."""
 
     payload = RevertEntityInput(
@@ -55,9 +53,7 @@ async def test_revert_entity_rejects_invalid_audit_id(
 
 
 @pytest.mark.asyncio
-async def test_revert_entity_rejects_invalid_audit_format(
-    test_entity, untrusted_mcp_context
-):
+async def test_revert_entity_rejects_invalid_audit_format(test_entity, untrusted_mcp_context):
     """Invalid audit id formats should be rejected before DB access."""
 
     payload = RevertEntityInput(
@@ -70,9 +66,7 @@ async def test_revert_entity_rejects_invalid_audit_format(
 
 
 @pytest.mark.asyncio
-async def test_create_relationship_rejects_missing_nodes(
-    enums, test_entity, untrusted_mcp_context
-):
+async def test_create_relationship_rejects_missing_nodes(enums, test_entity, untrusted_mcp_context):
     """Relationships to missing nodes should be rejected before approval."""
 
     payload = CreateRelationshipInput(

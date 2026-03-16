@@ -15,12 +15,9 @@ pytestmark = pytest.mark.database
 
 _ROOT = Path(__file__).resolve()
 _env_artifact = os.getenv("NEBULA_SCHEMA_ARTIFACT")
-ARTIFACT_SCHEMA_CANDIDATES = (
-    ([Path(_env_artifact).expanduser()] if _env_artifact else [])
-    + [
-        _ROOT.parents[3] / "database" / "schema.sql",  # nebula-core/database/schema.sql
-    ]
-)
+ARTIFACT_SCHEMA_CANDIDATES = ([Path(_env_artifact).expanduser()] if _env_artifact else []) + [
+    _ROOT.parents[3] / "database" / "schema.sql",  # nebula-core/database/schema.sql
+]
 
 CORE_TABLES = {
     "agent_enrollment_sessions",
@@ -85,7 +82,6 @@ async def test_artifact_schema_mentions_live_core_tables(db_pool):
     missing = sorted(
         table
         for table in CORE_TABLES
-        if f"CREATE TABLE public.{table}" not in text
-        and f"CREATE TABLE {table}" not in text
+        if f"CREATE TABLE public.{table}" not in text and f"CREATE TABLE {table}" not in text
     )
     assert not missing, f"schema artifact missing tables: {missing}"

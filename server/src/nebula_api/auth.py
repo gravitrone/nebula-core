@@ -1,18 +1,15 @@
 """API key authentication middleware."""
 
-# Standard Library
 import secrets
 from pathlib import Path
 from typing import Any
 
-# Third-Party
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from asyncpg import Pool
 from fastapi import HTTPException, Request
 from starlette.responses import JSONResponse
 
-# Local
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[1] / "queries")

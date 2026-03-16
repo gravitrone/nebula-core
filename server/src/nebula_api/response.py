@@ -1,10 +1,8 @@
 """Standard API response helpers."""
 
-# Standard Library
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, NoReturn
 
-# Third-Party
 from fastapi import HTTPException
 
 
@@ -21,7 +19,7 @@ def success(data: Any, **meta: Any) -> dict[str, Any]:
 
     return {
         "data": data,
-        "meta": {"timestamp": datetime.now(timezone.utc).isoformat(), **meta},
+        "meta": {"timestamp": datetime.now(UTC).isoformat(), **meta},
     }
 
 
@@ -44,7 +42,7 @@ def paginated(data: list[Any], count: int, limit: int, offset: int) -> dict[str,
             "count": count,
             "limit": limit,
             "offset": offset,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         },
     }
 

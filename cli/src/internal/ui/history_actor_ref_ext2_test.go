@@ -19,4 +19,3 @@ func TestInferActorTypeFromIDAdditionalBranches(t *testing.T) {
 	assert.Equal(t, "", inferActorTypeFromID(":abc"))
 	assert.Equal(t, "", inferActorTypeFromID(" :abc"))
 }
-

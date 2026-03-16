@@ -140,9 +140,7 @@ async def test_attach_file_to_private_entity_denied(db_pool, enums):
     viewer = await _make_agent(db_pool, enums, "file-attacher", ["public"], False)
     ctx = _make_context(db_pool, enums, viewer)
 
-    payload = AttachFileInput(
-        file_id=str(file_row["id"]), target_id=str(private_entity["id"])
-    )
+    payload = AttachFileInput(file_id=str(file_row["id"]), target_id=str(private_entity["id"]))
 
     with pytest.raises(ValueError):
         await attach_file_to_entity(payload, ctx)
@@ -212,9 +210,7 @@ async def test_attach_file_to_entity_rejects_invalid_file_id_format(db_pool, enu
 async def test_attach_file_to_context_rejects_invalid_file_id_format(db_pool, enums):
     """Context attachment should reject malformed file IDs with a clean ValueError."""
 
-    owner = await _make_agent(
-        db_pool, enums, "file-id-context-owner", ["public"], False
-    )
+    owner = await _make_agent(db_pool, enums, "file-id-context-owner", ["public"], False)
     target = await _make_context_item(db_pool, enums, "Public Context", ["public"])
     ctx = _make_context(db_pool, enums, owner)
     payload = AttachFileInput(file_id="not-a-uuid", target_id=str(target["id"]))

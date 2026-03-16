@@ -29,9 +29,7 @@ async def test_entity_full_lifecycle(db_pool, enums):
     entity_id = str(created["id"])
 
     # --- Query back directly ---
-    row = await db_pool.fetchrow(
-        "SELECT * FROM entities WHERE id = $1::uuid", entity_id
-    )
+    row = await db_pool.fetchrow("SELECT * FROM entities WHERE id = $1::uuid", entity_id)
     assert row is not None
     assert row["name"] == "Lifecycle Entity"
     assert "lifecycle" in row["tags"]

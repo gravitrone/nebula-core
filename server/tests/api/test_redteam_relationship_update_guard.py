@@ -102,12 +102,8 @@ async def test_untrusted_update_queues_approval_without_mutating(db_pool, enums)
 
     a = await _make_entity(db_pool, enums, "A", ["public"])
     b = await _make_entity(db_pool, enums, "B", ["public"])
-    relationship = await _make_relationship(
-        db_pool, enums, a["id"], b["id"], {"note": "original"}
-    )
-    untrusted = await _make_agent(
-        db_pool, enums, "rel-untrusted-guard", ["public"], True
-    )
+    relationship = await _make_relationship(db_pool, enums, a["id"], b["id"], {"note": "original"})
+    untrusted = await _make_agent(db_pool, enums, "rel-untrusted-guard", ["public"], True)
 
     before = await db_pool.fetchval(
         "SELECT properties FROM relationships WHERE id = $1", relationship["id"]
@@ -139,9 +135,7 @@ async def test_trusted_update_mutates_immediately(db_pool, enums):
 
     a = await _make_entity(db_pool, enums, "A", ["public"])
     b = await _make_entity(db_pool, enums, "B", ["public"])
-    relationship = await _make_relationship(
-        db_pool, enums, a["id"], b["id"], {"note": "original"}
-    )
+    relationship = await _make_relationship(db_pool, enums, a["id"], b["id"], {"note": "original"})
     trusted = await _make_agent(db_pool, enums, "rel-trusted-guard", ["public"], False)
 
     app.dependency_overrides[require_auth] = _auth_override(trusted, enums)

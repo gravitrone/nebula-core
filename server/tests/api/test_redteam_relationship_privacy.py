@@ -111,16 +111,12 @@ def _properties_dict(value):
 
 
 @pytest.mark.asyncio
-async def test_api_get_relationships_hides_private_entities(
-    api_no_auth, db_pool, enums
-):
+async def test_api_get_relationships_hides_private_entities(api_no_auth, db_pool, enums):
     """API relationships should hide private entity links."""
 
     public_entity = await _make_entity(db_pool, enums, "Public", ["public"])
     private_entity = await _make_entity(db_pool, enums, "Private", ["sensitive"])
-    rel = await _make_relationship(
-        db_pool, enums, public_entity["id"], private_entity["id"]
-    )
+    rel = await _make_relationship(db_pool, enums, public_entity["id"], private_entity["id"])
 
     async def mock_auth():
         """Mock auth with public only scope."""
@@ -139,16 +135,12 @@ async def test_api_get_relationships_hides_private_entities(
 
 
 @pytest.mark.asyncio
-async def test_api_query_relationships_hides_private_entities(
-    api_no_auth, db_pool, enums
-):
+async def test_api_query_relationships_hides_private_entities(api_no_auth, db_pool, enums):
     """API query relationships should hide private entity links."""
 
     public_entity = await _make_entity(db_pool, enums, "Public 2", ["public"])
     private_entity = await _make_entity(db_pool, enums, "Private 2", ["sensitive"])
-    rel = await _make_relationship(
-        db_pool, enums, public_entity["id"], private_entity["id"]
-    )
+    rel = await _make_relationship(db_pool, enums, public_entity["id"], private_entity["id"])
 
     async def mock_auth():
         """Mock auth with public only scope."""
@@ -173,9 +165,7 @@ async def test_api_get_relationships_filters_properties_context_segments(
     """API get relationships should scope-filter relationship properties segments."""
 
     source_entity = await _make_entity(db_pool, enums, "Public Props", ["public"])
-    target_entity = await _make_entity(
-        db_pool, enums, "Public Props Target", ["public"]
-    )
+    target_entity = await _make_entity(db_pool, enums, "Public Props Target", ["public"])
     rel = await _make_scoped_properties_relationship(
         db_pool, enums, source_entity["id"], target_entity["id"]
     )
@@ -210,9 +200,7 @@ async def test_api_query_relationships_filters_properties_context_segments(
     """API query relationships should scope-filter relationship properties segments."""
 
     source_entity = await _make_entity(db_pool, enums, "Public Props Q", ["public"])
-    target_entity = await _make_entity(
-        db_pool, enums, "Public Props Target Q", ["public"]
-    )
+    target_entity = await _make_entity(db_pool, enums, "Public Props Target Q", ["public"])
     rel = await _make_scoped_properties_relationship(
         db_pool, enums, source_entity["id"], target_entity["id"]
     )

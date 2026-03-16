@@ -85,9 +85,7 @@ async def test_create_entity_trusted(mock_mcp_context, test_agent):
     assert "id" in result
 
 
-async def test_create_entity_untrusted_returns_approval(
-    untrusted_mcp_context, untrusted_agent
-):
+async def test_create_entity_untrusted_returns_approval(untrusted_mcp_context, untrusted_agent):
     """An untrusted agent should receive an approval_required response."""
 
     payload = CreateEntityInput(
@@ -296,9 +294,7 @@ async def test_query_context(mock_mcp_context, test_agent):
     assert isinstance(result, list)
 
 
-async def test_link_context_to_owner(
-    mock_mcp_context, test_agent, test_entity, enums, db_pool
-):
+async def test_link_context_to_owner(mock_mcp_context, test_agent, test_entity, enums, db_pool):
     """Linking context to an entity should create a relationship."""
 
     # Create a context item first
@@ -322,9 +318,7 @@ async def test_link_context_to_owner(
 # --- Relationship Tools ---
 
 
-async def test_create_relationship(
-    mock_mcp_context, test_agent, test_entity, db_pool, enums
-):
+async def test_create_relationship(mock_mcp_context, test_agent, test_entity, db_pool, enums):
     """Creating a relationship between two entities via the server tool should succeed."""
 
     # Create a second entity
@@ -357,9 +351,7 @@ async def test_create_relationship(
     assert "id" in result
 
 
-async def test_create_relationship_accepts_job_target_id(
-    mock_mcp_context, test_agent, test_entity
-):
+async def test_create_relationship_accepts_job_target_id(mock_mcp_context, test_agent, test_entity):
     """Relationship creation should accept canonical job IDs on job nodes."""
 
     job = await create_job(
@@ -499,9 +491,7 @@ async def test_update_job_status(mock_mcp_context, test_agent, enums):
     assert "id" in result
 
 
-async def test_update_job_status_accepts_iso_completed_at(
-    mock_mcp_context, test_agent, enums
-):
+async def test_update_job_status_accepts_iso_completed_at(mock_mcp_context, test_agent, enums):
     """MCP update_job_status should accept ISO completed_at values."""
 
     job_payload = CreateJobInput(
@@ -521,9 +511,7 @@ async def test_update_job_status_accepts_iso_completed_at(
     assert result["completed_at"] is not None
 
 
-async def test_update_job_due_at_omitted_preserves_existing_value(
-    mock_mcp_context, test_agent
-):
+async def test_update_job_due_at_omitted_preserves_existing_value(mock_mcp_context, test_agent):
     """MCP update_job should not clear due_at when due_at is omitted."""
 
     job = await create_job(
@@ -546,9 +534,7 @@ async def test_update_job_due_at_omitted_preserves_existing_value(
     assert updated["due_at"] is not None
 
 
-async def test_update_job_due_at_null_clears_existing_value(
-    mock_mcp_context, test_agent
-):
+async def test_update_job_due_at_null_clears_existing_value(mock_mcp_context, test_agent):
     """MCP update_job should clear due_at when explicitly set to null."""
 
     job = await create_job(
@@ -580,9 +566,7 @@ async def test_update_job_due_at_null_clears_existing_value(
         "2026-02-18",
     ],
 )
-async def test_update_job_due_at_timezone_matrix(
-    mock_mcp_context, test_agent, due_at
-):
+async def test_update_job_due_at_timezone_matrix(mock_mcp_context, test_agent, due_at):
     """MCP update_job should accept due_at values across timezone formats."""
 
     job = await create_job(

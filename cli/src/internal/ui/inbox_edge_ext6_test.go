@@ -12,7 +12,7 @@ import (
 func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 	t.Run("relationship type without endpoints returns type", func(t *testing.T) {
 		approval := api.Approval{
-			RequestType:  "update_relationship",
+			RequestType:   "update_relationship",
 			ChangeDetails: api.JSONMap{"relationship_type": "depends-on"},
 		}
 		assert.Equal(t, "depends-on", approvalTitle(approval))
@@ -20,7 +20,7 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 
 	t.Run("bulk update with one entity name", func(t *testing.T) {
 		approval := api.Approval{
-			RequestType:  "bulk_update_entity_scopes",
+			RequestType:   "bulk_update_entity_scopes",
 			ChangeDetails: api.JSONMap{"entity_names": []any{"Alpha"}},
 		}
 		title := approvalTitle(approval)
@@ -30,7 +30,7 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 
 	t.Run("bulk update falls back to entity id and entity count", func(t *testing.T) {
 		approval := api.Approval{
-			RequestType:  "bulk_update_entity_tags",
+			RequestType:   "bulk_update_entity_tags",
 			ChangeDetails: api.JSONMap{"entity_ids": []any{"ent-1234567890"}},
 		}
 		title := approvalTitle(approval)
@@ -38,7 +38,7 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 		assert.Contains(t, title, shortID("ent-1234567890"))
 
 		approval = api.Approval{
-			RequestType:  "bulk_update_entity_tags",
+			RequestType:   "bulk_update_entity_tags",
 			ChangeDetails: api.JSONMap{"entity_ids": []any{"ent-1", "ent-2", "ent-3"}},
 		}
 		title = approvalTitle(approval)

@@ -1,15 +1,12 @@
 """Context API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import paginated, success
 from nebula_mcp.enums import require_relationship_type, require_scopes, require_status
@@ -66,9 +63,7 @@ def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:
     return set(node_scopes).issubset(set(agent_scopes))
 
 
-async def _require_entity_write_access(
-    pool: Any, enums: Any, auth: dict, entity_id: str
-) -> None:
+async def _require_entity_write_access(pool: Any, enums: Any, auth: dict, entity_id: str) -> None:
     """Handle require entity write access.
 
     Args:
@@ -83,15 +78,11 @@ async def _require_entity_write_access(
     row = await pool.fetchrow(QUERIES["entities/get"], entity_id)
     if not row:
         raise HTTPException(status_code=404, detail="Not Found")
-    if not _has_write_scopes(
-        auth.get("scopes", []), row.get("privacy_scope_ids") or []
-    ):
+    if not _has_write_scopes(auth.get("scopes", []), row.get("privacy_scope_ids") or []):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-async def _require_entity_read_access(
-    pool: Any, enums: Any, auth: dict, entity_id: str
-) -> None:
+async def _require_entity_read_access(pool: Any, enums: Any, auth: dict, entity_id: str) -> None:
     """Handle require entity read access."""
 
     if _is_admin(auth, enums):
@@ -105,9 +96,7 @@ async def _require_entity_read_access(
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-async def _require_job_read_access(
-    pool: Any, enums: Any, auth: dict, job_id: str
-) -> dict:
+async def _require_job_read_access(pool: Any, enums: Any, auth: dict, job_id: str) -> dict:
     """Handle require job read access."""
 
     if _is_admin(auth, enums):
@@ -126,9 +115,7 @@ async def _require_job_read_access(
     return job
 
 
-async def _require_job_write_access(
-    pool: Any, enums: Any, auth: dict, job_id: str
-) -> None:
+async def _require_job_write_access(pool: Any, enums: Any, auth: dict, job_id: str) -> None:
     """Handle require job write access."""
 
     job = await _require_job_read_access(pool, enums, auth, job_id)
@@ -146,9 +133,7 @@ async def _require_job_write_access(
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
-async def _require_context_write_access(
-    pool: Any, enums: Any, auth: dict, context_id: str
-) -> None:
+async def _require_context_write_access(pool: Any, enums: Any, auth: dict, context_id: str) -> None:
     """Handle require context write access.
 
     Args:
@@ -163,9 +148,7 @@ async def _require_context_write_access(
     row = await pool.fetchrow(QUERIES["context/get"], context_id, None)
     if not row:
         raise HTTPException(status_code=404, detail="Not Found")
-    if not _has_write_scopes(
-        auth.get("scopes", []), row.get("privacy_scope_ids") or []
-    ):
+    if not _has_write_scopes(auth.get("scopes", []), row.get("privacy_scope_ids") or []):
         raise HTTPException(status_code=403, detail="Forbidden")
 
 

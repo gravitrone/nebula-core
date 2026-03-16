@@ -51,28 +51,20 @@ async def test_load_schema_contract_builds_taxonomy_and_constraints(mock_pool) -
     contract = await schema.load_schema_contract(mock_pool)
 
     assert contract["taxonomy"]["scopes"] == [{"id": str(scope_id), "name": "public"}]
-    assert contract["taxonomy"]["entity_types"] == [
-        {"id": str(entity_type_id), "name": "project"}
-    ]
+    assert contract["taxonomy"]["entity_types"] == [{"id": str(entity_type_id), "name": "project"}]
     assert contract["taxonomy"]["relationship_types"] == [
         {"id": str(relationship_type_id), "name": "related-to"}
     ]
-    assert contract["taxonomy"]["log_types"] == [
-        {"id": str(log_type_id), "name": "note"}
-    ]
+    assert contract["taxonomy"]["log_types"] == [{"id": str(log_type_id), "name": "note"}]
     assert contract["statuses"] == [{"id": str(status_id), "name": "active"}]
 
     assert contract["constraints"]["jobs"]["priority"] == schema.JOB_PRIORITY_VALUES
-    assert contract["constraints"]["approval_requests"]["status"] == (
-        schema.APPROVAL_STATUS_VALUES
-    )
+    assert contract["constraints"]["approval_requests"]["status"] == (schema.APPROVAL_STATUS_VALUES)
     assert contract["constraints"]["relationships"]["node_types"] == (
         schema.RELATIONSHIP_NODE_TYPE_VALUES
     )
     assert contract["constraints"]["audit_log"]["action"] == schema.AUDIT_ACTION_VALUES
-    assert contract["constraints"]["audit_log"]["actor_type"] == (
-        schema.AUDIT_ACTOR_TYPE_VALUES
-    )
+    assert contract["constraints"]["audit_log"]["actor_type"] == (schema.AUDIT_ACTOR_TYPE_VALUES)
     assert mock_pool.fetch.await_count == 5
 
 

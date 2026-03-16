@@ -164,9 +164,7 @@ def _user_auth_override(entity_row, enums, scopes=None):
     """Build an auth override for public-scoped user requests."""
 
     scope_ids = [
-        enums.scopes.name_to_id[s]
-        for s in (scopes or ["public"])
-        if s in enums.scopes.name_to_id
+        enums.scopes.name_to_id[s] for s in (scopes or ["public"]) if s in enums.scopes.name_to_id
     ]
     auth_dict = {
         "key_id": None,
@@ -273,9 +271,7 @@ async def test_api_update_file_denies_private_attachment(db_pool, enums):
 async def test_api_update_context_denies_private_scope_for_user(db_pool, enums):
     """Public-scoped user should not update private context items."""
 
-    private_context = await _make_context(
-        db_pool, enums, "Private User Context", ["sensitive"]
-    )
+    private_context = await _make_context(db_pool, enums, "Private User Context", ["sensitive"])
     user_entity = await _make_entity(db_pool, enums, "User Entity", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
@@ -296,9 +292,7 @@ async def test_api_update_context_denies_private_scope_for_user(db_pool, enums):
 async def test_api_link_context_denies_private_scope_for_user(db_pool, enums):
     """Public-scoped user should not link private context to entities."""
 
-    private_context = await _make_context(
-        db_pool, enums, "Private Link Context", ["sensitive"]
-    )
+    private_context = await _make_context(db_pool, enums, "Private Link Context", ["sensitive"])
     public_target = await _make_entity(db_pool, enums, "Public Target", ["public"])
     user_entity = await _make_entity(db_pool, enums, "User Link Entity", ["public"])
 
@@ -323,9 +317,7 @@ async def test_api_link_context_denies_private_scope_for_user(db_pool, enums):
 async def test_api_update_entity_denies_private_scope_for_user(db_pool, enums):
     """Public-scoped user should not update private entities."""
 
-    private_entity = await _make_entity(
-        db_pool, enums, "Private Target Entity", ["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Private Target Entity", ["sensitive"])
     user_entity = await _make_entity(db_pool, enums, "User Entity Editor", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
@@ -343,14 +335,10 @@ async def test_api_update_entity_denies_private_scope_for_user(db_pool, enums):
 
 
 @pytest.mark.asyncio
-async def test_api_bulk_update_entity_tags_denies_private_scope_for_user(
-    db_pool, enums
-):
+async def test_api_bulk_update_entity_tags_denies_private_scope_for_user(db_pool, enums):
     """Public-scoped user should not bulk-update tags on private entities."""
 
-    private_entity = await _make_entity(
-        db_pool, enums, "Private Bulk Entity", ["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Private Bulk Entity", ["sensitive"])
     user_entity = await _make_entity(db_pool, enums, "User Bulk Entity", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)
@@ -372,14 +360,10 @@ async def test_api_bulk_update_entity_tags_denies_private_scope_for_user(
 
 
 @pytest.mark.asyncio
-async def test_api_bulk_update_entity_scopes_denies_private_scope_for_user(
-    db_pool, enums
-):
+async def test_api_bulk_update_entity_scopes_denies_private_scope_for_user(db_pool, enums):
     """Public-scoped user should not bulk-update scopes on private entities."""
 
-    private_entity = await _make_entity(
-        db_pool, enums, "Private Scope Entity", ["sensitive"]
-    )
+    private_entity = await _make_entity(db_pool, enums, "Private Scope Entity", ["sensitive"])
     user_entity = await _make_entity(db_pool, enums, "User Scope Entity", ["public"])
 
     app.dependency_overrides[require_auth] = _user_auth_override(user_entity, enums)

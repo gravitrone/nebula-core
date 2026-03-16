@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "MCP server for Nebula, a privacy-first memory layer with approval workflows for AI agents"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = { text = "Apache-2.0" }
 authors = [
   { name = "alxx", email = "contact@alxx.dev" },
 ]
@@ -53,16 +53,6 @@ markers = [
     "e2e: full workflow tests",
     "api: REST API endpoint tests",
 ]
-
-[tool.ruff]
-exclude = ["build", "dist", ".venv", "**/.venv"]
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "S"]
-ignore = ["E203"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "E402", "S608", "E501"]
 
 [dependency-groups]
 dev = [

@@ -1,14 +1,11 @@
 """Semantic search API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 
-# Third-Party
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field, field_validator
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import success
 from nebula_mcp.query_loader import QueryLoader

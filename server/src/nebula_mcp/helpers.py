@@ -1,6 +1,5 @@
 """Pure helper functions for Nebula MCP."""
 
-# Standard Library
 import inspect
 import json
 import os
@@ -11,12 +10,10 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from asyncpg import Connection, Pool
 
-# Local
 from .enums import EnumRegistry, require_scopes
 from .query_loader import QueryLoader
 
@@ -44,9 +41,7 @@ def enforce_scope_subset(requested: list[str], allowed: list[str]) -> list[str]:
     allowed_set = set(allowed)
     if not requested_set.issubset(allowed_set):
         missing = sorted(requested_set - allowed_set)
-        raise ValueError(
-            f"Requested scopes exceed allowed scopes: {', '.join(missing)}"
-        )
+        raise ValueError(f"Requested scopes exceed allowed scopes: {', '.join(missing)}")
     return list(requested)
 
 
@@ -84,9 +79,7 @@ def _decode_json_object(value: Any) -> dict:
     return {}
 
 
-def filter_context_segments(
-    metadata: dict | str | None, agent_scopes: list[str]
-) -> dict | None:
+def filter_context_segments(metadata: dict | str | None, agent_scopes: list[str]) -> dict | None:
     """Filter context segments by agent's privacy scopes.
 
     Args:
@@ -119,9 +112,7 @@ def filter_context_segments(
     return filtered
 
 
-def sanitize_relationship_properties(
-    properties: Any, agent_scopes: list[str]
-) -> dict[str, Any]:
+def sanitize_relationship_properties(properties: Any, agent_scopes: list[str]) -> dict[str, Any]:
     """Normalize and scope-filter relationship properties payloads.
 
     Args:
@@ -202,11 +193,8 @@ async def ensure_approval_capacity(
             if count_value + requested > MAX_PENDING_APPROVALS:
                 raise ValueError("Approval queue limit reached")
             return
-        async with acquire() as pooled:
-            async with pooled.transaction():
-                await ensure_approval_capacity(
-                    pool, agent_id, requested=requested, conn=pooled
-                )
+        async with acquire() as pooled, pooled.transaction():
+            await ensure_approval_capacity(pool, agent_id, requested=requested, conn=pooled)
         return
 
     await conn.execute(QUERIES["runtime/advisory_lock_hashtext"], str(agent_id))
@@ -262,11 +250,7 @@ async def create_approval_request(
             QUERIES["approvals/create_request"],
             request_type,
             agent_id,
-            (
-                json.dumps(change_details)
-                if isinstance(change_details, dict)
-                else change_details
-            ),
+            (json.dumps(change_details) if isinstance(change_details, dict) else change_details),
             job_id,
         )
         return dict(row) if row else {}
@@ -274,9 +258,8 @@ async def create_approval_request(
     if conn is not None:
         return await _create(conn)
 
-    async with pool.acquire() as acquired:
-        async with acquired.transaction():
-            return await _create(acquired)
+    async with pool.acquire() as acquired, acquired.transaction():
+        return await _create(acquired)
 
 
 async def create_enrollment_session(
@@ -343,9 +326,7 @@ async def maybe_expire_enrollment(pool: Pool, registration_id: str) -> dict | No
             "approved",
         }
     ):
-        updated = await pool.fetchrow(
-            QUERIES["enrollments/mark_expired"], registration_id
-        )
+        updated = await pool.fetchrow(QUERIES["enrollments/mark_expired"], registration_id)
         if updated:
             return dict(updated)
     return data
@@ -395,66 +376,59 @@ async def redeem_enrollment_key(
 
     from nebula_api.auth import generate_api_key
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            row = await conn.fetchrow(
-                QUERIES["enrollments/get_for_update"], registration_id
-            )
-            if not row:
-                raise ValueError("Enrollment not found")
+    async with pool.acquire() as conn, conn.transaction():
+        row = await conn.fetchrow(QUERIES["enrollments/get_for_update"], registration_id)
+        if not row:
+            raise ValueError("Enrollment not found")
 
-            session = dict(row)
-            if not verify_enrollment_token(
-                session["enrollment_token_hash"],
-                enrollment_token,
-            ):
-                raise ValueError("Invalid enrollment token")
+        session = dict(row)
+        if not verify_enrollment_token(
+            session["enrollment_token_hash"],
+            enrollment_token,
+        ):
+            raise ValueError("Invalid enrollment token")
 
-            if session.get("expires_at") and datetime.now(UTC) >= session["expires_at"]:
-                await conn.execute(QUERIES["enrollments/mark_expired"], registration_id)
-                raise ValueError("Enrollment expired")
+        if session.get("expires_at") and datetime.now(UTC) >= session["expires_at"]:
+            await conn.execute(QUERIES["enrollments/mark_expired"], registration_id)
+            raise ValueError("Enrollment expired")
 
-            status = session.get("status")
-            if status == "redeemed":
-                raise ValueError("Enrollment already redeemed")
-            if status != "approved":
-                raise ValueError("Enrollment is not approved")
+        status = session.get("status")
+        if status == "redeemed":
+            raise ValueError("Enrollment already redeemed")
+        if status != "approved":
+            raise ValueError("Enrollment is not approved")
 
-            raw_key, prefix, key_hash = generate_api_key()
-            await conn.execute(
-                QUERIES["api_keys/create"],
-                session["agent_id"],
-                key_hash,
-                prefix,
-                f"agent-{session['agent_name']}",
-            )
+        raw_key, prefix, key_hash = generate_api_key()
+        await conn.execute(
+            QUERIES["api_keys/create"],
+            session["agent_id"],
+            key_hash,
+            prefix,
+            f"agent-{session['agent_name']}",
+        )
 
-            marked = await conn.fetchrow(
-                QUERIES["enrollments/mark_redeemed"], registration_id
-            )
-            if not marked:
-                raise ValueError("Enrollment redemption failed")
+        marked = await conn.fetchrow(QUERIES["enrollments/mark_redeemed"], registration_id)
+        if not marked:
+            raise ValueError("Enrollment redemption failed")
 
-            return {
-                "api_key": raw_key,
-                "agent_id": str(session["agent_id"]),
-                "agent_name": session["agent_name"],
-                "scope_ids": session.get("granted_scope_ids")
-                or session.get("requested_scope_ids")
-                or [],
-                "requires_approval": (
-                    bool(session.get("granted_requires_approval"))
-                    if session.get("granted_requires_approval") is not None
-                    else bool(session.get("requested_requires_approval"))
-                    if session.get("requested_requires_approval") is not None
-                    else False
-                ),
-            }
+        return {
+            "api_key": raw_key,
+            "agent_id": str(session["agent_id"]),
+            "agent_name": session["agent_name"],
+            "scope_ids": session.get("granted_scope_ids")
+            or session.get("requested_scope_ids")
+            or [],
+            "requires_approval": (
+                bool(session.get("granted_requires_approval"))
+                if session.get("granted_requires_approval") is not None
+                else bool(session.get("requested_requires_approval"))
+                if session.get("requested_requires_approval") is not None
+                else False
+            ),
+        }
 
 
-async def get_pending_approvals_all(
-    pool: Pool, limit: int = 200, offset: int = 0
-) -> list[dict]:
+async def get_pending_approvals_all(pool: Pool, limit: int = 200, offset: int = 0) -> list[dict]:
     """Get all pending approval requests for admin review.
 
     Args:
@@ -788,9 +762,9 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
         requested_id = _safe_parse_uuid(row.get("requested_by"))
         row["requested_by_name"] = None
         if requested_id:
-            row["requested_by_name"] = agent_name_map.get(
+            row["requested_by_name"] = agent_name_map.get(requested_id) or requested_entity_map.get(
                 requested_id
-            ) or requested_entity_map.get(requested_id)
+            )
 
         details = _normalize_change_details(row.get("change_details"))
 
@@ -807,12 +781,8 @@ async def _enrich_approval_rows(pool: Pool, rows: list[dict]) -> list[dict]:
                 details["target_type"] = rel["target_type"]
             if not details.get("target_id") and rel.get("target_id"):
                 details["target_id"] = rel["target_id"]
-        source_label = resolve_node_label(
-            details.get("source_type"), details.get("source_id")
-        )
-        target_label = resolve_node_label(
-            details.get("target_type"), details.get("target_id")
-        )
+        source_label = resolve_node_label(details.get("source_type"), details.get("source_id"))
+        target_label = resolve_node_label(details.get("target_type"), details.get("target_id"))
         if source_label:
             details["source_name"] = source_label
         if target_label:
@@ -1092,7 +1062,7 @@ async def bulk_update_entity_tags(
     for row in rows:
         row_id = row.get("id")
         if row_id is None and len(row.values()) > 0:
-            row_id = list(row.values())[0]
+            row_id = next(iter(row.values()))
         if row_id is not None:
             updated_ids.append(str(row_id))
     return updated_ids
@@ -1115,14 +1085,12 @@ async def bulk_update_entity_scopes(
     """
 
     scope_ids = require_scopes(scopes, enums)
-    rows = await pool.fetch(
-        QUERIES["entities/bulk_update_scopes"], entity_ids, op, scope_ids
-    )
+    rows = await pool.fetch(QUERIES["entities/bulk_update_scopes"], entity_ids, op, scope_ids)
     updated_ids: list[str] = []
     for row in rows:
         row_id = row.get("id")
         if row_id is None and len(row.values()) > 0:
-            row_id = list(row.values())[0]
+            row_id = next(iter(row.values()))
         if row_id is not None:
             updated_ids.append(str(row_id))
     return updated_ids
@@ -1249,10 +1217,11 @@ async def get_approval_diff(pool: Pool, approval_id: str) -> dict:
             old_val = entity.get(key)
             if _normalize_diff_value(old_val) != _normalize_diff_value(new_val):
                 changes[key] = {"from": old_val, "to": new_val}
-    elif request_type == "create_entity":
-        for key, new_val in change_details.items():
-            changes[key] = {"from": None, "to": new_val}
-    elif request_type in {"create_context", "create_relationship", "create_job"}:
+    elif request_type == "create_entity" or request_type in {
+        "create_context",
+        "create_relationship",
+        "create_job",
+    }:
         for key, new_val in change_details.items():
             changes[key] = {"from": None, "to": new_val}
     elif request_type == "update_relationship":
@@ -1260,9 +1229,7 @@ async def get_approval_diff(pool: Pool, approval_id: str) -> dict:
         if not relationship_id:
             raise ValueError("Approval request missing relationship_id")
 
-        rel_row = await pool.fetchrow(
-            QUERIES["relationships/get_by_id"], relationship_id
-        )
+        rel_row = await pool.fetchrow(QUERIES["relationships/get_by_id"], relationship_id)
         if not rel_row:
             raise ValueError("Relationship not found for approval diff")
 

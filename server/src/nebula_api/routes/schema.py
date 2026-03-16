@@ -1,12 +1,9 @@
 """Schema contract API routes."""
 
-# Standard Library
 from typing import Any
 
-# Third-Party
 from fastapi import APIRouter, Depends, Request
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import success
 from nebula_mcp.schema import load_schema_contract

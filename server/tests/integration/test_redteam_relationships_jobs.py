@@ -95,9 +95,7 @@ async def _make_job(db_pool, enums, title, agent_id, scopes):
     return dict(row)
 
 
-async def _make_relationship(
-    db_pool, enums, source_type, source_id, target_type, target_id
-):
+async def _make_relationship(db_pool, enums, source_type, source_id, target_type, target_id):
     """Insert a relationship linking entities/jobs for access checks."""
 
     status_id = enums.statuses.name_to_id["active"]
@@ -128,9 +126,7 @@ async def test_get_relationships_hides_out_of_scope_job_links(db_pool, enums):
     viewer = await _make_agent(db_pool, enums, "rel-viewer", ["public"])
     entity = await _make_entity(db_pool, enums, "Public Node", ["public"])
     job = await _make_job(db_pool, enums, "Private Job", owner["id"], ["private"])
-    rel = await _make_relationship(
-        db_pool, enums, "entity", str(entity["id"]), "job", job["id"]
-    )
+    rel = await _make_relationship(db_pool, enums, "entity", str(entity["id"]), "job", job["id"])
 
     ctx = _make_context(db_pool, enums, viewer)
     payload = GetRelationshipsInput(
@@ -153,9 +149,7 @@ async def test_query_relationships_hides_out_of_scope_job_links(db_pool, enums):
     viewer = await _make_agent(db_pool, enums, "rel-viewer-2", ["public"])
     entity = await _make_entity(db_pool, enums, "Public Node 2", ["public"])
     job = await _make_job(db_pool, enums, "Private Job 2", owner["id"], ["private"])
-    rel = await _make_relationship(
-        db_pool, enums, "job", job["id"], "entity", str(entity["id"])
-    )
+    rel = await _make_relationship(db_pool, enums, "job", job["id"], "entity", str(entity["id"]))
 
     ctx = _make_context(db_pool, enums, viewer)
     payload = QueryRelationshipsInput(

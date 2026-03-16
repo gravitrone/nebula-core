@@ -1,15 +1,12 @@
 """Database connection pool and query utilities for Nebula MCP."""
 
-# Standard Library
 import os
 from pathlib import Path
 from urllib.parse import quote_plus
 
-# Third-Party
 import asyncpg
 from asyncpg import Pool, Record
 
-# Local
 from .query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[1] / "queries")
@@ -74,9 +71,7 @@ async def get_pool(
             or "could not connect to server" in message.lower()
             or "failed to connect" in message.lower()
         ):
-            raise RuntimeError(
-                "Database connection failed. Is Docker running?"
-            ) from exc
+            raise RuntimeError("Database connection failed. Is Docker running?") from exc
         raise
 
 

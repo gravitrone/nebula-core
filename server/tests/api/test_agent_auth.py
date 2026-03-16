@@ -153,9 +153,7 @@ async def test_agent_authed_write_trusted(api_agent_auth, test_agent_row):
     assert "id" in r.json()["data"]
 
 
-async def test_untrusted_agent_write_returns_approval(
-    db_pool, enums, untrusted_agent_row
-):
+async def test_untrusted_agent_write_returns_approval(db_pool, enums, untrusted_agent_row):
     """Untrusted agent write returns 202 approval_required."""
 
     from httpx import ASGITransport, AsyncClient
@@ -201,9 +199,7 @@ async def test_untrusted_agent_write_returns_approval(
     assert r.json()["status"] == "approval_required"
 
 
-async def test_untrusted_agent_respects_runtime_trust_toggle(
-    db_pool, enums, untrusted_agent_row
-):
+async def test_untrusted_agent_respects_runtime_trust_toggle(db_pool, enums, untrusted_agent_row):
     """Agent writes should switch to direct mode immediately after trust toggle."""
 
     from httpx import ASGITransport, AsyncClient

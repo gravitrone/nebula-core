@@ -206,9 +206,7 @@ async def test_query_logs_admin_returns_all_rows(mock_enums):
     """Admin callers should receive rows without visibility filtering."""
 
     pool = SimpleNamespace(
-        fetch=AsyncMock(
-            return_value=[{"id": str(uuid4()), "value": '{"k":1}', "metadata": "{}"}]
-        )
+        fetch=AsyncMock(return_value=[{"id": str(uuid4()), "value": '{"k":1}', "metadata": "{}"}])
     )
     result = await query_logs(_request(pool, mock_enums), auth=_admin_auth(mock_enums))
 

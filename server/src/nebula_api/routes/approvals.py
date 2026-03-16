@@ -1,15 +1,12 @@
 """Approval API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_scopes
@@ -180,8 +177,7 @@ async def approve(
         review_details["grant_scopes"] = payload.grant_scopes
         try:
             review_details["grant_scope_ids"] = [
-                str(scope_id)
-                for scope_id in require_scopes(payload.grant_scopes, enums)
+                str(scope_id) for scope_id in require_scopes(payload.grant_scopes, enums)
             ]
         except ValueError as exc:
             api_error("INVALID_INPUT", str(exc), 400)
@@ -244,9 +240,7 @@ async def reject(
     _require_admin_scope(auth, enums)
     _require_uuid(approval_id, "approval")
 
-    result = await do_reject(
-        pool, approval_id, str(auth["entity_id"]), payload.review_notes
-    )
+    result = await do_reject(pool, approval_id, str(auth["entity_id"]), payload.review_notes)
     return success(result)
 
 

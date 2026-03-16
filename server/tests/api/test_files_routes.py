@@ -208,20 +208,12 @@ async def test_files_create_backfills_uri_from_file_path(api):
 
 
 @pytest.mark.asyncio
-async def test_files_agent_scope_checks_entity_context_job(
-    api_agent_auth, db_pool, enums
-):
+async def test_files_agent_scope_checks_entity_context_job(api_agent_auth, db_pool, enums):
     """Agent should be blocked from files linked to inaccessible scoped nodes."""
 
-    sensitive_entity = await _insert_entity(
-        db_pool, enums, "SensitiveEntity", scopes=["sensitive"]
-    )
-    sensitive_context = await _insert_context(
-        db_pool, enums, "SensitiveCtx", scopes=["sensitive"]
-    )
-    sensitive_job = await _insert_job(
-        db_pool, enums, "SensitiveJob", scopes=["sensitive"]
-    )
+    sensitive_entity = await _insert_entity(db_pool, enums, "SensitiveEntity", scopes=["sensitive"])
+    sensitive_context = await _insert_context(db_pool, enums, "SensitiveCtx", scopes=["sensitive"])
+    sensitive_job = await _insert_job(db_pool, enums, "SensitiveJob", scopes=["sensitive"])
 
     file_entity = await _insert_file(db_pool, enums, "entity.bin")
     file_context = await _insert_file(db_pool, enums, "context.bin")
@@ -254,9 +246,7 @@ async def test_files_agent_scope_checks_entity_context_job(
     )
 
     # public linked file remains visible
-    public_entity = await _insert_entity(
-        db_pool, enums, "PublicEntity", scopes=["public"]
-    )
+    public_entity = await _insert_entity(db_pool, enums, "PublicEntity", scopes=["public"])
     await _insert_relationship(
         db_pool,
         enums,

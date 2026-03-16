@@ -94,4 +94,3 @@ func TestRelationshipsSaveEditOmitsPropertiesWhenParsedMetadataIsEmpty(t *testin
 	_, hasProperties := patched["properties"]
 	assert.False(t, hasProperties)
 }
-

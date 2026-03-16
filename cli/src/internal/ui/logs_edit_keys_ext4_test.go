@@ -60,4 +60,3 @@ func TestLogsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
 	assert.Equal(t, logsViewDetail, updated.view)
 }
-

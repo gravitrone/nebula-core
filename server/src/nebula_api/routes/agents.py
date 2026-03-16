@@ -1,16 +1,13 @@
 """Agent API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, load_enums, require_scopes
@@ -132,44 +129,43 @@ async def register_agent(payload: RegisterAgentBody, request: Request) -> JSONRe
     if not pending_status_id:
         api_error("INTERNAL", "Status 'inactive' not found", 500)
 
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            existing = await conn.fetchrow(QUERIES["agents/check_name"], payload.name)
-            if existing:
-                api_error("CONFLICT", f"Agent '{payload.name}' already exists", 409)
+    async with pool.acquire() as conn, conn.transaction():
+        existing = await conn.fetchrow(QUERIES["agents/check_name"], payload.name)
+        if existing:
+            api_error("CONFLICT", f"Agent '{payload.name}' already exists", 409)
 
-            agent = await conn.fetchrow(
-                QUERIES["agents/create"],
-                payload.name,
-                payload.description,
-                scope_ids,
-                payload.capabilities,
-                pending_status_id,
-                payload.requested_requires_approval,
-            )
+        agent = await conn.fetchrow(
+            QUERIES["agents/create"],
+            payload.name,
+            payload.description,
+            scope_ids,
+            payload.capabilities,
+            pending_status_id,
+            payload.requested_requires_approval,
+        )
 
-            approval = await create_approval_request(
-                pool,
-                str(agent["id"]),
-                "register_agent",
-                {
-                    "agent_id": str(agent["id"]),
-                    "name": payload.name,
-                    "description": payload.description,
-                    "requested_scopes": payload.requested_scopes,
-                    "requested_requires_approval": payload.requested_requires_approval,
-                    "capabilities": payload.capabilities,
-                },
-                conn=conn,
-            )
-            enrollment = await create_enrollment_session(
-                pool,
-                agent_id=str(agent["id"]),
-                approval_request_id=str(approval["id"]),
-                requested_scope_ids=scope_ids,
-                requested_requires_approval=payload.requested_requires_approval,
-                conn=conn,
-            )
+        approval = await create_approval_request(
+            pool,
+            str(agent["id"]),
+            "register_agent",
+            {
+                "agent_id": str(agent["id"]),
+                "name": payload.name,
+                "description": payload.description,
+                "requested_scopes": payload.requested_scopes,
+                "requested_requires_approval": payload.requested_requires_approval,
+                "capabilities": payload.capabilities,
+            },
+            conn=conn,
+        )
+        enrollment = await create_enrollment_session(
+            pool,
+            agent_id=str(agent["id"]),
+            approval_request_id=str(approval["id"]),
+            requested_scope_ids=scope_ids,
+            requested_requires_approval=payload.requested_requires_approval,
+            conn=conn,
+        )
 
     return JSONResponse(
         status_code=201,
@@ -207,9 +203,7 @@ async def update_agent(
     pool = request.app.state.pool
     enums = request.app.state.enums
 
-    is_self = auth.get("caller_type") == "agent" and str(auth.get("agent_id")) == str(
-        agent_id
-    )
+    is_self = auth.get("caller_type") == "agent" and str(auth.get("agent_id")) == str(agent_id)
     if not is_self and not _has_admin_scope(auth, enums):
         api_error("FORBIDDEN", "Admin scope required", 403)
 
@@ -288,9 +282,7 @@ async def list_agents(
 
 
 @router.post("/reload-enums")
-async def reload_enums_route(
-    request: Request, auth: dict = Depends(require_auth)
-) -> dict:
+async def reload_enums_route(request: Request, auth: dict = Depends(require_auth)) -> dict:
     """Reload enum cache.
 
     Args:

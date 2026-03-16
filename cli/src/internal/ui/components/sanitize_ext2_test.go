@@ -32,4 +32,3 @@ func TestSanitizeOneLineEmptyAndWhitespaceCollapseBranches(t *testing.T) {
 	out := SanitizeOneLine("  alpha\n\tbeta  ")
 	assert.Equal(t, "alpha  beta", out)
 }
-

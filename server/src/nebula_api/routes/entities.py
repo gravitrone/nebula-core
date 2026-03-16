@@ -1,15 +1,12 @@
 """Entity API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, field_validator
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, paginated, success
 from nebula_mcp.enums import require_entity_type, require_scopes, require_status
@@ -415,9 +412,7 @@ async def revert_entity(
     pool = request.app.state.pool
     async with pool.acquire() as conn:
         await conn.execute(QUERIES["runtime/set_changed_by_type"], "entity")
-        await conn.execute(
-            QUERIES["runtime/set_changed_by_id"], str(auth["entity_id"])
-        )
+        await conn.execute(QUERIES["runtime/set_changed_by_id"], str(auth["entity_id"]))
         try:
             result = await do_revert_entity(conn, entity_id, payload.audit_id)
         finally:
@@ -459,9 +454,7 @@ async def bulk_update_entity_tags(
     ):
         return resp
 
-    updated = await do_bulk_update_entity_tags(
-        pool, payload.entity_ids, payload.tags, op
-    )
+    updated = await do_bulk_update_entity_tags(pool, payload.entity_ids, payload.tags, op)
     return success({"updated": len(updated), "entity_ids": updated})
 
 
@@ -509,14 +502,10 @@ async def bulk_update_entity_scopes(
         api_error("INVALID_INPUT", str(exc), 400)
     data = payload.model_dump()
     data["scopes"] = scopes
-    if resp := await maybe_check_agent_approval(
-        pool, auth, "bulk_update_entity_scopes", data
-    ):
+    if resp := await maybe_check_agent_approval(pool, auth, "bulk_update_entity_scopes", data):
         return resp
 
-    updated = await do_bulk_update_entity_scopes(
-        pool, enums, payload.entity_ids, scopes, op
-    )
+    updated = await do_bulk_update_entity_scopes(pool, enums, payload.entity_ids, scopes, op)
     return success({"updated": len(updated), "entity_ids": updated})
 
 

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "Running pre-commit checks..."
+
+# Python lint + format check
+echo "  Ruff check..."
+cd "${ROOT_DIR}/server"
+if command -v uv >/dev/null 2>&1; then
+    uv run ruff check src
+    uv run ruff format --check src
+else
+    .venv/bin/ruff check src
+    .venv/bin/ruff format --check src
+fi
+
+# Go lint
+echo "  Go vet..."
+cd "${ROOT_DIR}/cli/src"
+go vet ./...
+
+echo "All pre-commit checks passed"

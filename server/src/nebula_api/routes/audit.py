@@ -1,12 +1,9 @@
 """Audit API routes."""
 
-# Standard Library
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 
-# Local
 from nebula_api.auth import require_auth
 from nebula_api.response import api_error, paginated, success
 from nebula_mcp.enums import EnumRegistry

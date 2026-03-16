@@ -1,11 +1,9 @@
 """Pydantic models for Nebula MCP."""
 
-# Standard Library
 import unicodedata
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from typing import Self
 
-# Third-Party
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -257,7 +255,7 @@ def parse_optional_datetime(
     if isinstance(value, datetime):
         return value
     if isinstance(value, date):
-        return datetime.combine(value, time.min, tzinfo=timezone.utc)
+        return datetime.combine(value, time.min, tzinfo=UTC)
 
     text = _strip_control(str(value))
     if text == "":
@@ -328,6 +326,7 @@ class CreateEntityInput(BaseModel):
 
         return _sanitize_source_path(v)
 
+
 # --- Approval Workflow Models ---
 
 
@@ -343,12 +342,8 @@ class ApproveRequestInput(BaseModel):
     """Input payload for approving a request."""
 
     approval_id: str = Field(..., description="UUID of approval request")
-    reviewed_by: str | None = Field(
-        default=None, description="Optional reviewer entity UUID"
-    )
-    review_notes: str | None = Field(
-        default=None, description="Optional reviewer notes"
-    )
+    reviewed_by: str | None = Field(default=None, description="Optional reviewer entity UUID")
+    review_notes: str | None = Field(default=None, description="Optional reviewer notes")
     grant_scopes: list[str] | None = Field(
         default=None, description="Optional scope grants for register_agent"
     )
@@ -361,9 +356,7 @@ class RejectRequestInput(BaseModel):
     """Input payload for rejecting a request."""
 
     approval_id: str = Field(..., description="UUID of approval request")
-    reviewed_by: str | None = Field(
-        default=None, description="Optional reviewer entity UUID"
-    )
+    reviewed_by: str | None = Field(default=None, description="Optional reviewer entity UUID")
     review_notes: str = Field(..., min_length=1, description="Reason for rejection")
 
 
@@ -412,9 +405,7 @@ class QueryEntitiesInput(BaseModel):
     search_text: str | None = Field(default=None, description="Full-text search query")
     status_category: str = Field(default="active", description="active or archived")
     scopes: list[str] = Field(default_factory=list, description="Privacy scope filters")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
     @field_validator("type", "search_text", mode="before")
@@ -454,9 +445,7 @@ class SemanticSearchInput(BaseModel):
         default_factory=lambda: ["entity", "context"],
         description="Search kinds: entity, context",
     )
-    limit: int = Field(
-        default=20, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=20, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     candidate_limit: int = Field(
         default=250, ge=50, le=2000, description="Candidate pool size per kind"
     )
@@ -509,9 +498,7 @@ class UpdateEntityInput(BaseModel):
     entity_id: str = Field(..., description="Entity UUID to update")
     tags: list[str] | None = Field(default=None, description="Updated tags")
     status: str | None = Field(default=None, description="New status name")
-    status_reason: str | None = Field(
-        default=None, description="Reason for status change"
-    )
+    status_reason: str | None = Field(default=None, description="Reason for status change")
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -562,9 +549,7 @@ class GetEntityHistoryInput(BaseModel):
     """Input payload for listing entity audit history."""
 
     entity_id: str = Field(..., description="Entity UUID")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
 
@@ -584,9 +569,7 @@ class QueryAuditLogInput(BaseModel):
     actor_id: str | None = Field(default=None, description="Actor UUID")
     record_id: str | None = Field(default=None, description="Record id filter")
     scope_id: str | None = Field(default=None, description="Scope UUID filter")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
 
@@ -662,6 +645,7 @@ class CreateContextInput(BaseModel):
 
         return _sanitize_tags(v)
 
+
 class UpdateContextInput(BaseModel):
     """Input payload for updating a context item."""
 
@@ -735,9 +719,7 @@ class QueryContextInput(BaseModel):
     tags: list[str] = Field(default_factory=list, description="Tag filters")
     search_text: str | None = Field(default=None, description="Full-text search query")
     scopes: list[str] = Field(default_factory=list, description="Privacy scope filters")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
     @field_validator("tags", mode="before")
@@ -785,9 +767,7 @@ class ListContextByOwnerInput(BaseModel):
 
     owner_type: str = Field(..., description="entity or job")
     owner_id: str = Field(..., description="Owner UUID")
-    limit: int = Field(
-        default=100, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=100, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, ge=0, description="Pagination offset")
 
     @field_validator("owner_type", mode="before")
@@ -882,9 +862,7 @@ class QueryLogsInput(BaseModel):
     log_type: str | None = Field(default=None, description="Filter by log type")
     tags: list[str] = Field(default_factory=list, description="Tag filters")
     status_category: str = Field(default="active", description="active or archived")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
     @field_validator("tags", mode="before")
@@ -948,13 +926,9 @@ class UpdateLogInput(BaseModel):
 class CreateRelationshipInput(BaseModel):
     """Input payload for creating a relationship."""
 
-    source_type: str = Field(
-        ..., description="entity, context, log, job, agent, file, protocol"
-    )
+    source_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     source_id: str = Field(..., description="Source item UUID")
-    target_type: str = Field(
-        ..., description="entity, context, log, job, agent, file, protocol"
-    )
+    target_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     target_id: str = Field(..., description="Target item UUID")
     relationship_type: str = Field(..., description="Relationship type name")
     properties: dict = Field(default_factory=dict, description="Additional properties")
@@ -1005,13 +979,9 @@ class CreateRelationshipInput(BaseModel):
 class GetRelationshipsInput(BaseModel):
     """Input payload for retrieving relationships."""
 
-    source_type: str = Field(
-        ..., description="entity, context, log, job, agent, file, protocol"
-    )
+    source_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     source_id: str = Field(..., description="Source item UUID")
-    relationship_type: str | None = Field(
-        default=None, description="Filter by relationship type"
-    )
+    relationship_type: str | None = Field(default=None, description="Filter by relationship type")
     direction: str = Field(default="both", description="outgoing, incoming, or both")
 
     @field_validator("source_type", mode="before")
@@ -1038,9 +1008,7 @@ class QueryRelationshipsInput(BaseModel):
         default_factory=list, description="Filter by relationship types"
     )
     status_category: str = Field(default="active", description="active or archived")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
 
     @field_validator("source_type", "target_type", mode="before")
     @classmethod
@@ -1068,13 +1036,9 @@ class UpdateRelationshipInput(BaseModel):
 class GraphNeighborsInput(BaseModel):
     """Input payload for graph neighbors."""
 
-    source_type: str = Field(
-        ..., description="entity, context, log, job, agent, file, protocol"
-    )
+    source_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     source_id: str = Field(..., description="Source item UUID")
-    max_hops: int = Field(
-        default=2, ge=1, le=MAX_GRAPH_HOPS, description="Max hop depth"
-    )
+    max_hops: int = Field(default=2, ge=1, le=MAX_GRAPH_HOPS, description="Max hop depth")
 
     @field_validator("source_type", mode="before")
     @classmethod
@@ -1090,25 +1054,17 @@ class GraphNeighborsInput(BaseModel):
 
         return _validate_node_type(v)
 
-    limit: int = Field(
-        default=100, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=100, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
 
 
 class GraphShortestPathInput(BaseModel):
     """Input payload for shortest path search."""
 
-    source_type: str = Field(
-        ..., description="entity, context, log, job, agent, file, protocol"
-    )
+    source_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     source_id: str = Field(..., description="Source item UUID")
-    target_type: str = Field(
-        ..., description="entity, context, log, job, agent, file, protocol"
-    )
+    target_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     target_id: str = Field(..., description="Target item UUID")
-    max_hops: int = Field(
-        default=6, ge=1, le=MAX_GRAPH_HOPS, description="Max hop depth"
-    )
+    max_hops: int = Field(default=6, ge=1, le=MAX_GRAPH_HOPS, description="Max hop depth")
 
     @field_validator("source_type", "target_type", mode="before")
     @classmethod
@@ -1143,9 +1099,7 @@ class CreateJobInput(BaseModel):
         default_factory=lambda: ["public"],
         description="Privacy scopes (defaults to public)",
     )
-    parent_job_id: str | None = Field(
-        default=None, description="Parent job ID for subtasks"
-    )
+    parent_job_id: str | None = Field(default=None, description="Parent job ID for subtasks")
     due_at: str | None = Field(default=None, description="ISO8601 due date")
 
 
@@ -1158,25 +1112,15 @@ class GetJobInput(BaseModel):
 class QueryJobsInput(BaseModel):
     """Input payload for searching jobs."""
 
-    status_names: list[str] = Field(
-        default_factory=list, description="Filter by status names"
-    )
+    status_names: list[str] = Field(default_factory=list, description="Filter by status names")
     assigned_to: str | None = Field(default=None, description="Filter by assignee UUID")
     agent_id: str | None = Field(default=None, description="Filter by agent UUID")
     priority: str | None = Field(default=None, description="Filter by priority")
-    due_before: str | None = Field(
-        default=None, description="ISO8601 date for due_at filter"
-    )
-    due_after: str | None = Field(
-        default=None, description="ISO8601 date for due_at filter"
-    )
-    overdue_only: bool = Field(
-        default=False, description="Only overdue incomplete jobs"
-    )
+    due_before: str | None = Field(default=None, description="ISO8601 date for due_at filter")
+    due_after: str | None = Field(default=None, description="ISO8601 date for due_at filter")
+    overdue_only: bool = Field(default=False, description="Only overdue incomplete jobs")
     parent_job_id: str | None = Field(default=None, description="Filter by parent job")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
 
 
 class UpdateJobStatusInput(BaseModel):
@@ -1184,12 +1128,8 @@ class UpdateJobStatusInput(BaseModel):
 
     job_id: str = Field(..., description="Job ID")
     status: str = Field(..., description="New status name")
-    status_reason: str | None = Field(
-        default=None, description="Reason for status change"
-    )
-    completed_at: str | None = Field(
-        default=None, description="ISO8601 completion timestamp"
-    )
+    status_reason: str | None = Field(default=None, description="Reason for status change")
+    completed_at: str | None = Field(default=None, description="ISO8601 completion timestamp")
 
 
 class UpdateJobInput(BaseModel):
@@ -1315,9 +1255,7 @@ class QueryFilesInput(BaseModel):
     tags: list[str] = Field(default_factory=list, description="Tag filters")
     mime_type: str | None = Field(default=None, description="Filter by MIME type")
     status_category: str = Field(default="active", description="active or archived")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
     @field_validator("tags", mode="before")
@@ -1446,9 +1384,7 @@ class QueryProtocolsInput(BaseModel):
     status_category: str | None = Field(default=None, description="active or archived")
     protocol_type: str | None = Field(default=None, description="Protocol type filter")
     search: str | None = Field(default=None, description="Name/title search")
-    limit: int = Field(
-        default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=50, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
 
 
 class CreateProtocolInput(BaseModel):
@@ -1459,9 +1395,7 @@ class CreateProtocolInput(BaseModel):
     version: str | None = Field(default=None, description="Protocol version")
     content: str = Field(..., description="Protocol content")
     protocol_type: str | None = Field(default=None, description="Protocol type")
-    applies_to: list[str] = Field(
-        default_factory=list, description="Applies-to categories"
-    )
+    applies_to: list[str] = Field(default_factory=list, description="Applies-to categories")
     status: str = Field(default="active", description="Status name")
     tags: list[str] = Field(default_factory=list, description="Tags")
     metadata: dict = Field(default_factory=dict, description="Metadata")
@@ -1637,9 +1571,7 @@ class UpdateAgentInput(BaseModel):
 
     agent_id: str = Field(..., description="Agent UUID")
     description: str | None = Field(default=None, description="Updated description")
-    requires_approval: bool | None = Field(
-        default=None, description="Updated trust mode"
-    )
+    requires_approval: bool | None = Field(default=None, description="Updated trust mode")
     scopes: list[str] | None = Field(default=None, description="Updated scope names")
 
     @field_validator("description", mode="before")
@@ -1665,12 +1597,8 @@ class AgentEnrollStartInput(BaseModel):
     requested_scopes: list[str] = Field(
         default_factory=lambda: ["public"], description="Requested scope names"
     )
-    requested_requires_approval: bool = Field(
-        default=False, description="Requested trust mode"
-    )
-    capabilities: list[str] = Field(
-        default_factory=list, description="Optional capability tags"
-    )
+    requested_requires_approval: bool = Field(default=False, description="Requested trust mode")
+    capabilities: list[str] = Field(default_factory=list, description="Optional capability tags")
 
     @field_validator("name", "description", mode="before")
     @classmethod
@@ -1801,9 +1729,7 @@ class LoginInput(BaseModel):
 class CreateAPIKeyInput(BaseModel):
     """Input payload for creating an API key."""
 
-    entity_id: str | None = Field(
-        default=None, description="Entity UUID owner (admin path)"
-    )
+    entity_id: str | None = Field(default=None, description="Entity UUID owner (admin path)")
     name: str = Field(default="default", description="Friendly key name")
 
     @field_validator("name", mode="before")
@@ -1824,9 +1750,7 @@ class CreateAPIKeyInput(BaseModel):
 class ListAPIKeysInput(BaseModel):
     """Input payload for listing keys for one entity."""
 
-    entity_id: str | None = Field(
-        default=None, description="Entity UUID owner (admin path)"
-    )
+    entity_id: str | None = Field(default=None, description="Entity UUID owner (admin path)")
 
 
 class ListAllKeysInput(BaseModel):
@@ -1840,9 +1764,7 @@ class RevokeKeyInput(BaseModel):
     """Input payload for revoking an API key."""
 
     key_id: str = Field(..., description="API key UUID")
-    entity_id: str | None = Field(
-        default=None, description="Entity UUID owner for scoped revoke"
-    )
+    entity_id: str | None = Field(default=None, description="Entity UUID owner for scoped revoke")
 
 
 class ExportDataInput(BaseModel):
@@ -1914,9 +1836,7 @@ class ListTaxonomyInput(BaseModel):
     kind: str = Field(default="scopes", description="Taxonomy kind")
     include_inactive: bool = Field(default=False, description="Include inactive rows")
     search: str | None = Field(default=None, description="Name search filter")
-    limit: int = Field(
-        default=200, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return"
-    )
+    limit: int = Field(default=200, ge=1, le=MAX_PAGE_LIMIT, description="Max results to return")
     offset: int = Field(default=0, description="Pagination offset")
 
     @field_validator("kind", mode="before")
@@ -1955,9 +1875,7 @@ class CreateTaxonomyInput(BaseModel):
     name: str = Field(..., description="Taxonomy row name")
     description: str | None = Field(default=None, description="Optional description")
     metadata: dict | None = Field(default=None, description="Optional metadata object")
-    is_symmetric: bool | None = Field(
-        default=None, description="Relationship symmetry flag"
-    )
+    is_symmetric: bool | None = Field(default=None, description="Relationship symmetry flag")
     value_schema: dict | None = Field(default=None, description="Log type value schema")
 
     @field_validator("kind", mode="before")
@@ -2025,9 +1943,7 @@ class UpdateTaxonomyInput(BaseModel):
     name: str | None = Field(default=None, description="Optional name")
     description: str | None = Field(default=None, description="Optional description")
     metadata: dict | None = Field(default=None, description="Optional metadata object")
-    is_symmetric: bool | None = Field(
-        default=None, description="Relationship symmetry flag"
-    )
+    is_symmetric: bool | None = Field(default=None, description="Relationship symmetry flag")
     value_schema: dict | None = Field(default=None, description="Log type value schema")
 
     @field_validator("kind", mode="before")

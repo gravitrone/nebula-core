@@ -201,7 +201,10 @@ async def test_require_auth_user_owner_returns_user_context(monkeypatch):
         "agent_id": None,
         "scopes": ["public", "admin"],
     }
-    entity_row = {"id": key_row["entity_id"], "privacy_scope_ids": ["public", "private"]}
+    entity_row = {
+        "id": key_row["entity_id"],
+        "privacy_scope_ids": ["public", "private"],
+    }
     pool = _pool_stub(fetchrow_side_effect=[key_row, entity_row])
     request = _request_with_pool(pool, "nbl_1234567890")
 

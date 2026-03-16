@@ -16,7 +16,7 @@ func TestEntitiesFormatEntityScopesHandlesEmptyInput(t *testing.T) {
 func TestEntitiesFormatEntityScopesFallsBackToShortIDs(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.scopeNames = map[string]string{
-		"scope-public-id": "public",
+		"scope-public-id":  "public",
 		"deadbeefcafebabe": "",
 	}
 

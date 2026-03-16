@@ -513,9 +513,7 @@ async def test_reenroll_preserves_existing_trusted_mode_without_override(
     assert redeemed["requires_approval"] is False
 
 
-async def test_enroll_reject_returns_reason(
-    bootstrap_mcp_context, db_pool, test_entity
-):
+async def test_enroll_reject_returns_reason(bootstrap_mcp_context, db_pool, test_entity):
     """Rejected enrollment should return reviewer reason via wait."""
 
     name = f"mcp-enroll-{uuid4().hex[:8]}"
@@ -611,9 +609,7 @@ async def test_enroll_redeem_rejects_cross_session_token(
         )
 
 
-async def test_enroll_redeem_is_one_time(
-    bootstrap_mcp_context, db_pool, enums, test_entity
-):
+async def test_enroll_redeem_is_one_time(bootstrap_mcp_context, db_pool, enums, test_entity):
     """Redeem should mint one API key and block replay."""
 
     name = f"mcp-enroll-{uuid4().hex[:8]}"

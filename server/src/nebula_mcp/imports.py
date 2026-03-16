@@ -1,6 +1,5 @@
 """Shared helpers for bulk import parsing and normalization."""
 
-# Standard Library
 import csv
 import io
 import json
@@ -118,9 +117,7 @@ def extract_items(
     return items
 
 
-def merge_defaults(
-    item: dict[str, Any], defaults: dict[str, Any] | None
-) -> dict[str, Any]:
+def merge_defaults(item: dict[str, Any], defaults: dict[str, Any] | None) -> dict[str, Any]:
     """Merge a default dictionary into an item dictionary.
 
     Args:
@@ -159,9 +156,7 @@ def normalize_entity(item: dict[str, Any], defaults: dict[str, Any] | None) -> d
     entity_type = coerce_text(merged.get("type"))
     if not name or not entity_type:
         raise ValueError("Entity name and type are required")
-    scopes = coerce_list(merged.get("scopes")) or coerce_list(
-        (defaults or {}).get("scopes")
-    )
+    scopes = coerce_list(merged.get("scopes")) or coerce_list((defaults or {}).get("scopes"))
     if not scopes:
         scopes = ["public"]
     return {
@@ -195,9 +190,7 @@ def normalize_context(item: dict[str, Any], defaults: dict[str, Any] | None) -> 
     source_type = coerce_text(merged.get("source_type"))
     if not title or not source_type:
         raise ValueError("Context title and source_type are required")
-    scopes = coerce_list(merged.get("scopes")) or coerce_list(
-        (defaults or {}).get("scopes")
-    )
+    scopes = coerce_list(merged.get("scopes")) or coerce_list((defaults or {}).get("scopes"))
     if not scopes:
         scopes = ["public"]
     url = coerce_text(merged.get("url"))
@@ -215,9 +208,7 @@ def normalize_context(item: dict[str, Any], defaults: dict[str, Any] | None) -> 
     }
 
 
-def normalize_relationship(
-    item: dict[str, Any], defaults: dict[str, Any] | None
-) -> dict:
+def normalize_relationship(item: dict[str, Any], defaults: dict[str, Any] | None) -> dict:
     """Normalize a relationship payload for bulk import.
 
     Args:

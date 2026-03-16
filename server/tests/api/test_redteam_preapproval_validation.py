@@ -35,7 +35,11 @@ def _untrusted_auth_override(agent_row: dict, enums: object, scopes: list[str]):
 
 
 async def _count_pending_approvals(
-    db_pool, agent_id: str, request_type: str, detail_key: str | None = None, detail_val: str | None = None
+    db_pool,
+    agent_id: str,
+    request_type: str,
+    detail_key: str | None = None,
+    detail_val: str | None = None,
 ) -> int:
     """Count pending approvals for a specific request type (optionally narrowed by change_details key)."""
 

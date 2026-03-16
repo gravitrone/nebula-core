@@ -282,6 +282,7 @@ class TestModelSanitizerHelpers:
         assert _sanitize_source_path(None) is None
         assert parse_optional_datetime(None, "ts") is None
 
+
 class TestModelEdgeInputs:
     """Coverage tests for low-hit input model branches."""
 

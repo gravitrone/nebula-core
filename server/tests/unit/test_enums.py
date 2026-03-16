@@ -86,9 +86,7 @@ class TestRequireStatus:
     def test_status_normalizes_case_and_whitespace(self, mock_enums):
         """Status lookup should normalize whitespace and casing."""
 
-        assert require_status(" Active ", mock_enums) == require_status(
-            "active", mock_enums
-        )
+        assert require_status(" Active ", mock_enums) == require_status("active", mock_enums)
 
     def test_whitespace_only_status_raises_unknown_status(self, mock_enums):
         """Whitespace-only status strings should fail with unknown-status error."""

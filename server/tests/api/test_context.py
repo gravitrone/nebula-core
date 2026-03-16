@@ -208,9 +208,7 @@ async def test_update_context_validation_errors(api):
     bad_id = await api.patch("/api/context/not-a-uuid", json={"title": "X"})
     assert bad_id.status_code == 400
 
-    bad_url = await api.patch(
-        f"/api/context/{context['id']}", json={"url": "file://bad"}
-    )
+    bad_url = await api.patch(f"/api/context/{context['id']}", json={"url": "file://bad"})
     assert bad_url.status_code == 422
 
     bad_status = await api.patch(
@@ -568,9 +566,7 @@ async def test_link_context_executor_value_error_returns_400(api, monkeypatch):
     """Link should convert executor value errors to 400 responses."""
 
     context = (
-        await api.post(
-            "/api/context", json={"title": "CtxLinkFail", "scopes": ["public"]}
-        )
+        await api.post("/api/context", json={"title": "CtxLinkFail", "scopes": ["public"]})
     ).json()["data"]
     entity = (
         await api.post(

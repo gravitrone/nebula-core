@@ -351,7 +351,13 @@ async def test_create_file_success_returns_normalized_payload(monkeypatch, mock_
     )
     monkeypatch.setattr(
         "nebula_api.routes.files.execute_create_file",
-        AsyncMock(return_value={"id": str(uuid4()), "filename": "f.txt", "metadata": '{"k":1}'}),
+        AsyncMock(
+            return_value={
+                "id": str(uuid4()),
+                "filename": "f.txt",
+                "metadata": '{"k":1}',
+            }
+        ),
     )
 
     result = await create_file(payload, _request(pool, mock_enums), auth={"scopes": []})
@@ -506,7 +512,12 @@ async def test_update_file_copies_uri_into_file_path(monkeypatch, mock_enums):
     pool = SimpleNamespace()
     payload = UpdateFileBody(uri="file:///tmp/a.txt")
     execute = AsyncMock(
-        return_value={"id": file_id, "uri": "file:///tmp/a.txt", "file_path": "file:///tmp/a.txt", "metadata": {}}
+        return_value={
+            "id": file_id,
+            "uri": "file:///tmp/a.txt",
+            "file_path": "file:///tmp/a.txt",
+            "metadata": {},
+        }
     )
 
     monkeypatch.setattr("nebula_api.routes.files._file_visible", AsyncMock(return_value=True))

@@ -1,0 +1,33 @@
+target-version = "py312"
+line-length = 100
+
+[lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "S",     # flake8-bandit
+    "TCH",   # flake8-type-checking
+    "RUF",   # ruff-specific
+]
+ignore = [
+    "E501",   # line length handled by formatter
+    "B008",   # Depends() in FastAPI args is standard pattern
+    "B904",   # raise from - TODO fix later
+    "SIM102", # nested if - cosmetic, fix later
+]
+
+[lint.isort]
+known-first-party = ["nebula_api", "nebula_mcp"]
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "E402", "S608", "E501"]
+
+[format]
+quote-style = "double"
+indent-style = "space"

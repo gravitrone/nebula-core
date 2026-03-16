@@ -1,15 +1,12 @@
 """Job API routes."""
 
-# Standard Library
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-# Third-Party
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
-# Local
 from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_scopes, require_status
@@ -358,9 +355,7 @@ async def update_job_status(
         completed_at = parse_optional_datetime(payload.completed_at, "completed_at")
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
-    if resp := await maybe_check_agent_approval(
-        pool, auth, "update_job_status", change
-    ):
+    if resp := await maybe_check_agent_approval(pool, auth, "update_job_status", change):
         return resp
 
     row = await pool.fetchrow(
@@ -452,9 +447,7 @@ async def create_subtask(
         api_error("NOT_FOUND", f"Job '{job_id}' not found", 404)
     parent_job = dict(parent_row)
     _require_job_write(auth, enums, parent_job)
-    parent_scope_names = scope_names_from_ids(
-        parent_job.get("privacy_scope_ids") or [], enums
-    )
+    parent_scope_names = scope_names_from_ids(parent_job.get("privacy_scope_ids") or [], enums)
     if payload.priority and payload.priority not in JOB_PRIORITY_VALUES:
         api_error("INVALID_INPUT", f"Invalid priority: {payload.priority}", 400)
     data = {
@@ -462,9 +455,7 @@ async def create_subtask(
         "description": payload.description,
         "job_type": None,
         "assigned_to": None,
-        "agent_id": (
-            str(parent_row.get("agent_id")) if parent_row.get("agent_id") else None
-        ),
+        "agent_id": (str(parent_row.get("agent_id")) if parent_row.get("agent_id") else None),
         "priority": payload.priority,
         "scopes": parent_scope_names or ["public"],
         "parent_job_id": job_id,

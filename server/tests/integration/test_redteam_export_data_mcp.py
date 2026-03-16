@@ -60,9 +60,7 @@ async def _make_entity(db_pool, enums, *, name: str) -> dict:
     return dict(row)
 
 
-async def _make_job(
-    db_pool, enums, *, title: str, agent_id: str, scopes: list[str]
-) -> dict:
+async def _make_job(db_pool, enums, *, title: str, agent_id: str, scopes: list[str]) -> dict:
     """Create a job row with explicit scopes and return dict payload."""
 
     row = await db_pool.fetchrow(
@@ -149,14 +147,10 @@ def _as_dict(value):
 
 
 @pytest.mark.asyncio
-async def test_mcp_export_relationships_filters_properties_context_segments(
-    db_pool, enums
-):
+async def test_mcp_export_relationships_filters_properties_context_segments(db_pool, enums):
     """MCP relationships export should hide sensitive segments from public-only agents."""
 
-    viewer = await _make_agent(
-        db_pool, enums, name="mcp-export-viewer", scopes=["public"]
-    )
+    viewer = await _make_agent(db_pool, enums, name="mcp-export-viewer", scopes=["public"])
     source = await _make_entity(db_pool, enums, name="Export Src")
     target = await _make_entity(db_pool, enums, name="Export Dst")
     rel = await _make_relationship_with_segments(
@@ -187,9 +181,7 @@ async def test_mcp_export_relationships_filters_properties_context_segments(
 async def test_mcp_export_relationships_properties_payload_is_object(db_pool, enums):
     """MCP relationships export should return properties as structured object."""
 
-    viewer = await _make_agent(
-        db_pool, enums, name="mcp-export-viewer-type", scopes=["public"]
-    )
+    viewer = await _make_agent(db_pool, enums, name="mcp-export-viewer-type", scopes=["public"])
     source = await _make_entity(db_pool, enums, name="Export Type Src")
     target = await _make_entity(db_pool, enums, name="Export Type Dst")
     rel = await _make_relationship_with_segments(
@@ -207,22 +199,16 @@ async def test_mcp_export_relationships_properties_payload_is_object(db_pool, en
         ),
         _ctx(db_pool, enums, viewer),
     )
-    row = next(
-        (item for item in result["items"] if str(item["id"]) == str(rel["id"])), None
-    )
+    row = next((item for item in result["items"] if str(item["id"]) == str(rel["id"])), None)
     assert row is not None
     assert isinstance(row.get("properties"), dict)
 
 
 @pytest.mark.asyncio
-async def test_mcp_export_snapshot_filters_relationship_properties_context_segments(
-    db_pool, enums
-):
+async def test_mcp_export_snapshot_filters_relationship_properties_context_segments(db_pool, enums):
     """Snapshot export should hide sensitive relationship segments for public agents."""
 
-    viewer = await _make_agent(
-        db_pool, enums, name="mcp-snapshot-viewer", scopes=["public"]
-    )
+    viewer = await _make_agent(db_pool, enums, name="mcp-snapshot-viewer", scopes=["public"])
     source = await _make_entity(db_pool, enums, name="Snapshot Src")
     target = await _make_entity(db_pool, enums, name="Snapshot Dst")
     rel = await _make_relationship_with_segments(
@@ -246,14 +232,10 @@ async def test_mcp_export_snapshot_filters_relationship_properties_context_segme
 
 
 @pytest.mark.asyncio
-async def test_mcp_export_snapshot_relationship_properties_payload_is_object(
-    db_pool, enums
-):
+async def test_mcp_export_snapshot_relationship_properties_payload_is_object(db_pool, enums):
     """Snapshot export should return relationship properties as structured object."""
 
-    viewer = await _make_agent(
-        db_pool, enums, name="mcp-snapshot-viewer-type", scopes=["public"]
-    )
+    viewer = await _make_agent(db_pool, enums, name="mcp-snapshot-viewer-type", scopes=["public"])
     source = await _make_entity(db_pool, enums, name="Snapshot Type Src")
     target = await _make_entity(db_pool, enums, name="Snapshot Type Dst")
     rel = await _make_relationship_with_segments(
@@ -268,11 +250,7 @@ async def test_mcp_export_snapshot_relationship_properties_payload_is_object(
         _ctx(db_pool, enums, viewer),
     )
     row = next(
-        (
-            item
-            for item in result["items"]["relationships"]
-            if str(item["id"]) == str(rel["id"])
-        ),
+        (item for item in result["items"]["relationships"] if str(item["id"]) == str(rel["id"])),
         None,
     )
     assert row is not None
@@ -283,12 +261,8 @@ async def test_mcp_export_snapshot_relationship_properties_payload_is_object(
 async def test_mcp_export_relationships_hides_out_of_scope_job_links(db_pool, enums):
     """Relationships export should not include links to private jobs."""
 
-    owner = await _make_agent(
-        db_pool, enums, name="mcp-export-job-owner", scopes=["public"]
-    )
-    viewer = await _make_agent(
-        db_pool, enums, name="mcp-export-job-viewer", scopes=["public"]
-    )
+    owner = await _make_agent(db_pool, enums, name="mcp-export-job-owner", scopes=["public"])
+    viewer = await _make_agent(db_pool, enums, name="mcp-export-job-viewer", scopes=["public"])
     entity = await _make_entity(db_pool, enums, name="MCP Export Job Entity")
     private_job = await _make_job(
         db_pool,
@@ -322,12 +296,8 @@ async def test_mcp_export_relationships_hides_out_of_scope_job_links(db_pool, en
 async def test_mcp_export_snapshot_hides_out_of_scope_job_links(db_pool, enums):
     """Snapshot export should not include links to private jobs."""
 
-    owner = await _make_agent(
-        db_pool, enums, name="mcp-snapshot-job-owner", scopes=["public"]
-    )
-    viewer = await _make_agent(
-        db_pool, enums, name="mcp-snapshot-job-viewer", scopes=["public"]
-    )
+    owner = await _make_agent(db_pool, enums, name="mcp-snapshot-job-owner", scopes=["public"])
+    viewer = await _make_agent(db_pool, enums, name="mcp-snapshot-job-viewer", scopes=["public"])
     entity = await _make_entity(db_pool, enums, name="MCP Snapshot Job Entity")
     private_job = await _make_job(
         db_pool,
