@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/github/actions/workflow/status/gravitrone/nebula-core/ci.yml?branch=main&style=for-the-badge&label=CI" alt="CI">
 </p>
 
-## 🚀 About
+## 🚀 Overview
 
 Just as developers use GitHub to collaborate on code, agents need Nebula to coordinate context.  
 Nebula is **Git for agent context & tasks** - a secure system of record with scopes, approvals, audit trails, and rollback.  
