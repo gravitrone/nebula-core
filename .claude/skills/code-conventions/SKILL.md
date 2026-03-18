@@ -38,7 +38,7 @@ Do not add section comments (`# Standard Library`, etc.) - ruff handles the orde
 
 ### Section Separators
 
-Use dashed lines for major code sections:
+Use dashed comments for major code sections. Section names use proper capitalization:
 
 ```python
 

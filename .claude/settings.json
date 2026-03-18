@@ -7,21 +7,25 @@
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
-        "command": "cd /Users/alxx/Code/Gravitrone/Nebula/nebula-core && bash scripts/post-edit-format.sh \"$CLAUDE_FILE_PATH\""
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/alxx/Code/Gravitrone/Nebula/nebula-core && bash scripts/post-edit-format.sh \"$CLAUDE_FILE_PATH\""
+          }
+        ]
       }
     ]
   },
   "permissions": {
     "deny": [
-      "pip install",
-      "pip3 install",
-      "python -m pip",
-      "npm",
-      "yarn",
-      "pnpm",
-      "git push --force",
-      "git reset --hard",
-      "rm -rf database/data"
+      "Bash(pip install*)",
+      "Bash(pip3 install*)",
+      "Bash(python -m pip*)",
+      "Bash(npm *)",
+      "Bash(yarn *)",
+      "Bash(pnpm *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)"
     ]
   }
 }
