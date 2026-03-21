@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/bubbles/v2/help"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
@@ -101,6 +102,8 @@ type App struct {
 	lastErrCode       string
 	lastErrMsg        string
 	helpOpen          bool
+	helpModel         help.Model
+	keys              KeyMap
 	quitConfirm       bool
 	showRecoveryHints bool
 	recoveryCommand   string
@@ -179,6 +182,8 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 		profile:        NewProfileModel(client, cfg),
 		impex:          NewImportExportModel(client),
 	}
+	app.keys = DefaultKeyMap()
+	app.helpModel = newHelpModel()
 	app.bodyViewKey = app.viewStateKey()
 	return app
 }
@@ -203,6 +208,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width = msg.Width
 		a.height = msg.Height
+		a.helpModel.SetWidth(msg.Width)
 		a.inbox.width = msg.Width
 		a.inbox.height = msg.Height
 		a.entities.width = msg.Width
@@ -1351,21 +1357,14 @@ func (a App) statusHintsForTab() []string {
 	return base
 }
 
-// renderTips renders render tips.
-func (a App) renderTips() string {
-	return ""
-}
-
-// renderHelp renders render help.
+// renderHelp renders the help overlay using the bubbles help component.
 func (a App) renderHelp() string {
-	hints := a.statusHintsForTab()
-	lines := make([]string, 0, len(hints)+2)
-	lines = append(lines, MutedStyle.Render("esc to close"))
-	lines = append(lines, "")
-	for _, hint := range hints {
-		lines = append(lines, "  "+hint)
+	h := a.helpModel
+	h.ShowAll = true
+	if a.width > 4 {
+		h.SetWidth(a.width - 4)
 	}
-	body := strings.Join(lines, "\n")
+	body := MutedStyle.Render("esc to close") + "\n\n" + h.View(a.keys)
 	return components.Indent(components.TitledBox("Help", body, a.width), 1)
 }
 
