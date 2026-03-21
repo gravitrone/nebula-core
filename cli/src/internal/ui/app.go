@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
@@ -540,7 +540,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View handles view.
-func (a App) View() string {
+func (a App) View() tea.View {
 	components.SetTableGridActiveRowsEnabled(a.rowHighlightEnabled())
 	defer components.SetTableGridActiveRowsEnabled(true)
 
@@ -631,7 +631,9 @@ func (a App) View() string {
 		body = body + "\n\n" + feedback
 	}
 
-	return fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints)
+	return tea.View{
+		Content: fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints),
+	}
 }
 
 // rowHighlightEnabled handles row highlight enabled.
