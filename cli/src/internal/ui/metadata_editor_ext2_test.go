@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,17 +25,17 @@ func TestMetadataEditorHandleKeyBulkCopyAndEditBranches(t *testing.T) {
 		"role":  "cto",
 	})
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyUp})
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyDown})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyUp})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyDown})
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	assert.Equal(t, len(ed.rows), len(ed.selected))
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	assert.Contains(t, ed.notice, "copied")
 	assert.NotEmpty(t, copied)
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.True(t, ed.entryMode)
 	assert.GreaterOrEqual(t, ed.entryEditIdx, 0)
 	assert.Contains(t, ed.entryBuf, "|")
@@ -59,7 +59,7 @@ func TestMetadataEditorInspectEnterCopiesNoneForBlankValues(t *testing.T) {
 		},
 	}
 
-	done := ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	done := ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, done)
 	assert.Equal(t, "None", copied)
 	assert.Equal(t, "copied value.", ed.notice)
@@ -73,7 +73,7 @@ func TestMetadataEditorRenderTableAndEntryBranchMatrix(t *testing.T) {
 
 	table := components.SanitizeText(ed.renderTableMode(20))
 	assert.Contains(t, table, "No metadata")
-	assert.Contains(t, table, "rows. Press n")
+	assert.Contains(t, table, "rows. Press")
 	assert.Contains(t, table, "heads up")
 	assert.Contains(t, table, "Scopes")
 

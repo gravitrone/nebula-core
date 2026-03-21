@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,13 +71,13 @@ func TestEntitiesUpdateDispatchAdditionalBranches(t *testing.T) {
 func TestEntitiesUpdateKeyDispatchWithEditView(t *testing.T) {
 	model := NewEntitiesModel(nil)
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 
 	updated.view = entitiesViewEdit
 	updated.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Status: "active", Type: "person"}
 	updated.startEdit()
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewDetail, updated.view)
 }

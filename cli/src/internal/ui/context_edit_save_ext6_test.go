@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,12 +16,12 @@ func TestContextHandleListKeysFilteringDispatchAndTopUpFocus(t *testing.T) {
 	model.list.SetItems([]string{"Alpha"})
 
 	model.filtering = true
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 
 	updated.modeFocus = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 }

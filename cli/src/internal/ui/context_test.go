@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,7 +59,7 @@ func TestContextLinkSearchAddsEntity(t *testing.T) {
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
 	model.linkList.SetItems([]string{"Alpha"})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.Len(t, model.linkEntities, 1)
 	assert.False(t, model.linkSearching)
@@ -79,7 +79,7 @@ func TestContextLinkSearchCommand(t *testing.T) {
 	model.linkSearching = true
 	model.linkQuery = ""
 
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -162,7 +162,7 @@ func TestContextListEnterShowsDetail(t *testing.T) {
 	}
 	model.list.SetItems([]string{formatContextLine(model.items[0])})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	require.NotNil(t, model.detail)
 	assert.Equal(t, "k-1", model.detail.ID)
@@ -178,7 +178,7 @@ func TestContextListEnterRejectsMissingID(t *testing.T) {
 	}
 	model.list.SetItems([]string{formatContextLine(model.items[0])})
 
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	require.NotNil(t, cmd)
 	msg := cmd()

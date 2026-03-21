@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -94,7 +94,7 @@ func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 	model.createTarget = &relationshipCreateCandidate{ID: "job-2", NodeType: "job", Kind: "job/high"}
 	model.createType = "uses"
 
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -139,7 +139,7 @@ func TestRelationshipsCreateLiveSearch(t *testing.T) {
 	model := NewRelationshipsModel(client)
 	model.view = relsViewCreateSourceSearch
 
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -157,7 +157,7 @@ func TestRelationshipTypeSuggestions(t *testing.T) {
 	model.typeOptions = []string{"works-on", "created-by"}
 	model.view = relsViewCreateType
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	require.NotEmpty(t, model.createTypeResults)
 	assert.Equal(t, "works-on", model.createTypeResults[0])
 }
@@ -228,14 +228,14 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 	require.Len(t, model.items, 1)
 
 	// Enter detail.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, relsViewDetail, model.view)
 
 	// Open archive confirm and accept.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	assert.Equal(t, relsViewConfirm, model.view)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	model = applyMsg(model, cmd())
 	require.True(t, patched)
@@ -270,10 +270,10 @@ func TestRelationshipsModeFocusTogglesToAddFlow(t *testing.T) {
 	}
 
 	// Focus mode line from list selection 0, then toggle into add flow.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.modeFocus)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, model.modeFocus)
 	assert.True(t, model.isAddView())
 	assert.Equal(t, relsViewCreateSourceSearch, model.view)
@@ -345,32 +345,32 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	}
 
 	// Start create flow.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	assert.Equal(t, relsViewCreateSourceSearch, model.view)
 
 	// Type query to filter from cache.
 	for _, r := range "al" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	require.NotEmpty(t, model.createResults)
 
 	// Select source.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, relsViewCreateTargetSearch, model.view)
 
 	// Type query and select target.
 	for _, r := range "be" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	require.NotEmpty(t, model.createResults)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, relsViewCreateType, model.view)
 
 	// Type relationship type and submit.
 	for _, r := range "knows" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	model = applyMsg(model, cmd())
 
@@ -453,7 +453,7 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 	editOut := components.SanitizeText(model.renderEdit())
 	assert.Contains(t, editOut, "Status")
 
-	model, _ = model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	model, _ = model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	assert.NotEqual(t, -1, model.editStatusIdx)
 
 	model.editMeta.Load(map[string]any{"note": "updated"})

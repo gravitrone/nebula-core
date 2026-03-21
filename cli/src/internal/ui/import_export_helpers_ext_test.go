@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,30 +17,30 @@ func TestImportExportHandleResourceAndFormatKeysMatrix(t *testing.T) {
 	m := NewImportExportModel(nil)
 	m.Start(importMode)
 
-	updated, cmd := m.handleResourceKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := m.handleResourceKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.resourceIndex)
 
 	updated.resourceIndex = len(updated.resources) - 1
-	updated, _ = updated.handleResourceKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ = updated.handleResourceKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, len(updated.resources)-1, updated.resourceIndex)
 
-	updated, _ = updated.handleResourceKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleResourceKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, len(updated.resources)-2, updated.resourceIndex)
 
-	updated, _ = updated.handleResourceKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleResourceKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepFormat, updated.step)
 
-	updated, _ = updated.handleFormatKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ = updated.handleFormatKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, updated.formatIndex)
-	updated, _ = updated.handleFormatKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleFormatKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, updated.formatIndex)
-	updated, _ = updated.handleFormatKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleFormatKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepPath, updated.step)
-	updated, _ = updated.handleFormatKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleFormatKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, stepResource, updated.step)
 
-	m, _ = m.handleResourceKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	m, _ = m.handleResourceKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.True(t, m.closed)
 }
 
@@ -49,18 +49,18 @@ func TestImportExportHandlePathKeysMatrix(t *testing.T) {
 	m.Start(importMode)
 	m.step = stepPath
 
-	updated, cmd := m.handlePathKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.handlePathKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.Equal(t, stepPath, updated.step)
 
-	updated, _ = updated.handlePathKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
-	updated, _ = updated.handlePathKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	assert.Equal(t, "ab", updated.path)
 
-	updated, _ = updated.handlePathKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "a", updated.path)
 
-	updated, _ = updated.handlePathKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, stepFormat, updated.step)
 }
 

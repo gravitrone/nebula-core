@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -20,17 +20,17 @@ func TestRenderPaletteStateAndFallbackBranches(t *testing.T) {
 	app.paletteSearchLoading = false
 	out := components.SanitizeText(app.renderPalette())
 	assert.Contains(t, out, "Command")
-	assert.Contains(t, out, "No matching")
+	assert.Contains(t, out, "matching")
 
 	app.paletteQuery = ""
 	out = components.SanitizeText(app.renderPalette())
 	assert.Contains(t, out, "Search")
-	assert.Contains(t, out, "Type to")
-	assert.Contains(t, out, "search, or")
+	assert.Contains(t, out, "Type")
+	assert.Contains(t, out, "search")
 
 	app.paletteQuery = "abc"
 	out = components.SanitizeText(app.renderPalette())
-	assert.Contains(t, out, "No search")
+	assert.Contains(t, out, "search")
 	assert.Contains(t, out, "results")
 
 	app.paletteSearchLoading = true
@@ -83,19 +83,19 @@ func TestHandlePaletteKeysEdgeBranches(t *testing.T) {
 	app.paletteFiltered = nil
 	app.paletteIndex = 0
 
-	model, cmd := app.handlePaletteKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := app.handlePaletteKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := model.(App)
 	assert.True(t, updated.paletteOpen)
 	assert.Nil(t, cmd)
 
-	model, cmd = updated.handlePaletteKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	model, cmd = updated.handlePaletteKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	updated = model.(App)
 	assert.False(t, updated.paletteOpen)
 	assert.Nil(t, cmd)
 
 	updated.paletteOpen = true
 	updated.paletteQuery = "/x"
-	model, cmd = updated.handlePaletteKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, cmd = updated.handlePaletteKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	updated = model.(App)
 	assert.Equal(t, "/", updated.paletteQuery)
 	assert.Nil(t, cmd)

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -64,11 +64,11 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 	assert.Contains(t, clean, "Library")
 
 	// Type "a" to trigger search suggest.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.Equal(t, "Alpha.txt", model.searchSuggest)
 
 	// Tab should complete to suggestion.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "Alpha.txt", model.searchBuf)
 }
 
@@ -167,8 +167,8 @@ func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 	model, _ = model.Update(filesLoadedMsg{items: []api.File{}})
 
 	// Enter add view.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, filesViewAdd, model.view)
 
 	// Render add form (coverage for renderAdd + helpers).
@@ -176,27 +176,27 @@ func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 
 	// Filename.
 	for _, r := range "Alpha.txt" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	// Path.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	for _, r := range "/tmp/alpha.txt" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	// Tags.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	for _, r := range "docs" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // commit tag
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // commit tag
 	assert.Contains(t, model.addTags, "docs")
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -205,7 +205,7 @@ func TestFilesAddFlowRendersAndResetsOnEscAfterSave(t *testing.T) {
 	assert.True(t, model.addSaved)
 
 	// Esc should reset add state.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.addSaved)
 	assert.Empty(t, model.addName)
 	assert.Empty(t, model.addPath)
@@ -231,9 +231,9 @@ func TestFilesEditViewCommitsTagsAndRenders(t *testing.T) {
 	// Move focus to tags field.
 	model.editFocus = fileFieldTags
 	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Contains(t, model.editTags, "alpha")
 
 	out := model.View()

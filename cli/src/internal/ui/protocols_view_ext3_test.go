@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -64,13 +64,13 @@ func TestProtocolsHandleDetailKeysEditAndBackPaths(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewEdit, updated.view)
 	assert.Equal(t, "Alpha", updated.editFields[protoEditFieldTitle].value)
 	assert.Equal(t, "rules", updated.editFields[protoEditFieldContent].value)
 
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewList, updated.view)
 	assert.Nil(t, updated.detail)

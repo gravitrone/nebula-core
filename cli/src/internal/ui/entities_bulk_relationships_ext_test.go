@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -73,29 +73,29 @@ func TestEntitiesHandleBulkPromptKeysBranchMatrix(t *testing.T) {
 	model.bulkPrompt = "bulk tags"
 	model.bulkBuf = "abc"
 
-	updated, cmd := model.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := model.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.bulkPrompt)
 	assert.Equal(t, "", updated.bulkBuf)
 
 	updated.bulkBuf = "ab"
-	updated, cmd = updated.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.bulkBuf)
 
 	updated.bulkBuf = "abc"
-	updated, cmd = updated.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.bulkBuf)
 
-	updated, cmd = updated.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "x", updated.bulkBuf)
-	updated, _ = updated.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "x ", updated.bulkBuf)
 
 	updated.bulkBuf = "   "
-	_, cmd = updated.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	em, ok := msg.(errMsg)
@@ -103,7 +103,7 @@ func TestEntitiesHandleBulkPromptKeysBranchMatrix(t *testing.T) {
 	require.Error(t, em.err)
 
 	updated.bulkBuf = "add:"
-	_, cmd = updated.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	em, ok = msg.(errMsg)
@@ -119,7 +119,7 @@ func TestEntitiesHandleBulkPromptKeysRoutesToTagsAndScopes(t *testing.T) {
 	model.bulkBuf = "set:alpha,beta"
 	model.bulkTarget = bulkTargetTags
 
-	updated, cmd := model.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "", updated.bulkPrompt)
 	assert.Equal(t, "", updated.bulkBuf)
@@ -128,7 +128,7 @@ func TestEntitiesHandleBulkPromptKeysRoutesToTagsAndScopes(t *testing.T) {
 	model.bulkPrompt = "bulk scopes"
 	model.bulkBuf = "set:public,private"
 	model.bulkTarget = bulkTargetScopes
-	updated, cmd = model.handleBulkPromptKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.bulkRunning)
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -239,19 +239,19 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 
 	// Type selector branches.
 	model.focus = fieldType
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.True(t, updated.typeSelecting)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.typeIdx)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.typeIdx)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.False(t, updated.typeSelecting)
 
@@ -259,66 +259,66 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 	updated.focus = fieldScopes
 	updated.scopeOptions = []string{"public", "private"}
 	updated.scopeSelecting = true
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.scopeIdx)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, []string{"private"}, updated.scopes)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.scopeIdx)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.scopeSelecting)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.True(t, updated.scopeSelecting)
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.scopeSelecting)
 
 	// Tags commit + typing branches.
 	updated.focus = fieldTags
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "A", updated.tagBuf)
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: ',', Text: ","})
 	require.Nil(t, cmd)
 	assert.Equal(t, []string{"a"}, updated.tags)
 	assert.Equal(t, "", updated.tagBuf)
 
 	// Backspace branches for tags/scopes/entities/default fields.
 	updated.tags = []string{"a", "b"}
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, []string{"a"}, updated.tags)
 
 	updated.focus = fieldScopes
 	updated.scopes = []string{"public"}
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Empty(t, updated.scopes)
 
 	updated.focus = fieldEntities
 	updated.linkEntities = []api.Entity{{ID: "ent-1"}}
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Empty(t, updated.linkEntities)
 
 	updated.focus = fieldTitle
 	updated.fields[fieldTitle].value = "abc"
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "ab", updated.fields[fieldTitle].value)
 
 	// Entities enter opens search mode.
 	updated.focus = fieldEntities
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkSearching)
 
@@ -326,7 +326,7 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 	updated.focus = fieldEntities
 	updated.linkSearching = false
 	updated.linkQuery = ""
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.linkSearching)
 	assert.Equal(t, "x", updated.linkQuery)
@@ -334,30 +334,30 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 	// Global navigation + reset + save branches.
 	updated.linkSearching = false
 	updated.focus = fieldTitle
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, fieldURL, updated.focus)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, fieldTitle, updated.focus)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "ab", updated.fields[fieldTitle].value)
 	assert.False(t, updated.modeFocus)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.fields[fieldTitle].value)
 	assert.False(t, updated.modeFocus)
 
 	updated.fields[fieldTitle].value = ""
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "Title is required", updated.errText)
 }

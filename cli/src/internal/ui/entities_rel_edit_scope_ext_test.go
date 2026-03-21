@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -214,39 +214,39 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	assert.Equal(t, "", strings.TrimSpace(model.relEditBuf))
 
 	// Status selector branches.
-	updated, cmd := model.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.relEditStatusIdx)
 
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, 0, updated.relEditStatusIdx)
 
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, 1, updated.relEditStatusIdx)
 
 	// Focus movement and properties input.
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, relEditFieldProperties, updated.relEditFocus)
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
 	updated.relEditFocus = relEditFieldProperties
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
 
 	updated.relEditFocus = relEditFieldProperties
 	updated.relEditBuf = "a"
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.relEditBuf)
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'{'}})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: '{', Text: "{"})
 	assert.Equal(t, "{", updated.relEditBuf)
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "{ ", updated.relEditBuf)
 
 	// Save invalid JSON branch.
 	updated.relEditBuf = "{"
-	updated, cmd = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.handleRelEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.NotEmpty(t, updated.errText)
 
@@ -254,7 +254,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	updated.errText = ""
 	updated.relEditStatusIdx = 0
 	updated.relEditBuf = `{"note":"ok"}`
-	updated, cmd = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.handleRelEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	relMsg, ok := msg.(relationshipUpdatedMsg)
@@ -265,7 +265,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 
 	// Back exits to relationships view.
 	updated.view = entitiesViewRelEdit
-	updated, _ = updated.handleRelEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, entitiesViewRelationships, updated.view)
 }
 
@@ -316,7 +316,7 @@ func TestEntitiesHandleRelationshipsKeysBranchMatrix(t *testing.T) {
 	model.view = entitiesViewRelationships
 
 	// Back key exits relationship detail.
-	next, cmd := model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	next, cmd := model.handleRelationshipsKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewDetail, next.view)
 
@@ -327,7 +327,7 @@ func TestEntitiesHandleRelationshipsKeysBranchMatrix(t *testing.T) {
 	model.relateTarget = &api.Entity{ID: "ent-y"}
 	model.relateType = "knows"
 	model.relateLoading = true
-	next, cmd = model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelateSearch, next.view)
 	assert.Equal(t, "", next.relateQuery)
@@ -344,34 +344,34 @@ func TestEntitiesHandleRelationshipsKeysBranchMatrix(t *testing.T) {
 	}
 	model.relList.SetItems([]string{"uses", "depends-on"})
 	model.relList.Cursor = 0
-	next, _ = model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyDown})
+	next, _ = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, next.relList.Selected())
-	next, _ = next.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyUp})
+	next, _ = next.handleRelationshipsKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, next.relList.Selected())
 
 	// Edit with invalid selection remains in relationships view.
 	model.view = entitiesViewRelationships
 	model.relList.Cursor = 99
-	next, cmd = model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelationships, next.view)
 
 	// Delete with invalid selection remains in relationships view.
-	next, cmd = model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelationships, next.view)
 	assert.Equal(t, "", next.confirmKind)
 
 	// Edit with valid relationship enters edit view.
 	model.relList.Cursor = 0
-	next, cmd = model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelEdit, next.view)
 	assert.Equal(t, "rel-1", next.relEditID)
 
 	// Delete with valid relationship opens confirm flow.
 	model.view = entitiesViewRelationships
-	next, cmd = model.handleRelationshipsKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewConfirm, next.view)
 	assert.Equal(t, "rel-archive", next.confirmKind)

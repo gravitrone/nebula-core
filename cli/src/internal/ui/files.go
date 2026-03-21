@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -192,7 +192,7 @@ func (m FilesModel) Update(msg tea.Msg) (FilesModel, tea.Cmd) {
 		m.editSaving = false
 		m.errText = msg.err.Error()
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.addMeta.Active {
 			m.addMeta.HandleKey(msg)
 			return m, nil
@@ -268,7 +268,7 @@ func (m FilesModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m FilesModel) handleModeKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
+func (m FilesModel) handleModeKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -467,7 +467,7 @@ func (m FilesModel) renderFilePreview(f api.File, width int) string {
 }
 
 // handleListKeys handles handle list keys.
-func (m FilesModel) handleListKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
+func (m FilesModel) handleListKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
 	}
@@ -514,8 +514,8 @@ func (m FilesModel) handleListKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 			m.applyFileSearch()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 {
+		ch := keyText(msg)
+		if ch != "" {
 			m.searchBuf += ch
 			m.applyFileSearch()
 		}
@@ -524,7 +524,7 @@ func (m FilesModel) handleListKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 }
 
 // handleFilterInput handles handle filter input.
-func (m FilesModel) handleFilterInput(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
+func (m FilesModel) handleFilterInput(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -539,8 +539,8 @@ func (m FilesModel) handleFilterInput(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 			m.applyFileSearch()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if ch == " " && m.searchBuf == "" {
 				return m, nil
 			}
@@ -553,7 +553,7 @@ func (m FilesModel) handleFilterInput(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 
 // --- Detail View ---
 
-func (m FilesModel) handleDetailKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
+func (m FilesModel) handleDetailKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	switch {
 	case isUp(msg):
 		m.modeFocus = true
@@ -625,7 +625,7 @@ func (m FilesModel) loadDetailRelationships(fileID string) tea.Cmd {
 
 // --- Add View ---
 
-func (m FilesModel) handleAddKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
+func (m FilesModel) handleAddKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
 	}
@@ -695,8 +695,8 @@ func (m FilesModel) handleAddKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitAddTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.addTagBuf += ch
 				}
 			}
@@ -900,7 +900,7 @@ func (m *FilesModel) startEdit() {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m FilesModel) handleEditKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
+func (m FilesModel) handleEditKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -957,8 +957,8 @@ func (m FilesModel) handleEditKeys(msg tea.KeyMsg) (FilesModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.editTagBuf += ch
 				}
 			}
@@ -1229,9 +1229,9 @@ func formatFileSize(size int64) string {
 }
 
 // appendChar handles append char.
-func appendChar(target *string, msg tea.KeyMsg) {
-	ch := msg.String()
-	if len(ch) == 1 || ch == " " {
+func appendChar(target *string, msg tea.KeyPressMsg) {
+	ch := keyText(msg)
+	if ch != "" {
 		*target += ch
 	}
 }

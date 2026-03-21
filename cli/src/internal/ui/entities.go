@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -376,7 +376,7 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 		m.errText = msg.err.Error()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch m.view {
 		case entitiesViewAdd:
 			return m.handleAddKeys(msg)
@@ -465,7 +465,7 @@ func (m EntitiesModel) View() string {
 
 // --- List View ---
 
-func (m EntitiesModel) handleListKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	if m.bulkPrompt != "" {
 		return m.handleBulkPromptKeys(msg)
 	}
@@ -555,8 +555,8 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			return m, nil
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 {
+		ch := keyText(msg)
+		if ch != "" {
 			m.searchBuf += ch
 			m.loading = true
 			return m, m.loadEntities(strings.TrimSpace(m.searchBuf))
@@ -566,7 +566,7 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 }
 
 // handleFilterInput handles handle filter input.
-func (m EntitiesModel) handleFilterInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleFilterInput(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -924,7 +924,7 @@ func (m EntitiesModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m EntitiesModel) handleModeKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleModeKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -955,7 +955,7 @@ func (m EntitiesModel) toggleMode() (EntitiesModel, tea.Cmd) {
 
 // --- Add View ---
 
-func (m EntitiesModel) handleAddKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleAddKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
 	}
@@ -1046,8 +1046,8 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitAddTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.addTagBuf += ch
 				}
 			}
@@ -1056,8 +1056,8 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 				m.addScopeSelecting = true
 			}
 		default:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				m.addFields[m.addFocus].value += ch
 			}
 		}
@@ -1529,7 +1529,7 @@ func (m *EntitiesModel) bulkSelectedIDs() []string {
 }
 
 // handleBulkPromptKeys handles handle bulk prompt keys.
-func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.bulkPrompt = ""
@@ -1556,8 +1556,8 @@ func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyMsg) (EntitiesModel, tea.
 	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
 		m.bulkBuf = ""
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			m.bulkBuf += ch
 		}
 	}
@@ -1618,7 +1618,7 @@ func (m EntitiesModel) bulkUpdateScopes(spec bulkInput) tea.Cmd {
 
 // --- Search ---
 
-func (m EntitiesModel) handleSearchInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleSearchInput(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.view = entitiesViewList
@@ -1634,8 +1634,8 @@ func (m EntitiesModel) handleSearchInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.searchBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.searchBuf += ch
 		}
 	}
 	return m, nil
@@ -1643,7 +1643,7 @@ func (m EntitiesModel) handleSearchInput(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 
 // --- Detail ---
 
-func (m EntitiesModel) handleDetailKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleDetailKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	if m.contextLinking || m.contextCreating {
 		return m.handleContextPromptKeys(msg)
 	}
@@ -1684,7 +1684,7 @@ func (m EntitiesModel) handleDetailKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd)
 	return m, nil
 }
 
-func (m EntitiesModel) handleContextPromptKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleContextPromptKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.contextLinking = false
@@ -1728,8 +1728,8 @@ func (m EntitiesModel) handleContextPromptKeys(msg tea.KeyMsg) (EntitiesModel, t
 			m.contextCreateBuf = ""
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if m.contextLinking {
 				m.contextLinkBuf += ch
 			}
@@ -1817,7 +1817,7 @@ func (m EntitiesModel) loadScopeNames() tea.Cmd {
 }
 
 // handleHistoryKeys handles handle history keys.
-func (m EntitiesModel) handleHistoryKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleHistoryKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.view = entitiesViewDetail
@@ -1994,7 +1994,7 @@ func (m *EntitiesModel) startEdit() {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleEditKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -2057,8 +2057,8 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.editTagBuf += ch
 				}
 			}
@@ -2260,7 +2260,7 @@ func (m EntitiesModel) renderEditTags(focused bool) string {
 
 // --- Confirm ---
 
-func (m EntitiesModel) handleConfirmKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleConfirmKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
 		switch m.confirmKind {
@@ -2425,7 +2425,7 @@ func firstNonEmpty(values ...string) string {
 
 // --- Relationships ---
 
-func (m EntitiesModel) handleRelationshipsKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleRelationshipsKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.view = entitiesViewDetail
@@ -2501,7 +2501,7 @@ func (m *EntitiesModel) startRelate() {
 }
 
 // handleRelateKeys handles handle relate keys.
-func (m EntitiesModel) handleRelateKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch m.view {
 	case entitiesViewRelateSearch:
 		switch {
@@ -2520,8 +2520,8 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd)
 				m.relateQuery = m.relateQuery[:len(m.relateQuery)-1]
 			}
 		default:
-			if len(msg.String()) == 1 || msg.String() == " " {
-				m.relateQuery += msg.String()
+			if ch := keyText(msg); ch != "" {
+				m.relateQuery += ch
 			}
 		}
 	case entitiesViewRelateSelect:
@@ -2560,8 +2560,8 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd)
 				m.relateType = m.relateType[:len(m.relateType)-1]
 			}
 		default:
-			if len(msg.String()) == 1 || msg.String() == " " {
-				m.relateType += msg.String()
+			if ch := keyText(msg); ch != "" {
+				m.relateType += ch
 			}
 		}
 	}
@@ -2721,7 +2721,7 @@ func (m *EntitiesModel) startRelEdit() {
 }
 
 // handleRelEditKeys handles handle rel edit keys.
-func (m EntitiesModel) handleRelEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd) {
+func (m EntitiesModel) handleRelEditKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.relEditFocus = (m.relEditFocus + 1) % relEditFieldCount
@@ -2747,8 +2747,8 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyMsg) (EntitiesModel, tea.Cmd
 				m.relEditStatusIdx = (m.relEditStatusIdx + 1) % len(relationshipStatusOptions)
 			}
 		case relEditFieldProperties:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				m.relEditBuf += ch
 			}
 		}

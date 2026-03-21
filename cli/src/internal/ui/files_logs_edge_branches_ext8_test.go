@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +42,7 @@ func TestFilesHandleAddKeysNameBackspaceBranch(t *testing.T) {
 	model.addFocus = fileFieldName
 	model.addName = "ab"
 
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.addName)
 }
@@ -110,19 +110,19 @@ func TestLogsHandleAddKeysUpBackAndDefaultBackspaceBranches(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.addFocus = logFieldTimestamp
 
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, logFieldType, updated.addFocus)
 
 	updated.addType = "event"
 	updated.addTagBuf = "tmp"
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.addType)
 	assert.Equal(t, "", updated.addTagBuf)
 
 	updated.addFocus = logFieldMeta
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, logFieldMeta, updated.addFocus)
 }

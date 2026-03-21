@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestJobsHandleAddKeysAdditionalBranches(t *testing.T) {
 
 	// addSaving short-circuit branch
 	model.addSaving = true
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, model.addFocus, updated.addFocus)
 
@@ -25,33 +25,33 @@ func TestJobsHandleAddKeysAdditionalBranches(t *testing.T) {
 
 	// down/up navigation branches while staying in add mode
 	model.addFocus = jobFieldTitle
-	updated, cmd = model.handleAddKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobFieldDescription, updated.addFocus)
 
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobFieldTitle, updated.addFocus)
 
 	// status and priority left-wrap branches
 	model.addFocus = jobFieldStatus
 	model.addStatusIdx = 0
-	updated, _ = model.handleAddKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, len(jobStatusOptions)-1, updated.addStatusIdx)
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.Equal(t, 0, updated.addStatusIdx)
 
 	updated.addFocus = jobFieldPriority
 	updated.addPriorityIdx = 0
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, len(jobPriorityOptions)-1, updated.addPriorityIdx)
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.Equal(t, 0, updated.addPriorityIdx)
 
 	// ctrl+s branch (returns save cmd without executing)
 	updated.addFocus = jobFieldTitle
 	updated.addFields[jobFieldTitle].value = "Ship tests"
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.addSaving)
 
@@ -60,7 +60,7 @@ func TestJobsHandleAddKeysAdditionalBranches(t *testing.T) {
 	updated.addSaved = true
 	updated.addErr = "boom"
 	updated.addFields[jobFieldDescription].value = "desc"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.addSaved)
 	assert.Equal(t, "", updated.addErr)
 	assert.Equal(t, "", updated.addFields[jobFieldDescription].value)
@@ -112,7 +112,7 @@ func TestJobsHandleSubtaskInputNilDetailEnterIsSafe(t *testing.T) {
 	model.detail = nil
 
 	require.NotPanics(t, func() {
-		updated, cmd := model.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, cmd := model.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.False(t, updated.creatingSubtask)
 		assert.Equal(t, "", updated.subtaskBuf)
@@ -159,11 +159,11 @@ func TestJobsHandleEditKeysDownUpNavigationBranches(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1", Status: "pending"}
 	model.startEdit()
 
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobEditFieldDescription, updated.editFocus)
 
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobEditFieldStatus, updated.editFocus)
 }

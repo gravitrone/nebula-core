@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -104,19 +104,19 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 	// Start filtering and type a filter.
 	model.filtering = true
 	for _, r := range "agent:openai" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	assert.Equal(t, "agent:openai", model.filterBuf)
 	assert.Len(t, model.filtered, 1)
 
 	// Enter applies and exits filtering.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, model.filtering)
 	assert.Len(t, model.filtered, 1)
 
 	// Esc clears filter and resets.
 	model.filtering = true
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.filtering)
 	assert.Equal(t, "", model.filterBuf)
 	assert.Len(t, model.filtered, 2)

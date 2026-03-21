@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -60,12 +60,12 @@ func TestProtocolsListToDetailToEditFlow(t *testing.T) {
 	assert.Len(t, model.items, 1)
 
 	// Enter detail
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.detail)
 	assert.Equal(t, protocolsViewDetail, model.view)
 
 	// Enter edit
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, protocolsViewEdit, model.view)
 }
 
@@ -75,7 +75,7 @@ func TestProtocolsAddValidationErrorOnEmpty(t *testing.T) {
 	model := NewProtocolsModel(client)
 	model.view = protocolsViewAdd
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	assert.Equal(t, "Name is required", model.addErr)
 }
 
@@ -156,45 +156,45 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 	model, _ = model.Update(cmd())
 
 	// Enter Add.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	assert.Equal(t, protocolsViewAdd, model.view)
 
 	// Name.
 	for _, r := range "p1" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	// Title.
 	for _, r := range "Protocol 1" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Jump to Applies and Tags, leaving buffers uncommitted so saveAdd() commits them.
 	for i := 0; i < 3; i++ { // Version, Type, Applies To
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	assert.Equal(t, protoFieldApplies, model.addFocus)
 	for _, r := range "entity" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown}) // Status
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown}) // Tags
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // Status
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // Tags
 	assert.Equal(t, protoFieldTags, model.addFocus)
 	for _, r := range "t1" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Content (required).
 	for i := 0; i < 1; i++ { // Content
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	assert.Equal(t, protoFieldContent, model.addFocus)
 	for _, r := range "hello" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Save.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
@@ -247,30 +247,30 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 	model, _ = model.Update(cmd())
 
 	// List -> detail -> edit.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.detail)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, protocolsViewEdit, model.view)
 
 	// Focus Applies To and type buf (commit happens on save).
 	for i := 0; i < protoEditFieldApplies; i++ {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	assert.Equal(t, protoEditFieldApplies, model.editFocus)
 	for _, r := range "entity" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Focus Tags and type buf.
 	for i := model.editFocus; i < protoEditFieldTags; i++ {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	assert.Equal(t, protoEditFieldTags, model.editFocus)
 	for _, r := range "t2" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)

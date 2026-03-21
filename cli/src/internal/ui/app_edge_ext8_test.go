@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,7 +84,7 @@ func TestHandleQuickstartKeysLeftDecrementBranch(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.quickstartStep = 2
 
-	model, cmd := app.handleQuickstartKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	model, cmd := app.handleQuickstartKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	updated := model.(App)
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.quickstartStep)

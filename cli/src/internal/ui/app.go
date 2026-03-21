@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
@@ -378,7 +378,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case searchSelectionMsg:
 		return a.applySearchSelection(msg)
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if a.onboarding {
 			return a.handleOnboardingKeys(msg)
 		}
@@ -540,7 +540,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View handles view.
-func (a App) View() string {
+func (a App) View() tea.View {
 	components.SetTableGridActiveRowsEnabled(a.rowHighlightEnabled())
 	defer components.SetTableGridActiveRowsEnabled(true)
 
@@ -631,7 +631,9 @@ func (a App) View() string {
 		body = body + "\n\n" + feedback
 	}
 
-	return fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints)
+	v := tea.NewView(fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints))
+	v.AltScreen = true
+	return v
 }
 
 // rowHighlightEnabled handles row highlight enabled.
@@ -1546,7 +1548,7 @@ func (a *App) toastCmdForMsg(msg tea.Msg) tea.Cmd {
 }
 
 // handleQuickstartKeys handles handle quickstart keys.
-func (a *App) handleQuickstartKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a *App) handleQuickstartKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		return a.finishQuickstart(true)
@@ -1583,7 +1585,7 @@ func (a *App) handleQuickstartKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handleOnboardingKeys handles handle onboarding keys.
-func (a *App) handleOnboardingKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a *App) handleOnboardingKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if isQuit(msg) {
 		return *a, tea.Quit
 	}
@@ -1607,8 +1609,8 @@ func (a *App) handleOnboardingKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return *a, nil
 	}
-	if msg.Type == tea.KeyRunes {
-		a.onboardingName += msg.String()
+	if ch := keyText(msg); ch != "" {
+		a.onboardingName += ch
 	}
 	return *a, nil
 }
@@ -1843,15 +1845,15 @@ func startupToastCopy(summary startupSummary) (string, string) {
 func startupStatusColor(status string) string {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "ok":
-		return string(ColorSuccess)
+		return "#3f866b"
 	case "checking":
-		return string(ColorMuted)
+		return "#9ba0bf"
 	case "missing", "forbidden", "timeout":
-		return string(ColorWarning)
+		return "#c78854"
 	case "invalid", "down", "failed", "schema_error", "multi_api_conflict":
-		return string(ColorError)
+		return "#6d424b"
 	default:
-		return string(ColorMuted)
+		return "#9ba0bf"
 	}
 }
 
@@ -2115,7 +2117,7 @@ func buildSearchPaletteActions(
 }
 
 // handlePaletteKeys handles handle palette keys.
-func (a App) handlePaletteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a App) handlePaletteKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		a.paletteOpen = false
@@ -2143,8 +2145,8 @@ func (a App) handlePaletteKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return a, a.refreshPaletteFiltered()
 		}
 	default:
-		if msg.Type == tea.KeyRunes && len(msg.Runes) > 0 {
-			a.paletteQuery += string(msg.Runes)
+		if ch := keyText(msg); ch != "" {
+			a.paletteQuery += ch
 			return a, a.refreshPaletteFiltered()
 		}
 	}

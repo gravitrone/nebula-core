@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,28 +59,28 @@ func TestJobsHandleModeKeysAndToggle(t *testing.T) {
 	model.modeFocus = true
 	model.view = jobsViewList
 
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobsViewAdd, updated.view)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.NotNil(t, cmd)
 	assert.Equal(t, jobsViewList, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 }
@@ -90,21 +90,21 @@ func TestJobsHandleAddKeysStatusPriorityBranches(t *testing.T) {
 	model.view = jobsViewAdd
 	model.addFocus = jobFieldStatus
 
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.addStatusIdx)
 
 	updated.addFocus = jobFieldPriority
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	assert.Equal(t, 1, updated.addPriorityIdx)
 
 	updated.addFocus = jobFieldTitle
 	updated.addFields[jobFieldTitle].value = "abc"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "ab", updated.addFields[jobFieldTitle].value)
 
 	updated.addFocus = 0
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, updated.modeFocus)
 }
 
@@ -116,20 +116,20 @@ func TestJobsHandleEditKeysStatusPriorityDescriptionAndBack(t *testing.T) {
 	model.startEdit()
 
 	model.editFocus = jobEditFieldStatus
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.editStatusIdx)
 
 	updated.editFocus = jobEditFieldPriority
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	assert.Equal(t, 1, updated.editPriorityIdx)
 
 	updated.editFocus = jobEditFieldDescription
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Contains(t, updated.editDesc, "x")
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.NotContains(t, updated.editDesc, "x")
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, jobsViewDetail, updated.view)
 }
 
@@ -141,41 +141,41 @@ func TestJobsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	model.startEdit()
 
 	model.editSaving = true
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, model.editFocus, updated.editFocus)
 	assert.True(t, updated.editSaving)
 
 	updated.editSaving = false
 	updated.editFocus = 0
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.editFocus)
 
 	updated.editFocus = jobEditFieldStatus
 	updated.editStatusIdx = 0
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, len(jobStatusOptions)-1, updated.editStatusIdx)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.Equal(t, 0, updated.editStatusIdx)
 
 	updated.editFocus = jobEditFieldPriority
 	updated.editPriorityIdx = 0
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, len(jobPriorityOptions)-1, updated.editPriorityIdx)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.Equal(t, 0, updated.editPriorityIdx)
 
 	updated.editFocus = jobEditFieldDescription
 	updated.editDesc = "x"
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.editDesc)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
 	assert.Equal(t, "z", updated.editDesc)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "z", updated.editDesc)
 
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, jobsViewDetail, updated.view)
 }
 
@@ -184,14 +184,14 @@ func TestJobsHandleStatusInputBranches(t *testing.T) {
 	model.changingSt = true
 	model.statusBuf = "act"
 
-	updated, cmd := model.handleStatusInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "ac", updated.statusBuf)
 
 	updated.statusBuf = "active"
 	updated.statusTargets = nil
 	updated.detail = nil
-	updated, cmd = updated.handleStatusInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.False(t, updated.changingSt)
 	assert.Empty(t, updated.statusBuf)
@@ -215,7 +215,7 @@ func TestJobsHandleStatusInputEnterWithTargetsReturnsCommand(t *testing.T) {
 	model.statusTargets = []string{"job-1"}
 	model.selected = map[string]bool{"job-1": true}
 
-	updated, cmd := model.handleStatusInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(jobStatusUpdatedMsg)
@@ -230,7 +230,7 @@ func TestJobsHandleLinkInputInvalidAndBackspaceBranches(t *testing.T) {
 	model.linkingRel = true
 	model.linkBuf = "entity-only"
 
-	updated, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(errMsg)
@@ -240,7 +240,7 @@ func TestJobsHandleLinkInputInvalidAndBackspaceBranches(t *testing.T) {
 
 	updated.linkingRel = true
 	updated.linkBuf = "ab"
-	updated, cmd = updated.handleLinkInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.linkBuf)
 }
@@ -250,7 +250,7 @@ func TestJobsHandleUnlinkInputNilDetailAndDirectIDBranches(t *testing.T) {
 	model.unlinkingRel = true
 	model.unlinkBuf = "1"
 
-	updated, cmd := model.handleUnlinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.False(t, updated.unlinkingRel)
 	assert.Equal(t, "", updated.unlinkBuf)
@@ -270,7 +270,7 @@ func TestJobsHandleUnlinkInputNilDetailAndDirectIDBranches(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1"}
 	model.unlinkingRel = true
 	model.unlinkBuf = "rel-custom"
-	updated, cmd = model.handleUnlinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(jobRelationshipChangedMsg)

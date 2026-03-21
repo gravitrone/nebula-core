@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,18 +50,18 @@ func TestProtocolsHandleListKeysBranches(t *testing.T) {
 	model.items = []api.Protocol{{ID: "proto-1", Name: "alpha", Title: "Alpha"}, {ID: "proto-2", Name: "beta", Title: "Beta"}}
 	model.list.SetItems([]string{"alpha", "beta"})
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Selected())
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, updated.list.Selected())
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, updated.modeFocus)
 
 	updated.modeFocus = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, protocolsViewDetail, updated.view)
 	require.NotNil(t, updated.detail)
@@ -69,19 +69,19 @@ func TestProtocolsHandleListKeysBranches(t *testing.T) {
 
 	updated.view = protocolsViewList
 	updated.searchBuf = "a"
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	assert.True(t, updated.filtering)
 
 	updated.filtering = false
 	updated.view = protocolsViewList
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, protocolsViewAdd, updated.view)
 
 	updated.view = protocolsViewList
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	assert.Equal(t, protocolsViewAdd, updated.view)
 }
 
@@ -89,21 +89,21 @@ func TestProtocolsHandleFilterInputBranches(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	model.filtering = true
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.searchBuf = "abc"
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.filtering = true
 	updated.searchBuf = "xy"
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "xy", updated.searchBuf)
 }
@@ -113,36 +113,36 @@ func TestProtocolsHandleAddKeysStatusTagsApplyMetadataAndBack(t *testing.T) {
 	model.view = protocolsViewAdd
 	model.addFocus = protoFieldStatus
 
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.addStatusIdx)
 
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, 0, updated.addStatusIdx)
 
 	updated.addFocus = protoFieldTags
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'A', Text: "A"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, []string{"a"}, updated.addTags)
 
 	updated.addFocus = protoFieldApplies
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 't', Text: "t"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, []string{"ent"}, updated.addApplies)
 
 	updated.addFocus = protoFieldMetadata
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.addMeta.Active)
 	updated.addMeta.Active = false
 
 	updated.addFocus = protoFieldName
 	updated.addFields[protoFieldName].value = "ab"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "a", updated.addFields[protoFieldName].value)
 
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, protocolsViewList, updated.view)
 }
 
@@ -154,59 +154,59 @@ func TestProtocolsHandleEditKeysStatusTagsApplyMetadataAndBack(t *testing.T) {
 	model.view = protocolsViewEdit
 
 	model.editFocus = protoEditFieldStatus
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.editStatusIdx)
 
 	updated.editFocus = protoEditFieldTags
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'B'}})
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'B', Text: "B"})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, []string{"b"}, updated.editTags)
 
 	updated.editFocus = protoEditFieldApplies
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, []string{"j"}, updated.editApplies)
 
 	updated.editFocus = protoEditFieldMetadata
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.editMeta.Active)
 	updated.editMeta.Active = false
 
 	updated.editFocus = protoEditFieldTitle
 	updated.editFields[protoEditFieldTitle].value = "ab"
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "a", updated.editFields[protoEditFieldTitle].value)
 
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, protocolsViewDetail, updated.view)
 }
 
 func TestProtocolsTagAndApplyInputHelpers(t *testing.T) {
 	model := NewProtocolsModel(nil)
 
-	updated, cmd := model.handleTagInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}}, true)
+	updated, cmd := model.handleTagInput(tea.KeyPressMsg{Code: 'A', Text: "A"}, true)
 	require.Nil(t, cmd)
 	assert.Equal(t, "A", updated.addTagBuf)
 
-	updated, _ = updated.handleTagInput(tea.KeyMsg{Type: tea.KeyBackspace}, true)
+	updated, _ = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyBackspace}, true)
 	assert.Equal(t, "", updated.addTagBuf)
 
 	updated.addTagBuf = "#Tag"
-	updated, _ = updated.handleTagInput(tea.KeyMsg{Type: tea.KeyEnter}, true)
+	updated, _ = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyEnter}, true)
 	assert.Equal(t, []string{"tag"}, updated.addTags)
 
 	updated.editTagBuf = "edit-tag"
-	updated, _ = updated.handleTagInput(tea.KeyMsg{Type: tea.KeyEnter}, false)
+	updated, _ = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyEnter}, false)
 	assert.Equal(t, []string{"edit-tag"}, updated.editTags)
 
-	updated, _ = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}, true)
+	updated, _ = updated.handleApplyInput(tea.KeyPressMsg{Code: 'e', Text: "e"}, true)
 	assert.Equal(t, "e", updated.addApplyBuf)
-	updated, _ = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyEnter}, true)
+	updated, _ = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyEnter}, true)
 	assert.Equal(t, []string{"e"}, updated.addApplies)
 
 	updated.editApplyBuf = "job"
-	updated, _ = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyEnter}, false)
+	updated, _ = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyEnter}, false)
 	assert.Equal(t, []string{"job"}, updated.editApplies)
 }
 
@@ -242,38 +242,38 @@ func TestProtocolsHandleEditKeysAdditionalBranches(t *testing.T) {
 	model.view = protocolsViewEdit
 
 	model.editSaving = true
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.Equal(t, model, updated)
 
 	model.editSaving = false
 	model.editMeta.Active = true
-	updated, cmd = model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = model.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editMeta.Active)
 
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.editMeta.Active)
 
 	updated.editFocus = protoEditFieldStatus
 	updated.editStatusIdx = 0
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, len(protocolStatusOptions)-1, updated.editStatusIdx)
 
 	updated.editFocus = protoEditFieldTitle
 	updated.editFields[protoEditFieldTitle].value = ""
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.editFields[protoEditFieldTitle].value)
 
 	updated.editFields[protoEditFieldTitle].value = ""
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.editFields[protoEditFieldTitle].value)
 
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editSaving)
 }
@@ -338,35 +338,35 @@ func TestProtocolsHandleApplyInputAdditionalBranches(t *testing.T) {
 	model := NewProtocolsModel(nil)
 
 	model.addApplyBuf = "entity"
-	updated, cmd := model.handleApplyInput(tea.KeyMsg{Type: tea.KeyDelete}, true)
+	updated, cmd := model.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyDelete}, true)
 	require.Nil(t, cmd)
 	assert.Equal(t, "entit", updated.addApplyBuf)
 
 	updated.editApplyBuf = "job"
-	updated, cmd = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyBackspace}, false)
+	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyBackspace}, false)
 	require.Nil(t, cmd)
 	assert.Equal(t, "jo", updated.editApplyBuf)
 
 	updated.addApplyBuf = "context"
-	updated, cmd = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}}, true)
+	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: ',', Text: ","}, true)
 	require.Nil(t, cmd)
 	assert.Contains(t, updated.addApplies, "context")
 	assert.Equal(t, "", updated.addApplyBuf)
 
 	updated.editApplyBuf = "file"
-	updated, cmd = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeySpace}, false)
+	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeySpace}, false)
 	require.Nil(t, cmd)
 	assert.Contains(t, updated.editApplies, "file")
 	assert.Equal(t, "", updated.editApplyBuf)
 
-	updated, cmd = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}}, false)
+	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: 'x', Text: "x"}, false)
 	require.Nil(t, cmd)
 	assert.Equal(t, "x", updated.editApplyBuf)
 
 	// Non-char keys should leave buffers unchanged.
 	beforeAdd := updated.addApplyBuf
 	beforeEdit := updated.editApplyBuf
-	updated, cmd = updated.handleApplyInput(tea.KeyMsg{Type: tea.KeyUp}, true)
+	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyUp}, true)
 	require.Nil(t, cmd)
 	assert.Equal(t, beforeAdd, updated.addApplyBuf)
 	assert.Equal(t, beforeEdit, updated.editApplyBuf)

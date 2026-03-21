@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -255,7 +255,7 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 		m.view = contextViewDetail
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.view == contextViewList {
 			return m.handleListKeys(msg)
 		}
@@ -363,8 +363,8 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 				case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 					m.commitTag()
 				default:
-					ch := msg.String()
-					if len(ch) == 1 && ch != "," {
+					ch := keyText(msg)
+					if ch != "" && ch != "," {
 						m.tagBuf += ch
 					}
 				}
@@ -377,15 +377,15 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 					m.startLinkSearch()
 				}
 			} else if m.focus != fieldType {
-				ch := msg.String()
-				if len(ch) == 1 || ch == " " {
+				ch := keyText(msg)
+				if ch != "" {
 					m.fields[m.focus].value += ch
 				}
 			}
 		}
 		if m.focus == fieldEntities && !m.linkSearching {
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				m.startLinkSearch()
 				m.linkQuery += ch
 				return m, m.updateLinkSearch()
@@ -639,7 +639,7 @@ func (m ContextModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m ContextModel) handleModeKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
+func (m ContextModel) handleModeKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -683,7 +683,7 @@ func (m ContextModel) toggleMode() (ContextModel, tea.Cmd) {
 }
 
 // handleListKeys handles handle list keys.
-func (m ContextModel) handleListKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
+func (m ContextModel) handleListKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
 	}
@@ -719,7 +719,7 @@ func (m ContextModel) handleListKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 }
 
 // handleFilterInput handles handle filter input.
-func (m ContextModel) handleFilterInput(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
+func (m ContextModel) handleFilterInput(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -733,8 +733,8 @@ func (m ContextModel) handleFilterInput(msg tea.KeyMsg) (ContextModel, tea.Cmd) 
 			m.applyContextFilter()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if ch == " " && m.filterBuf == "" {
 				return m, nil
 			}
@@ -746,7 +746,7 @@ func (m ContextModel) handleFilterInput(msg tea.KeyMsg) (ContextModel, tea.Cmd) 
 }
 
 // handleDetailKeys handles handle detail keys.
-func (m ContextModel) handleDetailKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
+func (m ContextModel) handleDetailKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isUp(msg):
 		m.modeFocus = true
@@ -768,7 +768,7 @@ func (m ContextModel) handleDetailKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m ContextModel) handleEditKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
+func (m ContextModel) handleEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -872,8 +872,8 @@ func (m ContextModel) handleEditKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.editTagBuf += ch
 				}
 			}
@@ -883,8 +883,8 @@ func (m ContextModel) handleEditKeys(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 			}
 		default:
 			if m.editFocus != contextEditFieldType && m.editFocus != contextEditFieldStatus {
-				ch := msg.String()
-				if len(ch) == 1 || ch == " " {
+				ch := keyText(msg)
+				if ch != "" {
 					m.contextEditFields[m.editFocus].value += ch
 				}
 			}
@@ -1536,7 +1536,7 @@ func (m *ContextModel) startLinkSearch() {
 }
 
 // handleLinkSearch handles handle link search.
-func (m ContextModel) handleLinkSearch(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
+func (m ContextModel) handleLinkSearch(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.linkSearching = false
@@ -1582,14 +1582,14 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyMsg) (ContextModel, tea.Cmd) {
 			return m, nil
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
+		if ch := keyText(msg); ch != "" {
 			if len(m.linkResults) > 0 {
 				m.linkResults = nil
 				if m.linkList != nil {
 					m.linkList.SetItems(nil)
 				}
 			}
-			m.linkQuery += msg.String()
+			m.linkQuery += ch
 			return m, m.updateLinkSearch()
 		}
 	}

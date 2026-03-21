@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -18,30 +18,30 @@ func TestRelationshipsHandleModeKeysBranchMatrix(t *testing.T) {
 	model.modeFocus = true
 	model.view = relsViewList
 
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
 	updated.view = relsViewList
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
 
 	updated.modeFocus = true
 	updated.view = relsViewCreateType
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, relsViewList, updated.view)
@@ -55,15 +55,15 @@ func TestRelationshipsHandleDetailKeysBranchMatrix(t *testing.T) {
 		model.view = relsViewDetail
 		model.detail = &api.Relationship{ID: "rel-1", CreatedAt: now}
 
-		updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
+		updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		require.Nil(t, cmd)
 		assert.True(t, updated.modeFocus)
 
-		updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+		updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'm', Text: "m"})
 		require.Nil(t, cmd)
 		assert.True(t, updated.metaExpanded)
 
-		updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+		updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'm', Text: "m"})
 		require.Nil(t, cmd)
 		assert.False(t, updated.metaExpanded)
 	})
@@ -73,13 +73,13 @@ func TestRelationshipsHandleDetailKeysBranchMatrix(t *testing.T) {
 		model.view = relsViewDetail
 		model.detail = &api.Relationship{ID: "rel-1", Status: "active", Properties: api.JSONMap{}, CreatedAt: now}
 
-		updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+		updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsViewEdit, updated.view)
 		assert.Equal(t, relsEditFieldStatus, updated.editFocus)
 
 		updated.view = relsViewDetail
-		updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+		updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'd', Text: "d"})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsViewConfirm, updated.view)
 		assert.Equal(t, "archive", updated.confirmKind)
@@ -91,7 +91,7 @@ func TestRelationshipsHandleDetailKeysBranchMatrix(t *testing.T) {
 		model.detail = &api.Relationship{ID: "rel-1", CreatedAt: now}
 		model.metaExpanded = true
 
-		updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsViewList, updated.view)
 		assert.Nil(t, updated.detail)
@@ -140,7 +140,7 @@ func TestRelationshipsHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editFocus = relsEditFieldStatus
 		model.detail = &api.Relationship{ID: "rel-1", CreatedAt: now}
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsEditFieldStatus, updated.editFocus)
 	})
@@ -152,36 +152,36 @@ func TestRelationshipsHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editStatusIdx = 0
 		model.editFocus = relsEditFieldStatus
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		require.Nil(t, cmd)
 		assert.Equal(t, 1, updated.editStatusIdx)
 
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 		require.Nil(t, cmd)
 		assert.Equal(t, 0, updated.editStatusIdx)
 
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		require.Nil(t, cmd)
 		assert.Equal(t, 1, updated.editStatusIdx)
 
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsEditFieldProperties, updated.editFocus)
 
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.Nil(t, cmd)
 		assert.True(t, updated.editMeta.Active)
 
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsEditFieldStatus, updated.editFocus)
 
 		before := updated.editStatusIdx
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.Nil(t, cmd)
 		assert.Equal(t, before, updated.editStatusIdx)
 
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		require.Nil(t, cmd)
 		assert.Equal(t, relsViewDetail, updated.view)
 	})
@@ -193,7 +193,7 @@ func TestRelationshipsHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editFocus = relsEditFieldProperties
 		model.editMeta.Buffer = "bad metadata line"
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 		require.Nil(t, cmd)
 		assert.False(t, updated.editSaving)
 	})
@@ -205,7 +205,7 @@ func TestRelationshipsHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editFocus = relsEditFieldProperties
 		model.editMeta.Buffer = "note: ok"
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 		require.NotNil(t, cmd)
 		assert.True(t, updated.editSaving)
 	})
@@ -233,30 +233,30 @@ func TestRelationshipsHandleFilterInputBranchMatrix(t *testing.T) {
 	}
 	model.applyListFilter()
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.filterBuf)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a ", updated.filterBuf)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.filterBuf)
 
 	updated.filterBuf = ""
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.filterBuf)
 
 	updated.filterBuf = ""
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.filterBuf)
 
 	updated.filterBuf = "dep"
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.filterBuf)
@@ -264,7 +264,7 @@ func TestRelationshipsHandleFilterInputBranchMatrix(t *testing.T) {
 
 	updated.filtering = true
 	updated.filterBuf = "x"
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "x", updated.filterBuf)
@@ -299,12 +299,12 @@ func TestRelationshipsHandleConfirmKeysBranchMatrix(t *testing.T) {
 	model.view = relsViewConfirm
 	model.detail = &api.Relationship{ID: "rel-1"}
 
-	updated, cmd := model.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd := model.handleConfirmKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewDetail, updated.view)
 
 	updated.view = relsViewConfirm
-	updated, cmd = updated.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleConfirmKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewDetail, updated.view)
 
@@ -328,7 +328,7 @@ func TestRelationshipsHandleConfirmKeysBranchMatrix(t *testing.T) {
 	model.view = relsViewConfirm
 	model.detail = &api.Relationship{ID: "rel-1"}
 
-	updated, cmd = model.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleConfirmKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(relTabSavedMsg)
@@ -342,7 +342,7 @@ func TestRelationshipsHandleConfirmKeysBranchMatrix(t *testing.T) {
 	errModel.view = relsViewConfirm
 	errModel.detail = &api.Relationship{ID: "rel-1"}
 
-	_, cmd = errModel.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	_, cmd = errModel.handleConfirmKeys(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	errOut, ok := cmd().(errMsg)
 	require.True(t, ok)
@@ -491,20 +491,20 @@ func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
 		{ID: "rel-2"},
 	}
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Selected())
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.list.Selected())
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
 	updated.modeFocus = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewDetail, updated.view)
 	require.NotNil(t, updated.detail)
@@ -512,16 +512,16 @@ func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
 	updated.view = relsViewList
 	updated.detail = nil
 	updated.list.Cursor = 99
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.detail)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 
 	updated.filtering = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
 	assert.Equal(t, "", updated.createQuery)

@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +41,7 @@ func TestSearchUpdateBackspaceAndDeleteSearchBranches(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.query = "ab"
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "a", updated.query)
 	assert.True(t, updated.loading)
@@ -51,7 +51,7 @@ func TestSearchUpdateBackspaceAndDeleteSearchBranches(t *testing.T) {
 	updated.items = []searchEntry{{id: "ent-1"}}
 	updated.list.SetItems([]string{"ent-1"})
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyDelete})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.query)
 	assert.False(t, updated.loading)
@@ -66,7 +66,7 @@ func TestSearchUpdateTabTogglePaths(t *testing.T) {
 	model.items = []searchEntry{{id: "ent-1"}}
 	model.list.SetItems([]string{"ent-1"})
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, searchModeSemantic, updated.mode)
 	assert.False(t, updated.loading)
@@ -74,7 +74,7 @@ func TestSearchUpdateTabTogglePaths(t *testing.T) {
 	assert.Empty(t, updated.list.Items)
 
 	updated.query = "alpha"
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.NotNil(t, cmd)
 	assert.Equal(t, searchModeText, updated.mode)
 	assert.True(t, updated.loading)
@@ -86,7 +86,7 @@ func TestSearchUpdateEnterOutOfRangeReturnsNil(t *testing.T) {
 	model.list.SetItems([]string{"ent-1"})
 	model.list.Cursor = 5
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, 5, updated.list.Cursor)
 }
@@ -95,11 +95,11 @@ func TestSearchUpdateArrowNavigation(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.list.SetItems([]string{"one", "two"})
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Cursor)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.list.Cursor)
 }

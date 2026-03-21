@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,30 +45,30 @@ func TestJobsHandleFilterInputBranchMatrix(t *testing.T) {
 	}
 	model.applyJobSearch()
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.searchBuf)
 	require.NotEmpty(t, updated.items)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyDelete})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.searchBuf = "alpha"
 	updated.searchSuggest = "alpha"
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.searchBuf)
@@ -76,7 +76,7 @@ func TestJobsHandleFilterInputBranchMatrix(t *testing.T) {
 
 	updated.filtering = true
 	updated.searchBuf = "x"
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "x", updated.searchBuf)
@@ -94,25 +94,25 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 
 	model.searchBuf = "alp"
 	model.searchSuggest = "alpha"
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "alpha", updated.searchBuf)
 
 	updated.searchBuf = "alpha"
 	updated.searchSuggest = "alpha"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "alpha", updated.searchBuf)
 
 	updated.searchBuf = "alpha"
 	updated.searchSuggest = "alpha"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
 	updated.searchBuf = "ab"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.searchBuf)
 
@@ -121,7 +121,7 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 	updated.list.SetItems([]string{"alpha", "beta"})
 	updated.list.Cursor = 0
 	updated.searchBuf = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	_ = cmd
 	assert.Equal(t, jobsViewDetail, updated.view)
 	require.NotNil(t, updated.detail)
@@ -129,7 +129,7 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 
 	updated.view = jobsViewList
 	updated.selected = map[string]bool{"job-2": true}
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.changingSt)
 	assert.Equal(t, []string{"job-2"}, updated.statusTargets)
@@ -140,7 +140,7 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 	updated.list.Cursor = 0
 	updated.view = jobsViewList
 	updated.detail = nil
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.changingSt)
 	assert.Equal(t, []string{"job-1"}, updated.statusTargets)

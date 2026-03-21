@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -82,11 +82,11 @@ func TestJobsModelNavigationKeys(t *testing.T) {
 	model.applyJobSearch()
 
 	// Navigate down
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, model.list.Selected())
 
 	// Navigate up
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, model.list.Selected())
 }
 
@@ -109,7 +109,7 @@ func TestJobsModelEnterShowsDetail(t *testing.T) {
 	model.applyJobSearch()
 
 	// Press enter
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	assert.NotNil(t, model.detail)
 	assert.Equal(t, "job-1", model.detail.ID)
@@ -134,11 +134,11 @@ func TestJobsModelEscapeBackFromDetail(t *testing.T) {
 	model.applyJobSearch()
 
 	// Enter detail
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.NotNil(t, model.detail)
 
 	// Escape back
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, model.detail)
 }
 
@@ -160,7 +160,7 @@ func TestJobsModelStatusChangeFlow(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Press 's' to change status
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 
 	assert.True(t, model.changingSt)
 	assert.NotNil(t, model.detail)
@@ -184,20 +184,20 @@ func TestJobsModelStatusInputHandling(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Start status change
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 
 	// Type "active"
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
 	assert.Equal(t, "act", model.statusBuf)
 
 	// Backspace
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "ac", model.statusBuf)
 
 	// Escape to cancel
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.changingSt)
 	assert.Equal(t, "", model.statusBuf)
 }
@@ -286,12 +286,12 @@ func TestJobsModelCreateSubtask(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	msg = cmd()
 	_, _ = model.Update(msg)
 
@@ -337,7 +337,7 @@ func TestJobsLinkInputCreatesRelationship(t *testing.T) {
 	model.linkingRel = true
 	model.linkBuf = "entity ent-1 about"
 
-	model, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(jobRelationshipChangedMsg)
@@ -380,7 +380,7 @@ func TestJobsUnlinkInputSupportsRowIndex(t *testing.T) {
 	model.unlinkingRel = true
 	model.unlinkBuf = "1"
 
-	model, cmd := model.handleUnlinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(jobRelationshipChangedMsg)
@@ -452,18 +452,18 @@ func TestJobsBulkStatusUpdateForSelectedRows(t *testing.T) {
 	model.applyJobSearch()
 
 	// Select both jobs.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.Equal(t, 2, model.selectedCount())
 
 	// Trigger bulk status update.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	assert.True(t, model.changingSt)
 	for _, r := range "active" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)

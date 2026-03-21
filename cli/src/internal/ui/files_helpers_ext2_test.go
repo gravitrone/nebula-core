@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -288,13 +288,13 @@ func TestFilesLoadScopeOptionsAndEditMetaBranches(t *testing.T) {
 	model.detail = &api.File{ID: "file-1", Filename: "Alpha.txt", FilePath: "/tmp/alpha.txt", Status: "active"}
 	model.startEdit()
 	model.editSaving = true
-	updated, cmdMsg := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmdMsg := model.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Nil(t, cmdMsg)
 	assert.Equal(t, model, updated)
 
 	updated.editSaving = false
 	updated.editFocus = fileFieldMeta
-	updated, cmdMsg = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmdMsg = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmdMsg)
 	assert.True(t, updated.editMeta.Active)
 }

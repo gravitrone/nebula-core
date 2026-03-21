@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,7 +108,7 @@ func TestInboxHandleDetailAndGrantInputBranches(t *testing.T) {
 	model.filtered = []int{0}
 	model.list.SetItems([]string{"ap-1"})
 
-	updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.grantEditing)
 	assert.Equal(t, "ap-1", updated.grantApproval)
@@ -116,12 +116,12 @@ func TestInboxHandleDetailAndGrantInputBranches(t *testing.T) {
 	assert.False(t, updated.grantTrusted)
 
 	updated.rejectBuf = "stale"
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.rejecting)
 	assert.Equal(t, "", updated.rejectBuf)
 
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.detail)
 
@@ -130,30 +130,30 @@ func TestInboxHandleDetailAndGrantInputBranches(t *testing.T) {
 	updated.grantScopes = "pub"
 	updated.grantTrusted = false
 
-	updated, cmd = updated.handleGrantInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	updated, cmd = updated.handleGrantInput(tea.KeyPressMsg{Code: 't', Text: "t"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.grantTrusted)
 
-	updated, cmd = updated.handleGrantInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleGrantInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "pu", updated.grantScopes)
 
-	updated, cmd = updated.handleGrantInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = updated.handleGrantInput(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "pux", updated.grantScopes)
-	updated, cmd = updated.handleGrantInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleGrantInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "pux ", updated.grantScopes)
 
 	updated.grantScopes = ""
-	updated, cmd = updated.handleGrantInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleGrantInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	errOut, ok := msg.(errMsg)
 	require.True(t, ok)
 	assert.ErrorContains(t, errOut.err, "at least one scope is required")
 
-	updated, cmd = updated.handleGrantInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleGrantInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.grantEditing)
 	assert.Equal(t, "", updated.grantApproval)
@@ -178,7 +178,7 @@ func TestInboxHandleGrantInputSubmitErrorBranch(t *testing.T) {
 	model.grantTrusted = true
 	model.detail = &api.Approval{ID: "ap-1", CreatedAt: time.Now()}
 
-	updated, cmd := model.handleGrantInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleGrantInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	errOut, ok := msg.(errMsg)

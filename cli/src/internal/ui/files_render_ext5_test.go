@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -95,7 +95,7 @@ func TestFilesHandleListKeysSpaceAndEscapeSearchBranches(t *testing.T) {
 	model.all = nil
 	model.applyFileSearch()
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
@@ -105,7 +105,7 @@ func TestFilesHandleListKeysSpaceAndEscapeSearchBranches(t *testing.T) {
 	updated.applyFileSearch()
 	updated.searchBuf = "Alpha"
 	updated.searchSuggest = "Alpha.txt"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -98,15 +98,15 @@ func TestHistoryHandleFilterKeysBranchMatrix(t *testing.T) {
 	model.filtering = true
 	model.filterBuf = "table:entities"
 
-	updated, cmd := model.handleFilterKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Nil(t, cmd)
 	assert.Equal(t, "table:entitie", updated.filterBuf)
 
-	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
 	assert.Nil(t, cmd)
 	assert.Equal(t, "table:entities", updated.filterBuf)
 
-	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "entities", updated.filter.tableName)
@@ -116,7 +116,7 @@ func TestHistoryHandleFilterKeysBranchMatrix(t *testing.T) {
 	updated.filterBuf = "actor:alxx"
 	updated.filter = auditFilter{tableName: "entities"}
 	updated.loading = false
-	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.filterBuf)
@@ -124,7 +124,7 @@ func TestHistoryHandleFilterKeysBranchMatrix(t *testing.T) {
 	assert.True(t, updated.loading)
 
 	updated.filterBuf = ""
-	updated, cmd = updated.handleFilterKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Nil(t, cmd)
 	assert.Equal(t, "", updated.filterBuf)
 }
@@ -135,7 +135,7 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	model.scopes = []api.AuditScope{{ID: "scope-1", Name: "public"}}
 	model.scopeList.SetItems([]string{"public"})
 
-	updated, cmd := model.handleScopeKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "scope-1", updated.filter.scopeID)
 	assert.Equal(t, historyViewList, updated.view)
@@ -144,12 +144,12 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	updated.view = historyViewScopes
 	updated.scopeList.Cursor = 9
 	updated.loading = false
-	updated, cmd = updated.handleScopeKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.Equal(t, historyViewScopes, updated.view)
 	assert.False(t, updated.loading)
 
-	updated, cmd = updated.handleScopeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, cmd)
 	assert.Equal(t, historyViewList, updated.view)
 
@@ -157,7 +157,7 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	updated.actors = []api.AuditActor{{ActorType: "agent", ActorID: "agent-1"}}
 	updated.actorList.SetItems([]string{"agent:agent-1"})
 	updated.loading = false
-	updated, cmd = updated.handleActorKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "agent", updated.filter.actorType)
 	assert.Equal(t, "agent-1", updated.filter.actorID)
@@ -167,12 +167,12 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	updated.view = historyViewActors
 	updated.actorList.Cursor = 9
 	updated.loading = false
-	updated, cmd = updated.handleActorKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.Equal(t, historyViewActors, updated.view)
 	assert.False(t, updated.loading)
 
-	updated, cmd = updated.handleActorKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, cmd)
 	assert.Equal(t, historyViewList, updated.view)
 }
@@ -182,31 +182,31 @@ func TestHistoryHandleListKeysBranchMatrix(t *testing.T) {
 	model.items = []api.AuditEntry{{ID: "audit-1", RecordID: "ent-1", TableName: "entities"}}
 	model.list.SetItems([]string{"audit-1"})
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Nil(t, cmd)
 	assert.Equal(t, 0, updated.list.Cursor)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Nil(t, cmd)
 	assert.Equal(t, 0, updated.list.Cursor)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.Equal(t, historyViewDetail, updated.view)
 	require.NotNil(t, updated.detail)
 	assert.Equal(t, "audit-1", updated.detail.ID)
 
 	model = NewHistoryModel(nil)
-	updated, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = model.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	assert.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 
-	updated, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated, cmd = model.handleListKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
 	require.NotNil(t, cmd)
 	assert.Equal(t, historyViewScopes, updated.view)
 	assert.True(t, updated.loading)
 
-	updated, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd = model.handleListKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
 	assert.Equal(t, historyViewActors, updated.view)
 	assert.True(t, updated.loading)

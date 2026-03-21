@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,11 +18,11 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.items = []api.Context{{ID: "ctx-1", Title: "Alpha Note"}}
 		model.applyContextFilter()
 
-		updated, _ := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 		assert.Equal(t, "a", updated.filterBuf)
 		assert.True(t, updated.filtering)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.False(t, updated.filtering)
 	})
 
@@ -37,13 +37,13 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applyEntityFilters()
 		assert.Len(t, model.items, 2)
 
-		updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+		updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 		require.Nil(t, cmd)
 		assert.True(t, updated.filtering)
 		assert.True(t, updated.hasActiveEntityFilters())
 		assert.Len(t, updated.items, 1)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
 		assert.False(t, updated.hasActiveEntityFilters())
 		assert.Len(t, updated.items, 2)
@@ -55,10 +55,10 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.items = []api.File{{ID: "f-1", Filename: "Alpha.txt"}}
 		model.applyFileSearch()
 
-		updated, _ := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 		assert.Equal(t, "a", updated.searchBuf)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
 		assert.Equal(t, "", updated.searchBuf)
 	})
@@ -69,10 +69,10 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.items = []api.Job{{ID: "job-1", Title: "Alpha Job"}}
 		model.applyJobSearch()
 
-		updated, _ := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 		assert.Equal(t, "a", updated.searchBuf)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
 	})
 
@@ -83,10 +83,10 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.items = []api.Log{{ID: "log-1", LogType: "event", Status: "active", Timestamp: now}}
 		model.applyLogSearch()
 
-		updated, _ := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("e")})
+		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'e', Text: "e"})
 		assert.Equal(t, "e", updated.searchBuf)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
 	})
 
@@ -98,10 +98,10 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.items = []api.Protocol{{ID: "p-1", Name: "alpha", Title: "Alpha", Content: &content, Status: "active", CreatedAt: now, UpdatedAt: now}}
 		model.applySearch()
 
-		updated, _ := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 		assert.Equal(t, "a", updated.searchBuf)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
 	})
 
@@ -121,10 +121,10 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		}}
 		model.applyListFilter()
 
-		updated, _ := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'r', Text: "r"})
 		assert.Equal(t, "r", updated.filterBuf)
 
-		updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
 		assert.Equal(t, "", updated.filterBuf)
 	})

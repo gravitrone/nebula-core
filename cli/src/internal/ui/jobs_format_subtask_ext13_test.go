@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,23 +30,23 @@ func TestJobsHandleSubtaskInputTypingBackspaceAndEmptyEnter(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.creatingSubtask = true
 
-	updated, cmd := model.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd := model.handleSubtaskInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.subtaskBuf)
 
-	updated, cmd = updated.handleSubtaskInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a ", updated.subtaskBuf)
 
-	updated, cmd = updated.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.subtaskBuf)
 
-	updated, cmd = updated.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.subtaskBuf)
 
-	updated, cmd = updated.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.True(t, updated.creatingSubtask)
 	assert.Equal(t, "", updated.subtaskBuf)
@@ -69,19 +69,19 @@ func TestJobsHandleLinkInputTypingBackspaceAndBack(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1"}
 	model.linkingRel = true
 
-	updated, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "e", updated.linkBuf)
 
-	updated, cmd = updated.handleLinkInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "e ", updated.linkBuf)
 
-	updated, cmd = updated.handleLinkInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "e", updated.linkBuf)
 
-	updated, cmd = updated.handleLinkInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkingRel)
 	assert.Equal(t, "", updated.linkBuf)
@@ -99,14 +99,14 @@ func TestJobsHandleSubtaskInputBackAndNoopKey(t *testing.T) {
 	model.creatingSubtask = true
 	model.subtaskBuf = "child"
 
-	updated, cmd := model.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := model.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.creatingSubtask)
 	assert.Equal(t, "", updated.subtaskBuf)
 
 	updated.creatingSubtask = true
 	updated.subtaskBuf = "x"
-	updated, cmd = updated.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.True(t, updated.creatingSubtask)
 	assert.Equal(t, "x", updated.subtaskBuf)
@@ -117,7 +117,7 @@ func TestJobsHandleLinkInputNoopKeyKeepsBuffer(t *testing.T) {
 	model.linkingRel = true
 	model.linkBuf = "entity ent-1 owns"
 
-	updated, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkingRel)
 	assert.Equal(t, "entity ent-1 owns", updated.linkBuf)

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +23,7 @@ func TestProtocolsHandleListKeysAdditionalBranches(t *testing.T) {
 	model.list.SetItems([]string{"alpha", "beta"})
 
 	model.filtering = true
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 
@@ -31,27 +31,27 @@ func TestProtocolsHandleListKeysAdditionalBranches(t *testing.T) {
 	updated.list.Cursor = 5
 	updated.view = protocolsViewList
 	updated.detail = nil
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewList, updated.view)
 	assert.Nil(t, updated.detail)
 
 	updated.searchBuf = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewAdd, updated.view)
 
 	updated.view = protocolsViewList
 	updated.searchBuf = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.searchBuf)
 	require.NotEmpty(t, updated.items)
@@ -142,34 +142,34 @@ func TestProtocolsHandleAddKeysAdditionalBranches(t *testing.T) {
 	model.view = protocolsViewAdd
 
 	model.addSaving = true
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.Equal(t, model, updated)
 
 	model.addSaving = false
 	model.addMeta.Active = true
-	updated, cmd = model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addMeta.Active)
 
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.addMeta.Active)
 
 	updated.addFocus = protoFieldStatus
 	updated.addStatusIdx = 0
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, len(protocolStatusOptions)-1, updated.addStatusIdx)
 
 	updated.addFocus = protoFieldName
 	updated.addFields[protoFieldName].value = ""
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.addFields[protoFieldName].value)
 
 	updated.addFocus = protoFieldMetadata
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addMeta.Active)
 
@@ -178,7 +178,7 @@ func TestProtocolsHandleAddKeysAdditionalBranches(t *testing.T) {
 	updated.addFields[protoFieldName].value = "alpha"
 	updated.addFields[protoFieldTitle].value = "Alpha"
 	updated.addFields[protoFieldContent].value = "rules"
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.addSaving)
 }

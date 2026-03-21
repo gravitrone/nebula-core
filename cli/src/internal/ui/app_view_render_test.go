@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +33,7 @@ func TestAppInitAndViewRendersBannerTabsAndHints(t *testing.T) {
 	model, _ = app.Update(msg)
 	app = model.(App)
 
-	out := app.View()
+	out := app.View().Content
 	assert.NotContains(t, out, "\x1b]")
 
 	clean := components.SanitizeText(out)
@@ -60,11 +60,11 @@ func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 	model, _ := app.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	app = model.(App)
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, _ = app.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	app = model.(App)
 	require.True(t, app.helpOpen)
 
-	help := app.View()
+	help := app.View().Content
 	cleanHelp := components.SanitizeText(help)
 	assert.Contains(t, cleanHelp, "Help")
 	assert.Contains(t, cleanHelp, "esc to close")
@@ -76,11 +76,11 @@ func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 	app.know.view = contextViewAdd
 	app.know.fields[fieldTitle].value = "draft"
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	model, _ = app.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	app = model.(App)
 	require.True(t, app.quitConfirm)
 
-	quit := app.View()
+	quit := app.View().Content
 	cleanQuit := components.SanitizeText(quit)
 	assert.Contains(t, cleanQuit, "You have unsaved changes.")
 	assert.Contains(t, cleanQuit, "Quit")
@@ -123,6 +123,6 @@ func TestAppViewRendersToastFeedbackBranch(t *testing.T) {
 	app.startupChecking = false
 	app.toast = &appToast{level: "success", text: "toast branch hit"}
 
-	out := components.SanitizeText(app.View())
+	out := components.SanitizeText(app.View().Content)
 	assert.Contains(t, out, "toast branch hit")
 }

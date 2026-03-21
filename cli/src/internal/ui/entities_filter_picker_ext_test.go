@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -48,12 +48,12 @@ func TestEntitiesHandleModeKeysDownAndUpClearModeFocus(t *testing.T) {
 	model.view = entitiesViewAdd
 	model.addFocus = addFieldTags
 
-	updated, _ := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, 0, updated.addFocus)
 
 	updated.modeFocus = true
-	updated, _ = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.False(t, updated.modeFocus)
 }
 
@@ -61,16 +61,16 @@ func TestEntitiesHandleModeKeysBackClearsModeFocus(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.modeFocus = true
 
-	updated, _ := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.modeFocus)
 }
 
 func TestEntitiesHandleModeKeysToggleBindings(t *testing.T) {
-	keys := []tea.KeyMsg{
-		{Type: tea.KeyEnter},
-		{Type: tea.KeyLeft},
-		{Type: tea.KeyRight},
-		{Type: tea.KeySpace},
+	keys := []tea.KeyPressMsg{
+		{Code: tea.KeyEnter},
+		{Code: tea.KeyLeft},
+		{Code: tea.KeyRight},
+		{Code: tea.KeySpace},
 	}
 	for _, key := range keys {
 		model := NewEntitiesModel(nil)

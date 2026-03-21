@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,40 +39,40 @@ func TestMetadataEditorHandleKeyTypingScopesAndExit(t *testing.T) {
 	ed.SetScopeOptions([]string{"public", "private"})
 
 	// Scope selector opens with s.
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 's', Text: "s"})
 	assert.True(t, ed.scopeSelecting)
 
 	// Move to "private" and toggle it on.
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRight})
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeySpace})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyRight})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Contains(t, ed.Scopes, "private")
 
 	// Exit scope selection.
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, ed.scopeSelecting)
 
 	// Add row via entry mode.
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.True(t, ed.entryMode)
 	for _, ch := range "profile | timezone | europe/warsaw" {
-		ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		ed.HandleKey(tea.KeyPressMsg{Code: ch, Text: string(ch)})
 	}
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, ed.entryMode)
 	assert.Contains(t, ed.Buffer, "profile:")
 	assert.Contains(t, ed.Buffer, "timezone: europe/warsaw")
 	require.Len(t, ed.rows, 1)
 
 	// Enter on selected row opens inspect and Enter copies only value.
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, ed.inspectMode)
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, "europe/warsaw", copied)
 
 	// Esc exits inspect, then Esc closes editor and returns done.
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, ed.inspectMode)
-	done := ed.HandleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	done := ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.True(t, done)
 	assert.False(t, ed.Active)
 }
@@ -110,7 +110,7 @@ func TestMetadataEditorRenderShowsSelectionColumnOnlyAfterSelectingRows(t *testi
 	assert.NotContains(t, clean, "Sel")
 	assert.NotContains(t, clean, "[ ]")
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeySpace})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	clean = components.SanitizeText(ed.Render(80))
 	assert.Contains(t, clean, "Sel")
 	assert.Contains(t, clean, "[X]")

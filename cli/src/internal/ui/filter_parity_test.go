@@ -3,13 +3,13 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 )
 
 // TestListViewsEnterFilteringModeWithF handles test list views enter filtering mode with f.
 func TestListViewsEnterFilteringModeWithF(t *testing.T) {
-	keyF := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}}
+	keyF := tea.KeyPressMsg{Code: 'f', Text: "f"}
 
 	t.Run("inbox", func(t *testing.T) {
 		model := NewInboxModel(nil)

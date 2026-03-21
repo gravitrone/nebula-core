@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -55,13 +55,13 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		model := newBase()
 		model.bulkPrompt = "Bulk Tags (add:tag1,tag2)"
 		model.bulkBuf = "abc"
-		next, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Nil(t, cmd)
 		assert.Equal(t, "ab", next.bulkBuf)
 
 		model = newBase()
 		model.filtering = true
-		next, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.False(t, next.filtering)
 	})
@@ -69,7 +69,7 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 	t.Run("mode focus delegates to mode handler", func(t *testing.T) {
 		model := newBase()
 		model.modeFocus = true
-		next, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyRight})
+		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewAdd, next.view)
 		assert.False(t, next.modeFocus)
@@ -79,25 +79,25 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		model := newBase()
 		model.list.Cursor = 0
 
-		next, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		assert.Nil(t, cmd)
 		assert.Equal(t, 1, next.list.Selected())
 
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 		assert.Equal(t, 0, next.list.Selected())
 
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 		assert.True(t, next.modeFocus)
 
 		next.modeFocus = false
 		next.searchBuf = ""
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
 		assert.True(t, next.isBulkSelected(0))
 
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.NotNil(t, cmd)
 		assert.Equal(t, entitiesViewDetail, next.view)
 		require.NotNil(t, next.detail)
@@ -109,42 +109,42 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		model.searchBuf = "al"
 		model.searchSuggest = "alpha"
 
-		next, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 		require.NotNil(t, cmd)
 		assert.True(t, next.loading)
 		assert.Equal(t, "alpha", next.searchBuf)
 
 		next.searchBuf = "alp"
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.NotNil(t, cmd)
 		assert.Equal(t, "al", next.searchBuf)
 
 		next.searchBuf = "alpha"
 		next.searchSuggest = "alpha"
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		require.NotNil(t, cmd)
 		assert.Equal(t, "", next.searchBuf)
 		assert.Equal(t, "", next.searchSuggest)
 
 		next.searchBuf = "x"
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		require.NotNil(t, cmd)
 		assert.Equal(t, "x ", next.searchBuf)
 
 		next.searchBuf = "query"
 		next.searchSuggest = "query-suggest"
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 		require.NotNil(t, cmd)
 		assert.Equal(t, "", next.searchBuf)
 		assert.Equal(t, "", next.searchSuggest)
 
 		next.searchBuf = ""
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
 		assert.True(t, next.isBulkSelected(next.list.Selected()))
 
 		next.searchBuf = ""
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 		assert.Nil(t, cmd)
 		assert.Equal(t, "", next.searchBuf)
 	})
@@ -153,31 +153,31 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		model := newBase()
 		model.bulkSelected = map[string]bool{"ent-1": true}
 
-		next, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: 't', Text: "t"})
 		assert.Nil(t, cmd)
 		assert.Equal(t, "Bulk Tags (add:tag1,tag2)", next.bulkPrompt)
 		assert.Equal(t, bulkTargetTags, next.bulkTarget)
 
 		model = newBase()
 		model.bulkSelected = map[string]bool{"ent-1": true}
-		next, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+		next, cmd = model.handleListKeys(tea.KeyPressMsg{Code: 'p', Text: "p"})
 		assert.Nil(t, cmd)
 		assert.Equal(t, "Bulk Scopes (add:scope1,scope2)", next.bulkPrompt)
 		assert.Equal(t, bulkTargetScopes, next.bulkTarget)
 
 		next.bulkPrompt = ""
-		next, cmd = next.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: 'c', Text: "c"})
 		assert.Nil(t, cmd)
 		assert.Empty(t, next.bulkSelected)
 	})
 
 	t.Run("default rune branch", func(t *testing.T) {
 		model := newBase()
-		next, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
 		assert.Equal(t, "", next.searchBuf)
 
-		next, cmd = model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}})
+		next, cmd = model.handleListKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
 		require.NotNil(t, cmd)
 		assert.True(t, next.loading)
 		assert.Equal(t, "z", next.searchBuf)

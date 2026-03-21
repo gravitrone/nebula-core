@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,23 +51,23 @@ func TestEntitiesSearchInputAndBulkSelectionBranchMatrix(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.view = entitiesViewSearch
 
-	updated, cmd := model.handleSearchInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd := model.handleSearchInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.searchBuf)
 
-	updated, _ = updated.handleSearchInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "a ", updated.searchBuf)
 
-	updated, _ = updated.handleSearchInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "a", updated.searchBuf)
 
-	updated, _ = updated.handleSearchInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, entitiesViewList, updated.view)
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.view = entitiesViewSearch
 	updated.searchBuf = "  alpha "
-	updated, cmd = updated.handleSearchInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, entitiesViewList, updated.view)
 	assert.Equal(t, "", updated.searchBuf)

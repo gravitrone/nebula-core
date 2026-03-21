@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -15,7 +15,7 @@ import (
 )
 
 var runBubbleTUI = func(app tea.Model) error {
-	p := tea.NewProgram(app, tea.WithAltScreen())
+	p := tea.NewProgram(app)
 	_, err := p.Run()
 	return err
 }

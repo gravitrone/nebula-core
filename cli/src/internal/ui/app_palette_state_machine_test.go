@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -21,16 +21,16 @@ func TestAppPaletteOpenFilterAndExecuteTab(t *testing.T) {
 
 	app := NewApp(client, &config.Config{})
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	app = model.(App)
 	assert.True(t, app.paletteOpen)
 
 	for _, r := range "/job" {
-		model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = app.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 		app = model.(App)
 	}
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	app = model.(App)
 
 	assert.False(t, app.paletteOpen)
@@ -44,17 +44,17 @@ func TestAppPaletteArrowKeysMoveSelection(t *testing.T) {
 	})
 
 	app := NewApp(client, &config.Config{})
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	app = model.(App)
 	assert.True(t, app.paletteOpen)
 	assert.Equal(t, 0, app.paletteIndex)
 	require.Greater(t, len(app.paletteFiltered), 1)
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	app = model.(App)
 	assert.Equal(t, 1, app.paletteIndex)
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	app = model.(App)
 	assert.Equal(t, 0, app.paletteIndex)
 }
@@ -86,15 +86,15 @@ func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 
 	app := NewApp(client, &config.Config{})
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	app = model.(App)
 
 	// Remove the leading slash to switch from command mode to search mode.
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	app = model.(App)
 
 	// Typing plain text in search mode triggers API queries.
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	app = model.(App)
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -107,7 +107,7 @@ func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 	require.Len(t, app.paletteFiltered, 1)
 	assert.True(t, strings.HasPrefix(app.paletteFiltered[0].ID, "entity:"))
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	app = model.(App)
 
 	assert.False(t, app.paletteOpen)

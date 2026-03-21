@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +56,7 @@ func TestSearchModelQueryCallsEndpoints(t *testing.T) {
 	})
 
 	model := NewSearchModel(client)
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -90,11 +90,11 @@ func TestSearchModelSelectionEmitsMsg(t *testing.T) {
 	})
 
 	model := NewSearchModel(client)
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	_, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	selection := cmd().(searchSelectionMsg)
 
@@ -131,10 +131,10 @@ func TestSearchModelSemanticModeCallsSemanticEndpoint(t *testing.T) {
 	})
 
 	model := NewSearchModel(client)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, searchModeSemantic, model.mode)
 
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -177,12 +177,12 @@ func TestSearchModelSemanticSelectionFetchesDetail(t *testing.T) {
 	})
 
 	model := NewSearchModel(client)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyTab})
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	_, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	selection := cmd().(searchSelectionMsg)
 	require.NotNil(t, selection.entity)
@@ -301,7 +301,7 @@ func TestSearchModelEmitSelectionFetchesFileProtocolAndLog(t *testing.T) {
 func TestSearchModelUpdateClearAndSpaceHandling(t *testing.T) {
 	model := NewSearchModel(nil)
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.query)
 
@@ -309,7 +309,7 @@ func TestSearchModelUpdateClearAndSpaceHandling(t *testing.T) {
 	updated.items = []searchEntry{{id: "x"}}
 	updated.list.SetItems([]string{"x"})
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.query)
 	assert.Empty(t, updated.items)

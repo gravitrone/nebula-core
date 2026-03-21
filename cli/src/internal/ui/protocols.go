@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -193,7 +193,7 @@ func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 		m.addErr = msg.err.Error()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.modeFocus {
 			return m.handleModeKeys(msg)
 		}
@@ -311,7 +311,7 @@ func (m ProtocolsModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m ProtocolsModel) handleModeKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleModeKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -338,7 +338,7 @@ func (m ProtocolsModel) toggleMode() (ProtocolsModel, tea.Cmd) {
 
 // --- List ---
 
-func (m ProtocolsModel) handleListKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleListKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
 	}
@@ -373,8 +373,8 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 			m.applySearch()
 		}
 	default:
-		if len(msg.String()) == 1 {
-			m.searchBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.searchBuf += ch
 			m.applySearch()
 		}
 	}
@@ -382,7 +382,7 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 }
 
 // handleFilterInput handles handle filter input.
-func (m ProtocolsModel) handleFilterInput(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleFilterInput(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -396,8 +396,8 @@ func (m ProtocolsModel) handleFilterInput(msg tea.KeyMsg) (ProtocolsModel, tea.C
 			m.applySearch()
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.searchBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.searchBuf += ch
 			m.applySearch()
 		}
 	}
@@ -588,7 +588,7 @@ func (m ProtocolsModel) renderProtocolPreview(p api.Protocol, width int) string 
 
 // --- Detail ---
 
-func (m ProtocolsModel) handleDetailKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleDetailKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.view = protocolsViewList
@@ -663,7 +663,7 @@ func (m ProtocolsModel) loadDetailRelationships(protocolID string) tea.Cmd {
 
 // --- Add ---
 
-func (m ProtocolsModel) handleAddKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleAddKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
 	}
@@ -708,8 +708,8 @@ func (m ProtocolsModel) handleAddKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) 
 		}
 	}
 
-	if len(msg.String()) == 1 {
-		m.addFields[m.addFocus].value += msg.String()
+	if ch := keyText(msg); ch != "" {
+		m.addFields[m.addFocus].value += ch
 		return m, nil
 	}
 	if isKey(msg, "backspace", "delete") {
@@ -829,7 +829,7 @@ func (m ProtocolsModel) startEdit() {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleEditKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -872,8 +872,8 @@ func (m ProtocolsModel) handleEditKeys(msg tea.KeyMsg) (ProtocolsModel, tea.Cmd)
 			return m, nil
 		}
 	}
-	if len(msg.String()) == 1 {
-		m.editFields[m.editFocus].value += msg.String()
+	if ch := keyText(msg); ch != "" {
+		m.editFields[m.editFocus].value += ch
 		return m, nil
 	}
 	if isKey(msg, "backspace", "delete") {
@@ -1009,7 +1009,7 @@ func (m *ProtocolsModel) commitApply(addMode bool) {
 }
 
 // handleTagInput handles handle tag input.
-func (m ProtocolsModel) handleTagInput(msg tea.KeyMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleTagInput(msg tea.KeyPressMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
 	if isKey(msg, "backspace", "delete") {
 		if addMode {
 			if len(m.addTagBuf) > 0 {
@@ -1022,22 +1022,22 @@ func (m ProtocolsModel) handleTagInput(msg tea.KeyMsg, addMode bool) (ProtocolsM
 		}
 		return m, nil
 	}
-	if isKey(msg, "enter", ",", " ") {
+	if isKey(msg, "enter", ",", " ", "space") {
 		m.commitTag(addMode)
 		return m, nil
 	}
-	if len(msg.String()) == 1 {
+	if ch := keyText(msg); ch != "" {
 		if addMode {
-			m.addTagBuf += msg.String()
+			m.addTagBuf += ch
 		} else {
-			m.editTagBuf += msg.String()
+			m.editTagBuf += ch
 		}
 	}
 	return m, nil
 }
 
 // handleApplyInput handles handle apply input.
-func (m ProtocolsModel) handleApplyInput(msg tea.KeyMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
+func (m ProtocolsModel) handleApplyInput(msg tea.KeyPressMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
 	if isKey(msg, "backspace", "delete") {
 		if addMode {
 			if len(m.addApplyBuf) > 0 {
@@ -1050,15 +1050,15 @@ func (m ProtocolsModel) handleApplyInput(msg tea.KeyMsg, addMode bool) (Protocol
 		}
 		return m, nil
 	}
-	if isKey(msg, "enter", ",", " ") {
+	if isKey(msg, "enter", ",", " ", "space") {
 		m.commitApply(addMode)
 		return m, nil
 	}
-	if len(msg.String()) == 1 {
+	if ch := keyText(msg); ch != "" {
 		if addMode {
-			m.addApplyBuf += msg.String()
+			m.addApplyBuf += ch
 		} else {
-			m.editApplyBuf += msg.String()
+			m.editApplyBuf += ch
 		}
 	}
 	return m, nil

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +26,7 @@ func TestJobsHandleLinkInputNilDetailAndAPIError(t *testing.T) {
 	model.linkBuf = "entity ent-1 owns"
 
 	// Detail nil branch should close input with no command.
-	updated, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkingRel)
 	assert.Equal(t, "", updated.linkBuf)
@@ -35,7 +35,7 @@ func TestJobsHandleLinkInputNilDetailAndAPIError(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1"}
 	model.linkingRel = true
 	model.linkBuf = "entity ent-1 owns"
-	updated, cmd = model.handleLinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	errOut, ok := msg.(errMsg)
@@ -61,16 +61,16 @@ func TestJobsHandleUnlinkInputTypingAndAPIError(t *testing.T) {
 	model.unlinkingRel = true
 
 	// Default typing branch appends chars and spaces.
-	updated, cmd := model.handleUnlinkInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	updated, cmd := model.handleUnlinkInput(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "r", updated.unlinkBuf)
-	updated, cmd = updated.handleUnlinkInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "r ", updated.unlinkBuf)
 
 	// API error path on submit.
 	updated.unlinkBuf = "rel-1"
-	updated, cmd = updated.handleUnlinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	errOut, ok := msg.(errMsg)
@@ -102,7 +102,7 @@ func TestJobsHandleStatusAndSubtaskInputErrorPaths(t *testing.T) {
 	model.statusBuf = "active"
 	model.statusTargets = []string{"job-1"}
 
-	updated, cmd := model.handleStatusInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	errOut, ok := msg.(errMsg)
@@ -114,7 +114,7 @@ func TestJobsHandleStatusAndSubtaskInputErrorPaths(t *testing.T) {
 
 	model.creatingSubtask = true
 	model.subtaskBuf = "child task"
-	updated, cmd = model.handleSubtaskInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	errOut, ok = msg.(errMsg)
@@ -129,11 +129,11 @@ func TestJobsHandleStatusInputAddsSpaceAndCharacters(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.changingSt = true
 
-	updated, cmd := model.handleStatusInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.statusBuf)
 
-	updated, cmd = updated.handleStatusInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleStatusInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a ", updated.statusBuf)
 }
@@ -155,7 +155,7 @@ func TestJobsHandleLinkInputAcceptsMultiWordRelationshipType(t *testing.T) {
 	model.linkingRel = true
 	model.linkBuf = "entity ent-1 assigned to"
 
-	updated, cmd := model.handleLinkInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(jobRelationshipChangedMsg)

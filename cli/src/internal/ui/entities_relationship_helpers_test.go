@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -24,14 +24,14 @@ func TestEntitiesHandleEditScopesHelpers(t *testing.T) {
 	model.editScopeIdx = 0
 	model.editScopes = []string{"public"}
 
-	updated, _ := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, _ := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	assert.Equal(t, 1, updated.editScopeIdx)
 
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.True(t, updated.editScopesDirty)
 	assert.Contains(t, updated.editScopes, "private")
 
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.editScopeSelecting)
 
 }

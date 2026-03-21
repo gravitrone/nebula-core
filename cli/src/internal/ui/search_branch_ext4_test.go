@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +20,7 @@ func TestSearchUpdateBackClearsActiveQueryState(t *testing.T) {
 	model.list.SetItems([]string{"ent-1"})
 	model.loading = true
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.query)
 	assert.Empty(t, updated.items)

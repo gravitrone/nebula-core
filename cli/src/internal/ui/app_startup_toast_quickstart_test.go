@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -166,21 +166,21 @@ func TestQuickstartKeyFlowRoutesTabsAndCompletes(t *testing.T) {
 	app.quickstartOpen = true
 	app.quickstartStep = 0
 
-	model, _ := app.handleQuickstartKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.handleQuickstartKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := model.(App)
 	assert.Equal(t, tabEntities, updated.tab)
 	assert.Equal(t, entitiesViewAdd, updated.entities.view)
 	assert.Equal(t, 1, updated.quickstartStep)
 
 	app = updated
-	model, _ = app.handleQuickstartKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = app.handleQuickstartKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = model.(App)
 	assert.Equal(t, tabKnow, updated.tab)
 	assert.Equal(t, contextViewAdd, updated.know.view)
 	assert.Equal(t, 2, updated.quickstartStep)
 
 	app = updated
-	model, _ = app.handleQuickstartKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = app.handleQuickstartKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = model.(App)
 	assert.Equal(t, tabRelations, updated.tab)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.rels.view)
@@ -197,7 +197,7 @@ func TestQuickstartSkipsOnEscapeAndResetsState(t *testing.T) {
 	app.quickstartOpen = true
 	app.quickstartStep = 2
 
-	model, _ := app.handleQuickstartKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ := app.handleQuickstartKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	updated := model.(App)
 
 	assert.False(t, updated.quickstartOpen)
@@ -469,7 +469,7 @@ func TestRecoveryHintsReloginKeyFlowHandlesEndToEnd(t *testing.T) {
 	app.lastErrCode = "INVALID_API_KEY"
 	app.lastErrMsg = "Invalid API key"
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.NotNil(t, cmd)
 
 	updated := model.(App)
@@ -514,7 +514,7 @@ func TestInvalidAPIKeyRecoveryReauthFlow(t *testing.T) {
 	assert.True(t, invalid.showRecoveryHints)
 	assert.Equal(t, "INVALID_API_KEY", invalid.lastErrCode)
 
-	model, cmd := invalid.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, cmd := invalid.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.NotNil(t, cmd)
 
 	reloginMsg := cmd()
@@ -538,7 +538,7 @@ func TestRecoveryHintsSettingsShortcutSwitchesToSettingsTab(t *testing.T) {
 	app.lastErrCode = "INVALID_API_KEY"
 	app.lastErrMsg = "Invalid API key"
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	updated := model.(App)
 
 	assert.Equal(t, tabProfile, updated.tab)
@@ -554,7 +554,7 @@ func TestRecoveryHintsCopyShortcutShowsRecoveryCommand(t *testing.T) {
 	app.lastErrCode = "INVALID_API_KEY"
 	app.lastErrMsg = "Invalid API key"
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	updated := model.(App)
 
 	require.NotNil(t, cmd)
@@ -683,7 +683,7 @@ func TestErrorBoxShowsMultiAPIRecoveryHint(t *testing.T) {
 	app.lastErrCode = "MULTIPLE_API_INSTANCES_DETECTED"
 	app.lastErrMsg = "multiple api instances detected"
 
-	out := app.View()
+	out := app.View().Content
 	assert.Contains(t, strings.ToLower(out), "multiple api instances detected")
 	assert.Contains(t, strings.ToLower(out), "stop duplicate api processes")
 	assert.Contains(t, out, "nebula start")

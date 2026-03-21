@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -68,16 +68,16 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 
 	// Move focus to Entities field and start link search.
 	for i := 0; i < fieldEntities; i++ {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	assert.Equal(t, fieldEntities, model.focus)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, model.linkSearching)
 
 	// Type a query and run the search command.
 	var searchCmd tea.Cmd
 	for _, r := range "Open" {
-		model, searchCmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, searchCmd = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	require.NotNil(t, searchCmd)
 	msg = searchCmd()
@@ -86,7 +86,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	assert.Len(t, model.linkResults, 1)
 
 	// Select first result.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, model.linkSearching)
 	assert.Len(t, model.linkEntities, 1)
 	assert.Contains(t, components.SanitizeText(model.View()), "OpenAI")
@@ -94,27 +94,27 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	// Fill title.
 	model.focus = fieldTitle
 	for _, r := range "Alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Commit a tag.
 	model.focus = fieldTags
 	for _, r := range "demo" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Contains(t, model.tags, "demo")
 
 	// Select a scope via selector.
 	model.focus = fieldScopes
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace}) // enter selector
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace}) // toggle current scope
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // exit selector
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // enter selector
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // toggle current scope
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // exit selector
 	assert.Contains(t, model.scopes, "public")
 
 	// Save context (Create + Link).
 	var saveCmd tea.Cmd
-	model, saveCmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, saveCmd)
 	msg = saveCmd()
 	model, _ = model.Update(msg)
@@ -125,7 +125,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	assert.Contains(t, components.SanitizeText(model.View()), "Context saved!")
 
 	// Esc should reset add state.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.saved)
 	assert.Equal(t, "", model.fields[fieldTitle].value)
 	assert.Len(t, model.tags, 0)
@@ -214,9 +214,9 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Toggle to Library view via modeFocus.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.modeFocus)
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)
@@ -227,7 +227,7 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	assert.Contains(t, out, "Alpha")
 
 	// Open detail and load it.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)
@@ -241,18 +241,18 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	assert.Contains(t, out, "Source Path")
 
 	// Enter edit mode.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, contextViewEdit, model.view)
 
 	// Add a tag and save.
 	model.editFocus = contextEditFieldTags
 	for _, r := range "new" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Contains(t, model.editTags, "new")
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)

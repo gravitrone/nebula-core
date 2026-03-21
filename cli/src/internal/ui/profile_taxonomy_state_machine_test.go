@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -74,21 +74,21 @@ func TestProfileTaxonomyCreateFlowQueuesReload(t *testing.T) {
 	model.section = 2
 
 	// Open create prompt.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	assert.Equal(t, taxPromptCreateName, model.taxPromptMode)
 
 	// Type name "team-scope" then submit.
 	for _, ch := range "team-scope" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: ch, Text: string(ch)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, taxPromptCreateDescription, model.taxPromptMode)
 
 	// Type description then submit, which triggers API call.
 	for _, ch := range "desc" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: ch, Text: string(ch)})
 	}
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, cmd = model.Update(msg)
@@ -162,7 +162,7 @@ func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 	model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
 
 	// Archive selected.
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
@@ -172,7 +172,7 @@ func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 	assert.GreaterOrEqual(t, listCalls, 1)
 
 	// Activate selected.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)

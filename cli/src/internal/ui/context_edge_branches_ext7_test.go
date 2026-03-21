@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +17,7 @@ func TestContextUpdateBackspaceTagBufferBeforeRemovingTags(t *testing.T) {
 	model.tags = []string{"alpha"}
 	model.tagBuf = "xy"
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "x", updated.tagBuf)
 	assert.Equal(t, []string{"alpha"}, updated.tags)
@@ -97,11 +97,11 @@ func TestContextHandleLinkSearchMovesCursorWhenListPresent(t *testing.T) {
 
 	assert.Equal(t, 0, model.linkList.Selected())
 
-	updated, cmd := model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.linkList.Selected())
 
-	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.linkList.Selected())
 }

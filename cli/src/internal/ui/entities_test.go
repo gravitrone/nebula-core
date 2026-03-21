@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,7 +142,7 @@ func TestEntitiesLiveSearchTriggersQuery(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	msg = cmd()
 	model, _ = model.Update(msg)
 
@@ -184,7 +184,7 @@ func TestEntitiesSearchSuggest(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	msg = cmd()
 	model, _ = model.Update(msg)
 
@@ -209,7 +209,7 @@ func TestEntitiesSearchSuggestTabAccepts(t *testing.T) {
 	model.searchSuggest = "alxx"
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -259,7 +259,7 @@ func TestEntityHistoryRevertFlow(t *testing.T) {
 	model.view = entitiesViewDetail
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -267,10 +267,10 @@ func TestEntityHistoryRevertFlow(t *testing.T) {
 	assert.True(t, historyCalled)
 	assert.Equal(t, entitiesViewHistory, model.view)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, entitiesViewConfirm, model.view)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,7 +83,7 @@ func TestFilesAddValidationErrorOnEmpty(t *testing.T) {
 	model := NewFilesModel(client)
 	model.view = filesViewAdd
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	assert.Equal(t, "Filename is required", model.addErr)
 }
 
@@ -130,15 +130,15 @@ func TestFilesUpdateHandlesAPIError(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Enter detail
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.detail)
 
 	// Enter edit
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, filesViewEdit, model.view)
 
 	// Attempt save; server returns FAIL.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)

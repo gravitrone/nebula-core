@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,11 +37,11 @@ func TestParseAndFormatFileSizeMatrix(t *testing.T) {
 
 func TestAppendCharFormatFormValueAndDerefString(t *testing.T) {
 	value := "ab"
-	appendChar(&value, tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	appendChar(&value, tea.KeyPressMsg{Code: 'c', Text: "c"})
 	assert.Equal(t, "abc", value)
-	appendChar(&value, tea.KeyMsg{Type: tea.KeySpace})
+	appendChar(&value, tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "abc ", value)
-	appendChar(&value, tea.KeyMsg{Type: tea.KeyEnter})
+	appendChar(&value, tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, "abc ", value)
 
 	assert.Equal(t, "-", formatFormValue("   ", false))
@@ -55,18 +55,18 @@ func TestFilesModeKeysAndToggleModeMatrix(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.modeFocus = true
 
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
 	updated.view = filesViewList
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, filesViewAdd, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, filesViewList, updated.view)
 }
@@ -76,17 +76,17 @@ func TestFilesHandleDetailKeysBranches(t *testing.T) {
 	model.view = filesViewDetail
 	model.detail = &api.File{ID: "file-1", Filename: "Alpha.txt", FilePath: "/tmp/a"}
 
-	updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
-	updated, _ = model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	updated, _ = model.handleDetailKeys(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	assert.True(t, updated.metaExpanded)
 
-	updated, _ = model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, _ = model.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, filesViewEdit, updated.view)
 
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, filesViewList, updated.view)
 	assert.Nil(t, updated.detail)
 	assert.Nil(t, updated.detailRels)
@@ -134,25 +134,25 @@ func TestFilesHandleAddKeysStatusTagsAndSavedBranches(t *testing.T) {
 	model.addFocus = fileFieldStatus
 	model.addStatusIdx = 0
 
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.addStatusIdx)
 
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, 0, updated.addStatusIdx)
 
 	updated.addFocus = fileFieldTags
 	updated.addTags = []string{"alpha"}
 	updated.addTagBuf = "z"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.addTagBuf)
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.addTags)
 
 	updated.addSaved = true
 	updated.addName = "Alpha.txt"
 	updated.addPath = "/tmp/alpha.txt"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.addSaved)
 	assert.Equal(t, "", updated.addName)
 	assert.Equal(t, "", updated.addPath)
@@ -166,19 +166,19 @@ func TestFilesHandleEditKeysStatusTagsAndBackBranches(t *testing.T) {
 	model.editFocus = fileFieldStatus
 	model.editStatusIdx = 0
 
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.editStatusIdx)
 
 	updated.editFocus = fileFieldTags
 	updated.editTags = []string{"alpha"}
 	updated.editTagBuf = "z"
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.editTagBuf)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.editTags)
 
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, filesViewDetail, updated.view)
 }
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,9 +35,9 @@ func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
 
 	// Move focus to mode line and toggle to Add view.
 	var cmd tea.Cmd
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.modeFocus)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, entitiesViewAdd, model.view)
 
 	// Populate scope options via the same message path the model uses.
@@ -47,41 +47,41 @@ func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
 
 	// Name field (focus 0).
 	for _, r := range "Alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Type field (focus 1).
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	for _, r := range "person" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Tags field (focus 3).
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown}) // status
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown}) // tags
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // status
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // tags
 	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // commit
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // commit
 
 	// Re-add same tag, should dedup.
 	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // commit
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // commit
 	assert.Equal(t, []string{"alpha"}, model.addTags)
 
 	// Scopes field (focus 4): enter selecting mode and select first option.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace}) // enter selecting
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // enter selecting
 	assert.True(t, model.addScopeSelecting)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace}) // toggle selected
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter}) // exit selecting
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // toggle selected
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // exit selecting
 	assert.False(t, model.addScopeSelecting)
 	assert.Contains(t, model.addScopes, "private")
 
 	// Save.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -116,19 +116,19 @@ func TestEntitiesBulkUpdateTagsCallsEndpoint(t *testing.T) {
 	}})
 
 	// Select first item.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, 1, model.bulkCount())
 
 	// Open bulk tags prompt.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
 	assert.NotEmpty(t, model.bulkPrompt)
 
 	// Enter spec and submit.
 	for _, r := range "add:alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -155,16 +155,16 @@ func TestEntitiesBulkUpdateScopesErrorShowsMessage(t *testing.T) {
 		{ID: "ent-1", Name: "One", Type: "person", Tags: []string{}},
 	}})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeySpace})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, 1, model.bulkCount())
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	require.NotEmpty(t, model.bulkPrompt)
 
 	for _, r := range "add:public" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	_, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -207,7 +207,7 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.addErr = msg.err.Error()
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.creatingSubtask {
 			return m.handleSubtaskInput(msg)
 		}
@@ -306,7 +306,7 @@ func (m JobsModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m JobsModel) handleModeKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleModeKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -514,7 +514,7 @@ func (m JobsModel) renderJobPreview(j api.Job, width int) string {
 }
 
 // handleListKeys handles handle list keys.
-func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleListKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
 	}
@@ -586,8 +586,8 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.statusTargets = []string{item.ID}
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			m.searchBuf += ch
 			m.applyJobSearch()
 		}
@@ -596,7 +596,7 @@ func (m JobsModel) handleListKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 }
 
 // handleFilterInput handles handle filter input.
-func (m JobsModel) handleFilterInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleFilterInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -611,8 +611,8 @@ func (m JobsModel) handleFilterInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.applyJobSearch()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if ch == " " && m.searchBuf == "" {
 				return m, nil
 			}
@@ -625,7 +625,7 @@ func (m JobsModel) handleFilterInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 
 // --- Add ---
 
-func (m JobsModel) handleAddKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleAddKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
 	}
@@ -666,7 +666,7 @@ func (m JobsModel) handleAddKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 				m.addPriorityIdx = (m.addPriorityIdx + 1) % len(jobPriorityOptions)
 			}
 		default:
-			ch := msg.String()
+			ch := keyText(msg)
 			if (len(ch) == 1 || ch == " ") && (m.addFocus == jobFieldTitle || m.addFocus == jobFieldDescription) {
 				m.addFields[m.addFocus].value += ch
 			}
@@ -796,7 +796,7 @@ func (m *JobsModel) startEdit() {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m JobsModel) handleEditKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleEditKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -832,8 +832,8 @@ func (m JobsModel) handleEditKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			case isKey(msg, "backspace"):
 				m.editDesc = dropLastRune(m.editDesc)
 			default:
-				ch := msg.String()
-				if len(ch) == 1 || ch == " " {
+				ch := keyText(msg)
+				if ch != "" {
 					m.editDesc += ch
 				}
 			}
@@ -1061,7 +1061,7 @@ func (m *JobsModel) updateSearchSuggest() {
 }
 
 // handleDetailKeys handles handle detail keys.
-func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleDetailKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	if m.contextLinking || m.contextCreating {
 		return m.handleContextPromptKeys(msg)
 	}
@@ -1104,7 +1104,7 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m JobsModel) handleContextPromptKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleContextPromptKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.contextLinking = false
@@ -1148,8 +1148,8 @@ func (m JobsModel) handleContextPromptKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) 
 			m.contextCreateBuf = ""
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if m.contextLinking {
 				m.contextLinkBuf += ch
 			}
@@ -1162,7 +1162,7 @@ func (m JobsModel) handleContextPromptKeys(msg tea.KeyMsg) (JobsModel, tea.Cmd) 
 }
 
 // handleStatusInput handles handle status input.
-func (m JobsModel) handleStatusInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleStatusInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.changingSt = false
@@ -1197,15 +1197,15 @@ func (m JobsModel) handleStatusInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.statusBuf = m.statusBuf[:len(m.statusBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.statusBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.statusBuf += ch
 		}
 	}
 	return m, nil
 }
 
 // handleSubtaskInput handles handle subtask input.
-func (m JobsModel) handleSubtaskInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleSubtaskInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.creatingSubtask = false
@@ -1235,15 +1235,15 @@ func (m JobsModel) handleSubtaskInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.subtaskBuf = m.subtaskBuf[:len(m.subtaskBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.subtaskBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.subtaskBuf += ch
 		}
 	}
 	return m, nil
 }
 
 // handleLinkInput handles handle link input.
-func (m JobsModel) handleLinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleLinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.linkingRel = false
@@ -1286,15 +1286,15 @@ func (m JobsModel) handleLinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.linkBuf = m.linkBuf[:len(m.linkBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.linkBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.linkBuf += ch
 		}
 	}
 	return m, nil
 }
 
 // handleUnlinkInput handles handle unlink input.
-func (m JobsModel) handleUnlinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
+func (m JobsModel) handleUnlinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.unlinkingRel = false
@@ -1330,8 +1330,8 @@ func (m JobsModel) handleUnlinkInput(msg tea.KeyMsg) (JobsModel, tea.Cmd) {
 			m.unlinkBuf = m.unlinkBuf[:len(m.unlinkBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.unlinkBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.unlinkBuf += ch
 		}
 	}
 	return m, nil

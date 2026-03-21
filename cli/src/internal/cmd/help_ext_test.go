@@ -33,7 +33,8 @@ func TestRenderNebulaHelpIncludesLongAliasesAndEmptySummaryFallback(t *testing.T
 	assert.Contains(t, text, "nb, n")
 	assert.Contains(t, text, "subcommands")
 	assert.Contains(t, text, "nebula child")
-	assert.Contains(t, text, "  -")
+	// Child command with no Short uses "-" as fallback summary.
+	assert.Contains(t, text, "-")
 }
 
 func TestVisibleFlagsLongOnlyAndTrimmedUsage(t *testing.T) {

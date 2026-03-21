@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestMetadataEditorHandleKeySpaceClampsNegativeCursorToFirstRow(t *testing.T
 	syncMetadataList(ed.list, ed.toDisplayRows(), metadataPanelPageSize(false))
 	ed.list.Cursor = -1
 
-	done := ed.HandleKey(tea.KeyMsg{Type: tea.KeySpace})
+	done := ed.HandleKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.False(t, done)
 	assert.True(t, ed.selected[0])
 }

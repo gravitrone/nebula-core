@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -82,11 +82,11 @@ func TestInboxModelNavigationKeys(t *testing.T) {
 	assert.Equal(t, 0, model.list.Selected())
 
 	// Press down (down arrow)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, model.list.Selected())
 
 	// Press up (up arrow)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, model.list.Selected())
 }
 
@@ -110,7 +110,7 @@ func TestInboxModelEnterShowsDetail(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Press enter to view detail
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 	// Should show detail view
 	assert.NotNil(t, model.detail)
@@ -155,7 +155,7 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	var detailCmd tea.Cmd
-	model, detailCmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, detailCmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, detailCmd)
 	msg = detailCmd()
 	model, _ = model.Update(msg)
@@ -187,11 +187,11 @@ func TestInboxModelEscapeBackFromDetail(t *testing.T) {
 	cmd := model.Init()
 	msg := cmd()
 	model, _ = model.Update(msg)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.NotNil(t, model.detail)
 
 	// Press escape to go back
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	// Should exit detail view
 	assert.Nil(t, model.detail)
@@ -236,7 +236,7 @@ func TestInboxBulkApproveRequiresConfirm(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 
 	assert.True(t, model.confirming)
 	view := model.View()
@@ -276,25 +276,25 @@ func TestInboxModelRejectInputHandling(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Press 'r' to start rejecting
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 
 	// Should enter reject mode
 	assert.True(t, model.rejecting)
 	assert.NotNil(t, model.detail)
 
 	// Type some text
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
 	assert.Equal(t, "test", model.rejectBuf)
 
 	// Backspace once
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "tes", model.rejectBuf)
 
 	// Escape to cancel
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.rejecting)
 	assert.Equal(t, "", model.rejectBuf)
 }
@@ -308,10 +308,10 @@ func TestInboxToggleSelectAll(t *testing.T) {
 	}
 	model.applyFilter(true)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	assert.Equal(t, 2, model.selectedCount())
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	assert.Equal(t, 0, model.selectedCount())
 }
 
@@ -342,10 +342,10 @@ func TestInboxApproveAllFiltered(t *testing.T) {
 	model.applyFilter(true)
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.Nil(t, cmd)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	cmd()
 
@@ -379,10 +379,10 @@ func TestInboxApproveAllConfirmAcceptsEnter(t *testing.T) {
 	}
 	model.applyFilter(true)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.True(t, model.confirming)
 
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	cmd()
 
@@ -399,10 +399,10 @@ func TestInboxApproveAllConfirmCancelsOnEsc(t *testing.T) {
 	}
 	model.applyFilter(true)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.True(t, model.confirming)
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.False(t, updated.confirming)
 	assert.Nil(t, cmd)
 }
@@ -464,14 +464,14 @@ func TestInboxBatchApproveSelected(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 
 	require.Nil(t, cmd)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	_, _ = model.Update(msg)
@@ -532,13 +532,13 @@ func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 	model, _ = model.Update(msg)
 
 	// Multi-select two mixed request types.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.Nil(t, cmd)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	_, _ = model.Update(msg)
@@ -572,7 +572,7 @@ func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 	cmd := model.Init()
 	model, _ = model.Update(cmd())
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.True(t, model.grantEditing)
 	assert.Equal(t, "ap-register", model.grantApproval)
 	assert.Equal(t, "public,private", model.grantScopes)
@@ -618,10 +618,10 @@ func TestInboxApproveRegisterAgentSendsGrantPayload(t *testing.T) {
 	cmd := model.Init()
 	model, _ = model.Update(cmd())
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.True(t, model.grantEditing)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 
@@ -658,17 +658,17 @@ func TestInboxBatchRejectSelected(t *testing.T) {
 	msg := cmd()
 	model, _ = model.Update(msg)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'o'}})
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	_, _ = model.Update(msg)

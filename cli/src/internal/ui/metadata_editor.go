@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
@@ -83,7 +83,7 @@ func (m *MetadataEditor) Load(initial map[string]any) {
 }
 
 // HandleKey handles handle key.
-func (m *MetadataEditor) HandleKey(msg tea.KeyMsg) bool {
+func (m *MetadataEditor) HandleKey(msg tea.KeyPressMsg) bool {
 	if m.scopeSelecting {
 		options := m.scopeOptions
 		if len(options) == 0 {
@@ -126,8 +126,8 @@ func (m *MetadataEditor) HandleKey(msg tea.KeyMsg) bool {
 				m.notice = err.Error()
 			}
 		default:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				m.entryBuf += ch
 			}
 		}

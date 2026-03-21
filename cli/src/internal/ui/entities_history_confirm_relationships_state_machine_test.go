@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,11 +62,11 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 	}})
 
 	// Enter detail.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.detail)
 
 	// Enter history.
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'h'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'h', Text: "h"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -75,13 +75,13 @@ func TestEntitiesHistoryRevertConfirmCallsAPI(t *testing.T) {
 	require.Len(t, model.history, 1)
 
 	// Select the first entry to open confirm.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, entitiesViewConfirm, model.view)
 	assert.Equal(t, "entity-revert", model.confirmKind)
 	assert.Equal(t, "audit-1", model.confirmAuditID)
 
 	// Confirm revert.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)
@@ -120,15 +120,15 @@ func TestEntitiesArchiveConfirmCallsUpdateEntity(t *testing.T) {
 		{ID: "ent-1", Name: "Alpha", Type: "entity", Status: "active", Tags: []string{}},
 	}})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.detail)
 
 	// Open archive confirm.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	assert.Equal(t, entitiesViewConfirm, model.view)
 
 	// Confirm.
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -265,11 +265,11 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	model, _ = model.Update(entitiesLoadedMsg{items: []api.Entity{
 		{ID: "ent-1", Name: "Alpha", Type: "entity", Status: "active", Tags: []string{}},
 	}})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.detail)
 
 	// Load relationships view.
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -277,25 +277,25 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	require.Len(t, model.rels, 1)
 
 	// Relate flow: open search, query, select first, type rel kind, submit.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	assert.Equal(t, entitiesViewRelateSearch, model.view)
 
 	for _, r := range "be" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)
 	assert.Equal(t, entitiesViewRelateSelect, model.view)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, entitiesViewRelateType, model.view)
 
 	for _, r := range "knows" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, cmd = model.Update(msg)
@@ -307,10 +307,10 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 
 	// Archive relationship confirm renders and triggers update.
 	model.view = entitiesViewRelationships
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	assert.Equal(t, entitiesViewConfirm, model.view)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, cmd = model.Update(msg)
@@ -322,9 +322,9 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 
 	// Relationship edit validation: invalid JSON blocks save.
 	model.view = entitiesViewRelationships
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, entitiesViewRelEdit, model.view)
 	model.relEditBuf = "{"
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	assert.NotEmpty(t, model.errText)
 }

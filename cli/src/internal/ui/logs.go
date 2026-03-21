@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -187,7 +187,7 @@ func (m LogsModel) Update(msg tea.Msg) (LogsModel, tea.Cmd) {
 		m.editSaving = false
 		m.errText = msg.err.Error()
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.addValue.Active {
 			m.addValue.HandleKey(msg)
 			return m, nil
@@ -277,7 +277,7 @@ func (m LogsModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m LogsModel) handleModeKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
+func (m LogsModel) handleModeKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -480,7 +480,7 @@ func (m LogsModel) renderLogPreview(l api.Log, width int) string {
 }
 
 // handleListKeys handles handle list keys.
-func (m LogsModel) handleListKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
+func (m LogsModel) handleListKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
 	}
@@ -527,8 +527,8 @@ func (m LogsModel) handleListKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 			m.applyLogSearch()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 {
+		ch := keyText(msg)
+		if ch != "" {
 			m.searchBuf += ch
 			m.applyLogSearch()
 		}
@@ -537,7 +537,7 @@ func (m LogsModel) handleListKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 }
 
 // handleFilterInput handles handle filter input.
-func (m LogsModel) handleFilterInput(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
+func (m LogsModel) handleFilterInput(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -552,8 +552,8 @@ func (m LogsModel) handleFilterInput(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 			m.applyLogSearch()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if ch == " " && m.searchBuf == "" {
 				return m, nil
 			}
@@ -566,7 +566,7 @@ func (m LogsModel) handleFilterInput(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 
 // --- Detail View ---
 
-func (m LogsModel) handleDetailKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
+func (m LogsModel) handleDetailKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	switch {
 	case isUp(msg):
 		m.modeFocus = true
@@ -635,7 +635,7 @@ func (m LogsModel) loadDetailRelationships(logID string) tea.Cmd {
 
 // --- Add View ---
 
-func (m LogsModel) handleAddKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
+func (m LogsModel) handleAddKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
 	}
@@ -697,18 +697,18 @@ func (m LogsModel) handleAddKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitAddTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.addTagBuf += ch
 				}
 			}
 		case logFieldType:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				m.addType += ch
 			}
 		case logFieldTimestamp:
-			ch := msg.String()
+			ch := keyText(msg)
 			if len(ch) == 1 || ch == " " || ch == ":" || ch == "-" || ch == "T" || ch == "Z" || ch == "+" {
 				m.addTimestamp += ch
 			}
@@ -912,7 +912,7 @@ func (m LogsModel) startEdit() {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m LogsModel) handleEditKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
+func (m LogsModel) handleEditKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -953,8 +953,8 @@ func (m LogsModel) handleEditKeys(msg tea.KeyMsg) (LogsModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := msg.String()
-				if len(ch) == 1 && ch != "," {
+				ch := keyText(msg)
+				if ch != "" && ch != "," {
 					m.editTagBuf += ch
 				}
 			}

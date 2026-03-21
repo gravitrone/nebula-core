@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -25,13 +25,13 @@ func TestProfileUpdateDownAndPendingLimitConfigBranches(t *testing.T) {
 	model.agentList.SetItems([]string{"a1", "a2"})
 	model.agentList.Cursor = 0
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.agentList.Cursor)
 
 	updated.section = 0
 	updated.sectionFocus = false
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editPendingLimit)
 	assert.Equal(t, "777", updated.pendingLimitBuf)
@@ -95,7 +95,7 @@ func TestProfileHandleInputsSaveErrorBranches(t *testing.T) {
 
 	model.editAPIKey = true
 	model.apiKeyBuf = "nbl_new"
-	updated, cmd := model.handleAPIKeyInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editAPIKey)
 	msg := cmd()
@@ -105,7 +105,7 @@ func TestProfileHandleInputsSaveErrorBranches(t *testing.T) {
 
 	model.editPendingLimit = true
 	model.pendingLimitBuf = "900"
-	updated, cmd = model.handlePendingLimitInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editPendingLimit)
 	msg = cmd()

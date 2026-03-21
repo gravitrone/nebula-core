@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -123,7 +123,7 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 		m.reverting = false
 		m.errText = msg.err.Error()
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.filtering {
 			return m.handleFilterKeys(msg)
 		}
@@ -241,7 +241,7 @@ func (m HistoryModel) confirmRevert() (HistoryModel, tea.Cmd) {
 }
 
 // handleListKeys handles handle list keys.
-func (m HistoryModel) handleListKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
+func (m HistoryModel) handleListKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.list.Down()
@@ -268,7 +268,7 @@ func (m HistoryModel) handleListKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 }
 
 // handleFilterKeys handles handle filter keys.
-func (m HistoryModel) handleFilterKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
+func (m HistoryModel) handleFilterKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -281,18 +281,20 @@ func (m HistoryModel) handleFilterKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 		m.filter = auditFilter{}
 		m.loading = true
 		return m, m.loadHistory()
-	case msg.Type == tea.KeyBackspace:
+	case isKey(msg, "backspace"):
 		if len(m.filterBuf) > 0 {
 			m.filterBuf = m.filterBuf[:len(m.filterBuf)-1]
 		}
-	case msg.Type == tea.KeyRunes:
-		m.filterBuf += msg.String()
+	default:
+		if ch := keyText(msg); ch != "" {
+			m.filterBuf += ch
+		}
 	}
 	return m, nil
 }
 
 // handleScopeKeys handles handle scope keys.
-func (m HistoryModel) handleScopeKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
+func (m HistoryModel) handleScopeKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.scopeList.Down()
@@ -313,7 +315,7 @@ func (m HistoryModel) handleScopeKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
 }
 
 // handleActorKeys handles handle actor keys.
-func (m HistoryModel) handleActorKeys(msg tea.KeyMsg) (HistoryModel, tea.Cmd) {
+func (m HistoryModel) handleActorKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.actorList.Down()

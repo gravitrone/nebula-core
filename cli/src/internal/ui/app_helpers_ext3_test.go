@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -168,7 +168,7 @@ func TestHandleOnboardingKeysQuitBusyAndEnterBranches(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
 
-	model, cmd := app.handleOnboardingKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	model, cmd := app.handleOnboardingKeys(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	require.NotNil(t, cmd)
 	_, ok := model.(App)
 	require.True(t, ok)
@@ -177,13 +177,13 @@ func TestHandleOnboardingKeysQuitBusyAndEnterBranches(t *testing.T) {
 
 	app.onboardingBusy = true
 	app.onboardingName = "alxx"
-	model, cmd = app.handleOnboardingKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, cmd = app.handleOnboardingKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	updated := model.(App)
 	assert.Equal(t, "alxx", updated.onboardingName)
 
 	app.onboardingBusy = false
-	model, cmd = app.handleOnboardingKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = app.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	updated = model.(App)
 	assert.True(t, updated.onboardingBusy)

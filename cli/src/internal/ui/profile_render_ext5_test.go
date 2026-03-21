@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestProfileUpdateRoutesPendingLimitInputFromMainUpdate(t *testing.T) {
 	model.editPendingLimit = true
 	model.pendingLimitBuf = ""
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editPendingLimit)
 	_, ok := cmd().(errMsg)
@@ -27,13 +27,13 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 	model := NewProfileModel(nil, nil)
 	model.section = 1
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.section)
 	assert.True(t, updated.sectionFocus)
 
 	updated.sectionFocus = false
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.section)
 	assert.True(t, updated.sectionFocus)
@@ -43,24 +43,24 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 	updated.taxList.SetItems([]string{"public", "private"})
 	updated.taxList.Cursor = 0
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, updated.taxList.Cursor)
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, updated.taxList.Cursor)
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, updated.sectionFocus)
 
 	updated.section = 0
 	updated.sectionFocus = false
 	updated.keyList.SetItems([]string{"k1", "k2"})
 	updated.keyList.Cursor = 1
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, updated.keyList.Cursor)
 
 	updated.config = nil
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editPendingLimit)
 	assert.Equal(t, "500", updated.pendingLimitBuf)
@@ -76,21 +76,21 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 	updated.taxList.SetItems([]string{"public"})
 	updated.taxList.Cursor = 0
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptEditName, updated.taxPromptMode)
 	assert.Equal(t, "scope-1", updated.taxEditID)
 	assert.Equal(t, "scope desc", updated.taxPendingDesc)
 
 	updated.taxPromptMode = taxPromptNone
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptEditName, updated.taxPromptMode)
 	assert.Equal(t, "scope-1", updated.taxEditID)
 	assert.Equal(t, "scope desc", updated.taxPendingDesc)
 
 	updated.taxPromptMode = taxPromptNone
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptFilter, updated.taxPromptMode)
 	assert.Equal(t, "pub", updated.taxPromptBuf)

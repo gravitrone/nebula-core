@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -45,22 +45,22 @@ func TestEntitiesLoadHistoryAndHandleHistoryKeysBranches(t *testing.T) {
 		model.historyList = components.NewList(8)
 		model.historyList.SetItems([]string{"a1", "a2"})
 
-		next, cmd := model.handleHistoryKeys(tea.KeyMsg{Type: tea.KeyDown})
+		next, cmd := model.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		assert.Nil(t, cmd)
 		assert.Equal(t, 1, next.historyList.Selected())
 
-		next, cmd = next.handleHistoryKeys(tea.KeyMsg{Type: tea.KeyUp})
+		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 		assert.Equal(t, 0, next.historyList.Selected())
 
 		next.historyList.Cursor = 9
-		next, cmd = next.handleHistoryKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewHistory, next.view)
 		assert.Equal(t, "", next.confirmKind)
 
 		next.historyList.Cursor = 0
-		next, cmd = next.handleHistoryKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewConfirm, next.view)
 		assert.Equal(t, "entity-revert", next.confirmKind)
@@ -68,7 +68,7 @@ func TestEntitiesLoadHistoryAndHandleHistoryKeysBranches(t *testing.T) {
 		assert.Equal(t, entitiesViewDetail, next.confirmReturn)
 
 		next.view = entitiesViewHistory
-		next, cmd = next.handleHistoryKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewDetail, next.view)
 	})
@@ -117,23 +117,23 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		m := model
 		m.view = entitiesViewRelateSearch
 
-		next, cmd := m.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd := m.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSearch, next.view)
 
 		next.relateQuery = "be"
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.NotNil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSelect, next.view)
 		assert.True(t, next.relateLoading)
 
 		next.view = entitiesViewRelateSearch
 		next.relateQuery = "be"
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, "b", next.relateQuery)
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeySpace})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Equal(t, "b ", next.relateQuery)
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Equal(t, entitiesViewRelationships, next.view)
 	})
 
@@ -144,34 +144,34 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		m.relateList.SetItems([]string{"Beta"})
 		m.view = entitiesViewRelateSelect
 
-		next, cmd := m.handleRelateKeys(tea.KeyMsg{Type: tea.KeyDown})
+		next, cmd := m.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		assert.Nil(t, cmd)
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyUp})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 
 		next.relateList.Cursor = 9
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSelect, next.view)
 		assert.Nil(t, next.relateTarget)
 
 		next.relateList.Cursor = 0
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateType, next.view)
 		require.NotNil(t, next.relateTarget)
 		assert.Equal(t, "ent-2", next.relateTarget.ID)
 
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateType, next.view)
 
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: 'k', Text: "k"})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, "k", next.relateType)
-		next, _ = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.NotNil(t, cmd)
 		assert.Equal(t, entitiesViewRelationships, next.view)
 		assert.True(t, next.relLoading)
@@ -179,17 +179,17 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		next.view = entitiesViewRelateType
 		next.relateTarget = nil
 		next.relateType = "knows"
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateType, next.view)
 
 		next.view = entitiesViewRelateType
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSelect, next.view)
 
 		next.view = entitiesViewRelateSelect
-		next, cmd = next.handleRelateKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSearch, next.view)
 	})

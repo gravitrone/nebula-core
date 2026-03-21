@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,7 +28,7 @@ func TestImportExportUpdateHandlesDoneErrorAndResultCloseKeys(t *testing.T) {
 	assert.Equal(t, "done", updated.summary)
 	assert.Equal(t, []string{"row 1"}, updated.details)
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.closed)
 
 	updated.closed = false
@@ -38,7 +38,7 @@ func TestImportExportUpdateHandlesDoneErrorAndResultCloseKeys(t *testing.T) {
 	assert.Equal(t, stepResult, updated.step)
 	assert.Equal(t, "boom", updated.errText)
 
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.True(t, updated.closed)
 }
 

@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,24 +12,24 @@ func TestProtocolsHandleModeKeysDownUpBackClearModeFocus(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	model.modeFocus = true
 
-	updated, _ := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, _ = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, _ = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.modeFocus)
 }
 
 func TestProtocolsHandleModeKeysToggleBindings(t *testing.T) {
-	keys := []tea.KeyMsg{
-		{Type: tea.KeyLeft},
-		{Type: tea.KeyRight},
-		{Type: tea.KeySpace},
-		{Type: tea.KeyEnter},
+	keys := []tea.KeyPressMsg{
+		{Code: tea.KeyLeft},
+		{Code: tea.KeyRight},
+		{Code: tea.KeySpace},
+		{Code: tea.KeyEnter},
 	}
 	for _, key := range keys {
 		model := NewProtocolsModel(nil)

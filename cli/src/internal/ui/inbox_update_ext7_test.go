@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -27,7 +27,7 @@ func TestInboxUpdateDiffInitConfirmNoopAndListEscClear(t *testing.T) {
 	assert.Equal(t, "approved", updated.detail.ChangeDetails["changes"].(map[string]any)["status"])
 
 	updated.confirming = true
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Nil(t, cmd)
 	assert.True(t, updated.confirming)
 
@@ -37,7 +37,7 @@ func TestInboxUpdateDiffInitConfirmNoopAndListEscClear(t *testing.T) {
 	updated.filtered = []int{0}
 	updated.list.SetItems([]string{"ap-1"})
 	updated.selected = map[string]bool{"ap-1": true}
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, cmd)
 	assert.Empty(t, updated.selected)
 }

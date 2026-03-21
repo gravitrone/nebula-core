@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -67,13 +67,13 @@ func TestUpdateTabNavArrowLeftRightSwitchBranches(t *testing.T) {
 	app.tabNav = true
 	app.tab = tabInbox
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	updated := model.(App)
 	require.NotNil(t, cmd)
 	assert.Equal(t, tabCount-1, updated.tab)
 	assert.True(t, updated.tabNav)
 
-	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
+	model, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	updated = model.(App)
 	require.NotNil(t, cmd)
 	assert.Equal(t, tabInbox, updated.tab)
@@ -181,7 +181,7 @@ func TestUpdateHelpOpenIgnoresUnrelatedKeys(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.helpOpen = true
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	updated := model.(App)
 
 	assert.True(t, updated.helpOpen)
@@ -192,13 +192,13 @@ func TestUpdateHelpOpenClosesOnQuestionAndBackKeys(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.helpOpen = true
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	updated := model.(App)
 	assert.False(t, updated.helpOpen)
 	assert.Nil(t, cmd)
 
 	updated.helpOpen = true
-	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	updated = model.(App)
 	assert.False(t, updated.helpOpen)
 	assert.Nil(t, cmd)
@@ -208,13 +208,13 @@ func TestUpdateQuitConfirmCancelsOnNoAndBack(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.quitConfirm = true
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	updated := model.(App)
 	assert.False(t, updated.quitConfirm)
 	assert.Nil(t, cmd)
 
 	updated.quitConfirm = true
-	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	updated = model.(App)
 	assert.False(t, updated.quitConfirm)
 	assert.Nil(t, cmd)
@@ -238,6 +238,6 @@ func TestViewAddsMultiAPIRecoveryHintForConflictPattern(t *testing.T) {
 	app.lastErrCode = ""
 	app.lastErrMsg = ""
 
-	view := app.View()
+	view := app.View().Content
 	assert.Contains(t, view, "stop duplicate API processes and restart with `nebula start`")
 }

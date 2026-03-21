@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,18 +44,18 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 	m.Start(importMode)
 
 	// Resource -> Format -> Path.
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepFormat, m.step)
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)
 	assert.Contains(t, components.SanitizeText(m.View()), "Enter file path")
 
 	// Type path and run.
 	for _, r := range inPath {
-		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		m, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	var cmd tea.Cmd
-	m, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, stepRunning, m.step)
 
@@ -71,7 +71,7 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 	clean := components.SanitizeText(out)
 	assert.Contains(t, clean, "Created 1, Failed 0")
 
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.True(t, m.closed)
 }
 
@@ -79,11 +79,11 @@ func TestImportExportImportFlowReadsFileCallsAPIAndShowsResult(t *testing.T) {
 func TestImportExportEmptyPathDoesNotRun(t *testing.T) {
 	m := NewImportExportModel(nil)
 	m.Start(importMode)
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 	assert.Nil(t, cmd)
 	assert.Equal(t, stepPath, m.step)
@@ -114,16 +114,16 @@ func TestImportExportExportJSONWritesFile(t *testing.T) {
 	m.Start(exportMode)
 
 	// Resource -> Format -> Path.
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)
 	assert.Contains(t, components.SanitizeText(m.View()), "Export file path")
 
 	for _, r := range outPath {
-		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		m, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	var cmd tea.Cmd
-	m, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	m, _ = m.Update(msg)
@@ -162,17 +162,17 @@ func TestImportExportExportCSVWritesFile(t *testing.T) {
 	m.Start(exportMode)
 
 	// Resource -> Format (move to csv) -> Path.
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyDown})
-	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, stepPath, m.step)
 	assert.Contains(t, components.SanitizeText(m.View()), "Export file path")
 
 	for _, r := range outPath {
-		m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		m, _ = m.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	var cmd tea.Cmd
-	m, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	m, _ = m.Update(msg)

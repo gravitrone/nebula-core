@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -87,7 +87,7 @@ func TestLogsAddValidationErrorOnEmpty(t *testing.T) {
 	model := NewLogsModel(client)
 	model.view = logsViewAdd
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	assert.Equal(t, "Type is required", model.addErr)
 }
 
@@ -144,17 +144,17 @@ func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 	require.Len(t, model.items, 2)
 
 	// Navigate down to second item.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, 1, model.list.Selected())
 
 	// Open detail.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, logsViewDetail, model.view)
 	require.NotNil(t, model.detail)
 	assert.Equal(t, "log-2", model.detail.ID)
 
 	// Back to list.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, logsViewList, model.view)
 	assert.Nil(t, model.detail)
 }
@@ -238,38 +238,38 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	model, _ = model.Update(cmd())
 
 	// Toggle into Add mode via mode line focus.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.modeFocus)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, logsViewAdd, model.view)
 
 	// Fill type.
 	for _, r := range "workout" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	assert.Equal(t, "workout", model.addType)
 
 	// Move to Tags field.
 	for i := 0; i < 3; i++ {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	}
 	assert.Equal(t, logFieldTags, model.addFocus)
 
 	// Commit tag and dedupe.
 	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Equal(t, []string{"alpha"}, model.addTags)
 
 	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Equal(t, []string{"alpha"}, model.addTags)
 
 	// Save.
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
@@ -334,21 +334,21 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	model, _ = model.Update(cmd())
 
 	// Open detail and then edit.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, logsViewDetail, model.view)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, logsViewEdit, model.view)
 
 	// Move focus to tags and add one tag.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, logEditFieldTags, model.editFocus)
 	for _, r := range "beta" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, []string{"beta"}, model.editTags)
 
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)

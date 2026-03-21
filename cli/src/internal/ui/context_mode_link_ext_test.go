@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -17,34 +17,34 @@ func TestContextHandleModeKeysBranchMatrix(t *testing.T) {
 	model.view = contextViewAdd
 	model.focus = fieldNotes
 
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, 0, updated.focus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
 	updated.view = contextViewEdit
 	updated.editFocus = contextEditFieldNotes
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, 0, updated.editFocus)
 
 	updated.modeFocus = true
 	updated.view = contextViewAdd
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.NotNil(t, cmd)
 	assert.Equal(t, contextViewList, updated.view)
 	assert.True(t, updated.loadingList)
 
 	updated.modeFocus = true
 	updated.view = contextViewDetail
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, contextViewList, updated.view)
 }
@@ -59,17 +59,17 @@ func TestContextHandleFilterInputBranchMatrix(t *testing.T) {
 	model.applyContextFilter()
 	assert.Len(t, model.items, 2)
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.filterBuf)
 	assert.Len(t, updated.items, 2)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.filterBuf)
 	assert.Len(t, updated.items, 2)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.filterBuf)
 	assert.Len(t, updated.items, 2)
@@ -77,7 +77,7 @@ func TestContextHandleFilterInputBranchMatrix(t *testing.T) {
 	updated.filterBuf = "beta"
 	updated.applyContextFilter()
 	assert.Len(t, updated.items, 1)
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.filterBuf)
@@ -85,7 +85,7 @@ func TestContextHandleFilterInputBranchMatrix(t *testing.T) {
 
 	updated.filtering = true
 	updated.filterBuf = "active"
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "active", updated.filterBuf)
@@ -110,23 +110,23 @@ func TestContextHandleDetailKeysBranchMatrix(t *testing.T) {
 		CreatedAt:       now,
 	}
 
-	updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	assert.True(t, updated.contentExpanded)
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	assert.True(t, updated.sourcePathExpanded)
 
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, contextViewEdit, updated.view)
 	assert.Equal(t, contextEditFieldTitle, updated.editFocus)
 	assert.Equal(t, "Alpha", updated.contextEditFields[contextEditFieldTitle].value)
 
 	updated.view = contextViewDetail
-	updated, cmd = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, contextViewList, updated.view)
 	assert.Nil(t, updated.detail)
@@ -141,13 +141,13 @@ func TestContextHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editSaving = true
 		model.editFocus = contextEditFieldStatus
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
 		assert.Equal(t, contextEditFieldStatus, updated.editFocus)
 
 		model.editSaving = false
 		model.modeFocus = true
-		updated, cmd = model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+		updated, cmd = model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
 		assert.False(t, updated.modeFocus)
 		assert.Equal(t, contextEditFieldTitle, updated.editFocus)
@@ -160,36 +160,36 @@ func TestContextHandleEditKeysBranchMatrix(t *testing.T) {
 		model.scopeOptions = []string{"public", "private"}
 		model.editFocus = contextEditFieldType
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		require.Nil(t, cmd)
 		assert.True(t, updated.editTypeSelecting)
 
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		assert.Equal(t, 1, updated.editTypeIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 		assert.Equal(t, 0, updated.editTypeIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.False(t, updated.editTypeSelecting)
 
 		updated.editFocus = contextEditFieldScopes
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.True(t, updated.editScopeSelecting)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		assert.Equal(t, 1, updated.scopeIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Equal(t, []string{"private"}, updated.editScopes)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 		assert.Equal(t, 0, updated.scopeIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Equal(t, []string{"private", "public"}, updated.editScopes)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.False(t, updated.editScopeSelecting)
 
 		updated.editFocus = contextEditFieldStatus
 		startStatus := updated.editStatusIdx
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		assert.Equal(t, (startStatus+1)%len(contextStatusOptions), updated.editStatusIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 		assert.Equal(t, startStatus, updated.editStatusIdx)
 	})
 
@@ -200,42 +200,42 @@ func TestContextHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editFocus = contextEditFieldTags
 		model.editTagBuf = "ab"
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.Nil(t, cmd)
 		assert.Equal(t, "a", updated.editTagBuf)
 
 		updated.editTagBuf = ""
 		updated.editTags = []string{"alpha", "beta"}
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, []string{"alpha"}, updated.editTags)
 
 		updated.editFocus = contextEditFieldScopes
 		updated.editScopes = []string{"public"}
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Empty(t, updated.editScopes)
 
 		updated.editFocus = contextEditFieldTitle
 		updated.contextEditFields[contextEditFieldTitle].value = "Alpha"
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, "Alph", updated.contextEditFields[contextEditFieldTitle].value)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Equal(t, "Alpha ", updated.contextEditFields[contextEditFieldTitle].value)
 
 		updated.editFocus = contextEditFieldNotes
 		updated.contextEditFields[contextEditFieldNotes].value = "notes"
-		updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyCtrlS})
+		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 		require.NotNil(t, cmd)
 		assert.True(t, updated.editSaving)
 
 		updated.editSaving = false
 		updated.editScopeSelecting = true
 		updated.editFocus = contextEditFieldScopes
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Equal(t, contextViewEdit, updated.view)
 		assert.False(t, updated.editScopeSelecting)
 
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Equal(t, contextViewDetail, updated.view)
 		assert.False(t, updated.editScopeSelecting)
 	})
@@ -291,7 +291,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
 	model.linkList.SetItems([]string{"Alpha"})
-	model, cmd := model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, model.linkSearching)
 	assert.Len(t, model.linkEntities, 1)
@@ -299,13 +299,13 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 
 	model.linkSearching = true
 	model.linkQuery = "ab"
-	model, cmd = model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "a", model.linkQuery)
 
 	model.linkResults = []api.Entity{{ID: "ent-2", Name: "Beta"}}
 	model.linkList.SetItems([]string{"Beta"})
-	model, cmd = model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "ax", model.linkQuery)
 	assert.Empty(t, model.linkResults)
@@ -313,7 +313,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	model.linkQuery = "query"
 	model.linkResults = []api.Entity{{ID: "ent-3"}}
 	model.linkList.SetItems([]string{"ent-3"})
-	model, cmd = model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyCtrlU})
+	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", model.linkQuery)
 	assert.Empty(t, model.linkResults)
@@ -322,7 +322,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	model.linkQuery = "z"
 	model.linkResults = []api.Entity{{ID: "ent-4"}}
 	model.linkList.SetItems([]string{"ent-4"})
-	model, cmd = model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyEsc})
+	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, model.linkSearching)
 	assert.Equal(t, "", model.linkQuery)
@@ -396,7 +396,7 @@ func TestContextHandleEditKeysNavigationBranches(t *testing.T) {
 	model.editTypeSelecting = true
 	model.editScopeSelecting = true
 
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, contextEditFieldStatus, updated.editFocus)
 	assert.False(t, updated.editTypeSelecting)
@@ -405,7 +405,7 @@ func TestContextHandleEditKeysNavigationBranches(t *testing.T) {
 	updated.editFocus = contextEditFieldTitle
 	updated.editTypeSelecting = true
 	updated.editScopeSelecting = true
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 	assert.Equal(t, contextEditFieldTitle, updated.editFocus)
@@ -414,7 +414,7 @@ func TestContextHandleEditKeysNavigationBranches(t *testing.T) {
 
 	updated.modeFocus = false
 	updated.editFocus = contextEditFieldNotes
-	updated, cmd = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, contextEditFieldScopes, updated.editFocus)
 }
@@ -424,16 +424,16 @@ func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing
 	model.startLinkSearch()
 	model.linkList = nil
 
-	updated, cmd := model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkSearching)
-	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkSearching)
-	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.linkQuery)
-	updated, cmd = updated.handleLinkSearch(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.linkQuery)
 
@@ -444,7 +444,7 @@ func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing
 	model.linkList.SetItems([]string{"Alpha", "Ghost"})
 	model.linkList.Cursor = 1
 
-	updated, cmd = model.handleLinkSearch(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkSearching)
 	assert.Empty(t, updated.linkEntities)

@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -157,17 +157,17 @@ func TestTabWantsArrowsBranchMatrixExt(t *testing.T) {
 }
 
 func TestStartupStatusColorMatrix(t *testing.T) {
-	assert.Equal(t, string(ColorSuccess), startupStatusColor("ok"))
-	assert.Equal(t, string(ColorMuted), startupStatusColor("checking"))
-	assert.Equal(t, string(ColorWarning), startupStatusColor("missing"))
-	assert.Equal(t, string(ColorWarning), startupStatusColor("forbidden"))
-	assert.Equal(t, string(ColorWarning), startupStatusColor("timeout"))
-	assert.Equal(t, string(ColorError), startupStatusColor("invalid"))
-	assert.Equal(t, string(ColorError), startupStatusColor("down"))
-	assert.Equal(t, string(ColorError), startupStatusColor("failed"))
-	assert.Equal(t, string(ColorError), startupStatusColor("schema_error"))
-	assert.Equal(t, string(ColorError), startupStatusColor("multi_api_conflict"))
-	assert.Equal(t, string(ColorMuted), startupStatusColor("unknown-status"))
+	assert.Equal(t, "#3f866b", startupStatusColor("ok"))
+	assert.Equal(t, "#9ba0bf", startupStatusColor("checking"))
+	assert.Equal(t, "#c78854", startupStatusColor("missing"))
+	assert.Equal(t, "#c78854", startupStatusColor("forbidden"))
+	assert.Equal(t, "#c78854", startupStatusColor("timeout"))
+	assert.Equal(t, "#6d424b", startupStatusColor("invalid"))
+	assert.Equal(t, "#6d424b", startupStatusColor("down"))
+	assert.Equal(t, "#6d424b", startupStatusColor("failed"))
+	assert.Equal(t, "#6d424b", startupStatusColor("schema_error"))
+	assert.Equal(t, "#6d424b", startupStatusColor("multi_api_conflict"))
+	assert.Equal(t, "#9ba0bf", startupStatusColor("unknown-status"))
 }
 
 func TestViewStartupPanelAndErrorRecoveryHints(t *testing.T) {
@@ -179,7 +179,7 @@ func TestViewStartupPanelAndErrorRecoveryHints(t *testing.T) {
 	app.err = "INVALID_API_KEY: bad token"
 	app.showRecoveryHints = true
 
-	out := components.SanitizeText(app.View())
+	out := components.SanitizeText(app.View().Content)
 	assert.Contains(t, out, "Recovery:")
 	assert.Contains(t, out, "re-login")
 }
@@ -195,7 +195,7 @@ func TestViewOverlayPriorityPrefersQuitConfirm(t *testing.T) {
 	app.quickstartOpen = true
 	app.quitConfirm = true
 
-	out := components.SanitizeText(app.View())
+	out := components.SanitizeText(app.View().Content)
 	assert.Contains(t, out, "You have unsaved changes")
 	assert.NotContains(t, out, "Command Palette")
 	assert.NotContains(t, out, "Getting Started")

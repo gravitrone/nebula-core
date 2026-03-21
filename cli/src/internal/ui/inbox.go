@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -95,7 +95,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.confirming {
 			switch {
 			case isKey(msg, "y"), isEnter(msg):
@@ -407,7 +407,7 @@ func (m InboxModel) beginApproveFlow() (InboxModel, tea.Cmd) {
 }
 
 // handleDetailKeys handles handle detail keys.
-func (m InboxModel) handleDetailKeys(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
+func (m InboxModel) handleDetailKeys(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.detail = nil
@@ -421,7 +421,7 @@ func (m InboxModel) handleDetailKeys(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 }
 
 // handleGrantInput handles handle grant input.
-func (m InboxModel) handleGrantInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
+func (m InboxModel) handleGrantInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.grantEditing = false
@@ -463,8 +463,8 @@ func (m InboxModel) handleGrantInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 		}
 		return m, nil
 	default:
-		s := msg.String()
-		if len(s) == 1 || s == " " {
+		s := keyText(msg)
+		if s != "" {
 			m.grantScopes += s
 		}
 	}
@@ -492,7 +492,7 @@ func (m InboxModel) renderGrantEditor() string {
 }
 
 // handleRejectInput handles handle reject input.
-func (m InboxModel) handleRejectInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
+func (m InboxModel) handleRejectInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) {
 	if m.detail == nil {
 		m.rejecting = false
 		m.rejectBuf = ""
@@ -521,8 +521,8 @@ func (m InboxModel) handleRejectInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 			m.rejectBuf = m.rejectBuf[:len(m.rejectBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.rejectBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.rejectBuf += ch
 		}
 	}
 	return m, nil
@@ -1087,7 +1087,7 @@ func (m *InboxModel) startReject() (InboxModel, tea.Cmd) {
 }
 
 // handleRejectPreview handles handle reject preview.
-func (m InboxModel) handleRejectPreview(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
+func (m InboxModel) handleRejectPreview(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
 		ids := append([]string(nil), m.bulkRejectIDs...)
@@ -1322,7 +1322,7 @@ func approvalDiffValue(details api.JSONMap, field string, raw any) string {
 }
 
 // handleFilterInput handles handle filter input.
-func (m InboxModel) handleFilterInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
+func (m InboxModel) handleFilterInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.filtering = false
@@ -1337,8 +1337,8 @@ func (m InboxModel) handleFilterInput(msg tea.KeyMsg) (InboxModel, tea.Cmd) {
 			m.applyFilter(true)
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.filterBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.filterBuf += ch
 			m.applyFilter(true)
 		}
 	}

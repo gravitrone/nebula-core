@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,14 +114,14 @@ func TestProtocolsUpdateKeyRoutingByView(t *testing.T) {
 	model.modeFocus = true
 	model.view = protocolsViewList
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.view = protocolsViewList
 	updated.modeFocus = false
 	updated.filtering = false
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewAdd, updated.view)
 
@@ -129,19 +129,19 @@ func TestProtocolsUpdateKeyRoutingByView(t *testing.T) {
 	updated.modeFocus = false
 	updated.addFocus = protoFieldStatus
 	updated.addStatusIdx = 0
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.addStatusIdx)
 
 	updated.view = protocolsViewDetail
 	updated.detail = &api.Protocol{ID: "proto-1", Name: "checklist", Title: "ops", Status: "active"}
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewEdit, updated.view)
 
 	updated.view = protocolsViewEdit
 	updated.editFocus = protoEditFieldStatus
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewDetail, updated.view)
 }

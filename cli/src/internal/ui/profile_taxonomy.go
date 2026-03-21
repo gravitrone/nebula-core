@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -121,7 +121,7 @@ func (m ProfileModel) taxonomyPromptTitle() string {
 }
 
 // handleTaxonomyPrompt handles handle taxonomy prompt.
-func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
+func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyPressMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.taxPromptMode = taxPromptNone
@@ -138,8 +138,8 @@ func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyMsg) (ProfileModel, tea.Cm
 		}
 		return m, nil
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.taxPromptBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.taxPromptBuf += ch
 		}
 		return m, nil
 	}

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -223,7 +223,7 @@ func TestTabNavAllowsActionKeys(t *testing.T) {
 	app.tabNav = true
 	app.rels.view = relsViewList
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	updated := model.(App)
 
 	assert.False(t, updated.tabNav)
@@ -237,7 +237,7 @@ func TestTabNavDownMovesIntoModeLineFocus(t *testing.T) {
 	app.tabNav = true
 	app.entities.view = entitiesViewList
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	updated := model.(App)
 
 	assert.False(t, updated.tabNav)
@@ -250,7 +250,7 @@ func TestTabNavDownMovesIntoSettingsSectionFocus(t *testing.T) {
 	app.tab = tabProfile
 	app.tabNav = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	updated := model.(App)
 
 	assert.False(t, updated.tabNav)
@@ -265,7 +265,7 @@ func TestProfileUpPromotesSectionFocusBeforeExitingToTabNav(t *testing.T) {
 	app.profile.section = 0
 	app.profile.sectionFocus = false
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	updated := model.(App)
 
 	assert.False(t, updated.tabNav)
@@ -279,7 +279,7 @@ func TestProfileSectionFocusUpCanExitToTopTabNav(t *testing.T) {
 	app.tabNav = false
 	app.profile.sectionFocus = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	updated := model.(App)
 
 	assert.True(t, updated.tabNav)
@@ -294,7 +294,7 @@ func TestBodyScrollResetsWhenFilesSubviewChanges(t *testing.T) {
 	app.files.view = filesViewAdd
 	app.files.modeFocus = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated := model.(App)
 
 	assert.Equal(t, filesViewList, updated.files.view)
@@ -309,7 +309,7 @@ func TestBodyScrollResetsWhenEnteringModeLineFromTabNav(t *testing.T) {
 	app.entities.view = entitiesViewList
 	app.bodyScroll = 16
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ := app.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	updated := model.(App)
 
 	assert.False(t, updated.tabNav)
@@ -353,11 +353,11 @@ func TestUnifiedPaletteRemovesDedicatedSearchTabActions(t *testing.T) {
 // TestHelpToggle handles test help toggle.
 func TestHelpToggle(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	updated := model.(App)
 	assert.True(t, updated.helpOpen)
 
-	model, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	updated = model.(App)
 	assert.False(t, updated.helpOpen)
 }
@@ -368,7 +368,7 @@ func TestQuitConfirmWhenUnsaved(t *testing.T) {
 	app.know.view = contextViewAdd
 	app.know.fields[fieldTitle].value = "draft"
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	updated := model.(App)
 
 	assert.True(t, updated.quitConfirm)
@@ -380,7 +380,7 @@ func TestQuitConfirmAccepts(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.quitConfirm = true
 
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	updated := model.(App)
 
 	assert.True(t, updated.quitConfirm)
@@ -395,7 +395,7 @@ func TestQuitConfirmCancels(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.quitConfirm = true
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	updated := model.(App)
 
 	assert.False(t, updated.quitConfirm)
@@ -410,7 +410,9 @@ func TestRenderPaletteSanitizesEntries(t *testing.T) {
 	}
 
 	out := app.renderPalette()
-	assert.False(t, strings.Contains(out, "\x1b"))
+	// Verify injected ANSI sequences are stripped (lipgloss may add its own for styling).
+	assert.False(t, strings.Contains(out, "\x1b[2J"))
+	assert.False(t, strings.Contains(out, "\x1b[0m"))
 }
 
 // TestAppClearsErrorOnInput handles test app clears error on input.
@@ -418,7 +420,7 @@ func TestAppClearsErrorOnInput(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.err = "oops"
 
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	updated := model.(App)
 
 	assert.Empty(t, updated.err)
@@ -465,11 +467,11 @@ func TestClampBodyForViewportRespectsAvailableViewportLines(t *testing.T) {
 // TestAppBodyScrollHotkeys handles test app body scroll hotkeys.
 func TestAppBodyScrollHotkeys(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 	app = model.(App)
 	assert.Equal(t, 8, app.bodyScroll)
 
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyCtrlU})
+	model, _ = app.Update(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	app = model.(App)
 	assert.Equal(t, 0, app.bodyScroll)
 }

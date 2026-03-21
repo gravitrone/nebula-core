@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,13 +17,13 @@ func TestMetadataEditorHandleKeyScopeSelectingFallbackOptions(t *testing.T) {
 	ed.scopeSelecting = true
 	ed.scopeIdx = 0
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyLeft})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, 1, ed.scopeIdx)
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	ed.HandleKey(tea.KeyPressMsg{Code: ' ', Text: " "})
 	assert.Equal(t, []string{"public"}, ed.Scopes)
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, ed.scopeSelecting)
 }
 
@@ -34,21 +34,21 @@ func TestMetadataEditorHandleKeyEntryModeEditingPaths(t *testing.T) {
 	ed.entryBuf = "profile | timezone | europe/warsaw"
 	ed.entryEditIdx = -1
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: '!', Text: "!"})
 	assert.Contains(t, ed.entryBuf, "!")
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyBackspace})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.NotContains(t, ed.entryBuf, "!")
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyCtrlU})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	assert.Equal(t, "", ed.entryBuf)
 
 	ed.entryBuf = "bad line without delimiter"
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, ed.entryMode)
 	assert.NotEmpty(t, ed.notice)
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, ed.entryMode)
 	assert.Equal(t, "", ed.entryBuf)
 	assert.Equal(t, -1, ed.entryEditIdx)
@@ -64,12 +64,12 @@ func TestMetadataEditorHandleKeyInspectModeCopyErrorPath(t *testing.T) {
 	ed.inspectMode = true
 	ed.inspectRowIdx = 0
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyDown})
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyUp})
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEnter})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyDown})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyUp})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Contains(t, ed.notice, "clipboard fail")
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyEsc})
+	ed.HandleKey(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, ed.inspectMode)
 	assert.Zero(t, ed.inspectOffset)
 }
@@ -82,10 +82,10 @@ func TestMetadataEditorHandleKeyDeleteAndCopyNoticePaths(t *testing.T) {
 	var ed MetadataEditor
 	ed.Open(map[string]any{"owner": "alxx", "role": "cto"})
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	assert.Contains(t, ed.notice, "copy exploded")
 
-	ed.HandleKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	ed.HandleKey(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	assert.Equal(t, 1, len(ed.rows))
 	assert.Contains(t, ed.notice, "row removed")
 }

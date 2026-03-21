@@ -3,12 +3,13 @@ package components
 import (
 	"encoding/json"
 	"fmt"
+	"image/color"
 	"os"
 	"sort"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 var (
@@ -193,7 +194,7 @@ func TitledBoxWithHeaderStyle(title, content string, width int, headerStyle lipg
 
 // titledBoxWithStyle renders the standard closed border variant.
 // Title parameters are intentionally ignored to keep top borders fully closed.
-func titledBoxWithStyle(_ string, content string, width int, boxStyle, _ lipgloss.Style, _ lipgloss.Color) string {
+func titledBoxWithStyle(_ string, content string, width int, boxStyle, _ lipgloss.Style, _ color.Color) string {
 	return renderBox(boxStyle, width, content)
 }
 

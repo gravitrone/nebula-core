@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -87,22 +87,22 @@ func TestProfileUpdateCreatedKeyGateAndSectionFocusKeys(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.createdKey = "nbl_created"
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "nbl_created", updated.createdKey)
 
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.createdKey)
 
 	updated.sectionFocus = true
 	updated.section = 0
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.False(t, updated.sectionFocus)
 
 	updated.sectionFocus = true
 	updated.section = 1
-	updated, _ = updated.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.sectionFocus)
 }
 
@@ -110,25 +110,25 @@ func TestProfileUpdateTaxonomyHotkeysReturnLoadCommands(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.section = 2
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'i'}})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'i', Text: "i"})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.taxIncludeInactive)
 	assert.True(t, updated.taxLoading)
 
 	prevKind := updated.taxKind
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'['}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: '[', Text: "["})
 	require.NotNil(t, cmd)
 	assert.NotEqual(t, prevKind, updated.taxKind)
 	assert.True(t, updated.taxLoading)
 
 	prevKind = updated.taxKind
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{']'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: ']', Text: "]"})
 	require.NotNil(t, cmd)
 	assert.NotEqual(t, prevKind, updated.taxKind)
 	assert.True(t, updated.taxLoading)
 
 	prevKind = updated.taxKind
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.NotNil(t, cmd)
 	assert.NotEqual(t, prevKind, updated.taxKind)
 	assert.True(t, updated.taxLoading)
@@ -139,17 +139,17 @@ func TestProfileHandleCreateInputBackAndDeleteBranches(t *testing.T) {
 	model.creating = true
 	model.createBuf = "abc"
 
-	updated, cmd := model.handleCreateInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.handleCreateInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "ab", updated.createBuf)
 
-	updated, _ = updated.handleCreateInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleCreateInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "ab ", updated.createBuf)
 
-	updated, _ = updated.handleCreateInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, _ = updated.handleCreateInput(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Equal(t, "ab x", updated.createBuf)
 
-	updated, _ = updated.handleCreateInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleCreateInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.creating)
 	assert.Equal(t, "", updated.createBuf)
 }
@@ -168,7 +168,7 @@ func TestProfileHandleCreateInputEnterReturnsErrorMessage(t *testing.T) {
 	model.creating = true
 	model.createBuf = "key-name"
 
-	updated, cmd := model.handleCreateInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleCreateInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.creating)
 	assert.Equal(t, "", updated.createBuf)
@@ -281,7 +281,7 @@ func TestProfileUpdateSectionTwoEnterOpensEditPrompt(t *testing.T) {
 	model.taxItems = []api.TaxonomyEntry{{ID: "scope-1", Name: "public"}}
 	model.taxList.SetItems([]string{"public"})
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptEditName, updated.taxPromptMode)
 	assert.Equal(t, "scope-1", updated.taxEditID)
@@ -327,7 +327,7 @@ func TestProfileHandleAPIKeyInputSavePathWithClientUpdate(t *testing.T) {
 	model := NewProfileModel(client, cfg)
 	model.editAPIKey = true
 	model.apiKeyBuf = "nbl_new"
-	updated, cmd := model.handleAPIKeyInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editAPIKey)
 

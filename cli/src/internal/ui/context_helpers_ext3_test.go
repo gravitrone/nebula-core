@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,16 +59,16 @@ func TestContextHandleListKeysAdditionalBranches(t *testing.T) {
 	}
 	model.list.SetItems([]string{"missing", "with-id"})
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Selected())
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.list.Selected())
 
 	// Enter on row with missing ID returns err command.
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	errOut, ok := msg.(errMsg)
@@ -76,8 +76,8 @@ func TestContextHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.ErrorContains(t, errOut.err, "missing id")
 
 	// Enter on valid row opens detail and emits load command.
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, contextViewDetail, updated.view)
 	require.NotNil(t, updated.detail)
@@ -87,14 +87,14 @@ func TestContextHandleListKeysAdditionalBranches(t *testing.T) {
 
 	// f branch.
 	updated.view = contextViewList
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 
 	// back branch.
 	updated.filtering = false
 	updated.view = contextViewList
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, contextViewAdd, updated.view)
 
@@ -103,7 +103,7 @@ func TestContextHandleListKeysAdditionalBranches(t *testing.T) {
 	updated.items = []api.Context{{ID: "ctx-1", Title: "only one"}}
 	updated.list.SetItems([]string{"one", "two"})
 	updated.list.Down() // selected = 1 while len(items)=1
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 }
 

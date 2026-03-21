@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,7 @@ func TestHandleOnboardingKeysRequiresUsername(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
 
-	model, cmd := app.handleOnboardingKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := app.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 
 	updated := model.(App)
@@ -32,11 +32,11 @@ func TestHandleOnboardingKeysEditsUsernameBuffer(t *testing.T) {
 	app.onboarding = true
 	app.onboardingName = "ab"
 
-	model, _ := app.handleOnboardingKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	model, _ := app.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	updated := model.(App)
 	assert.Equal(t, "a", updated.onboardingName)
 
-	model, _ = updated.handleOnboardingKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("z")})
+	model, _ = updated.handleOnboardingKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
 	updated = model.(App)
 	assert.Equal(t, "az", updated.onboardingName)
 }

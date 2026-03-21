@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -65,17 +65,17 @@ func TestHandleTaxonomyPromptBackspaceRuneAndBack(t *testing.T) {
 	model.taxPendingDesc = "desc"
 	model.taxEditID = "scope-1"
 
-	updated, cmd := model.handleTaxonomyPrompt(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.handleTaxonomyPrompt(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "alx", updated.taxPromptBuf)
 
-	updated, _ = updated.handleTaxonomyPrompt(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleTaxonomyPrompt(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "alx ", updated.taxPromptBuf)
 
-	updated, _ = updated.handleTaxonomyPrompt(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'z'}})
+	updated, _ = updated.handleTaxonomyPrompt(tea.KeyPressMsg{Code: 'z', Text: "z"})
 	assert.Equal(t, "alx z", updated.taxPromptBuf)
 
-	updated, _ = updated.handleTaxonomyPrompt(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleTaxonomyPrompt(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, taxPromptNone, updated.taxPromptMode)
 	assert.Equal(t, "", updated.taxPromptBuf)
 	assert.Equal(t, "", updated.taxPendingName)

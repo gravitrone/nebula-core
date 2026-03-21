@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -58,42 +58,42 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 	model.applyJobSearch()
 	model.list.SetItems([]string{"alpha", "beta"})
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.selected["job-1"])
 	assert.True(t, updated.selected["job-2"])
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	require.Nil(t, cmd)
 	assert.Empty(t, updated.selected)
 
 	updated.searchBuf = "alpha"
 	updated.searchSuggest = "alpha"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 
 	updated.filtering = false
 	updated.searchBuf = "x"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyDelete})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.list.Cursor = 9
 	updated.changingSt = false
 	updated.statusTargets = nil
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
 	require.Nil(t, cmd)
 	assert.False(t, updated.changingSt)
 	assert.Nil(t, updated.statusTargets)
 
 	updated.searchBuf = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 }

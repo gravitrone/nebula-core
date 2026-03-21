@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -100,7 +100,7 @@ func (m ImportExportModel) Update(msg tea.Msg) (ImportExportModel, tea.Cmd) {
 		m.step = stepResult
 		m.errText = msg.err.Error()
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch m.step {
 		case stepResource:
 			return m.handleResourceKeys(msg)
@@ -201,7 +201,7 @@ func (m ImportExportModel) renderFormatOptions() string {
 }
 
 // handleResourceKeys handles handle resource keys.
-func (m ImportExportModel) handleResourceKeys(msg tea.KeyMsg) (ImportExportModel, tea.Cmd) {
+func (m ImportExportModel) handleResourceKeys(msg tea.KeyPressMsg) (ImportExportModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		if m.resourceIndex < len(m.resources)-1 {
@@ -220,7 +220,7 @@ func (m ImportExportModel) handleResourceKeys(msg tea.KeyMsg) (ImportExportModel
 }
 
 // handleFormatKeys handles handle format keys.
-func (m ImportExportModel) handleFormatKeys(msg tea.KeyMsg) (ImportExportModel, tea.Cmd) {
+func (m ImportExportModel) handleFormatKeys(msg tea.KeyPressMsg) (ImportExportModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		if m.formatIndex < len(m.formats)-1 {
@@ -239,7 +239,7 @@ func (m ImportExportModel) handleFormatKeys(msg tea.KeyMsg) (ImportExportModel, 
 }
 
 // handlePathKeys handles handle path keys.
-func (m ImportExportModel) handlePathKeys(msg tea.KeyMsg) (ImportExportModel, tea.Cmd) {
+func (m ImportExportModel) handlePathKeys(msg tea.KeyPressMsg) (ImportExportModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.step = stepFormat
@@ -249,12 +249,12 @@ func (m ImportExportModel) handlePathKeys(msg tea.KeyMsg) (ImportExportModel, te
 		}
 		m.step = stepRunning
 		return m, m.run()
-	case msg.Type == tea.KeyBackspace:
+	case isKey(msg, "backspace"):
 		if len(m.path) > 0 {
 			m.path = m.path[:len(m.path)-1]
 		}
-	case msg.Type == tea.KeyRunes:
-		m.path += msg.String()
+	case msg.Text != "":
+		m.path += msg.Text
 	}
 	return m, nil
 }

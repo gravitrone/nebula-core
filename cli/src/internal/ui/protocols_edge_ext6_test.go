@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -23,12 +23,12 @@ func TestProtocolsRenderPreviewAddAndEditEdgeBranches(t *testing.T) {
 		model := NewProtocolsModel(nil)
 		model.addFocus = 0
 
-		next, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyUp})
+		next, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 		assert.Equal(t, protoFieldCount-1, next.addFocus)
 
 		next.editFocus = 0
-		next, cmd = next.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+		next, cmd = next.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 		assert.Equal(t, protoEditFieldCount-1, next.editFocus)
 	})

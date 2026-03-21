@@ -3,7 +3,7 @@ package ui
 import (
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +15,7 @@ func TestEntitiesHandleEditKeysBranchMatrix(t *testing.T) {
 	t.Run("editSaving short-circuits", func(t *testing.T) {
 		model.editSaving = true
 		model.editFocus = editFieldStatus
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
 		assert.Equal(t, editFieldStatus, updated.editFocus)
 	})
@@ -28,21 +28,21 @@ func TestEntitiesHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editScopes = []string{"public"}
 		model.editScopeIdx = 0
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		require.Nil(t, cmd)
 		assert.Equal(t, 1, updated.editScopeIdx)
 
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 		assert.Equal(t, []string{"public", "private"}, updated.editScopes)
 		assert.True(t, updated.editScopesDirty)
 
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 		assert.Equal(t, 0, updated.editScopeIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.False(t, updated.editScopeSelecting)
 
 		updated.editScopeSelecting = true
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.editScopeSelecting)
 	})
 
@@ -50,52 +50,52 @@ func TestEntitiesHandleEditKeysBranchMatrix(t *testing.T) {
 		model.editFocus = editFieldTags
 		model.editTagBuf = "ab"
 
-		updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.Nil(t, cmd)
 		assert.Equal(t, "a", updated.editTagBuf)
 
 		updated.editTagBuf = ""
 		updated.editTags = []string{"alpha", "beta"}
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, []string{"alpha"}, updated.editTags)
 
 		updated.editFocus = editFieldScopes
 		updated.editScopes = []string{"public"}
 		updated.editScopesDirty = false
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Empty(t, updated.editScopes)
 		assert.True(t, updated.editScopesDirty)
 
 		updated.editFocus = editFieldTags
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 		assert.Equal(t, "x", updated.editTagBuf)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Equal(t, []string{"alpha", "x"}, updated.editTags)
 		assert.Equal(t, "", updated.editTagBuf)
 
 		updated.editFocus = editFieldScopes
 		updated.editScopeSelecting = false
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.True(t, updated.editScopeSelecting)
 
 		updated.editFocus = editFieldStatus
 		startStatus := updated.editStatusIdx
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		assert.Equal(t, (startStatus+1)%len(entityStatusOptions), updated.editStatusIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 		assert.Equal(t, startStatus, updated.editStatusIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 		assert.Equal(t, (startStatus+1)%len(entityStatusOptions), updated.editStatusIdx)
 
 		updated.editFocus = editFieldStatus
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		assert.Equal(t, editFieldScopes, updated.editFocus)
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Equal(t, editFieldStatus, updated.editFocus)
 
 		updated.editScopeSelecting = true
 		updated.view = entitiesViewEdit
-		updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Equal(t, entitiesViewDetail, updated.view)
 		assert.False(t, updated.editScopeSelecting)
 	})

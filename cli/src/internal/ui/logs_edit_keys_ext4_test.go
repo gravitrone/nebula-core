@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -18,7 +18,7 @@ func TestLogsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 
 	// editSaving guard branch.
 	model.editSaving = true
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editSaving)
 
@@ -27,36 +27,36 @@ func TestLogsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	model.editStatusIdx = 0
 
 	// status left wrap branch.
-	updated, _ = model.handleEditKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, len(logStatusOptions)-1, updated.editStatusIdx)
 
 	// status space branch.
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, 0, updated.editStatusIdx)
 
 	// down wrap branch and up guard branch.
 	updated.editFocus = logEditFieldMeta
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, logEditFieldStatus, updated.editFocus)
 
 	updated.editFocus = logEditFieldStatus
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, logEditFieldStatus, updated.editFocus)
 
 	updated.editFocus = logEditFieldTags
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, logEditFieldStatus, updated.editFocus)
 
 	// tags rune append + commit via comma branch.
 	updated.editFocus = logEditFieldTags
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Equal(t, "x", updated.editTagBuf)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{','}})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ',', Text: ","})
 	assert.Empty(t, updated.editTagBuf)
 	assert.Contains(t, updated.editTags, "x")
 
 	// back key branch exits edit view.
 	updated.view = logsViewEdit
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, logsViewDetail, updated.view)
 }

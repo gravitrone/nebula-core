@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +20,7 @@ func TestEntitiesHandleConfirmKeysFallbackAndCancelBranches(t *testing.T) {
 	// entity-archive without detail should just close confirm.
 	model.confirmKind = "entity-archive"
 	model.confirmReturn = entitiesViewDetail
-	next, cmd := model.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	next, cmd := model.handleConfirmKeys(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	assert.Nil(t, cmd)
 	assert.Equal(t, entitiesViewDetail, next.view)
 	assert.Equal(t, "", next.confirmKind)
@@ -31,7 +31,7 @@ func TestEntitiesHandleConfirmKeysFallbackAndCancelBranches(t *testing.T) {
 	next.confirmReturn = entitiesViewHistory
 	next.detail = &api.Entity{ID: "ent-1", Name: "Alpha"}
 	next.confirmAuditID = ""
-	next, cmd = next.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	next, cmd = next.handleConfirmKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.Equal(t, entitiesViewHistory, next.view)
 	assert.Equal(t, "", next.confirmKind)
@@ -41,7 +41,7 @@ func TestEntitiesHandleConfirmKeysFallbackAndCancelBranches(t *testing.T) {
 	next.confirmKind = "rel-archive"
 	next.confirmReturn = entitiesViewRelationships
 	next.confirmRelID = ""
-	next, cmd = next.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	next, cmd = next.handleConfirmKeys(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	assert.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelationships, next.view)
 	assert.Equal(t, "", next.confirmKind)
@@ -50,7 +50,7 @@ func TestEntitiesHandleConfirmKeysFallbackAndCancelBranches(t *testing.T) {
 	next.view = entitiesViewConfirm
 	next.confirmKind = "entity-archive"
 	next.confirmReturn = entitiesViewDetail
-	next, cmd = next.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	next, cmd = next.handleConfirmKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	assert.Nil(t, cmd)
 	assert.Equal(t, entitiesViewDetail, next.view)
 	assert.Equal(t, "", next.confirmKind)
@@ -143,7 +143,7 @@ func TestEntitiesHandleConfirmKeysReturnsErrMsgOnMutationFailures(t *testing.T) 
 	// entity archive error closure
 	model.confirmKind = "entity-archive"
 	model.detail = &api.Entity{ID: "ent-1", Name: "Alpha"}
-	next, cmd := model.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	next, cmd := model.handleConfirmKeys(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	assert.Equal(t, entitiesViewDetail, next.view)
 	msg := cmd()
@@ -156,7 +156,7 @@ func TestEntitiesHandleConfirmKeysReturnsErrMsgOnMutationFailures(t *testing.T) 
 	next.confirmKind = "entity-revert"
 	next.detail = &api.Entity{ID: "ent-1", Name: "Alpha"}
 	next.confirmAuditID = "audit-1"
-	nextAfterRevert, cmd := next.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	nextAfterRevert, cmd := next.handleConfirmKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, entitiesViewHistory, nextAfterRevert.view)
 	msg = cmd()
@@ -168,7 +168,7 @@ func TestEntitiesHandleConfirmKeysReturnsErrMsgOnMutationFailures(t *testing.T) 
 	nextAfterRevert.confirmReturn = entitiesViewRelationships
 	nextAfterRevert.confirmKind = "rel-archive"
 	nextAfterRevert.confirmRelID = "rel-1"
-	nextAfterRel, cmd := nextAfterRevert.handleConfirmKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	nextAfterRel, cmd := nextAfterRevert.handleConfirmKeys(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	assert.Equal(t, entitiesViewRelationships, nextAfterRel.view)
 	msg = cmd()

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -77,25 +77,25 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	assert.Contains(t, out, "Alpha Job")
 
 	// Search suggest + tab completion.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.Equal(t, "Alpha Job", model.searchSuggest)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyTab})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "Alpha Job", strings.TrimSpace(model.searchBuf))
 
 	// Toggle to Add via modeFocus.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.modeFocus)
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, jobsViewAdd, model.view)
 
 	// Enter title.
 	for _, r := range "New Job" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	// Save.
 	var saveCmd tea.Cmd
-	model, saveCmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, saveCmd)
 	msg = saveCmd()
 	model, cmd = model.Update(msg)
@@ -106,7 +106,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	assert.Contains(t, components.SanitizeText(model.View()), "Job saved!")
 
 	// Esc should reset add state.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.addSaved)
 	assert.Equal(t, "", model.addFields[jobFieldTitle].value)
 }
@@ -164,16 +164,16 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 	assert.Contains(t, out, "Alpha Context")
 
 	// Enter edit mode.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, jobsViewEdit, model.view)
 
 	// Edit description and save.
 	model.editFocus = jobEditFieldDescription
 	for _, r := range " world" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	var saveCmd tea.Cmd
-	model, saveCmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, saveCmd)
 	msg := saveCmd()
 	model, _ = model.Update(msg)

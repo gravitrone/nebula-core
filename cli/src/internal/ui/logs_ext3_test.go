@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -36,29 +36,29 @@ func TestLogsHandleModeKeysCoversUpDownSpaceEnterAndBack(t *testing.T) {
 	model.view = logsViewList
 	model.modeFocus = true
 
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, logsViewList, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewAdd, updated.view)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 }
@@ -164,25 +164,25 @@ func TestLogsUpdateRoutesKeysToActiveMetadataEditors(t *testing.T) {
 	model := NewLogsModel(nil)
 
 	model.addValue.Active = true
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addValue.entryMode)
 
 	model = NewLogsModel(nil)
 	model.addMeta.Active = true
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addMeta.entryMode)
 
 	model = NewLogsModel(nil)
 	model.editValue.Active = true
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editValue.entryMode)
 
 	model = NewLogsModel(nil)
 	model.editMeta.Active = true
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editMeta.entryMode)
 }
@@ -196,22 +196,22 @@ func TestLogsHandleFilterInputCoversSpaceBackspaceEnterAndBack(t *testing.T) {
 	}
 	model.applyLogSearch()
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	assert.Equal(t, "w", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
 
 	updated.filtering = true
 	updated.searchBuf = "x"
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)

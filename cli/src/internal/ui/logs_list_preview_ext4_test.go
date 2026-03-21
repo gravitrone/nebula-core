@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -59,26 +59,26 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	model.list.SetItems([]string{"workout", "study"})
 
 	model.filtering = true
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 
 	updated.filtering = false
 	updated.searchBuf = "workout"
 	updated.searchSuggest = "workout"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
 	updated.list.Cursor = 8
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 	assert.Nil(t, updated.detail)
 
 	updated.list.Cursor = 0
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, logsViewDetail, updated.view)
 	require.NotNil(t, updated.detail)
@@ -87,47 +87,47 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	updated.view = logsViewList
 	updated.list.Cursor = 1
 	updated.modeFocus = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.Equal(t, 0, updated.list.Cursor)
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 	updated.modeFocus = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Cursor)
 
 	updated.searchBuf = "wo"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "w", updated.searchBuf)
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyDelete})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 	updated.filtering = false
 
 	updated.searchBuf = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.searchBuf = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "w", updated.searchBuf)
 
 	updated.searchBuf = ""
 	updated.list.Cursor = 0
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.NotNil(t, cmd)
 	assert.Equal(t, logsViewDetail, updated.view)
 }
@@ -161,20 +161,20 @@ func TestLogsHandleDetailAndRenderDetailAdditionalBranches(t *testing.T) {
 	assert.Contains(t, out, "Tags")
 	assert.Contains(t, out, "Value")
 
-	updated, cmd := model.handleDetailKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'v'}})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'v', Text: "v"})
 	assert.True(t, updated.valueExpanded)
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'m'}})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	assert.True(t, updated.metaExpanded)
 
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, logsViewEdit, updated.view)
 
 	updated.view = logsViewDetail
-	updated, _ = updated.handleDetailKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, logsViewList, updated.view)
 	assert.Nil(t, updated.detail)
 	assert.Nil(t, updated.detailRels)

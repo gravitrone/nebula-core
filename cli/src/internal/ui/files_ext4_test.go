@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -36,29 +36,29 @@ func TestFilesHandleModeKeysCoversUpDownSpaceEnterAndBack(t *testing.T) {
 	model.view = filesViewList
 	model.modeFocus = true
 
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 	assert.Equal(t, filesViewList, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, filesViewAdd, updated.view)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, filesViewList, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 }
@@ -144,13 +144,13 @@ func TestFilesUpdateRoutesKeysToActiveMetadataEditors(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.addMeta.Active = true
 
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addMeta.entryMode)
 
 	model = NewFilesModel(nil)
 	model.editMeta.Active = true
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editMeta.entryMode)
 }
@@ -164,22 +164,22 @@ func TestFilesHandleFilterInputCoversSpaceBackspaceEnterAndBack(t *testing.T) {
 	}
 	model.applyFileSearch()
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeySpace})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	assert.Equal(t, "w", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
 
 	updated.filtering = true
 	updated.searchBuf = "x"
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
@@ -193,39 +193,39 @@ func TestFilesHandleListKeysSearchModeAndEnterMatrix(t *testing.T) {
 	}
 	model.applyFileSearch()
 
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
 	updated.modeFocus = false
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Selected())
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, 0, updated.list.Selected())
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	assert.Equal(t, "w", updated.searchBuf)
 	assert.Equal(t, "workout.txt", updated.searchSuggest)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "workout.txt", updated.searchBuf)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "workout.tx", updated.searchBuf)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	assert.True(t, updated.filtering)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, filesViewDetail, updated.view)
 	require.NotNil(t, updated.detail)

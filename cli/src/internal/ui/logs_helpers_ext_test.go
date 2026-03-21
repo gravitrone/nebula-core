@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -24,17 +24,17 @@ func TestLogsModeLineAndModeKeysMatrix(t *testing.T) {
 	assert.Contains(t, line, "Library")
 
 	model.modeFocus = true
-	updated, cmd := model.handleModeKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewAdd, updated.view)
 
 	updated.modeFocus = true
-	updated, cmd = updated.handleModeKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 }
@@ -189,28 +189,28 @@ func TestLogsHandleListKeysSearchAndFilterMatrix(t *testing.T) {
 	model.applyLogSearch()
 	updated := model
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	assert.Equal(t, "w", updated.searchBuf)
 	assert.Equal(t, "workout", updated.searchSuggest)
 	require.Len(t, updated.items, 1)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "workout", updated.searchBuf)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "workou", updated.searchBuf)
 
-	updated, _ = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	assert.Equal(t, "", updated.searchBuf)
 	require.Len(t, updated.items, 2)
 
-	updated, cmd := updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd := updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 's', Text: "s"})
 	assert.Equal(t, "s", updated.searchBuf)
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.searchBuf)
 }
@@ -220,34 +220,34 @@ func TestLogsHandleAddKeysStatusAndBackspaceMatrix(t *testing.T) {
 	model.view = logsViewAdd
 	model.addFocus = logFieldStatus
 
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.addStatusIdx)
 
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyLeft})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, 0, updated.addStatusIdx)
 
 	updated.addFocus = logFieldTags
 	updated.addTags = []string{"alpha"}
 	updated.addTagBuf = "x"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.addTagBuf)
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.addTags)
 
 	updated.addFocus = logFieldType
 	updated.addType = "work"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "wor", updated.addType)
 
 	updated.addFocus = logFieldTimestamp
 	updated.addTimestamp = "2026-02-27"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "2026-02-2", updated.addTimestamp)
 
 	updated.addSaved = true
 	updated.addType = "workout"
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.addSaved)
 	assert.Equal(t, "", updated.addType)
 }
@@ -257,21 +257,21 @@ func TestLogsHandleAddKeysAdditionalBranches(t *testing.T) {
 	model.view = logsViewAdd
 
 	model.addSaving = true
-	updated, cmd := model.handleAddKeys(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.Equal(t, model, updated)
 
 	model.addSaving = false
 	model.addSaved = true
 	model.addType = "kept"
-	updated, cmd = model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addSaved)
 	assert.Equal(t, "kept", updated.addType)
 
 	model.addSaved = false
 	model.modeFocus = true
-	updated, cmd = model.handleAddKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 
@@ -279,47 +279,47 @@ func TestLogsHandleAddKeysAdditionalBranches(t *testing.T) {
 	updated.modeFocus = false
 	updated.addFocus = logFieldType
 	updated.addType = ""
-	updated, cmd = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, "e", updated.addType)
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "e ", updated.addType)
 
 	updated.addFocus = logFieldTimestamp
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'6'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'-'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'0'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'-'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'2'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'7'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'T'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'3'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{':'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'4'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'5'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'Z'}})
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'+'}})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '0', Text: "0"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '6', Text: "6"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '-', Text: "-"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '0', Text: "0"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '-', Text: "-"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '7', Text: "7"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'T', Text: "T"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '1', Text: "1"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '3', Text: "3"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: ':', Text: ":"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '4', Text: "4"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '5', Text: "5"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'Z', Text: "Z"})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '+', Text: "+"})
 	beforeTS := updated.addTimestamp
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, beforeTS, updated.addTimestamp)
 
 	updated.addFocus = logFieldValue
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.addValue.Active)
 	updated.addValue.Active = false
 
 	updated.addFocus = logFieldMeta
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.addMeta.Active)
 	updated.addMeta.Active = false
 
 	updated.addFocus = 0
-	updated, _ = updated.handleAddKeys(tea.KeyMsg{Type: tea.KeyUp})
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, updated.modeFocus)
 }
 
@@ -385,29 +385,29 @@ func TestLogsHandleEditKeysStatusAndTagMatrix(t *testing.T) {
 	model.startEdit()
 	model.editFocus = logEditFieldStatus
 
-	updated, cmd := model.handleEditKeys(tea.KeyMsg{Type: tea.KeyRight})
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.editStatusIdx)
 
 	updated.editFocus = logEditFieldTags
 	updated.editTags = []string{"alpha"}
 	updated.editTagBuf = "x"
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.editTagBuf)
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.editTags)
 
 	updated.editFocus = logEditFieldValue
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.editValue.Active)
 	updated.editValue.Active = false
 
 	updated.editFocus = logEditFieldMeta
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.True(t, updated.editMeta.Active)
 	updated.editMeta.Active = false
 
-	updated, _ = updated.handleEditKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, logsViewDetail, updated.view)
 }
 

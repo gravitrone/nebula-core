@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -113,37 +113,37 @@ func TestUpdateMessageBranchesImportExportAndPalette(t *testing.T) {
 func TestUpdateKeyFlowRecoveryAndGlobalBranches(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
-	model, _ := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ := app.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	updated := model.(App)
 	assert.Equal(t, "a", updated.onboardingName)
 
 	app = NewApp(nil, &config.Config{})
 	app.importExportOpen = true
 	app.impex.step = stepResult
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = model.(App)
 	assert.False(t, updated.importExportOpen)
 
 	app = NewApp(nil, &config.Config{APIKey: "x", Username: "alxx"})
 	app.quickstartOpen = true
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = app.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	updated = model.(App)
 	assert.False(t, updated.quickstartOpen)
 
 	app = NewApp(api.NewClient("http://127.0.0.1:9", "x"), &config.Config{APIKey: "x", Username: "alxx"})
 	app.showRecoveryHints = true
-	model, cmd := app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, cmd := app.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	_ = model.(App)
 	require.NotNil(t, cmd)
 
-	model, cmd = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}})
+	model, cmd = app.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	updated = model.(App)
 	assert.Equal(t, tabProfile, updated.tab)
 	assert.Equal(t, 0, updated.profile.section)
 	_ = cmd
 
 	app.showRecoveryHints = true
-	model, cmd = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	model, cmd = app.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	updated = model.(App)
 	require.NotNil(t, cmd)
 	assert.NotNil(t, updated.toast)
@@ -154,14 +154,14 @@ func TestUpdateKeyFlowRecoveryAndGlobalBranches(t *testing.T) {
 	app.lastErrCode = "X"
 	app.lastErrMsg = "Y"
 	app.showRecoveryHints = true
-	model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	model, _ = app.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	updated = model.(App)
 	assert.Equal(t, "", updated.err)
 	assert.Equal(t, "", updated.lastErrCode)
 	assert.Equal(t, "", updated.lastErrMsg)
 	assert.False(t, updated.showRecoveryHints)
 
-	model, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'?'}})
+	model, _ = updated.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
 	updated = model.(App)
 	assert.True(t, updated.helpOpen)
 
@@ -170,33 +170,32 @@ func TestUpdateKeyFlowRecoveryAndGlobalBranches(t *testing.T) {
 	updated.err = ""
 	updated.know.view = contextViewAdd
 	updated.know.fields[fieldTitle].value = "draft"
-	model, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	model, _ = updated.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	updated = model.(App)
 	assert.True(t, updated.quitConfirm)
 
 	updated = NewApp(nil, &config.Config{})
-	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	model, cmd = updated.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	_ = model.(App)
 	require.NotNil(t, cmd)
 	_, ok := cmd().(tea.QuitMsg)
 	assert.True(t, ok)
 
 	updated = NewApp(nil, &config.Config{})
-	model, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'/'}})
+	model, cmd = updated.Update(tea.KeyPressMsg{Code: '/', Text: "/"})
 	updated = model.(App)
 	assert.True(t, updated.paletteOpen)
 	assert.Nil(t, cmd)
 
 	updated = NewApp(nil, &config.Config{})
 	updated.bodyScroll = 1
-	model, _ = updated.Update(tea.KeyMsg{Type: tea.KeyPgUp})
+	model, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyPgUp})
 	updated = model.(App)
 	assert.Equal(t, 0, updated.bodyScroll)
 
 	updated = NewApp(nil, &config.Config{})
 	updated.tab = tabJobs
-	model, _ = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+	model, _ = updated.Update(tea.KeyPressMsg{Code: '1', Text: "1"})
 	updated = model.(App)
 	assert.Equal(t, tabInbox, updated.tab)
 }
-

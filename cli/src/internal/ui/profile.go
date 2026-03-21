@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
@@ -138,7 +138,7 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 		m.taxLoading = true
 		return m, m.loadTaxonomy
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.taxPromptMode != taxPromptNone {
 			return m.handleTaxonomyPrompt(msg)
 		}
@@ -410,7 +410,7 @@ func (m ProfileModel) loadAgents() tea.Msg {
 }
 
 // handleCreateInput handles handle create input.
-func (m ProfileModel) handleCreateInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
+func (m ProfileModel) handleCreateInput(msg tea.KeyPressMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.creating = false
@@ -431,15 +431,15 @@ func (m ProfileModel) handleCreateInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) 
 			m.createBuf = m.createBuf[:len(m.createBuf)-1]
 		}
 	default:
-		if len(msg.String()) == 1 || msg.String() == " " {
-			m.createBuf += msg.String()
+		if ch := keyText(msg); ch != "" {
+			m.createBuf += ch
 		}
 	}
 	return m, nil
 }
 
 // handleAPIKeyInput handles handle apikey input.
-func (m ProfileModel) handleAPIKeyInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
+func (m ProfileModel) handleAPIKeyInput(msg tea.KeyPressMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.editAPIKey = false
@@ -467,8 +467,8 @@ func (m ProfileModel) handleAPIKeyInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) 
 			m.apiKeyBuf = m.apiKeyBuf[:len(m.apiKeyBuf)-1]
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			m.apiKeyBuf += ch
 		}
 	}
@@ -476,7 +476,7 @@ func (m ProfileModel) handleAPIKeyInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) 
 }
 
 // handlePendingLimitInput handles handle pending limit input.
-func (m ProfileModel) handlePendingLimitInput(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
+func (m ProfileModel) handlePendingLimitInput(msg tea.KeyPressMsg) (ProfileModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.editPendingLimit = false
@@ -506,7 +506,7 @@ func (m ProfileModel) handlePendingLimitInput(msg tea.KeyMsg) (ProfileModel, tea
 			m.pendingLimitBuf = m.pendingLimitBuf[:len(m.pendingLimitBuf)-1]
 		}
 	default:
-		ch := msg.String()
+		ch := keyText(msg)
 		if len(ch) == 1 && ch[0] >= '0' && ch[0] <= '9' {
 			m.pendingLimitBuf += ch
 		}
@@ -899,7 +899,7 @@ func (m ProfileModel) renderAgentDetail() string {
 }
 
 // handleAgentDetailKeys handles handle agent detail keys.
-func (m ProfileModel) handleAgentDetailKeys(msg tea.KeyMsg) (ProfileModel, tea.Cmd) {
+func (m ProfileModel) handleAgentDetailKeys(msg tea.KeyPressMsg) (ProfileModel, tea.Cmd) {
 	if isBack(msg) || isEnter(msg) {
 		m.agentDetail = nil
 	}

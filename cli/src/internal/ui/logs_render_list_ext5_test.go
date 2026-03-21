@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -81,39 +81,39 @@ func TestLogsHandleListKeysTabBackAndSpaceOutOfRange(t *testing.T) {
 
 	model.searchBuf = "wo"
 	model.searchSuggest = "workout"
-	updated, cmd := model.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "workout", updated.searchBuf)
 
 	updated.searchBuf = "workout"
 	updated.searchSuggest = "workout"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, "workout", updated.searchBuf)
 
 	updated.searchBuf = "abc"
 	updated.searchSuggest = "abc"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
 	updated.searchBuf = ""
 	updated.searchSuggest = ""
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyCtrlU})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
 	updated.list.Cursor = 9
 	updated.view = logsViewList
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{' '}})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 	assert.Nil(t, updated.detail)
 
 	updated.filtering = true
 	updated.searchBuf = "x"
-	updated, cmd = updated.handleListKeys(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "x", updated.searchBuf)

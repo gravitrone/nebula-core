@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -112,11 +112,11 @@ func TestInboxHandleRejectPreviewBranches(t *testing.T) {
 	model.bulkRejectIDs = []string{"ap-1", "ap-2"}
 	model.rejectBuf = "nope"
 
-	updated, cmd := model.handleRejectPreview(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd := model.handleRejectPreview(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.True(t, updated.rejectPreview)
 	assert.Nil(t, cmd)
 
-	updated, cmd = updated.handleRejectPreview(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.handleRejectPreview(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.rejectPreview)
 	assert.True(t, updated.rejecting)
 	assert.Nil(t, cmd)
@@ -126,7 +126,7 @@ func TestInboxHandleRejectPreviewBranches(t *testing.T) {
 	updated.bulkRejectIDs = []string{"ap-1", "ap-2"}
 	updated.rejectBuf = "nope"
 
-	updated, cmd = updated.handleRejectPreview(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	updated, cmd = updated.handleRejectPreview(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(approvalDoneMsg)
@@ -142,7 +142,7 @@ func TestInboxHandleRejectPreviewBranches(t *testing.T) {
 	errModel.rejectPreview = true
 	errModel.bulkRejectIDs = []string{"ap-err"}
 	errModel.rejectBuf = "bad"
-	_, cmd = errModel.handleRejectPreview(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = errModel.handleRejectPreview(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	errOut, ok := cmd().(errMsg)
 	require.True(t, ok)
@@ -188,29 +188,29 @@ func TestInboxHandleFilterInputMatrix(t *testing.T) {
 	model.applyFilter(true)
 	model.filtering = true
 
-	updated, cmd := model.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Nil(t, cmd)
 	assert.Equal(t, "", updated.filterBuf)
 	assert.Len(t, updated.filtered, 2)
 
-	updated, cmd = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.Nil(t, cmd)
 	assert.Equal(t, "a", updated.filterBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.filterBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	assert.Equal(t, "", updated.filterBuf)
 
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	assert.Equal(t, "b", updated.filterBuf)
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "b", updated.filterBuf)
 
 	updated.filtering = true
-	updated, _ = updated.handleFilterInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
 	assert.Equal(t, "", updated.filterBuf)
 	assert.Len(t, updated.filtered, 2)
@@ -401,7 +401,7 @@ func TestInboxHandleRejectInputDetailNilAndEnterBranches(t *testing.T) {
 	model.rejectBuf = "stale"
 	model.bulkRejectIDs = []string{"ap-1"}
 
-	updated, cmd := model.handleRejectInput(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	updated, cmd := model.handleRejectInput(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Nil(t, cmd)
 	assert.False(t, updated.rejecting)
 	assert.Equal(t, "", updated.rejectBuf)
@@ -412,7 +412,7 @@ func TestInboxHandleRejectInputDetailNilAndEnterBranches(t *testing.T) {
 	model.rejecting = true
 	model.rejectBuf = "reason"
 
-	updated, cmd = model.handleRejectInput(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = model.handleRejectInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.False(t, updated.rejecting)
 	assert.True(t, updated.rejectPreview)
@@ -422,7 +422,7 @@ func TestInboxHandleRejectInputDetailNilAndEnterBranches(t *testing.T) {
 	updated.rejectPreview = false
 	updated.bulkRejectIDs = []string{"ap-2", "ap-3"}
 	updated.detail = &api.Approval{ID: "ap-2"}
-	updated, _ = updated.handleRejectInput(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = updated.handleRejectInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, updated.detail)
 	assert.False(t, updated.rejecting)
 	assert.Equal(t, "", updated.rejectBuf)

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -92,40 +92,40 @@ func TestJobsUpdateKeyRoutingBranches(t *testing.T) {
 
 	model.creatingSubtask = true
 	model.subtaskBuf = "a"
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Empty(t, updated.subtaskBuf)
 
 	model = NewJobsModel(nil)
 	model.linkingRel = true
 	model.linkBuf = "ab"
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.linkBuf)
 
 	model = NewJobsModel(nil)
 	model.unlinkingRel = true
 	model.unlinkBuf = "ab"
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.unlinkBuf)
 
 	model = NewJobsModel(nil)
 	model.changingSt = true
 	model.statusBuf = "ab"
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
 	assert.Equal(t, "a", updated.statusBuf)
 
 	model = NewJobsModel(nil)
 	model.modeFocus = true
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
 	model = NewJobsModel(nil)
 	model.view = jobsViewAdd
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 
@@ -133,20 +133,20 @@ func TestJobsUpdateKeyRoutingBranches(t *testing.T) {
 	model.view = jobsViewEdit
 	model.detail = &api.Job{ID: "job-1", Status: "pending"}
 	model.startEdit()
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobsViewDetail, updated.view)
 
 	model = NewJobsModel(nil)
 	model.view = jobsViewDetail
 	model.detail = &api.Job{ID: "job-1"}
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, jobsViewList, updated.view)
 
 	model = NewJobsModel(nil)
 	model.view = jobsViewList
-	updated, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
+	updated, cmd = model.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 }

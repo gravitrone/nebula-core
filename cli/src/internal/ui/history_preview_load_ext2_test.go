@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -86,17 +86,17 @@ func TestHistoryUpdateDetailRevertingBranchMatrix(t *testing.T) {
 	model.reverting = true
 
 	// Unknown key while confirming revert keeps state.
-	updated, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.reverting)
 
 	// Cancel revert via "n".
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.False(t, updated.reverting)
 
 	// Back from detail returns list and clears detail.
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, historyViewList, updated.view)
 	assert.Nil(t, updated.detail)
@@ -104,7 +104,7 @@ func TestHistoryUpdateDetailRevertingBranchMatrix(t *testing.T) {
 	// "r" on non-revertable entry is ignored.
 	updated.view = historyViewDetail
 	updated.detail = &api.AuditEntry{ID: "audit-2", TableName: "jobs", RecordID: "job-1"}
-	updated, cmd = updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.Nil(t, cmd)
 	assert.False(t, updated.reverting)
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -100,7 +100,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		}
 		m.list.SetItems(labels)
 		return m, nil
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case isBack(msg):
 			if m.query != "" {
@@ -146,8 +146,8 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 				return m, m.emitSelection(entry)
 			}
 		default:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				if ch == " " && m.query == "" {
 					return m, nil
 				}

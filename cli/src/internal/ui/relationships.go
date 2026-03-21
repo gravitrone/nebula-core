@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -192,7 +192,7 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 		m.createLoading = false
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if m.editMeta.Active {
 			m.editMeta.HandleKey(msg)
 			return m, nil
@@ -247,7 +247,7 @@ func (m RelationshipsModel) View() string {
 
 // --- List ---
 
-func (m RelationshipsModel) handleListKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleListKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	if m.filtering {
 		return m.handleFilterInput(msg)
 	}
@@ -276,7 +276,7 @@ func (m RelationshipsModel) handleListKeys(msg tea.KeyMsg) (RelationshipsModel, 
 }
 
 // handleFilterInput handles handle filter input.
-func (m RelationshipsModel) handleFilterInput(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleFilterInput(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
@@ -290,8 +290,8 @@ func (m RelationshipsModel) handleFilterInput(msg tea.KeyMsg) (RelationshipsMode
 			m.applyListFilter()
 		}
 	default:
-		ch := msg.String()
-		if len(ch) == 1 || ch == " " {
+		ch := keyText(msg)
+		if ch != "" {
 			if ch == " " && m.filterBuf == "" {
 				return m, nil
 			}
@@ -323,7 +323,7 @@ func (m RelationshipsModel) renderModeLine() string {
 }
 
 // handleModeKeys handles handle mode keys.
-func (m RelationshipsModel) handleModeKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleModeKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
@@ -477,7 +477,7 @@ func (m RelationshipsModel) renderList() string {
 
 // --- Detail ---
 
-func (m RelationshipsModel) handleDetailKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleDetailKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isUp(msg):
 		m.modeFocus = true
@@ -571,7 +571,7 @@ func (m *RelationshipsModel) startEdit() {
 }
 
 // handleEditKeys handles handle edit keys.
-func (m RelationshipsModel) handleEditKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleEditKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
@@ -670,7 +670,7 @@ func (m RelationshipsModel) saveEdit() (RelationshipsModel, tea.Cmd) {
 
 // --- Confirm ---
 
-func (m RelationshipsModel) handleConfirmKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleConfirmKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
 		status := "inactive"
@@ -725,7 +725,7 @@ func (m *RelationshipsModel) startCreate() {
 }
 
 // handleCreateKeys handles handle create keys.
-func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel, tea.Cmd) {
+func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	switch m.view {
 	case relsViewCreateSourceSearch:
 		switch {
@@ -766,8 +766,8 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel
 				return m, m.updateCreateSearch()
 			}
 		default:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				if ch == " " && m.createQuery == "" {
 					return m, nil
 				}
@@ -833,8 +833,8 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel
 				return m, m.updateCreateSearch()
 			}
 		default:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				if ch == " " && m.createQuery == "" {
 					return m, nil
 				}
@@ -903,8 +903,8 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyMsg) (RelationshipsModel
 			}
 			m.view = relsViewCreateTargetSearch
 		default:
-			ch := msg.String()
-			if len(ch) == 1 || ch == " " {
+			ch := keyText(msg)
+			if ch != "" {
 				if ch == " " && m.createType == "" {
 					return m, nil
 				}

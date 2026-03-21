@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -39,11 +39,11 @@ func TestProfileAgentDetailToggle(t *testing.T) {
 	}
 	model.agentList.SetItems([]string{formatAgentLine(model.agents[0])})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.agentDetail)
 	assert.Equal(t, "agent-1", model.agentDetail.ID)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, model.agentDetail)
 }
 
@@ -71,11 +71,11 @@ func TestProfileSetAPIKeyPersistsAndUpdatesClient(t *testing.T) {
 	client := api.NewClient(srv.URL, "nbl_oldkey")
 	model := NewProfileModel(client, cfg)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	require.True(t, model.editAPIKey)
 
 	model.apiKeyBuf = "nbl_newkey"
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -142,12 +142,12 @@ func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 	assert.Contains(t, model.View(), "nbl_abc")
 
 	// Create key flow.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.True(t, model.creating)
 	for _, r := range "my key" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
@@ -157,8 +157,8 @@ func TestProfileKeysLoadCreateAndRevokeFlows(t *testing.T) {
 	require.GreaterOrEqual(t, keysAllCalls, 2)
 
 	// Clear created key gate and revoke selected.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'r'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
@@ -213,7 +213,7 @@ func TestProfileAgentsLoadAndToggleTrustFlow(t *testing.T) {
 	assert.Contains(t, model.View(), "Agents")
 
 	// Toggle trust.
-	model, cmd := model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'t'}})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
@@ -265,14 +265,14 @@ func TestProfileHandlePendingLimitInputAndRenderAgentDetail(t *testing.T) {
 
 	model.editPendingLimit = true
 	model.pendingLimitBuf = ""
-	_, cmd := model.handlePendingLimitInput(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := model.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(errMsg)
 	assert.True(t, ok)
 
 	model.pendingLimitBuf = "6001"
-	_, cmd = model.handlePendingLimitInput(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd = model.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
 	saved, ok := msg.(pendingLimitSavedMsg)
@@ -301,19 +301,19 @@ func TestProfileSectionFocusArrowNavigation(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.sectionFocus = true
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	assert.Equal(t, 1, model.section)
 	assert.True(t, model.sectionFocus)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRight})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	assert.Equal(t, 2, model.section)
 	assert.True(t, model.sectionFocus)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
 	assert.Equal(t, 1, model.section)
 	assert.True(t, model.sectionFocus)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.False(t, model.sectionFocus)
 }
 
@@ -324,6 +324,6 @@ func TestProfileUpFromTopListReturnsToSectionFocus(t *testing.T) {
 	model.sectionFocus = false
 	model.keyList.SetItems([]string{"one", "two"})
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.sectionFocus)
 }

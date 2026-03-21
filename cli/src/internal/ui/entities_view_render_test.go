@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -58,22 +58,22 @@ func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	model.width = 80
 
 	// Enter add view.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyUp})
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, entitiesViewAdd, model.view)
 
 	// Name.
 	for _, r := range "Alpha" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 	// Type.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyDown})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	for _, r := range "person" {
-		model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -82,7 +82,7 @@ func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	assert.Contains(t, components.SanitizeText(model.View()), "Entity saved!")
 
 	// Esc should clear addSaved and reset fields.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.addSaved)
 	assert.Empty(t, model.addFields[addFieldName].value)
 	assert.Empty(t, model.addFields[addFieldType].value)
@@ -106,11 +106,11 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	model.width = 80
 	model.view = entitiesViewSearch
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.Equal(t, "a", model.searchBuf)
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
