@@ -636,9 +636,12 @@ func (m ProtocolsModel) renderDetail() string {
 
 	sections := []string{components.Table("Protocol", rows, m.width)}
 	if p.Content != nil && strings.TrimSpace(*p.Content) != "" {
+		rendered := strings.TrimSpace(components.RenderMarkdown(
+			components.SanitizeText(*p.Content), m.width-6,
+		))
 		sections = append(
 			sections,
-			components.TitledBox("Content", components.SanitizeText(*p.Content), m.width),
+			components.TitledBox("Content", rendered, m.width),
 		)
 	}
 	if len(p.Metadata) > 0 {

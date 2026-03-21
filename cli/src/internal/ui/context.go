@@ -1056,6 +1056,9 @@ func (m ContextModel) renderDetail() string {
 		if !m.contentExpanded {
 			content = truncateString(content, 220)
 		}
+		if m.contentExpanded {
+			content = strings.TrimSpace(components.RenderMarkdown(content, m.width-6))
+		}
 		sections = append(sections, components.TitledBox("Content", content, m.width))
 	}
 	if len(m.detailRelationships) > 0 {
