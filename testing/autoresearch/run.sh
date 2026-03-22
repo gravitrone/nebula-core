@@ -4,120 +4,95 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(cd ../.. && pwd)"
 
-MAX_ITERATIONS=${1:-20}
-ITERATION=0
+MAX_ITERATIONS=${1:-5}
 
 command -v gum >/dev/null 2>&1 || { echo "gum not installed: brew install gum"; exit 1; }
 command -v claude >/dev/null 2>&1 || { echo "claude not installed"; exit 1; }
 
-# Nebula theme: primary=#7f57b4, secondary=#436b77, accent=#a7754e, text=#d7d9da, muted=#9ba0bf
+# Nebula theme colors
 gum style --border double --padding "1 2" \
   --border-foreground "#7f57b4" --foreground "#d7d9da" \
   "Nebula Autoresearch Loop" \
   "" \
   "max iterations: $MAX_ITERATIONS" \
-  "pattern: evaluate -> fix -> verify -> commit/revert"
+  "mode: claude code headless + golden file analysis"
 
-while [ $ITERATION -lt $MAX_ITERATIONS ]; do
-  ITERATION=$((ITERATION + 1))
-
+for i in $(seq 1 "$MAX_ITERATIONS"); do
   echo ""
-  gum style --foreground "#436b77" --bold "--- Iteration $ITERATION/$MAX_ITERATIONS ---"
+  gum style --foreground "#436b77" --bold "--- iteration $i/$MAX_ITERATIONS ---"
 
-  # Evaluate current state
-  ./evaluate.sh
+  # Run golden tests to check current visual state
+  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Running golden tests..." -- \
+    bash -c "cd '$ROOT/cli/src' && go test ./internal/ui/ -run TestGolden -count=1 > /tmp/golden-result.txt 2>&1" || true
 
-  SCORE=$(jq -r '.score' reports/latest.json)
-  PASSING=$(jq -r '.passing' reports/latest.json)
-  TOTAL=$(jq -r '.total' reports/latest.json)
+  GOLDEN_RESULT=$(cat /tmp/golden-result.txt 2>/dev/null || echo "failed to run")
+  GOLDEN_PASS=$(echo "$GOLDEN_RESULT" | grep -c "PASS" || echo "0")
 
-  # Check if done
-  if [ "$SCORE" = "1" ] || [ "$SCORE" = "1.00" ]; then
-    gum style --foreground "#3f866b" --bold \
-      "All $TOTAL checks passing. Score: 1.00. Done."
-    break
+  gum log --level info "golden tests: $GOLDEN_PASS passing"
+
+  # Run full test suite
+  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Running full test suite..." -- \
+    bash -c "cd '$ROOT' && make test-cli > /tmp/test-result.txt 2>&1" || true
+
+  TEST_RESULT=$(cat /tmp/test-result.txt 2>/dev/null || echo "failed")
+  if echo "$TEST_RESULT" | grep -q "^ok"; then
+    gum log --level info "all tests passing"
+  else
+    FAILURES=$(echo "$TEST_RESULT" | grep "FAIL" || echo "unknown")
+    gum log --level error "test failures: $FAILURES"
   fi
 
-  gum log --level info "Current score: $SCORE ($PASSING/$TOTAL)"
+  # Build fresh binary
+  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Building nebula..." -- \
+    bash -c "cd '$ROOT' && make build 2>/dev/null"
 
-  # Extract failing checks
-  FAILURES=$(jq '[.scenarios[].checks[] | select(.pass == false)]' reports/latest.json)
-  FAILURE_COUNT=$(echo "$FAILURES" | jq 'length')
+  # Launch claude code headless to analyze and fix visual bugs
+  gum style --foreground "#9ba0bf" "launching claude code headless to find and fix visual bugs..."
 
-  if [ "$FAILURE_COUNT" -eq 0 ]; then
-    gum log --level warn "No failing checks found but score < 1.0. Stopping."
-    break
-  fi
-
-  gum log --level info "$FAILURE_COUNT failing checks found"
-
-  # Ask claude code headless to fix the bugs
-  PROGRAM=$(cat program.md)
-  FIX_PROMPT="$PROGRAM
+  PROMPT=$(cat program.md)
+  PROMPT="$PROMPT
 
 ## Current State
-Score: $SCORE ($PASSING/$TOTAL passing)
+- Golden tests: $GOLDEN_PASS passing
+- Full suite: $(echo "$TEST_RESULT" | tail -1)
 
-## Failing Checks
-$(echo "$FAILURES" | jq -r '.[] | "- [\(.severity // "unknown")] \(.assertion): \(.issue // "no details")"')
+## Task
+1. Build and run the nebula CLI binary (cli/src/build/nebula) to visually inspect it
+2. Take a screenshot of the running TUI using the screenshot tool
+3. Analyze the screenshot for visual bugs from the checks in this prompt
+4. Fix any bugs you find in cli/src/internal/ui/
+5. Run make test-cli to verify no regressions
+6. Report what you fixed"
 
-## Instructions
-Fix these visual bugs in the Go source code under cli/src/internal/ui/.
-After fixing, run: cd $ROOT && make test-cli
-Only proceed if all tests pass. If tests fail, revert your changes."
-
-  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Claude fixing $FAILURE_COUNT visual bugs..." -- \
-    claude -p "$FIX_PROMPT" \
-      --headless \
-      --allowedTools Read,Edit,Write,Bash \
-      --max-turns 30 \
-      --cwd "$ROOT" 2>/dev/null || true
-
-  # Verify tests still pass
-  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Verifying tests..." -- \
-    bash -c "cd '$ROOT' && make test-cli > /dev/null 2>&1" || {
-      gum log --level error "Tests failed after fix. Reverting."
-      cd "$ROOT" && git checkout -- cli/src/internal/ui/
-      continue
+  claude -p "$PROMPT" \
+    --headless \
+    --allowedTools "Read,Edit,Write,Bash,screenshot" \
+    --max-turns 20 \
+    --cwd "$ROOT" 2>/dev/null || {
+      gum log --level warn "claude session ended"
     }
 
-  # Re-evaluate
-  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Re-evaluating..." -- sleep 0.1
-  ./evaluate.sh
+  # Check if anything changed
+  if [ -n "$(cd "$ROOT" && git diff --name-only)" ]; then
+    # Verify tests pass
+    gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Verifying tests after fixes..." -- \
+      bash -c "cd '$ROOT' && make test-cli > /dev/null 2>&1" || {
+        gum log --level error "tests failed after fix, reverting"
+        cd "$ROOT" && git checkout -- cli/src/internal/ui/
+        continue
+      }
 
-  NEW_SCORE=$(jq -r '.score' reports/latest.json)
-  NEW_PASSING=$(jq -r '.passing' reports/latest.json)
-
-  # Compare scores
-  IMPROVED=$(echo "$NEW_SCORE > $SCORE" | bc 2>/dev/null || echo "0")
-
-  if [ "$IMPROVED" -eq 1 ]; then
-    gum style --foreground "#3f866b" \
-      "Improved: $SCORE -> $NEW_SCORE ($PASSING -> $NEW_PASSING passing)"
-
+    gum log --level info "tests pass, committing fix"
     cd "$ROOT"
     git add -A
-    git commit -m "$(cat <<EOF
-fix(cli): autoresearch visual fix (score $SCORE -> $NEW_SCORE)
-
-Iteration $ITERATION: fixed $FAILURE_COUNT visual checks.
-Passing: $NEW_PASSING/$TOTAL
-EOF
-    )"
+    git commit -m "fix(cli): autoresearch iteration $i visual fixes"
     cd "$ROOT/testing/autoresearch"
-
-    gum log --level info "Committed fix"
   else
-    gum style --foreground "#a7754e" \
-      "No improvement ($SCORE -> $NEW_SCORE). Reverting."
-    cd "$ROOT" && git checkout -- cli/src/internal/ui/
-    cd "$ROOT/testing/autoresearch"
+    gum log --level info "no changes made this iteration"
   fi
 done
 
 echo ""
-FINAL_SCORE=$(jq -r '.score' reports/latest.json 2>/dev/null || echo "N/A")
-gum style --border rounded --padding "1 2" --border-foreground "#3f866b" \
-  "Autoresearch complete" \
-  "Iterations: $ITERATION" \
-  "Final score: $FINAL_SCORE"
+gum style --border rounded --padding "1 2" \
+  --border-foreground "#3f866b" --foreground "#d7d9da" \
+  "autoresearch complete after $MAX_ITERATIONS iterations"
