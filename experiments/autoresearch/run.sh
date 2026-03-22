@@ -22,16 +22,11 @@ ERR="#d1606b" # error (red)
 # ── helpers ─────────────────────────────────────────────────────────────────
 banner() {
   echo ""
-  gum style --border double --padding "1 2" \
-    --border-foreground "$P" --foreground "$T" --width 60 \
-    "" \
-    "  Nebula Autoresearch" \
-    "  Autonomous Visual Bug Hunter" \
-    "" \
-    "  Iterations   $MAX_ITERATIONS" \
-    "  Branch       $BRANCH" \
-    "  Isolation    Git Worktrees" \
-    ""
+  printf '{{ Bold (Color "135" "" "◆ Nebula Autoresearch") }}\n{{ Italic (Color "105" "" "  Autonomous Visual Bug Hunter") }}\n{{ Color "61" "" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" }}\n{{ Color "146" "" "  Iterations" }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Branch    " }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Isolation " }}   {{ Color "153" "" "Git Worktrees" }}' \
+    "$MAX_ITERATIONS" \
+    "$BRANCH" \
+    | gum format --type=template \
+    | gum style --border thick --border-foreground "$P" --padding "1 2"
 }
 
 header() {
@@ -211,15 +206,12 @@ done
 
 # ── summary ─────────────────────────────────────────────────────────────────
 echo ""
-gum style --border rounded --padding "1 2" \
-  --border-foreground "$OK" --foreground "$T" --width 60 \
-  "" \
-  "  Autoresearch Complete" \
-  "" \
-  "  Iterations    $ITERATION" \
-  "  Fixes Merged  $TOTAL_FIXES" \
-  "  Branch        $BRANCH" \
-  ""
+printf '{{ Bold (Color "35" "" "◆ Autoresearch Complete") }}\n{{ Color "61" "" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" }}\n{{ Color "146" "" "  Iterations  " }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Fixes Merged" }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Branch      " }}   {{ Color "153" "" "%s" }}' \
+  "$ITERATION" \
+  "$TOTAL_FIXES" \
+  "$BRANCH" \
+  | gum format --type=template \
+  | gum style --border rounded --border-foreground "$OK" --padding "1 2"
 
 # cleanup worktree dir if empty
 rmdir "$WORKTREE_DIR" 2>/dev/null || true
