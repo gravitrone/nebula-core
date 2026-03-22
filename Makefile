@@ -7,8 +7,11 @@ help: ## Show this help
 
 # --- Lint & Format ---
 
-lint: ## Run all linters (ruff + go vet)
+lint: ## Run all linters (ruff + golangci-lint)
 	./scripts/lint.sh
+
+lint-go: ## Run golangci-lint only
+	cd cli/src && golangci-lint run ./...
 
 format: ## Auto-format all code (ruff + gofmt)
 	./scripts/format.sh
