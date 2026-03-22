@@ -669,6 +669,10 @@ func (m RelationshipsModel) saveEdit() (RelationshipsModel, tea.Cmd) {
 func (m RelationshipsModel) handleConfirmKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
+		if m.detail == nil {
+			m.view = relsViewList
+			return m, nil
+		}
 		status := "inactive"
 		input := api.UpdateRelationshipInput{Status: &status}
 		m.view = relsViewDetail
