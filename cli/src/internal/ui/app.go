@@ -8,6 +8,7 @@ import (
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/textinput"
+	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/harmonica"
@@ -148,7 +149,7 @@ type App struct {
 	paletteSelections    map[string]paletteSelection
 
 	importExportOpen bool
-	bodyScroll       int
+	bodyViewport     viewport.Model
 	bodyViewKey      string
 
 	// --- Animation State ---
@@ -158,7 +159,7 @@ type App struct {
 	toastOffset    float64
 	toastOffsetVel float64
 	toastTarget    float64
-	// scrollSpring drives smooth body scroll; scrollPos is the animated position.
+	// scrollSpring drives smooth body scroll via the viewport.
 	scrollSpring harmonica.Spring
 	scrollTarget float64
 	scrollPos    float64
@@ -208,6 +209,7 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 		},
 		paletteTextInput: newPaletteTextInput(),
 		paletteActions:   defaultPaletteActions(),
+		bodyViewport:    components.NewNebulaViewport(80, 24),
 		inbox:          inbox,
 		entities:       NewEntitiesModel(client),
 		rels:           NewRelationshipsModel(client),
@@ -505,23 +507,21 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Command palette
 		if isKey(msg, "/") {
-			a.bodyScroll = 0
+			a.resetScroll()
 			a.openPaletteCommand()
 			return a, a.refreshPaletteFiltered()
 		}
 
 		// Global body scrolling for long detail panes.
 		if isKey(msg, "pgdown", "ctrl+d") {
-			a.bodyScroll += 8
-			a.scrollTarget = float64(a.bodyScroll)
+			a.scrollTarget += 8
 			return a, a.animTickCmd()
 		}
 		if isKey(msg, "pgup", "ctrl+u") {
-			a.bodyScroll -= 8
-			if a.bodyScroll < 0 {
-				a.bodyScroll = 0
+			a.scrollTarget -= 8
+			if a.scrollTarget < 0 {
+				a.scrollTarget = 0
 			}
-			a.scrollTarget = float64(a.bodyScroll)
 			return a, a.animTickCmd()
 		}
 
@@ -703,21 +703,24 @@ func (a App) View() tea.View {
 	if a.height > 0 && !a.helpOpen && !a.quitConfirm && !a.paletteOpen && !a.importExportOpen {
 		reservedFeedbackLines := 0
 		if feedback != "" {
-			// Keep feedback boxes intact by reserving viewport budget up front.
 			reservedFeedbackLines = countViewLines(feedback) + 2
 		}
-		// Use animated scroll position for smooth scrolling; fall back to bodyScroll.
+		// Calculate available height for viewport.
+		const spacerLines = 2
+		vpHeight := a.height - countViewLines(top) - countViewLines(hints) - reservedFeedbackLines - spacerLines
+		if vpHeight < 6 {
+			vpHeight = 6
+		}
+		a.bodyViewport.SetWidth(a.width)
+		a.bodyViewport.SetHeight(vpHeight)
+		a.bodyViewport.SetContent(content)
+		// Drive viewport offset from spring animation.
 		animScroll := int(math.Round(a.scrollPos))
 		if animScroll < 0 {
 			animScroll = 0
 		}
-		body, _ = clampBodyForViewport(
-			body,
-			a.height,
-			countViewLines(top),
-			countViewLines(hints)+reservedFeedbackLines,
-			animScroll,
-		)
+		a.bodyViewport.SetYOffset(animScroll)
+		body = a.bodyViewport.View()
 	}
 	if feedback != "" {
 		body = body + "\n\n" + feedback
@@ -778,10 +781,7 @@ func (a App) rowHighlightEnabled() bool {
 func (a *App) switchTab(newTab int) (App, tea.Cmd) {
 	oldTab := a.tab
 	a.tab = newTab
-	a.bodyScroll = 0
-	a.scrollTarget = 0
-	a.scrollPos = 0
-	a.scrollVel = 0
+	a.resetScroll()
 	a.bodyViewKey = a.viewStateKey()
 	// Animate the tab indicator toward the new tab position.
 	a.tabIndTarget = float64(newTab)
@@ -810,12 +810,17 @@ func (a *App) clearContentFocus() {
 func (a *App) resetBodyScrollOnViewChange(prevViewKey string) {
 	nextViewKey := a.viewStateKey()
 	if prevViewKey != "" && prevViewKey != nextViewKey {
-		a.bodyScroll = 0
-		a.scrollTarget = 0
-		a.scrollPos = 0
-		a.scrollVel = 0
+		a.resetScroll()
 	}
 	a.bodyViewKey = nextViewKey
+}
+
+// resetScroll resets all scroll and animation state.
+func (a *App) resetScroll() {
+	a.scrollTarget = 0
+	a.scrollPos = 0
+	a.scrollVel = 0
+	a.bodyViewport.GotoTop()
 }
 
 // viewStateKey handles view state key.
@@ -1090,7 +1095,18 @@ func (a *App) advanceAnimations() tea.Cmd {
 		a.toastOffsetVel = 0
 	}
 
-	// Advance smooth scroll spring. scrollPos drives the view; bodyScroll is the logical target.
+	// Advance smooth scroll spring. scrollPos drives the viewport offset.
+	// Clamp scrollTarget to valid range based on viewport content.
+	maxScroll := a.bodyViewport.TotalLineCount() - a.bodyViewport.VisibleLineCount()
+	if maxScroll < 0 {
+		maxScroll = 0
+	}
+	if a.scrollTarget > float64(maxScroll) {
+		a.scrollTarget = float64(maxScroll)
+	}
+	if a.scrollTarget < 0 {
+		a.scrollTarget = 0
+	}
 	if !animSettled(a.scrollPos, a.scrollVel, a.scrollTarget) {
 		a.scrollPos, a.scrollVel = a.scrollSpring.Update(a.scrollPos, a.scrollVel, a.scrollTarget)
 		active = true
@@ -1122,39 +1138,6 @@ func countViewLines(block string) int {
 	return strings.Count(block, "\n") + 1
 }
 
-// clampBodyForViewport handles clamp body for viewport.
-func clampBodyForViewport(body string, totalHeight, topLines, hintLines, scroll int) (string, bool) {
-	lines := strings.Split(body, "\n")
-
-	// Layout is rendered as: top + blank + body + blank + hints.
-	const spacerLines = 2
-	budget := totalHeight - topLines - hintLines - spacerLines
-	if budget < 6 {
-		budget = 6
-	}
-	if len(lines) <= budget {
-		return body, false
-	}
-
-	maxScroll := len(lines) - budget
-	if scroll < 0 {
-		scroll = 0
-	}
-	if scroll > maxScroll {
-		scroll = maxScroll
-	}
-	start := scroll
-	end := start + budget
-
-	trimmed := append([]string{}, lines[start:end]...)
-	if start > 0 {
-		trimmed[0] = MutedStyle.Render("... ↑ more")
-	}
-	if end < len(lines) {
-		trimmed[len(trimmed)-1] = MutedStyle.Render("... ↓ more")
-	}
-	return strings.Join(trimmed, "\n"), true
-}
 
 // renderToast renders render toast.
 func (a App) renderToast() string {
