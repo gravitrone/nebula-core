@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -107,7 +108,7 @@ type EntitiesModel struct {
 	client         *api.Client
 	items          []api.Entity
 	allItems       []api.Entity
-	list           *components.List
+	dataTable      table.Model
 	loading        bool
 	spinner        spinner.Model
 	view           entitiesView
@@ -170,7 +171,7 @@ type EntitiesModel struct {
 
 	// relationships
 	rels       []api.Relationship
-	relList    *components.List
+	relTable   table.Model
 	relLoading bool
 
 	scopeNames   map[string]string
@@ -178,13 +179,13 @@ type EntitiesModel struct {
 
 	// history
 	history        []api.AuditEntry
-	historyList    *components.List
+	historyTable   table.Model
 	historyLoading bool
 
 	// relate flow
 	relateQuery   string
 	relateResults []api.Entity
-	relateList    *components.List
+	relateTable   table.Model
 	relateTarget  *api.Entity
 	relateType    string
 	relateLoading bool
@@ -208,7 +209,7 @@ func NewEntitiesModel(client *api.Client) EntitiesModel {
 	return EntitiesModel{
 		client:  client,
 		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(15),
+		dataTable: components.NewNebulaTable(nil, 15),
 		addFields: []formField{
 			{label: "Name"},
 			{label: "Type"},
@@ -216,9 +217,9 @@ func NewEntitiesModel(client *api.Client) EntitiesModel {
 			{label: "Tags"},
 			{label: "Scopes"},
 		},
-		relList:      components.NewList(8),
-		relateList:   components.NewList(8),
-		historyList:  components.NewList(8),
+		relTable:     components.NewNebulaTable(nil, 8),
+		relateTable:  components.NewNebulaTable(nil, 8),
+		historyTable: components.NewNebulaTable(nil, 8),
 		view:         entitiesViewList,
 		bulkSelected: map[string]bool{},
 		scopeNames:   map[string]string{},
@@ -290,11 +291,12 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	case relationshipsLoadedMsg:
 		m.relLoading = false
 		m.rels = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, r := range msg.items {
-			labels[i] = m.formatRelationshipLine(r)
+			rows[i] = table.Row{m.formatRelationshipLine(r)}
 		}
-		m.relList.SetItems(labels)
+		m.relTable.SetRows(rows)
+		m.relTable.SetCursor(0)
 		return m, nil
 	case entityDetailRelationshipsLoadedMsg:
 		if m.detail != nil && m.detail.ID == msg.id {
@@ -311,11 +313,12 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	case relateResultsMsg:
 		m.relateLoading = false
 		m.relateResults = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, e := range msg.items {
-			labels[i] = formatEntityLine(e)
+			rows[i] = table.Row{formatEntityLine(e)}
 		}
-		m.relateList.SetItems(labels)
+		m.relateTable.SetRows(rows)
+		m.relateTable.SetCursor(0)
 		m.view = entitiesViewRelateSelect
 		return m, nil
 
@@ -341,11 +344,12 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	case entityHistoryLoadedMsg:
 		m.historyLoading = false
 		m.history = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, entry := range msg.items {
-			labels[i] = formatHistoryLine(entry)
+			rows[i] = table.Row{formatHistoryLine(entry)}
 		}
-		m.historyList.SetItems(labels)
+		m.historyTable.SetRows(rows)
+		m.historyTable.SetCursor(0)
 		return m, nil
 
 	case entityRevertedMsg:
@@ -486,23 +490,23 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() == 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isSpace(msg):
 		if m.searchBuf == "" {
-			m.toggleBulkSelection(m.list.Selected())
+			m.toggleBulkSelection(m.dataTable.Cursor())
 			return m, nil
 		}
 		m.searchBuf += " "
 		m.loading = true
 		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
 	case isEnter(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.detailRels = nil
@@ -776,11 +780,12 @@ func (m *EntitiesModel) applyEntityFilters() {
 		filtered = append(filtered, item)
 	}
 	m.items = filtered
-	labels := make([]string, len(filtered))
+	rows := make([]table.Row, len(filtered))
 	for i, e := range filtered {
-		labels[i] = formatEntityLine(e)
+		rows[i] = table.Row{formatEntityLine(e)}
 	}
-	m.list.SetItems(labels)
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 	m.pruneBulkSelection(filtered)
 	m.updateSearchSuggest()
 }
@@ -1294,7 +1299,6 @@ func (m EntitiesModel) renderList() string {
 		)
 	}
 
-	visible := m.list.Visible()
 	contentWidth := components.BoxContentWidth(m.width)
 	showCheckboxes := m.bulkCount() > 0
 
@@ -1307,13 +1311,9 @@ func (m EntitiesModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -1325,26 +1325,10 @@ func (m EntitiesModel) renderList() string {
 	if nameWidth < 12 {
 		nameWidth = 12
 	}
-	cols := []components.TableColumn{
-		{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-		{Header: "Type", Width: typeWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
 
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Entity
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-
-		e := m.items[absIdx]
+	// Build rows from current items for the table.
+	tableRows := make([]table.Row, len(m.items))
+	for i, e := range m.items {
 		name, typ := normalizeEntityNameType(components.SanitizeText(e.Name), components.SanitizeText(e.Type))
 		name = components.SanitizeOneLine(name)
 		typ = components.SanitizeOneLine(typ)
@@ -1363,25 +1347,28 @@ func (m EntitiesModel) renderList() string {
 		displayName := name
 		if showCheckboxes {
 			checkbox := "[ ]"
-			if m.isBulkSelected(absIdx) {
+			if m.isBulkSelected(i) {
 				checkbox = "[X]"
 			}
 			displayName = checkbox + " " + displayName
 		}
 
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(displayName, nameWidth),
 			components.ClampTextWidthEllipsis(typ, typeWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			formatLocalTimeCompact(at),
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Name", Width: nameWidth},
+		{Title: "Type", Width: typeWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	title := "Entities"
 	countLine := fmt.Sprintf("%d total", len(m.items))
@@ -1400,18 +1387,22 @@ func (m EntitiesModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Entity
+	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+		previewItem = &m.items[idx]
+	}
 	if previewItem != nil {
 		content := m.renderEntityPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -1831,11 +1822,11 @@ func (m EntitiesModel) handleHistoryKeys(msg tea.KeyPressMsg) (EntitiesModel, te
 	case isBack(msg):
 		m.view = entitiesViewDetail
 	case isDown(msg):
-		m.historyList.Down()
+		m.historyTable.MoveDown(1)
 	case isUp(msg):
-		m.historyList.Up()
+		m.historyTable.MoveUp(1)
 	case isEnter(msg):
-		if idx := m.historyList.Selected(); idx < len(m.history) {
+		if idx := m.historyTable.Cursor(); idx >= 0 && idx < len(m.history) {
 			entry := m.history[idx]
 			m.confirmKind = "entity-revert"
 			m.confirmAuditID = entry.ID
@@ -1861,7 +1852,6 @@ func (m EntitiesModel) renderHistory() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.historyList.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -1872,13 +1862,9 @@ func (m EntitiesModel) renderHistory() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 3 columns -> 2 separators.
-	availableCols := tableWidth - (2 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 3 columns = 6 chars of padding.
+	cellPadding := 3 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -1894,26 +1880,9 @@ func (m EntitiesModel) renderHistory() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-		{Header: "Action", Width: actionWidth, Align: lipgloss.Left},
-		{Header: "Fields", Width: fieldsWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.AuditEntry
-	if idx := m.historyList.Selected(); idx >= 0 && idx < len(m.history) {
-		previewItem = &m.history[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.historyList.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.history) {
-			continue
-		}
-		entry := m.history[absIdx]
-
+	// Build rows from history entries.
+	tableRows := make([]table.Row, len(m.history))
+	for i, entry := range m.history {
 		action := strings.TrimSpace(components.SanitizeOneLine(entry.Action))
 		if action == "" {
 			action = "update"
@@ -1922,31 +1891,38 @@ func (m EntitiesModel) renderHistory() string {
 		if n := len(entry.ChangedFields); n > 0 {
 			fields = fmt.Sprintf("%d fields", n)
 		}
-
-		if m.historyList.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			formatLocalTimeCompact(entry.ChangedAt),
 			components.ClampTextWidthEllipsis(strings.ToUpper(action), actionWidth),
 			components.ClampTextWidthEllipsis(fields, fieldsWidth),
-		})
+		}
 	}
 
+	m.historyTable.SetColumns([]table.Column{
+		{Title: "At", Width: atWidth},
+		{Title: "Action", Width: actionWidth},
+		{Title: "Fields", Width: fieldsWidth},
+	})
+	m.historyTable.SetWidth(tableWidth)
+	m.historyTable.SetRows(tableRows)
+
 	countLine := MutedStyle.Render(fmt.Sprintf("%d entries", len(m.history)))
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.historyTable.View()
 	preview := ""
+	var previewItem *api.AuditEntry
+	if idx := m.historyTable.Cursor(); idx >= 0 && idx < len(m.history) {
+		previewItem = &m.history[idx]
+	}
 	if previewItem != nil {
 		content := m.renderEntityHistoryPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -2439,9 +2415,9 @@ func (m EntitiesModel) handleRelationshipsKeys(msg tea.KeyPressMsg) (EntitiesMod
 	case isBack(msg):
 		m.view = entitiesViewDetail
 	case isDown(msg):
-		m.relList.Down()
+		m.relTable.MoveDown(1)
 	case isUp(msg):
-		m.relList.Up()
+		m.relTable.MoveUp(1)
 	case isKey(msg, "n"):
 		m.startRelate()
 		m.view = entitiesViewRelateSearch
@@ -2472,7 +2448,7 @@ func (m EntitiesModel) renderRelationships() string {
 		return components.Indent(components.Box(content, m.width), 1)
 	}
 
-	idx := m.relList.Selected()
+	idx := m.relTable.Cursor()
 	if idx < 0 || idx >= len(m.rels) {
 		idx = 0
 	}
@@ -2503,7 +2479,8 @@ func (m EntitiesModel) renderRelationships() string {
 func (m *EntitiesModel) startRelate() {
 	m.relateQuery = ""
 	m.relateResults = nil
-	m.relateList.SetItems(nil)
+	m.relateTable.SetRows([]table.Row{})
+	m.relateTable.SetCursor(0)
 	m.relateTarget = nil
 	m.relateType = ""
 	m.relateLoading = false
@@ -2538,11 +2515,11 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 		case isBack(msg):
 			m.view = entitiesViewRelateSearch
 		case isDown(msg):
-			m.relateList.Down()
+			m.relateTable.MoveDown(1)
 		case isUp(msg):
-			m.relateList.Up()
+			m.relateTable.MoveUp(1)
 		case isEnter(msg):
-			if idx := m.relateList.Selected(); idx < len(m.relateResults) {
+			if idx := m.relateTable.Cursor(); idx >= 0 && idx < len(m.relateResults) {
 				item := m.relateResults[idx]
 				m.relateTarget = &item
 				m.relateType = ""
@@ -2592,7 +2569,6 @@ func (m EntitiesModel) renderRelate() string {
 		}
 
 		contentWidth := components.BoxContentWidth(m.width)
-		visible := m.relateList.Visible()
 
 		previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -2603,38 +2579,17 @@ func (m EntitiesModel) renderRelate() string {
 			tableWidth = contentWidth - previewWidth - gap
 		}
 
-		sepWidth := 1
-		if br := lipgloss.RoundedBorder().Left; br != "" {
-			sepWidth = lipgloss.Width(br)
-		}
-
-		// 3 columns -> 2 separators.
-		availableCols := tableWidth - (2 * sepWidth)
+		// Each table cell has Padding(0,1) = 2 chars. 3 columns = 6 chars of padding.
+		cellPadding := 3 * 2
+		availableCols := tableWidth - cellPadding
 
 		typeWidth := 14
 		statusWidth := 11
 		nameWidth := availableCols - (typeWidth + statusWidth)
 
-		cols := []components.TableColumn{
-			{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-			{Header: "Type", Width: typeWidth, Align: lipgloss.Left},
-			{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		}
-
-		tableRows := make([][]string, 0, len(visible))
-		activeRowRel := -1
-		var previewItem *api.Entity
-		if idx := m.relateList.Selected(); idx >= 0 && idx < len(m.relateResults) {
-			previewItem = &m.relateResults[idx]
-		}
-
-		for i := range visible {
-			absIdx := m.relateList.RelToAbs(i)
-			if absIdx < 0 || absIdx >= len(m.relateResults) {
-				continue
-			}
-			e := m.relateResults[absIdx]
-
+		// Build rows from relate results.
+		tableRows := make([]table.Row, len(m.relateResults))
+		for i, e := range m.relateResults {
 			name := strings.TrimSpace(components.SanitizeOneLine(e.Name))
 			if name == "" {
 				name = "entity"
@@ -2647,30 +2602,38 @@ func (m EntitiesModel) renderRelate() string {
 			if status == "" {
 				status = "-"
 			}
-
-			if m.relateList.IsSelected(absIdx) {
-				activeRowRel = len(tableRows)
-			}
-			tableRows = append(tableRows, []string{
+			tableRows[i] = table.Row{
 				components.ClampTextWidthEllipsis(name, nameWidth),
 				components.ClampTextWidthEllipsis(typ, typeWidth),
 				components.ClampTextWidthEllipsis(status, statusWidth),
-			})
+			}
 		}
 
+		m.relateTable.SetColumns([]table.Column{
+			{Title: "Name", Width: nameWidth},
+			{Title: "Type", Width: typeWidth},
+			{Title: "Status", Width: statusWidth},
+		})
+		m.relateTable.SetWidth(tableWidth)
+		m.relateTable.SetRows(tableRows)
+
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.relateResults)))
-		table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+		tableView := m.relateTable.View()
 		preview := ""
+		var previewItem *api.Entity
+		if idx := m.relateTable.Cursor(); idx >= 0 && idx < len(m.relateResults) {
+			previewItem = &m.relateResults[idx]
+		}
 		if previewItem != nil {
 			content := m.renderRelateEntityPreview(*previewItem, previewBoxContentWidth(previewWidth))
 			preview = renderPreviewBox(content, previewWidth)
 		}
 
-		body := table
+		body := tableView
 		if sideBySide && preview != "" {
-			body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+			body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 		} else if preview != "" {
-			body = table + "\n\n" + preview
+			body = tableView + "\n\n" + preview
 		}
 
 		content := countLine + "\n\n" + body + "\n"
@@ -2983,10 +2946,17 @@ func (m *EntitiesModel) applyEntityUpdate(updated api.Entity) {
 	for i := range m.items {
 		if m.items[i].ID == updated.ID {
 			m.items[i] = updated
-			m.list.Items[i] = formatEntityLine(updated)
 			break
 		}
 	}
+	// Also update allItems so filters stay consistent.
+	for i := range m.allItems {
+		if m.allItems[i].ID == updated.ID {
+			m.allItems[i] = updated
+			break
+		}
+	}
+	m.applyEntityFilters()
 }
 
 // selectedRelationship handles selected relationship.
@@ -2994,7 +2964,7 @@ func (m EntitiesModel) selectedRelationship() *api.Relationship {
 	if len(m.rels) == 0 {
 		return nil
 	}
-	idx := m.relList.Selected()
+	idx := m.relTable.Cursor()
 	if idx < 0 || idx >= len(m.rels) {
 		return nil
 	}

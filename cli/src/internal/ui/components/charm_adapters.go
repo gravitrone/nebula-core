@@ -2,6 +2,7 @@ package components
 
 import (
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	"charm.land/lipgloss/v2"
@@ -37,6 +38,37 @@ func NewNebulaSpinner() spinner.Model {
 	s.Spinner = spinner.Dot
 	s.Style = lipgloss.NewStyle().Foreground(themePrimary)
 	return s
+}
+
+// NewNebulaTable returns a table.Model styled to match the Nebula theme.
+// Keybindings are disabled by default since nebula tabs handle their own nav.
+// When cols is nil a single placeholder column is used so that SetRows
+// does not panic before the caller sets proper columns.
+func NewNebulaTable(cols []table.Column, height int) table.Model {
+	if cols == nil {
+		cols = []table.Column{{Title: "", Width: 40}}
+	}
+	s := table.Styles{
+		Header: lipgloss.NewStyle().
+			Bold(true).
+			Foreground(themeText).
+			Padding(0, 1),
+		Cell: lipgloss.NewStyle().
+			Foreground(themeText).
+			Padding(0, 1),
+		Selected: lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#eef2ff")).
+			Background(lipgloss.Color("#2a3348")).
+			Padding(0, 1),
+	}
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithHeight(height),
+		table.WithStyles(s),
+		table.WithFocused(true),
+	)
+	return t
 }
 
 // NewNebulaViewport returns a viewport.Model with the given dimensions.

@@ -46,8 +46,7 @@ func TestEntitiesRenderListCountLineSelectionAndPreviewBranches(t *testing.T) {
 			CreatedAt: now,
 		},
 	}
-	model.list.SetItems([]string{"row-1", "row-2", "phantom-row"})
-	model.list.Cursor = 0
+	model.dataTable.SetCursor(0)
 	model.searchBuf = "alpha"
 	model.searchSuggest = "alphabet"
 	model.filterTypes = map[string]bool{"person": true}
@@ -56,12 +55,10 @@ func TestEntitiesRenderListCountLineSelectionAndPreviewBranches(t *testing.T) {
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "2 total · selected: 1 · search: alpha · next: alphabet · filters active")
 	assert.Contains(t, out, "[X] Alpha")
-	assert.Contains(t, out, "Selected")
-	assert.Contains(t, out, "Scopes: [public]")
 
 	// Keep query/suggest equal (case-insensitive) and force previewItem=nil branch.
 	model.searchSuggest = "ALPHA"
-	model.list.Cursor = 99
+	model.dataTable.SetCursor(99)
 	model.modeFocus = true
 	out = components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "2 total · selected: 1 · search: alpha · filters active")

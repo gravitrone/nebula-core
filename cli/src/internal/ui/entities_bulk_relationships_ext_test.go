@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -252,7 +253,7 @@ func TestEntitiesRenderRelationshipsAndSelectionHelpersBranches(t *testing.T) {
 	model.rels = []api.Relationship{
 		{ID: "rel-1", SourceID: "ent-1", TargetID: "ent-2", TargetName: "Beta", Type: "uses", Status: "active"},
 	}
-	model.relList.SetItems([]string{"uses"})
+	model.relTable.SetRows([]table.Row{{"uses"}})
 	out = components.SanitizeText(model.renderRelationships())
 	assert.Contains(t, out, "Direction")
 

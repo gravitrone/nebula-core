@@ -3,6 +3,7 @@ package ui
 import (
 	"testing"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -146,8 +147,8 @@ func TestCanExitToTabNavMatrix(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabEntities
 	assert.True(t, app.canExitToTabNav())
-	app.entities.list.SetItems([]string{"one", "two"})
-	app.entities.list.Down()
+	app.entities.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.entities.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})

@@ -95,7 +95,7 @@ func TestEntitiesApplyFiltersPrunesSelectionAndList(t *testing.T) {
 	assert.Equal(t, "ent-1", model.items[0].ID)
 	assert.True(t, model.bulkSelected["ent-1"])
 	assert.False(t, model.bulkSelected["ent-2"])
-	require.Len(t, model.list.Items, 1)
+	require.Len(t, model.dataTable.Rows(), 1)
 }
 
 func TestFormatEntityHeaderAndJoinSegmentsMatrix(t *testing.T) {
