@@ -80,7 +80,7 @@ func TestFilesAddValidationErrorOnEmpty(t *testing.T) {
 	model := NewFilesModel(client)
 	model.view = filesViewAdd
 
-	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, _ = model.saveAdd()
 	assert.Equal(t, "Filename is required", model.addErr)
 }
 
@@ -133,7 +133,7 @@ func TestFilesUpdateHandlesAPIError(t *testing.T) {
 	assert.Equal(t, filesViewEdit, model.view)
 
 	// Attempt save; server returns FAIL.
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, cmd = model.saveEdit()
 	require.NotNil(t, cmd)
 	msg = cmd()
 	model, _ = model.Update(msg)

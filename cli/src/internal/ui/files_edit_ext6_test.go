@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
-	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,17 +29,14 @@ func TestFilesStartEditBranchMatrix(t *testing.T) {
 		Metadata: api.JSONMap{"k": "v"},
 	}
 	model.startEdit()
-	assert.Equal(t, 0, model.editFocus)
 	assert.Equal(t, "alpha.txt", model.editName)
 	assert.Equal(t, "/tmp/alpha.txt", model.editPath)
 	assert.Equal(t, "", model.editMime)
 	assert.Equal(t, "", model.editSize)
 	assert.Equal(t, "", model.editChecksum)
-	assert.Equal(t, []string{"docs"}, model.editTags)
-
-	// Ensure tags were copied, not aliased.
-	model.editTags[0] = "changed"
-	assert.Equal(t, []string{"docs"}, model.detail.Tags)
+	// Tags are stored as comma-separated string.
+	assert.Equal(t, "docs", model.editTagStr)
+	assert.NotNil(t, model.editForm)
 
 	// Detail with optional pointers should fill values.
 	mime := "text/plain"
@@ -62,22 +58,20 @@ func TestFilesStartEditBranchMatrix(t *testing.T) {
 	assert.Equal(t, "deadbeef", model.editChecksum)
 }
 
-func TestFilesRenderEditTagsFocusedAndBufferBranches(t *testing.T) {
+func TestFilesEditTagStrBranchMatrix(t *testing.T) {
 	model := NewFilesModel(nil)
-	model.editTags = []string{"one"}
+	// Tags are stored as comma-separated string in editTagStr.
+	model.editTagStr = "one"
+	tags := parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"one"}, tags)
 
-	focused := components.SanitizeText(model.renderEditTags(true))
-	assert.Contains(t, focused, "one")
-	assert.Contains(t, focused, "█")
+	model.editTagStr = "one, two"
+	tags = parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"one", "two"}, tags)
 
-	model.editTagBuf = "tmp"
-	focusedWithBuf := components.SanitizeText(model.renderEditTags(true))
-	assert.Contains(t, focusedWithBuf, "tmp")
-	assert.Contains(t, focusedWithBuf, "█")
-
-	model.editTags = nil
-	blurredWithBuf := components.SanitizeText(model.renderEditTags(false))
-	assert.Contains(t, blurredWithBuf, "tmp")
+	model.editTagStr = ""
+	tags = parseCommaSeparated(model.editTagStr)
+	assert.Nil(t, tags)
 }
 
 func TestFilesLoadFilesSuccessAndErrorBranches(t *testing.T) {

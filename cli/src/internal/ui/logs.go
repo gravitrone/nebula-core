@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -32,24 +33,6 @@ const (
 	logsViewList
 	logsViewDetail
 	logsViewEdit
-)
-
-const (
-	logFieldType = iota
-	logFieldTimestamp
-	logFieldStatus
-	logFieldTags
-	logFieldValue
-	logFieldMeta
-	logFieldCount
-)
-
-const (
-	logEditFieldStatus = iota
-	logEditFieldTags
-	logEditFieldValue
-	logEditFieldMeta
-	logEditFieldCount
 )
 
 var logStatusOptions = []string{"active", "inactive"}
@@ -78,26 +61,23 @@ type LogsModel struct {
 	height        int
 	scopeOptions  []string
 
-	// add
-	addFields    []formField
-	addFocus     int
-	addStatusIdx int
-	addTags      []string
-	addTagBuf    string
+	// add (huh form)
+	addForm      *huh.Form
 	addType      string
 	addTimestamp string
+	addStatus    string
+	addTagStr    string
 	addValue     MetadataEditor
 	addMeta      MetadataEditor
 	addSaving    bool
 	addSaved     bool
 
-	// edit
-	editFocus     int
-	editStatusIdx int
-	editTags      []string
-	editTagBuf    string
+	// edit (huh form)
+	editForm      *huh.Form
 	editType      string
 	editTimestamp string
+	editStatus    string
+	editTagStr    string
 	editValue     MetadataEditor
 	editMeta      MetadataEditor
 	editSaving    bool
@@ -110,14 +90,7 @@ func NewLogsModel(client *api.Client) LogsModel {
 		spinner:   components.NewNebulaSpinner(),
 		dataTable: components.NewNebulaTable(nil, 12),
 		view:      logsViewList,
-		addFields: []formField{
-			{label: "Type"},
-			{label: "Timestamp"},
-			{label: "Status"},
-			{label: "Tags"},
-			{label: "Value"},
-			{label: "Metadata"},
-		},
+		addStatus: "active",
 	}
 }
 
@@ -134,22 +107,20 @@ func (m LogsModel) Init() tea.Cmd {
 	m.errText = ""
 	m.valueExpanded = false
 	m.metaExpanded = false
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(logStatusOptions, "active")
-	m.addTags = nil
-	m.addTagBuf = ""
+	m.addStatus = "active"
+	m.addTagStr = ""
 	m.addType = ""
 	m.addTimestamp = ""
+	m.addForm = nil
 	m.addValue.Reset()
 	m.addMeta.Reset()
 	m.addSaving = false
 	m.addSaved = false
-	m.editFocus = 0
-	m.editStatusIdx = statusIndex(logStatusOptions, "active")
-	m.editTags = nil
-	m.editTagBuf = ""
+	m.editStatus = "active"
+	m.editTagStr = ""
 	m.editType = ""
 	m.editTimestamp = ""
+	m.editForm = nil
 	m.editValue.Reset()
 	m.editMeta.Reset()
 	m.editSaving = false
@@ -627,6 +598,21 @@ func (m LogsModel) loadDetailRelationships(logID string) tea.Cmd {
 
 // --- Add View ---
 
+// initAddForm initializes the huh add form.
+func (m *LogsModel) initAddForm() {
+	m.addForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Type").Value(&m.addType),
+			huh.NewInput().Title("Timestamp").Description("YYYY-MM-DD or RFC3339").Value(&m.addTimestamp),
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.addStatus),
+			huh.NewInput().Title("Tags").Description("Comma-separated").Value(&m.addTagStr),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
+}
+
 func (m LogsModel) handleAddKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
@@ -637,141 +623,48 @@ func (m LogsModel) handleAddKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.modeFocus {
-		return m.handleModeKeys(msg)
+	if m.addForm == nil {
+		m.initAddForm()
+		return m, m.addForm.Init()
 	}
-	if m.addFocus == logFieldStatus {
-		switch {
-		case isKey(msg, "left"):
-			m.addStatusIdx = (m.addStatusIdx - 1 + len(logStatusOptions)) % len(logStatusOptions)
-			return m, nil
-		case isKey(msg, "right"), isSpace(msg):
-			m.addStatusIdx = (m.addStatusIdx + 1) % len(logStatusOptions)
-			return m, nil
-		}
-	}
-	switch {
-	case isDown(msg):
-		m.addFocus = (m.addFocus + 1) % logFieldCount
-	case isUp(msg):
-		if m.addFocus == 0 {
-			m.modeFocus = true
-			return m, nil
-		}
-		m.addFocus = (m.addFocus - 1 + logFieldCount) % logFieldCount
-	case isKey(msg, "ctrl+s"):
+	var formCmd tea.Cmd
+	_, formCmd = m.addForm.Update(msg)
+	if m.addForm.State == huh.StateCompleted {
 		return m.saveAdd()
-	case isBack(msg):
-		m.resetAddForm()
-	case isKey(msg, "backspace", "delete"):
-		switch m.addFocus {
-		case logFieldTags:
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			} else if len(m.addTags) > 0 {
-				m.addTags = m.addTags[:len(m.addTags)-1]
-			}
-		case logFieldType:
-			if len(m.addType) > 0 {
-				m.addType = m.addType[:len(m.addType)-1]
-			}
-		case logFieldTimestamp:
-			if len(m.addTimestamp) > 0 {
-				m.addTimestamp = m.addTimestamp[:len(m.addTimestamp)-1]
-			}
-		default:
-			return m, nil
-		}
-	default:
-		switch m.addFocus {
-		case logFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitAddTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.addTagBuf += ch
-				}
-			}
-		case logFieldType:
-			ch := keyText(msg)
-			if ch != "" {
-				m.addType += ch
-			}
-		case logFieldTimestamp:
-			ch := keyText(msg)
-			if len(ch) == 1 || ch == " " || ch == ":" || ch == "-" || ch == "T" || ch == "Z" || ch == "+" {
-				m.addTimestamp += ch
-			}
-		case logFieldValue:
-			if isEnter(msg) {
-				m.addValue.Active = true
-			}
-		case logFieldMeta:
-			if isEnter(msg) {
-				m.addMeta.Active = true
-			}
-		}
 	}
-	return m, nil
+	if m.addForm.State == huh.StateAborted {
+		m.resetAddForm()
+		return m, nil
+	}
+	return m, formCmd
 }
 
 // renderAdd renders render add.
 func (m LogsModel) renderAdd() string {
+	if m.addSaving {
+		return components.Indent(MutedStyle.Render("Saving..."), 1)
+	}
+	if m.addSaved {
+		var b strings.Builder
+		b.WriteString(SuccessStyle.Render("Log saved!"))
+		b.WriteString("\n\n" + MutedStyle.Render("Press Esc to add another."))
+		return components.Indent(b.String(), 1)
+	}
+	if m.addForm == nil {
+		return components.Indent(MutedStyle.Render("Initializing..."), 1)
+	}
 	var b strings.Builder
-	for i, f := range m.addFields {
-		label := MutedStyle.Render(f.label + ":")
-		if i == m.addFocus {
-			label = SelectedStyle.Render("  " + f.label + ":")
-		} else {
-			label = "  " + label
-		}
-		b.WriteString(label + "\n")
-
-		switch i {
-		case logFieldType:
-			if m.addType == "" && i != m.addFocus {
-				b.WriteString(NormalStyle.Render("  -"))
-			} else if i == m.addFocus {
-				b.WriteString(NormalStyle.Render("  " + m.addType + AccentStyle.Render("█")))
-			} else {
-				b.WriteString(NormalStyle.Render("  " + m.addType))
-			}
-		case logFieldTimestamp:
-			if m.addTimestamp == "" && i != m.addFocus {
-				b.WriteString(NormalStyle.Render("  -"))
-			} else if i == m.addFocus {
-				b.WriteString(NormalStyle.Render("  " + m.addTimestamp + AccentStyle.Render("█")))
-			} else {
-				b.WriteString(NormalStyle.Render("  " + m.addTimestamp))
-			}
-		case logFieldStatus:
-			status := logStatusOptions[m.addStatusIdx]
-			b.WriteString(NormalStyle.Render("  " + status))
-		case logFieldTags:
-			if i == m.addFocus {
-				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(true)))
-			} else {
-				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(false)))
-			}
-		case logFieldValue:
-			value := renderMetadataEditorPreview(m.addValue.Buffer, m.addValue.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + value))
-		case logFieldMeta:
-			meta := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + meta))
-		}
-
-		if i < len(m.addFields)-1 {
-			b.WriteString("\n\n")
-		}
+	b.WriteString(m.addForm.View())
+	valuePreview := renderMetadataEditorPreview(m.addValue.Buffer, m.addValue.Scopes, m.width, 6)
+	metaPreview := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
+	if valuePreview != "" {
+		b.WriteString("\n" + MutedStyle.Render("Value:") + "\n  " + NormalStyle.Render(valuePreview))
+	}
+	if metaPreview != "" {
+		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
 	}
 	if m.addErr != "" {
 		b.WriteString("\n\n" + ErrorStyle.Render(m.addErr))
-	}
-	if m.addSaved {
-		b.WriteString("\n\n" + SuccessStyle.Render("Saved."))
 	}
 	return components.Indent(b.String(), 1)
 }
@@ -783,7 +676,6 @@ func (m LogsModel) saveAdd() (LogsModel, tea.Cmd) {
 		m.addErr = "Type is required"
 		return m, nil
 	}
-	status := logStatusOptions[m.addStatusIdx]
 	timestamp, err := parseLogTimestamp(m.addTimestamp)
 	if err != nil {
 		m.addErr = err.Error()
@@ -800,11 +692,12 @@ func (m LogsModel) saveAdd() (LogsModel, tea.Cmd) {
 		return m, nil
 	}
 	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
+	tags := parseCommaSeparated(m.addTagStr)
 
 	input := api.CreateLogInput{
 		LogType:   logType,
-		Status:    status,
-		Tags:      m.addTags,
+		Status:    m.addStatus,
+		Tags:      tags,
 		Value:     value,
 		Metadata:  meta,
 		Timestamp: timestamp,
@@ -824,83 +717,46 @@ func (m *LogsModel) resetAddForm() {
 	m.addSaved = false
 	m.addSaving = false
 	m.addErr = ""
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(logStatusOptions, "active")
-	m.addTags = nil
-	m.addTagBuf = ""
+	m.addStatus = "active"
+	m.addTagStr = ""
 	m.addType = ""
 	m.addTimestamp = ""
+	m.addForm = nil
 	m.addValue.Reset()
 	m.addMeta.Reset()
 }
 
-// commitAddTag handles commit add tag.
-func (m *LogsModel) commitAddTag() {
-	raw := strings.TrimSpace(m.addTagBuf)
-	if raw == "" {
-		m.addTagBuf = ""
-		return
-	}
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.addTagBuf = ""
-		return
-	}
-	for _, t := range m.addTags {
-		if t == tag {
-			m.addTagBuf = ""
-			return
-		}
-	}
-	m.addTags = append(m.addTags, tag)
-	m.addTagBuf = ""
-}
-
-// renderAddTags renders render add tags.
-func (m LogsModel) renderAddTags(focused bool) string {
-	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
-		return "-"
-	}
-	var b strings.Builder
-	for i, t := range m.addTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.addTagBuf != "" {
-			b.WriteString(m.addTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.addTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.addTagBuf))
-	}
-	return b.String()
-}
-
 // --- Edit View ---
 
-func (m LogsModel) startEdit() {
+func (m *LogsModel) startEdit() {
 	if m.detail == nil {
 		return
 	}
 	l := m.detail
-	m.editFocus = 0
-	m.editStatusIdx = statusIndex(logStatusOptions, l.Status)
-	m.editTags = append([]string{}, l.Tags...)
-	m.editTagBuf = ""
+	m.editStatus = l.Status
+	if m.editStatus == "" {
+		m.editStatus = "active"
+	}
+	m.editTagStr = strings.Join(l.Tags, ", ")
 	m.editType = l.LogType
 	m.editTimestamp = l.Timestamp.Format(time.RFC3339)
 	m.editValue.Load(map[string]any(l.Value))
 	m.editMeta.Load(map[string]any(l.Metadata))
 	m.editSaving = false
+	m.initEditForm()
+}
+
+// initEditForm initializes the huh edit form.
+func (m *LogsModel) initEditForm() {
+	m.editForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.editStatus),
+			huh.NewInput().Title("Tags").Description("Comma-separated").Value(&m.editTagStr),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
 }
 
 // handleEditKeys handles handle edit keys.
@@ -908,98 +764,52 @@ func (m LogsModel) handleEditKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
-	if m.editFocus == logEditFieldStatus {
-		switch {
-		case isKey(msg, "left"):
-			m.editStatusIdx = (m.editStatusIdx - 1 + len(logStatusOptions)) % len(logStatusOptions)
-			return m, nil
-		case isKey(msg, "right"), isSpace(msg):
-			m.editStatusIdx = (m.editStatusIdx + 1) % len(logStatusOptions)
-			return m, nil
-		}
-	}
-	switch {
-	case isDown(msg):
-		m.editFocus = (m.editFocus + 1) % logEditFieldCount
-	case isUp(msg):
-		if m.editFocus > 0 {
-			m.editFocus = (m.editFocus - 1 + logEditFieldCount) % logEditFieldCount
-		}
-	case isBack(msg):
+	if isBack(msg) {
 		m.view = logsViewDetail
-	case isKey(msg, "ctrl+s"):
-		return m.saveEdit()
-	case isKey(msg, "backspace", "delete"):
-		switch m.editFocus {
-		case logEditFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
-				m.editTags = m.editTags[:len(m.editTags)-1]
-			}
-		}
-	default:
-		switch m.editFocus {
-		case logEditFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitEditTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
-			}
-		case logEditFieldValue:
-			if isEnter(msg) {
-				m.editValue.Active = true
-			}
-		case logEditFieldMeta:
-			if isEnter(msg) {
-				m.editMeta.Active = true
-			}
-		}
+		return m, nil
 	}
-	return m, nil
+	if m.editForm == nil {
+		m.initEditForm()
+		return m, m.editForm.Init()
+	}
+	var formCmd tea.Cmd
+	_, formCmd = m.editForm.Update(msg)
+	if m.editForm.State == huh.StateCompleted {
+		return m.saveEdit()
+	}
+	if m.editForm.State == huh.StateAborted {
+		m.view = logsViewDetail
+		return m, nil
+	}
+	return m, formCmd
 }
 
 // renderEdit renders render edit.
 func (m LogsModel) renderEdit() string {
+	if m.editSaving {
+		return components.Indent(MutedStyle.Render("Saving..."), 1)
+	}
+	if m.editForm == nil {
+		return components.Indent(MutedStyle.Render("Initializing..."), 1)
+	}
 	var b strings.Builder
-	for i, f := range []string{"Status", "Tags", "Value", "Metadata"} {
-		label := MutedStyle.Render(f + ":")
-		if i == m.editFocus {
-			label = SelectedStyle.Render("  " + f + ":")
-		} else {
-			label = "  " + label
-		}
-		b.WriteString(label + "\n")
-		switch i {
-		case logEditFieldStatus:
-			b.WriteString(NormalStyle.Render("  " + logStatusOptions[m.editStatusIdx]))
-		case logEditFieldTags:
-			if i == m.editFocus {
-				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(true)))
-			} else {
-				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(false)))
-			}
-		case logEditFieldValue:
-			value := renderMetadataEditorPreview(m.editValue.Buffer, m.editValue.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + value))
-		case logEditFieldMeta:
-			meta := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-			b.WriteString(NormalStyle.Render("  " + meta))
-		}
-		if i < logEditFieldCount-1 {
-			b.WriteString("\n\n")
-		}
+	b.WriteString(m.editForm.View())
+	valuePreview := renderMetadataEditorPreview(m.editValue.Buffer, m.editValue.Scopes, m.width, 6)
+	metaPreview := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
+	if valuePreview != "" {
+		b.WriteString("\n" + MutedStyle.Render("Value:") + "\n  " + NormalStyle.Render(valuePreview))
+	}
+	if metaPreview != "" {
+		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	}
+	if m.errText != "" {
+		b.WriteString("\n\n" + ErrorStyle.Render(m.errText))
 	}
 	return components.Indent(b.String(), 1)
 }
 
 // saveEdit handles save edit.
 func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
-	status := logStatusOptions[m.editStatusIdx]
 	value, err := parseMetadataInput(m.editValue.Buffer)
 	if err != nil {
 		m.errText = err.Error()
@@ -1011,10 +821,11 @@ func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
 		return m, nil
 	}
 	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
+	tags := parseCommaSeparated(m.editTagStr)
 
 	input := api.UpdateLogInput{
-		Status:   &status,
-		Tags:     &m.editTags,
+		Status:   &m.editStatus,
+		Tags:     &tags,
 		Value:    value,
 		Metadata: meta,
 	}
@@ -1026,57 +837,6 @@ func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
 		}
 		return logUpdatedMsg{}
 	}
-}
-
-// commitEditTag handles commit edit tag.
-func (m *LogsModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
-	if raw == "" {
-		m.editTagBuf = ""
-		return
-	}
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.editTagBuf = ""
-		return
-	}
-	for _, t := range m.editTags {
-		if t == tag {
-			m.editTagBuf = ""
-			return
-		}
-	}
-	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
-}
-
-// renderEditTags renders render edit tags.
-func (m LogsModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
-		return "-"
-	}
-	var b strings.Builder
-	for i, t := range m.editTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
-	}
-	return b.String()
 }
 
 // --- Data ---

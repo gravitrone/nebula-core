@@ -92,15 +92,16 @@ func TestLogsViewCoversEditorAndFilterBranches(t *testing.T) {
 	model.filtering = false
 	model.view = logsViewAdd
 	addView := components.SanitizeText(model.View())
-	assert.Contains(t, addView, "Type:")
-	assert.Contains(t, addView, "Timestamp:")
+	// With nil form, renderAdd shows "Initializing..."
+	assert.NotEmpty(t, addView)
 
 	model.view = logsViewEdit
 	model.detail = &api.Log{ID: "log-1", LogType: "workout", Status: "active", Timestamp: time.Now().UTC()}
 	model.startEdit()
+	// startEdit sets editForm; renderEdit calls form.View() + metadata previews.
+	assert.NotNil(t, model.editForm)
 	editView := components.SanitizeText(model.View())
-	assert.Contains(t, editView, "Status:")
-	assert.Contains(t, editView, "Metadata:")
+	assert.NotEmpty(t, editView)
 }
 
 func TestLogsUpdateMessageBranchesAndNoopRelationshipMismatch(t *testing.T) {
@@ -217,50 +218,24 @@ func TestLogsHandleFilterInputCoversSpaceBackspaceEnterAndBack(t *testing.T) {
 	assert.Equal(t, "", updated.searchSuggest)
 }
 
-func TestLogsCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
+func TestLogsTagStrParsing(t *testing.T) {
+	// Tags are now stored as comma-separated string in addTagStr/editTagStr.
+	// parseCommaSeparated handles splitting and normalizeTag handles normalization.
 	model := NewLogsModel(nil)
 
-	model.addTagBuf = "   "
-	model.commitAddTag()
-	assert.Empty(t, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	model.addTagStr = ""
+	tags := parseCommaSeparated(model.addTagStr)
+	assert.Nil(t, tags)
 
-	model.addTagBuf = "#"
-	model.commitAddTag()
-	assert.Empty(t, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	model.addTagStr = "alpha"
+	tags = parseCommaSeparated(model.addTagStr)
+	assert.Equal(t, []string{"alpha"}, tags)
 
-	model.addTagBuf = "alpha"
-	model.commitAddTag()
-	assert.Equal(t, []string{"alpha"}, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	model.addTagStr = "alpha, beta tag"
+	tags = parseCommaSeparated(model.addTagStr)
+	assert.Equal(t, []string{"alpha", "beta tag"}, tags)
 
-	model.addTagBuf = "alpha"
-	model.commitAddTag()
-	assert.Equal(t, []string{"alpha"}, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
-
-	model.addTagBuf = "beta tag"
-	model.commitAddTag()
-	assert.Equal(t, []string{"alpha", "beta-tag"}, model.addTags)
-
-	model.addTags = nil
-	model.addTagBuf = ""
-	assert.Equal(t, "-", model.renderAddTags(false))
-
-	model.addTags = []string{"alpha"}
-	out := stripANSI(model.renderAddTags(false))
-	assert.Contains(t, out, "[alpha]")
-	assert.NotContains(t, out, "█")
-
-	model.addTagBuf = "beta"
-	out = stripANSI(model.renderAddTags(false))
-	assert.Contains(t, out, "[alpha]")
-	assert.Contains(t, out, "beta")
-	assert.NotContains(t, out, "█")
-
-	out = stripANSI(model.renderAddTags(true))
-	assert.Contains(t, out, "[alpha]")
-	assert.Contains(t, out, "beta")
-	assert.Contains(t, out, "█")
+	model.editTagStr = "core, beta"
+	editTags := parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"core", "beta"}, editTags)
 }

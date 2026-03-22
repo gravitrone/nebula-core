@@ -6,54 +6,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLogsCommitEditTagBranchMatrix(t *testing.T) {
+func TestLogsEditTagStrBranchMatrix(t *testing.T) {
 	model := NewLogsModel(nil)
 
-	model.editTags = []string{"alpha"}
-	model.editTagBuf = "   "
-	model.commitEditTag()
-	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	// Empty editTagStr parses to nil.
+	model.editTagStr = ""
+	tags := parseCommaSeparated(model.editTagStr)
+	assert.Nil(t, tags)
 
-	model.editTagBuf = "#"
-	model.commitEditTag()
-	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	// Single tag.
+	model.editTagStr = "alpha"
+	tags = parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"alpha"}, tags)
 
-	model.editTagBuf = "alpha"
-	model.commitEditTag()
-	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	// Multiple tags.
+	model.editTagStr = "alpha, beta-tag"
+	tags = parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"alpha", "beta-tag"}, tags)
 
-	model.editTagBuf = "beta tag"
-	model.commitEditTag()
-	assert.Equal(t, []string{"alpha", "beta-tag"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	// Whitespace-only sections ignored.
+	model.editTagStr = "alpha,  , beta"
+	tags = parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"alpha", "beta"}, tags)
 }
 
-func TestLogsRenderEditTagsBranchMatrix(t *testing.T) {
+func TestLogsAddTagStrBranchMatrix(t *testing.T) {
 	model := NewLogsModel(nil)
 
-	assert.Equal(t, "-", model.renderEditTags(false))
+	// Empty addTagStr parses to nil.
+	model.addTagStr = ""
+	tags := parseCommaSeparated(model.addTagStr)
+	assert.Nil(t, tags)
 
-	model.editTags = []string{"alpha"}
-	out := stripANSI(model.renderEditTags(false))
-	assert.Contains(t, out, "[alpha]")
-	assert.NotContains(t, out, "█")
+	// Single tag.
+	model.addTagStr = "alpha"
+	tags = parseCommaSeparated(model.addTagStr)
+	assert.Equal(t, []string{"alpha"}, tags)
 
-	model.editTagBuf = "beta"
-	out = stripANSI(model.renderEditTags(false))
-	assert.Contains(t, out, "[alpha]")
-	assert.Contains(t, out, "beta")
-	assert.NotContains(t, out, "█")
-
-	out = stripANSI(model.renderEditTags(true))
-	assert.Contains(t, out, "[alpha]")
-	assert.Contains(t, out, "beta")
-	assert.Contains(t, out, "█")
-
-	model.editTagBuf = ""
-	out = stripANSI(model.renderEditTags(true))
-	assert.Contains(t, out, "[alpha]")
-	assert.Contains(t, out, "█")
+	// Multiple tags.
+	model.addTagStr = "alpha, beta-tag"
+	tags = parseCommaSeparated(model.addTagStr)
+	assert.Equal(t, []string{"alpha", "beta-tag"}, tags)
 }

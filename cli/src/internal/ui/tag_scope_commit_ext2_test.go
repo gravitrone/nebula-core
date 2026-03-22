@@ -73,28 +73,31 @@ func TestEntityAndFileTagScopeCommitAdditionalBranches(t *testing.T) {
 	scopes = normalizeScopeList(scopes)
 	assert.Contains(t, scopes, "team-scope")
 
+	// Files now use addTagStr/editTagStr comma-separated strings.
 	files := NewFilesModel(nil)
-	files.addTags = []string{"alpha-tag"}
-	files.addTagBuf = "#"
-	files.commitAddTag()
-	assert.Equal(t, []string{"alpha-tag"}, files.addTags)
-	assert.Equal(t, "", files.addTagBuf)
+	files.addTagStr = "alpha-tag"
+	addTags := parseCommaSeparated(files.addTagStr)
+	assert.Equal(t, []string{"alpha-tag"}, addTags)
 
-	files.addTagBuf = "Beta Tag"
-	files.commitAddTag()
-	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, files.addTags)
-	assert.Equal(t, "", files.addTagBuf)
+	files.addTagStr = "alpha-tag, Beta Tag"
+	addTags = parseCommaSeparated(files.addTagStr)
+	for i, tag := range addTags {
+		addTags[i] = normalizeTag(tag)
+	}
+	addTags = dedup(addTags)
+	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, addTags)
 
-	files.editTags = []string{"alpha-tag"}
-	files.editTagBuf = "#"
-	files.commitEditTag()
-	assert.Equal(t, []string{"alpha-tag"}, files.editTags)
-	assert.Equal(t, "", files.editTagBuf)
+	files.editTagStr = "alpha-tag"
+	editTags := parseCommaSeparated(files.editTagStr)
+	assert.Equal(t, []string{"alpha-tag"}, editTags)
 
-	files.editTagBuf = "Beta Tag"
-	files.commitEditTag()
-	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, files.editTags)
-	assert.Equal(t, "", files.editTagBuf)
+	files.editTagStr = "alpha-tag, Beta Tag"
+	editTags = parseCommaSeparated(files.editTagStr)
+	for i, tag := range editTags {
+		editTags[i] = normalizeTag(tag)
+	}
+	editTags = dedup(editTags)
+	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, editTags)
 }
 
 var apiContextFixture = apiContextForToggleMode()

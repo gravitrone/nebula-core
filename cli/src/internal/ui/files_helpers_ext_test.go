@@ -131,54 +131,34 @@ func TestFilesLoadDetailRelationshipsSuccessAndError(t *testing.T) {
 func TestFilesHandleAddKeysStatusTagsAndSavedBranches(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.view = filesViewAdd
-	model.addFocus = fileFieldStatus
-	model.addStatusIdx = 0
 
-	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.addStatusIdx)
+	// Tags stored as comma-separated string.
+	model.addTagStr = "alpha"
+	tags := parseCommaSeparated(model.addTagStr)
+	assert.Equal(t, []string{"alpha"}, tags)
 
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-	assert.Equal(t, 0, updated.addStatusIdx)
-
-	updated.addFocus = fileFieldTags
-	updated.addTags = []string{"alpha"}
-	updated.addTagBuf = "z"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.addTagBuf)
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Empty(t, updated.addTags)
-
-	updated.addSaved = true
-	updated.addName = "Alpha.txt"
-	updated.addPath = "/tmp/alpha.txt"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
+	// addSaved + Esc resets.
+	model.addSaved = true
+	model.addName = "Alpha.txt"
+	model.addPath = "/tmp/alpha.txt"
+	updated, _ := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.addSaved)
 	assert.Equal(t, "", updated.addName)
 	assert.Equal(t, "", updated.addPath)
 }
 
-func TestFilesHandleEditKeysStatusTagsAndBackBranches(t *testing.T) {
+func TestFilesHandleEditKeysStatusAndEscBranches(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.view = filesViewEdit
-	model.detail = &api.File{ID: "file-1", Filename: "Alpha.txt", FilePath: "/tmp/a"}
+	model.detail = &api.File{ID: "file-1", Filename: "Alpha.txt", FilePath: "/tmp/a", Status: "inactive", Tags: []string{"alpha"}}
 	model.startEdit()
-	model.editFocus = fileFieldStatus
-	model.editStatusIdx = 0
 
-	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.editStatusIdx)
+	// startEdit loads status and tags.
+	assert.Equal(t, "inactive", model.editStatus)
+	assert.Equal(t, "alpha", model.editTagStr)
 
-	updated.editFocus = fileFieldTags
-	updated.editTags = []string{"alpha"}
-	updated.editTagBuf = "z"
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.editTagBuf)
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Empty(t, updated.editTags)
-
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
+	// Esc exits to detail.
+	updated, _ := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, filesViewDetail, updated.view)
 }
 
