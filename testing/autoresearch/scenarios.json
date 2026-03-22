@@ -1,0 +1,166 @@
+[
+  {
+    "name": "startup_banner",
+    "tape": "startup",
+    "screenshot": "testing/vhs/baselines/startup.png",
+    "checks": [
+      "ASCII banner is horizontally centered within the terminal width",
+      "Subtitle 'Context Infrastructure for Agents' appears below the banner",
+      "Tab bar is visible and shows tab names",
+      "Active tab (Inbox) is visually highlighted or distinct",
+      "No raw ANSI escape codes visible as text"
+    ]
+  },
+  {
+    "name": "tab_bar_layout",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_inbox.png",
+    "checks": [
+      "All 10 tab names are visible without truncation",
+      "Tab names are evenly spaced across the bar",
+      "Active tab is visually distinct from inactive tabs",
+      "Tab bar does not wrap to a second line",
+      "Tab bar separators or spacing is consistent"
+    ]
+  },
+  {
+    "name": "entity_table",
+    "tape": "entity_crud",
+    "screenshot": "testing/vhs/baselines/entity_list.png",
+    "checks": [
+      "Table has a visible header row with column names",
+      "Table columns are evenly spaced and aligned",
+      "No text overflows its column boundary",
+      "Table is contained within a bordered box",
+      "Count line shows total number of entities"
+    ]
+  },
+  {
+    "name": "entity_table_focused",
+    "tape": "entity_crud",
+    "screenshot": "testing/vhs/baselines/entity_table_focused.png",
+    "checks": [
+      "One row in the table has a visible selection highlight",
+      "Selected row text is readable against the highlight background",
+      "Non-selected rows have normal styling",
+      "Table columns remain aligned with the header"
+    ]
+  },
+  {
+    "name": "entity_detail",
+    "tape": "entity_crud",
+    "screenshot": "testing/vhs/baselines/entity_detail.png",
+    "checks": [
+      "Detail view shows entity information in key-value format",
+      "Labels are visually distinct from values",
+      "Content is properly indented within the box",
+      "No text overflows the terminal width"
+    ]
+  },
+  {
+    "name": "entity_add_form",
+    "tape": "entity_crud",
+    "screenshot": "testing/vhs/baselines/entity_add_form.png",
+    "checks": [
+      "Form fields are visible with labels",
+      "Input fields have clear boundaries or indicators",
+      "Form is contained within the content area",
+      "No overlapping text or UI elements"
+    ]
+  },
+  {
+    "name": "command_palette_open",
+    "tape": "command_palette",
+    "screenshot": "testing/vhs/baselines/palette_open.png",
+    "checks": [
+      "Command palette overlay is visible",
+      "Search input field has a cursor or prompt indicator",
+      "Palette has a border or visual boundary",
+      "Background content is still partially visible behind palette"
+    ]
+  },
+  {
+    "name": "command_palette_search",
+    "tape": "command_palette",
+    "screenshot": "testing/vhs/baselines/palette_search.png",
+    "checks": [
+      "Search query text is visible in the input field",
+      "Search results or filtered actions are displayed below input",
+      "Results have readable labels",
+      "No layout shift or overlap from search results"
+    ]
+  },
+  {
+    "name": "entities_tab_view",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_entities.png",
+    "checks": [
+      "Entities tab content area shows table or empty state",
+      "Tab bar indicates Entities as the active tab",
+      "Content area fills the available space below tab bar",
+      "No rendering artifacts at content boundaries"
+    ]
+  },
+  {
+    "name": "jobs_tab_view",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_jobs.png",
+    "checks": [
+      "Jobs tab content area shows table or empty state",
+      "Tab bar indicates Jobs as the active tab",
+      "Content fills available space",
+      "No visual glitches at borders"
+    ]
+  },
+  {
+    "name": "context_tab_view",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_context.png",
+    "checks": [
+      "Context tab shows content or empty state",
+      "Tab bar highlights Context tab",
+      "Layout is consistent with other tabs"
+    ]
+  },
+  {
+    "name": "settings_tab_view",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_settings.png",
+    "checks": [
+      "Settings/Profile tab shows configuration sections",
+      "API key, agents, and taxonomy sections are visible or labeled",
+      "Content is readable and properly spaced"
+    ]
+  },
+  {
+    "name": "search_results",
+    "tape": "search_flow",
+    "screenshot": "testing/vhs/baselines/search_results.png",
+    "checks": [
+      "Search input shows the typed query",
+      "Results are displayed in a structured format",
+      "Mode indicator (text/semantic) is visible",
+      "Result count is shown"
+    ]
+  },
+  {
+    "name": "empty_state",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_history.png",
+    "checks": [
+      "Empty state message is displayed when no data",
+      "Message is helpful and suggests next steps",
+      "Layout does not collapse or look broken with no data"
+    ]
+  },
+  {
+    "name": "relationships_tab",
+    "tape": "tab_navigation",
+    "screenshot": "testing/vhs/baselines/tab_relationships.png",
+    "checks": [
+      "Relationships tab renders without errors",
+      "Tab bar shows Relationships as active",
+      "Content area has proper boundaries"
+    ]
+  }
+]

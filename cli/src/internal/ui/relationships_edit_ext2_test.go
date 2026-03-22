@@ -87,7 +87,9 @@ func TestRelationshipsSaveEditOmitsPropertiesWhenParsedMetadataIsEmpty(t *testin
 
 	updated, cmd := model.saveEdit()
 	require.NotNil(t, cmd)
-	_ = cmd()
+	msg := cmd()
+	_, ok := msg.(relTabSavedMsg)
+	require.True(t, ok, "expected relTabSavedMsg, got %T", msg)
 
 	assert.True(t, updated.editSaving)
 	assert.Equal(t, relsStatusOptions[1], patched["status"])

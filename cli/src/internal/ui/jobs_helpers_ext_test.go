@@ -67,6 +67,10 @@ func TestJobsHandleModeKeysAndToggle(t *testing.T) {
 	updated.modeFocus = true
 	updated, cmd = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
 	require.NotNil(t, cmd)
+	// toggleMode returns tea.Batch(loadJobs, spinner.Tick) - verify it is a batch.
+	batchResult := cmd()
+	_, isBatch := batchResult.(tea.BatchMsg)
+	require.True(t, isBatch, "expected tea.BatchMsg from toggleMode, got %T", batchResult)
 	assert.Equal(t, jobsViewList, updated.view)
 
 	updated.modeFocus = true
