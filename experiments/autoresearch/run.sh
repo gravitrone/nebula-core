@@ -78,35 +78,22 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
   gum spin --spinner dot --title "building nebula..." -- \
     bash -c "cd '$ITER_DIR' && make build 2>/dev/null"
 
-  # ── capture screenshots via VHS ──────────────────────────────────────────
-  info "capturing TUI screenshots with VHS..."
+  # ── capture screenshots via tmux + freeze ─────────────────────────────────
+  info "capturing TUI screenshots..."
   SCREENSHOTS_DIR="$ITER_DIR/screenshots"
-  mkdir -p "$SCREENSHOTS_DIR"
+  NEBULA_BIN="$ITER_DIR/cli/src/build/nebula"
 
-  # install the built binary so VHS can find it
-  cp "$ITER_DIR/cli/src/build/nebula" /usr/local/bin/nebula 2>/dev/null || {
-    # fallback: add build dir to PATH for this session
-    export PATH="$ITER_DIR/cli/src/build:$PATH"
-  }
+  "$SCRIPT_DIR/capture.sh" "$SCREENSHOTS_DIR" "$NEBULA_BIN"
 
-  for tape in "$SCRIPT_DIR/../vhs/tapes/"*.tape; do
-    tapename=$(basename "$tape" .tape)
-    vhs "$tape" -o "$SCREENSHOTS_DIR/$tapename.gif" 2>/dev/null && {
-      info "recorded $tapename"
-    } || {
-      gum log --level warn "failed to record $tapename"
-    }
-  done
-
-  SCREENSHOT_COUNT=$(ls "$SCREENSHOTS_DIR"/*.gif 2>/dev/null | wc -l | tr -d ' ')
+  SCREENSHOT_COUNT=$(ls "$SCREENSHOTS_DIR"/*.png 2>/dev/null | wc -l | tr -d ' ')
   info "captured $SCREENSHOT_COUNT screenshots"
 
   # ── build screenshot file list for prompt ────────────────────────────────
   SCREENSHOT_INSTRUCTIONS=""
-  for gif in "$SCREENSHOTS_DIR"/*.gif; do
-    [ -f "$gif" ] || continue
+  for png in "$SCREENSHOTS_DIR"/*.png; do
+    [ -f "$png" ] || continue
     SCREENSHOT_INSTRUCTIONS="$SCREENSHOT_INSTRUCTIONS
-- Read the image file at $gif using the Read tool and analyze it visually"
+- Read the image file at $png using the Read tool and analyze it visually"
   done
 
   # ── launch claude ─────────────────────────────────────────────────────────
