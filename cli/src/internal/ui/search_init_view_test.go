@@ -7,10 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestSearchInitReturnsNilCmd handles test search init returns nil cmd.
-func TestSearchInitReturnsNilCmd(t *testing.T) {
+// TestSearchInitReturnsFocusCmd handles test search init returns focus cmd.
+func TestSearchInitReturnsFocusCmd(t *testing.T) {
 	model := NewSearchModel(nil)
-	assert.Nil(t, model.Init())
+	assert.NotNil(t, model.Init())
 }
 
 // TestSearchViewRendersEmptyAndPopulatedStates handles test search view renders empty and populated states.
@@ -23,7 +23,7 @@ func TestSearchViewRendersEmptyAndPopulatedStates(t *testing.T) {
 	assert.Contains(t, out, "Type to search.")
 
 	// Inject a results message directly to avoid needing a live client.
-	model.query = "a"
+	model.textInput.SetValue("a")
 	model.mode = searchModeText
 	model, _ = model.Update(searchResultsMsg{
 		query:    "a",

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -47,14 +48,14 @@ type searchEntry struct {
 }
 
 type SearchModel struct {
-	client  *api.Client
-	query   string
-	mode    string
-	loading bool
-	spinner spinner.Model
-	list    *components.List
-	items   []searchEntry
-	width   int
+	client    *api.Client
+	textInput textinput.Model
+	mode      string
+	loading   bool
+	spinner   spinner.Model
+	list      *components.List
+	items     []searchEntry
+	width     int
 }
 
 const (
@@ -64,17 +65,21 @@ const (
 
 // NewSearchModel builds the search UI model.
 func NewSearchModel(client *api.Client) SearchModel {
+	ti := components.NewNebulaTextInput("Search...")
+	ti.Prompt = ""
+	ti.Focus()
 	return SearchModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		mode:    searchModeText,
-		list:    components.NewList(12),
+		client:    client,
+		textInput: ti,
+		spinner:   components.NewNebulaSpinner(),
+		mode:      searchModeText,
+		list:      components.NewList(12),
 	}
 }
 
 // Init handles init.
 func (m SearchModel) Init() tea.Cmd {
-	return nil
+	return m.textInput.Focus()
 }
 
 // Update updates update.
@@ -86,7 +91,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		return m, cmd
 
 	case searchResultsMsg:
-		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.query) {
+		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.textInput.Value()) {
 			return m, nil
 		}
 		if msg.mode != m.mode {
@@ -111,46 +116,32 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case isBack(msg):
-			if m.query != "" {
-				m.query = ""
+			if m.textInput.Value() != "" {
+				m.textInput.Reset()
 				m.items = nil
 				m.list.SetItems(nil)
 				m.loading = false
-				return m, nil
-			}
-		case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-			if m.query != "" {
-				m.query = ""
-				m.items = nil
-				m.list.SetItems(nil)
-				m.loading = false
-				return m, nil
-			}
-		case isKey(msg, "backspace", "delete"):
-			if len(m.query) > 0 {
-				m.query = m.query[:len(m.query)-1]
-				if cmd := m.search(m.query); cmd != nil {
-					return m, tea.Batch(cmd, m.spinner.Tick)
-				}
 				return m, nil
 			}
 		case isDown(msg):
 			m.list.Down()
+			return m, nil
 		case isUp(msg):
 			m.list.Up()
+			return m, nil
 		case isKey(msg, "tab"):
 			if m.mode == searchModeText {
 				m.mode = searchModeSemantic
 			} else {
 				m.mode = searchModeText
 			}
-			if strings.TrimSpace(m.query) == "" {
+			if strings.TrimSpace(m.textInput.Value()) == "" {
 				m.loading = false
 				m.items = nil
 				m.list.SetItems(nil)
 				return m, nil
 			}
-			if cmd := m.search(m.query); cmd != nil {
+			if cmd := m.search(m.textInput.Value()); cmd != nil {
 				return m, tea.Batch(cmd, m.spinner.Tick)
 			}
 			return m, nil
@@ -159,21 +150,33 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 				entry := m.items[idx]
 				return m, m.emitSelection(entry)
 			}
-		default:
-			ch := keyText(msg)
-			if ch != "" {
-				if ch == " " && m.query == "" {
-					return m, nil
-				}
-				m.query += ch
-				if cmd := m.search(m.query); cmd != nil {
-					return m, tea.Batch(cmd, m.spinner.Tick)
-				}
-				return m, nil
+			return m, nil
+		}
+
+		// Delegate all other key handling to the textinput.
+		prevValue := m.textInput.Value()
+		var tiCmd tea.Cmd
+		m.textInput, tiCmd = m.textInput.Update(msg)
+		newValue := m.textInput.Value()
+
+		// Reject leading spaces.
+		if strings.TrimSpace(prevValue) == "" && strings.TrimSpace(newValue) == "" && newValue != prevValue {
+			m.textInput.Reset()
+			return m, tiCmd
+		}
+
+		if newValue != prevValue {
+			if cmd := m.search(newValue); cmd != nil {
+				return m, tea.Batch(tiCmd, cmd, m.spinner.Tick)
 			}
 		}
+		return m, tiCmd
 	}
-	return m, nil
+
+	// Forward non-key messages (e.g. cursor blink) to the textinput.
+	var tiCmd tea.Cmd
+	m.textInput, tiCmd = m.textInput.Update(msg)
+	return m, tiCmd
 }
 
 // View handles view.
@@ -181,19 +184,12 @@ func (m SearchModel) View() string {
 	var b strings.Builder
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Mode: %s (tab to toggle)", m.mode)))
 	b.WriteString("\n\n")
-	query := components.SanitizeText(m.query)
-	queryWidth := components.BoxContentWidth(m.width) - 8
-	if queryWidth < 10 {
-		queryWidth = 10
-	}
-	query = components.ClampTextWidthEllipsis(query, queryWidth)
-	b.WriteString(MetaKeyStyle.Render("Query") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(query))
-	b.WriteString(AccentStyle.Render("█"))
+	b.WriteString(MetaKeyStyle.Render("Query") + MetaPunctStyle.Render(": ") + m.textInput.View())
 	b.WriteString("\n\n")
 
 	if m.loading {
 		b.WriteString(m.spinner.View() + " " + MutedStyle.Render("Searching..."))
-	} else if strings.TrimSpace(m.query) == "" {
+	} else if strings.TrimSpace(m.textInput.Value()) == "" {
 		b.WriteString(MutedStyle.Render("Type to search."))
 	} else if len(m.items) == 0 {
 		b.WriteString(MutedStyle.Render("No matches."))

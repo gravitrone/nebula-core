@@ -194,7 +194,7 @@ func TestRenderSearchPreviewShowsEntityContextAndJobDetails(t *testing.T) {
 func TestSearchViewRendersTableAndPreviewContent(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.width = 120
-	model.query = "alpha"
+	model.textInput.SetValue("alpha")
 	model.items = []searchEntry{
 		{
 			kind:  "entity",
