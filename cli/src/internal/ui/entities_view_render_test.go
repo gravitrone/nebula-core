@@ -112,8 +112,7 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	var cmd tea.Cmd
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "a", searchText)
 	assert.Equal(t, entitiesViewList, model.view)

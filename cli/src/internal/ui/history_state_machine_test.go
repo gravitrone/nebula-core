@@ -60,39 +60,32 @@ func TestHistoryModelScopesAndActorsSelectionLoadsHistory(t *testing.T) {
 	model.width = 80
 
 	// Init loads history.
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	assert.Equal(t, "/api/audit", lastPath)
 
 	// Load scopes.
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, historyViewScopes, model.view)
 
 	// Select scope and verify it is applied to the next history load.
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, "scope-1", model.filter.scopeID)
 	assert.Equal(t, "scope-1", lastScopeID)
 
 	// Load actors.
 	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, historyViewActors, model.view)
 
 	// Select actor and verify it is applied to the next history load.
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, "agent", model.filter.actorType)
 	assert.Equal(t, "agent-1", model.filter.actorID)
 	assert.Equal(t, "agent", lastActorType)
@@ -130,8 +123,7 @@ func TestHistoryModelFilterPromptAppliesAndLoads(t *testing.T) {
 	var cmd tea.Cmd
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.False(t, model.filtering)
 	assert.Equal(t, "entities", gotTable)
@@ -176,10 +168,7 @@ func TestHistoryDetailRevertFlowExecutesFromSelectedEntry(t *testing.T) {
 	model.width = 90
 
 	// Load history list.
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	require.Len(t, model.items, 1)
 
 	// Open detail from selected entry.
@@ -190,13 +179,12 @@ func TestHistoryDetailRevertFlowExecutesFromSelectedEntry(t *testing.T) {
 	// Trigger revert confirm and accept.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	assert.True(t, model.reverting)
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	model, cmd = model.Update(msg)
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "ent-1", revertEntityID)
 	assert.Equal(t, "audit-1", revertAuditID)

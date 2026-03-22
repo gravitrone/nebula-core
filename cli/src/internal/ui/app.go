@@ -2,12 +2,14 @@ package ui
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/help"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/harmonica"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
@@ -88,6 +90,22 @@ type appToast struct {
 	text  string
 }
 
+// animTickMsg is sent each frame while animations are active.
+type animTickMsg struct{}
+
+// --- Animation Constants ---
+
+const (
+	// animFPS is the target frame rate for spring animations.
+	animFPS = 60
+	// animToastOffset is the initial vertical offset for toast slide-in (in lines).
+	animToastOffset = 3.0
+	// animSettledVel is the velocity threshold below which a spring is considered settled.
+	animSettledVel = 0.01
+	// animSettledPos is the position threshold below which a spring is considered settled.
+	animSettledPos = 0.5
+)
+
 // --- App Model ---
 
 // App is the root TUI model that routes between tabs.
@@ -131,6 +149,24 @@ type App struct {
 	importExportOpen bool
 	bodyScroll       int
 	bodyViewKey      string
+
+	// --- Animation State ---
+
+	// toastSpring drives the toast slide-in vertical offset.
+	toastSpring    harmonica.Spring
+	toastOffset    float64
+	toastOffsetVel float64
+	toastTarget    float64
+	// scrollSpring drives smooth body scroll; scrollPos is the animated position.
+	scrollSpring harmonica.Spring
+	scrollTarget float64
+	scrollPos    float64
+	scrollVel    float64
+	// tabSpring drives the animated tab indicator position.
+	tabSpring    harmonica.Spring
+	tabIndicator float64
+	tabIndVel    float64
+	tabIndTarget float64
 
 	inbox     InboxModel
 	entities  EntitiesModel
@@ -185,6 +221,16 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 	app.keys = DefaultKeyMap()
 	app.helpModel = newHelpModel()
 	app.bodyViewKey = app.viewStateKey()
+	// Initialize springs: critically damped for smooth, no-bounce motion.
+	app.toastSpring = harmonica.NewSpring(harmonica.FPS(animFPS), 6.0, 1.0)
+	app.scrollSpring = harmonica.NewSpring(harmonica.FPS(animFPS), 8.0, 1.0)
+	app.tabSpring = harmonica.NewSpring(harmonica.FPS(animFPS), 10.0, 1.0)
+	// Toast starts off-screen (offset at max = not visible).
+	app.toastOffset = animToastOffset
+	app.toastTarget = animToastOffset
+	// Tab indicator starts at the initial tab.
+	app.tabIndicator = float64(tabInbox)
+	app.tabIndTarget = float64(tabInbox)
 	return app
 }
 
@@ -239,8 +285,15 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.showRecoveryHints = shouldShowRecoveryHints(a.lastErrCode, a.lastErrMsg)
 		return a, nil
 	case clearToastMsg:
+		// Clear toast immediately and reset animation state.
 		a.toast = nil
+		a.toastOffset = animToastOffset
+		a.toastOffsetVel = 0
+		a.toastTarget = animToastOffset
 		return a, nil
+
+	case animTickMsg:
+		return a, a.advanceAnimations()
 	case reloginDoneMsg:
 		if msg.err != nil {
 			a.err = fmt.Sprintf("re-login failed: %v", msg.err)
@@ -458,14 +511,16 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Global body scrolling for long detail panes.
 		if isKey(msg, "pgdown", "ctrl+d") {
 			a.bodyScroll += 8
-			return a, nil
+			a.scrollTarget = float64(a.bodyScroll)
+			return a, a.animTickCmd()
 		}
 		if isKey(msg, "pgup", "ctrl+u") {
 			a.bodyScroll -= 8
 			if a.bodyScroll < 0 {
 				a.bodyScroll = 0
 			}
-			return a, nil
+			a.scrollTarget = float64(a.bodyScroll)
+			return a, a.animTickCmd()
 		}
 
 		if idx, ok := tabIndexForKey(msg.String()); ok {
@@ -602,7 +657,7 @@ func (a App) View() tea.View {
 		content = centerBlockUniform(content, a.width)
 	}
 
-	hints := components.StatusBar(a.statusHints(), a.width)
+	hints := a.renderHelpBar()
 
 	feedback := ""
 	if a.err != "" {
@@ -615,7 +670,22 @@ func (a App) View() tea.View {
 		}
 		feedback = centerBlockUniform(components.ErrorBox("Error", message, a.width), a.width)
 	} else if a.toast != nil {
-		feedback = centerBlockUniform(a.renderToast(), a.width)
+		// Render toast with animated vertical offset for a slide-in effect.
+		// Clamp to [0, animToastOffset-1] so toast always shows when set.
+		toastPad := int(math.Round(a.toastOffset))
+		if toastPad < 0 {
+			toastPad = 0
+		}
+		maxPad := int(animToastOffset) - 1
+		if toastPad > maxPad {
+			toastPad = maxPad
+		}
+		toastRendered := centerBlockUniform(a.renderToast(), a.width)
+		if toastPad > 0 {
+			feedback = strings.Repeat("\n", toastPad) + toastRendered
+		} else {
+			feedback = toastRendered
+		}
 	}
 	top := fmt.Sprintf("%s\n%s%s", banner, tabs, startupPanel)
 	body := content
@@ -625,12 +695,17 @@ func (a App) View() tea.View {
 			// Keep feedback boxes intact by reserving viewport budget up front.
 			reservedFeedbackLines = countViewLines(feedback) + 2
 		}
+		// Use animated scroll position for smooth scrolling; fall back to bodyScroll.
+		animScroll := int(math.Round(a.scrollPos))
+		if animScroll < 0 {
+			animScroll = 0
+		}
 		body, _ = clampBodyForViewport(
 			body,
 			a.height,
 			countViewLines(top),
 			countViewLines(hints)+reservedFeedbackLines,
-			a.bodyScroll,
+			animScroll,
 		)
 	}
 	if feedback != "" {
@@ -693,12 +768,17 @@ func (a *App) switchTab(newTab int) (App, tea.Cmd) {
 	oldTab := a.tab
 	a.tab = newTab
 	a.bodyScroll = 0
+	a.scrollTarget = 0
+	a.scrollPos = 0
+	a.scrollVel = 0
 	a.bodyViewKey = a.viewStateKey()
+	// Animate the tab indicator toward the new tab position.
+	a.tabIndTarget = float64(newTab)
 	if oldTab != newTab {
 		a.clearContentFocus()
 		// Enter new tabs at top-nav focus so row highlights do not leak across tabs.
 		a.tabNav = true
-		return *a, a.initTab(newTab)
+		return *a, tea.Batch(a.initTab(newTab), a.animTickCmd())
 	}
 	return *a, nil
 }
@@ -720,6 +800,9 @@ func (a *App) resetBodyScrollOnViewChange(prevViewKey string) {
 	nextViewKey := a.viewStateKey()
 	if prevViewKey != "" && prevViewKey != nextViewKey {
 		a.bodyScroll = 0
+		a.scrollTarget = 0
+		a.scrollPos = 0
+		a.scrollVel = 0
 	}
 	a.bodyViewKey = nextViewKey
 }
@@ -819,15 +902,28 @@ func (a App) tabWantsArrows() bool {
 
 // renderTabs renders render tabs.
 func (a App) renderTabs() string {
+	// Nearest animated indicator position for a sliding transition effect.
+	animTab := int(math.Round(a.tabIndicator))
+	if animTab < 0 {
+		animTab = 0
+	}
+	if animTab >= tabCount {
+		animTab = tabCount - 1
+	}
 	segments := make([]string, 0, len(tabNames))
 	for i, name := range tabNames {
 		label := name
-		if i == a.tab {
+		isActive := i == a.tab
+		// Show a "focus" trail on the animated indicator position during transitions.
+		isAnimating := i == animTab && animTab != a.tab
+		if isActive {
 			if a.tabNav {
 				segments = append(segments, TabFocusStyle.Render(label))
 			} else {
 				segments = append(segments, TabActiveStyle.Render(label))
 			}
+		} else if isAnimating {
+			segments = append(segments, TabFocusStyle.Render(label))
 		} else {
 			segments = append(segments, TabInactiveStyle.Render(label))
 		}
@@ -862,499 +958,13 @@ func (a App) initTab(tab int) tea.Cmd {
 	return nil
 }
 
-// statusHints handles status hints.
-func (a App) statusHints() []string {
-	if a.quitConfirm {
-		return []string{
-			components.Hint("enter", "Confirm"),
-			components.Hint("esc", "Cancel"),
-			components.Hint("y/n", "Aliases"),
-		}
+// renderHelpBar renders the bubbles help bar for the status line.
+func (a App) renderHelpBar() string {
+	h := a.helpModel
+	if a.width > 0 {
+		h.SetWidth(a.width)
 	}
-	if a.helpOpen {
-		return []string{
-			components.Hint("esc", "Back"),
-		}
-	}
-	if a.onboarding {
-		if a.onboardingBusy {
-			return []string{
-				components.Hint("enter", "Logging in"),
-				components.Hint("q", "Quit"),
-			}
-		}
-		return []string{
-			components.Hint("type", "Username"),
-			components.Hint("enter", "Login"),
-			components.Hint("q", "Quit"),
-		}
-	}
-	if a.quickstartOpen {
-		return []string{
-			components.Hint("←/→", "Step"),
-			components.Hint("enter", "Go"),
-			components.Hint("esc", "Skip"),
-		}
-	}
-	hints := a.statusHintsForTab()
-	if a.showRecoveryHints {
-		hints = append(hints,
-			components.Hint("r", "Re-login"),
-			components.Hint("s", "Settings"),
-			components.Hint("c", "Command"),
-		)
-	}
-	return hints
-}
-
-// statusHintsForTab handles status hints for tab.
-func (a App) statusHintsForTab() []string {
-	base := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("ctrl+u/d", "View"),
-	}
-
-	switch a.tab {
-	case tabInbox:
-		if a.inbox.confirming || a.inbox.rejectPreview {
-			return append(base,
-				components.Hint("enter", "Confirm"),
-				components.Hint("esc", "Cancel"),
-				components.Hint("y/n", "Aliases"),
-			)
-		}
-		if a.inbox.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		if a.inbox.rejecting {
-			return append(base,
-				components.Hint("enter", "Submit"),
-				components.Hint("esc", "Cancel"),
-			)
-		}
-		if a.inbox.detail != nil {
-			return append(base,
-				components.Hint("a", "Approve"),
-				components.Hint("r", "Reject"),
-				components.Hint("esc", "Back"),
-			)
-		}
-		return append(base,
-			components.Hint("↑/↓", "Scroll"),
-			components.Hint("space", "Select"),
-			components.Hint("b", "Select All"),
-			components.Hint("A", "Approve All"),
-			components.Hint("a", "Approve"),
-			components.Hint("r", "Reject"),
-			components.Hint("enter", "Details"),
-			components.Hint("f", "Filter"),
-		)
-	case tabEntities:
-		if a.entities.bulkPrompt != "" {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Cancel"),
-			)
-		}
-		if a.entities.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		switch a.entities.view {
-		case entitiesViewDetail:
-			if a.entities.contextLinking || a.entities.contextCreating {
-				return append(base,
-					components.Hint("enter", "Confirm"),
-					components.Hint("esc", "Cancel"),
-				)
-			}
-			return append(base,
-				components.Hint("a", "Add Context"),
-				components.Hint("l", "Link Context"),
-				components.Hint("e", "Edit"),
-				components.Hint("h", "History"),
-				components.Hint("r", "Relationships"),
-				components.Hint("d", "Archive"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewEdit:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Cancel"),
-			)
-		case entitiesViewRelationships:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("n", "New"),
-				components.Hint("e", "Edit"),
-				components.Hint("d", "Archive"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewRelateSearch:
-			return append(base,
-				components.Hint("enter", "Search"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewRelateSelect:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Select"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewRelateType:
-			return append(base,
-				components.Hint("enter", "Create"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewRelEdit:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Cancel"),
-			)
-		case entitiesViewAdd:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewHistory:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Revert"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewSearch:
-			return append(base,
-				components.Hint("enter", "Search"),
-				components.Hint("esc", "Back"),
-			)
-		case entitiesViewConfirm:
-			return append(base,
-				components.Hint("enter", "Confirm"),
-				components.Hint("esc", "Cancel"),
-				components.Hint("y/n", "Aliases"),
-			)
-		default:
-			hints := append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("tab", "Complete"),
-				components.Hint("enter", "Details"),
-				components.Hint("f", "Filter"),
-			)
-			if strings.TrimSpace(a.entities.searchBuf) == "" {
-				hints = append(hints, components.Hint("space", "Select"))
-			}
-			if a.entities.bulkCount() > 0 {
-				hints = append(hints,
-					components.Hint("t", "Tags"),
-					components.Hint("p", "Scopes"),
-					components.Hint("c", "Clear"),
-				)
-			}
-			return hints
-		}
-	case tabRelations:
-		if a.rels.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		switch a.rels.view {
-		case relsViewDetail:
-			return append(base,
-				components.Hint("e", "Edit"),
-				components.Hint("d", "Archive"),
-				components.Hint("esc", "Back"),
-			)
-		case relsViewEdit:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Cancel"),
-			)
-		case relsViewConfirm:
-			return append(base,
-				components.Hint("enter", "Confirm"),
-				components.Hint("esc", "Cancel"),
-				components.Hint("y/n", "Aliases"),
-			)
-		case relsViewCreateSourceSearch, relsViewCreateTargetSearch, relsViewCreateSourceSelect, relsViewCreateTargetSelect:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Select"),
-				components.Hint("esc", "Back"),
-			)
-		case relsViewCreateType:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Create"),
-				components.Hint("esc", "Back"),
-			)
-		default:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Details"),
-				components.Hint("n", "New"),
-				components.Hint("f", "Filter"),
-			)
-		}
-	case tabKnow:
-		if a.know.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		if a.know.linkSearching {
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Select"),
-				components.Hint("esc", "Cancel"),
-			)
-		}
-		switch a.know.view {
-		case contextViewList:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Details"),
-				components.Hint("f", "Filter"),
-				components.Hint("esc", "Back"),
-			)
-		case contextViewDetail:
-			return append(base,
-				components.Hint("c", "Content"),
-				components.Hint("v", "Source"),
-				components.Hint("esc", "Back"),
-			)
-		default:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Cancel"),
-			)
-		}
-	case tabJobs:
-		if a.jobs.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		if a.jobs.contextLinking || a.jobs.contextCreating {
-			return append(base,
-				components.Hint("enter", "Confirm"),
-				components.Hint("esc", "Cancel"),
-			)
-		}
-		if a.jobs.view == jobsViewAdd || a.jobs.view == jobsViewEdit {
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Cancel"),
-			)
-		}
-		if a.jobs.detail != nil {
-			return append(base,
-				components.Hint("a", "Add Context"),
-				components.Hint("c", "Link Context"),
-				components.Hint("s", "Status"),
-				components.Hint("n", "Subtask"),
-				components.Hint("l", "Link"),
-				components.Hint("u", "Unlink"),
-				components.Hint("esc", "Back"),
-			)
-		}
-		return append(base,
-			components.Hint("↑/↓", "Scroll"),
-			components.Hint("tab", "Complete"),
-			components.Hint("enter", "Details"),
-			components.Hint("space", "Select"),
-			components.Hint("b", "Select All"),
-			components.Hint("s", "Status"),
-			components.Hint("f", "Filter"),
-		)
-	case tabLogs:
-		if a.logs.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		switch a.logs.view {
-		case logsViewDetail:
-			return append(base,
-				components.Hint("e", "Edit"),
-				components.Hint("v", "Value"),
-				components.Hint("m", "Metadata"),
-				components.Hint("esc", "Back"),
-			)
-		case logsViewAdd, logsViewEdit:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Back"),
-			)
-		default:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("tab", "Complete"),
-				components.Hint("enter", "Details"),
-				components.Hint("f", "Filter"),
-			)
-		}
-	case tabFiles:
-		if a.files.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		switch a.files.view {
-		case filesViewDetail:
-			return append(base,
-				components.Hint("e", "Edit"),
-				components.Hint("m", "Metadata"),
-				components.Hint("esc", "Back"),
-			)
-		case filesViewAdd, filesViewEdit:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("space", "Select"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Back"),
-			)
-		default:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("tab", "Complete"),
-				components.Hint("enter", "Details"),
-				components.Hint("f", "Filter"),
-			)
-		}
-	case tabProtocols:
-		if a.protocols.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		switch a.protocols.view {
-		case protocolsViewDetail:
-			return append(base,
-				components.Hint("e", "Edit"),
-				components.Hint("esc", "Back"),
-			)
-		case protocolsViewEdit, protocolsViewAdd:
-			return append(base,
-				components.Hint("↑/↓", "Fields"),
-				components.Hint("←/→", "Cycle"),
-				components.Hint("ctrl+s", "Save"),
-				components.Hint("esc", "Cancel"),
-			)
-		default:
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("n", "New"),
-				components.Hint("enter", "Details"),
-				components.Hint("f", "Filter"),
-			)
-		}
-	case tabHistory:
-		if a.history.filtering {
-			return append(base,
-				components.Hint("enter", "Apply"),
-				components.Hint("esc", "Clear"),
-			)
-		}
-		if a.history.view == historyViewScopes || a.history.view == historyViewActors {
-			return append(base,
-				components.Hint("↑/↓", "Scroll"),
-				components.Hint("enter", "Select"),
-				components.Hint("esc", "Back"),
-			)
-		}
-		if a.history.view == historyViewDetail {
-			return append(base,
-				components.Hint("esc", "Back"),
-			)
-		}
-		return append(base,
-			components.Hint("↑/↓", "Scroll"),
-			components.Hint("enter", "Details"),
-			components.Hint("f", "Filter"),
-			components.Hint("s", "Scopes"),
-			components.Hint("a", "Actors"),
-		)
-	case tabProfile:
-		if a.profile.agentDetail != nil {
-			return append(base,
-				components.Hint("esc", "Back"),
-			)
-		}
-		hints := []string{
-			components.Hint("↑/↓", "Scroll"),
-			components.Hint("←/→", "Section"),
-			components.Hint("k", "API Key"),
-			components.Hint("p", "Queue Limit"),
-		}
-		switch a.profile.section {
-		case 0:
-			hints = append(hints,
-				components.Hint("n", "New Key"),
-				components.Hint("r", "Revoke"),
-			)
-		case 1:
-			hints = append(hints,
-				components.Hint("enter", "Details"),
-				components.Hint("t", "Toggle Trust"),
-			)
-		default:
-			if a.profile.taxPromptMode != taxPromptNone {
-				hints = append(hints,
-					components.Hint("enter", "Apply"),
-					components.Hint("esc", "Cancel"),
-				)
-			} else {
-				hints = append(hints,
-					components.Hint("[/]", "Kind"),
-					components.Hint("n", "New"),
-					components.Hint("e", "Edit"),
-					components.Hint("d", "Archive"),
-					components.Hint("a", "Activate"),
-					components.Hint("f", "Filter"),
-					components.Hint("i", "Inactive"),
-				)
-			}
-		}
-		return append(base, hints...)
-	}
-	return base
+	return StatusBarStyle.Width(a.width).Align(lipgloss.Center).Render(h.View(a.keys))
 }
 
 // renderHelp renders the help overlay using the bubbles help component.
@@ -1425,15 +1035,72 @@ func (a *App) reloginCmd() tea.Cmd {
 	}
 }
 
-// setToast sets set toast.
+// setToast sets set toast and returns the clear-timer command.
+// The animation tick is started separately by callers that go through toastCmdForMsg.
 func (a *App) setToast(level, text string) tea.Cmd {
 	a.toast = &appToast{
 		level: level,
 		text:  components.SanitizeOneLine(text),
 	}
+	// Begin slide-in: spring from animToastOffset (below) to 0.
+	a.toastOffset = animToastOffset
+	a.toastOffsetVel = 0
+	a.toastTarget = 0
 	return tea.Tick(2500*time.Millisecond, func(time.Time) tea.Msg {
 		return clearToastMsg{}
 	})
+}
+
+// --- Animation Helpers ---
+
+// animTickCmd schedules the next animation frame at animFPS.
+func (a App) animTickCmd() tea.Cmd {
+	return tea.Tick(time.Second/animFPS, func(time.Time) tea.Msg {
+		return animTickMsg{}
+	})
+}
+
+// animSettled returns true when a spring has settled close enough to its target.
+func animSettled(pos, vel, target float64) bool {
+	return math.Abs(vel) < animSettledVel && math.Abs(pos-target) < animSettledPos
+}
+
+// advanceAnimations steps all active spring models one frame forward and returns
+// another tick command if any animation is still running.
+func (a *App) advanceAnimations() tea.Cmd {
+	active := false
+
+	// Advance toast slide-in spring (active only when a toast is visible).
+	if a.toast != nil && !animSettled(a.toastOffset, a.toastOffsetVel, a.toastTarget) {
+		a.toastOffset, a.toastOffsetVel = a.toastSpring.Update(a.toastOffset, a.toastOffsetVel, a.toastTarget)
+		active = true
+	} else if a.toast != nil {
+		a.toastOffset = a.toastTarget
+		a.toastOffsetVel = 0
+	}
+
+	// Advance smooth scroll spring. scrollPos drives the view; bodyScroll is the logical target.
+	if !animSettled(a.scrollPos, a.scrollVel, a.scrollTarget) {
+		a.scrollPos, a.scrollVel = a.scrollSpring.Update(a.scrollPos, a.scrollVel, a.scrollTarget)
+		active = true
+	} else {
+		a.scrollPos = a.scrollTarget
+		a.scrollVel = 0
+	}
+
+	// Advance tab indicator spring.
+	if !animSettled(a.tabIndicator, a.tabIndVel, a.tabIndTarget) {
+		a.tabIndicator, a.tabIndVel = a.tabSpring.Update(a.tabIndicator, a.tabIndVel, a.tabIndTarget)
+		active = true
+	} else {
+		a.tabIndicator = a.tabIndTarget
+		a.tabIndVel = 0
+	}
+
+	if active {
+		return a.animTickCmd()
+	}
+	return nil
 }
 
 // countViewLines handles count view lines.
@@ -1543,7 +1210,9 @@ func (a *App) toastCmdForMsg(msg tea.Msg) tea.Cmd {
 	if text == "" {
 		return nil
 	}
-	return a.setToast(level, text)
+	clearCmd := a.setToast(level, text)
+	// Start the animation tick alongside the clear timer.
+	return tea.Batch(clearCmd, a.animTickCmd())
 }
 
 // handleQuickstartKeys handles handle quickstart keys.

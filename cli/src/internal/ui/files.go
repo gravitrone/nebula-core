@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -56,6 +57,7 @@ type FilesModel struct {
 	all           []api.File
 	list          *components.List
 	loading       bool
+	spinner       spinner.Model
 	view          filesView
 	modeFocus     bool
 	filtering     bool
@@ -102,8 +104,9 @@ type FilesModel struct {
 // NewFilesModel builds the files UI model.
 func NewFilesModel(client *api.Client) FilesModel {
 	return FilesModel{
-		client: client,
-		list:   components.NewList(12),
+		client:  client,
+		spinner: components.NewNebulaSpinner(),
+		list:    components.NewList(12),
 		view:   filesViewList,
 		addFields: []formField{
 			{label: "Filename"},
@@ -154,12 +157,17 @@ func (m FilesModel) Init() tea.Cmd {
 	m.editChecksum = ""
 	m.editMeta.Reset()
 	m.editSaving = false
-	return m.loadFiles()
+	return tea.Batch(m.loadFiles(), m.spinner.Tick)
 }
 
 // Update updates update.
 func (m FilesModel) Update(msg tea.Msg) (FilesModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case filesLoadedMsg:
 		m.loading = false
 		m.all = msg.items
@@ -179,13 +187,13 @@ func (m FilesModel) Update(msg tea.Msg) (FilesModel, tea.Cmd) {
 		m.addSaving = false
 		m.addSaved = true
 		m.loading = true
-		return m, m.loadFiles()
+		return m, tea.Batch(m.loadFiles(), m.spinner.Tick)
 	case fileUpdatedMsg:
 		m.editSaving = false
 		m.detail = nil
 		m.view = filesViewList
 		m.loading = true
-		return m, m.loadFiles()
+		return m, tea.Batch(m.loadFiles(), m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.addSaving = false
@@ -298,7 +306,7 @@ func (m FilesModel) toggleMode() (FilesModel, tea.Cmd) {
 
 func (m FilesModel) renderList() string {
 	if m.loading {
-		return "  " + MutedStyle.Render("Loading files...")
+		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading files...")
 	}
 	if len(m.items) == 0 {
 		return components.EmptyStateBox(

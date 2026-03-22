@@ -210,16 +210,14 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	// Init + load scopes.
 	cmd := model.Init()
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	// Toggle to Library view via modeFocus.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.modeFocus)
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, contextViewList, model.view)
 
 	out := components.SanitizeText(model.View())
@@ -229,8 +227,7 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	// Open detail and load it.
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, contextViewDetail, model.view)
 
 	out = components.SanitizeText(model.View())
@@ -254,7 +251,7 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 
 	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	model, _ = model.Update(msg)
 
 	assert.True(t, updateCalled)

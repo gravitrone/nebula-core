@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -47,6 +48,7 @@ type HistoryModel struct {
 	items     []api.AuditEntry
 	list      *components.List
 	loading   bool
+	spinner   spinner.Model
 	width     int
 	height    int
 	view      historyView
@@ -66,6 +68,7 @@ type HistoryModel struct {
 func NewHistoryModel(client *api.Client) HistoryModel {
 	return HistoryModel{
 		client:    client,
+		spinner:   components.NewNebulaSpinner(),
 		list:      components.NewList(10),
 		scopeList: components.NewList(10),
 		actorList: components.NewList(10),
@@ -76,12 +79,17 @@ func NewHistoryModel(client *api.Client) HistoryModel {
 // Init handles init.
 func (m HistoryModel) Init() tea.Cmd {
 	m.loading = true
-	return m.loadHistory()
+	return tea.Batch(m.loadHistory(), m.spinner.Tick)
 }
 
 // Update updates update.
 func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case historyLoadedMsg:
 		m.loading = false
 		m.errText = ""
@@ -117,7 +125,7 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 		m.view = historyViewList
 		m.detail = nil
 		m.loading = true
-		return m, m.loadHistory()
+		return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.reverting = false
@@ -173,7 +181,7 @@ func (m HistoryModel) View() string {
 		case historyViewActors:
 			label = "Loading actors..."
 		}
-		return "  " + MutedStyle.Render(label)
+		return "  " + m.spinner.View() + " " + MutedStyle.Render(label)
 	}
 	if m.errText != "" {
 		return components.Indent(components.ErrorBox("Error", m.errText, m.width), 1)
@@ -258,11 +266,11 @@ func (m HistoryModel) handleListKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd
 	case isKey(msg, "s"):
 		m.view = historyViewScopes
 		m.loading = true
-		return m, m.loadScopes()
+		return m, tea.Batch(m.loadScopes(), m.spinner.Tick)
 	case isKey(msg, "a"):
 		m.view = historyViewActors
 		m.loading = true
-		return m, m.loadActors()
+		return m, tea.Batch(m.loadActors(), m.spinner.Tick)
 	}
 	return m, nil
 }
@@ -274,13 +282,13 @@ func (m HistoryModel) handleFilterKeys(msg tea.KeyPressMsg) (HistoryModel, tea.C
 		m.filtering = false
 		m.filter = parseAuditFilter(m.filterBuf)
 		m.loading = true
-		return m, m.loadHistory()
+		return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
 	case isBack(msg):
 		m.filtering = false
 		m.filterBuf = ""
 		m.filter = auditFilter{}
 		m.loading = true
-		return m, m.loadHistory()
+		return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
 	case isKey(msg, "backspace"):
 		if len(m.filterBuf) > 0 {
 			m.filterBuf = m.filterBuf[:len(m.filterBuf)-1]
@@ -306,7 +314,7 @@ func (m HistoryModel) handleScopeKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cm
 			m.filter.scopeID = scope.ID
 			m.view = historyViewList
 			m.loading = true
-			return m, m.loadHistory()
+			return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
 		}
 	case isBack(msg):
 		m.view = historyViewList
@@ -328,7 +336,7 @@ func (m HistoryModel) handleActorKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cm
 			m.filter.actorID = actor.ActorID
 			m.view = historyViewList
 			m.loading = true
-			return m, m.loadHistory()
+			return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
 		}
 	case isBack(msg):
 		m.view = historyViewList

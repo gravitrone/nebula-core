@@ -1,0 +1,51 @@
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gocritic
+    - gosec
+    - bodyclose
+    - errorlint
+
+  settings:
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - elseif
+        - unlambda
+        - singleCaseSwitch
+    gosec:
+      excludes:
+        - G101
+        - G104
+        - G117
+        - G204
+        - G301
+        - G302
+        - G304
+        - G306
+        - G702
+        - G704
+    errcheck:
+      exclude-functions:
+        - (net/http.ResponseWriter).Write
+        - (*net/http.Response.Body).Close
+        - io.Close
+        - (io.Closer).Close
+        - (*encoding/json.Encoder).Encode
+        - os.WriteFile
+
+issues:
+  exclude-rules:
+    - path: ".*_test\\.go"
+      linters:
+        - errcheck
+        - gosec

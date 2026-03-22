@@ -52,9 +52,7 @@ func TestJobsModelLoadsJobs(t *testing.T) {
 
 	model := NewJobsModel(client)
 
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	model.applyJobSearch()
 
 	assert.False(t, model.loading)
@@ -76,9 +74,7 @@ func TestJobsModelNavigationKeys(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	model.applyJobSearch()
 
 	// Navigate down
@@ -103,9 +99,7 @@ func TestJobsModelEnterShowsDetail(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	model.applyJobSearch()
 
 	// Press enter
@@ -128,9 +122,7 @@ func TestJobsModelEscapeBackFromDetail(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	model.applyJobSearch()
 
 	// Enter detail
@@ -155,9 +147,7 @@ func TestJobsModelStatusChangeFlow(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Press 's' to change status
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
@@ -179,9 +169,7 @@ func TestJobsModelStatusInputHandling(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Start status change
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
@@ -211,9 +199,7 @@ func TestJobsModelRenderEmpty(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	view := model.View()
 	assert.Contains(t, view, "No jobs found")
@@ -282,17 +268,15 @@ func TestJobsModelCreateSubtask(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	msg = cmd()
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	msg := cmd()
 	_, _ = model.Update(msg)
 
 	assert.Equal(t, "foo", subtaskTitle)
@@ -446,9 +430,7 @@ func TestJobsBulkStatusUpdateForSelectedRows(t *testing.T) {
 	})
 
 	model := NewJobsModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	model.applyJobSearch()
 
 	// Select both jobs.
@@ -463,9 +445,9 @@ func TestJobsBulkStatusUpdateForSelectedRows(t *testing.T) {
 	for _, r := range "active" {
 		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	model, _ = model.Update(msg)
 
 	assert.ElementsMatch(

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -31,6 +32,7 @@ type InboxModel struct {
 	items         []api.Approval
 	list          *components.List
 	loading       bool
+	spinner       spinner.Model
 	detail        *api.Approval
 	filtering     bool
 	filterBuf     string
@@ -55,6 +57,7 @@ type InboxModel struct {
 func NewInboxModel(client *api.Client) InboxModel {
 	return InboxModel{
 		client:       client,
+		spinner:      components.NewNebulaSpinner(),
 		list:         components.NewList(15),
 		selected:     make(map[string]bool),
 		pendingLimit: 500,
@@ -64,12 +67,17 @@ func NewInboxModel(client *api.Client) InboxModel {
 // Init handles init.
 func (m InboxModel) Init() tea.Cmd {
 	m.loading = true
-	return m.loadApprovals
+	return tea.Batch(m.loadApprovals, m.spinner.Tick)
 }
 
 // Update updates update.
 func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case approvalsLoadedMsg:
 		m.loading = false
 		m.items = msg.items
@@ -84,7 +92,8 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 		m.bulkRejectIDs = nil
 		m.confirming = false
 		m.selected = make(map[string]bool)
-		return m, m.loadApprovals
+		m.loading = true
+		return m, tea.Batch(m.loadApprovals, m.spinner.Tick)
 
 	case approvalDiffLoadedMsg:
 		if m.detail != nil && m.detail.ID == msg.id {
@@ -165,7 +174,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 // View handles view.
 func (m InboxModel) View() string {
 	if m.loading {
-		return "  " + MutedStyle.Render("Loading approvals...")
+		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading approvals...")
 	}
 
 	if m.confirming {
