@@ -367,7 +367,7 @@ func TestHelpToggle(t *testing.T) {
 func TestQuitConfirmWhenUnsaved(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.know.view = contextViewAdd
-	app.know.fields[fieldTitle].value = "draft"
+	app.know.addTitle = "draft"
 
 	model, cmd := app.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	updated := model.(App)

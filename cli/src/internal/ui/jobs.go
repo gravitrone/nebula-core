@@ -9,6 +9,8 @@ import (
 	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
+	huh "charm.land/huh/v2"
+
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
@@ -92,36 +94,33 @@ type JobsModel struct {
 	height           int
 
 	// add
-	addFields      []formField
-	addFocus       int
-	addStatusIdx   int
-	addPriorityIdx int
-	addSaving      bool
-	addSaved       bool
-	addErr         string
+	addForm     *huh.Form
+	addTitle    string
+	addDesc     string
+	addStatus   string
+	addPriority string
+	addSaving   bool
+	addSaved    bool
+	addErr      string
 
 	// edit
-	editFocus       int
-	editStatusIdx   int
-	editPriorityIdx int
-	editDesc        string
-	editSaving      bool
+	editForm     *huh.Form
+	editStatus   string
+	editPriority string
+	editDesc     string
+	editSaving   bool
 }
 
 // NewJobsModel builds the jobs UI model.
 func NewJobsModel(client *api.Client) JobsModel {
 	return JobsModel{
-		client:    client,
-		spinner:   components.NewNebulaSpinner(),
-		dataTable: components.NewNebulaTable(nil, 15),
-		selected:  map[string]bool{},
-		view:     jobsViewList,
-		addFields: []formField{
-			{label: "Title"},
-			{label: "Description"},
-			{label: "Status"},
-			{label: "Priority"},
-		},
+		client:      client,
+		spinner:     components.NewNebulaSpinner(),
+		dataTable:   components.NewNebulaTable(nil, 15),
+		selected:    map[string]bool{},
+		view:        jobsViewList,
+		addStatus:   "pending",
+		addPriority: "",
 	}
 }
 
@@ -130,9 +129,11 @@ func (m JobsModel) Init() tea.Cmd {
 	m.loading = true
 	m.view = jobsViewList
 	m.modeFocus = false
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(jobStatusOptions, "pending")
-	m.addPriorityIdx = statusIndex(jobPriorityOptions, "")
+	m.addForm = nil
+	m.addTitle = ""
+	m.addDesc = ""
+	m.addStatus = "pending"
+	m.addPriority = ""
 	m.addSaving = false
 	m.addSaved = false
 	m.addErr = ""
@@ -244,6 +245,15 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		default:
 			return m.handleListKeys(msg)
 		}
+	}
+	// Forward non-key messages to active huh forms (cursor blinks, animations).
+	if m.view == jobsViewAdd && m.addForm != nil && !m.addSaving && !m.addSaved {
+		_, cmd := m.addForm.Update(msg)
+		return m, cmd
+	}
+	if m.view == jobsViewEdit && m.editForm != nil && !m.editSaving {
+		_, cmd := m.editForm.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -625,129 +635,62 @@ func (m JobsModel) handleAddKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
 	}
-	switch {
-	case isDown(msg):
-		m.addFocus = (m.addFocus + 1) % jobFieldCount
-	case isUp(msg):
-		if m.addFocus == 0 {
-			m.modeFocus = true
-			return m, nil
+	if m.addSaved {
+		if isBack(msg) {
+			m.resetAddForm()
 		}
-		m.addFocus = (m.addFocus - 1 + jobFieldCount) % jobFieldCount
-	case isKey(msg, "ctrl+s"):
-		return m.saveAdd()
-	case isBack(msg):
-		m.resetAddForm()
-	case isKey(msg, "backspace"):
-		if m.addFocus == jobFieldTitle || m.addFocus == jobFieldDescription {
-			f := &m.addFields[m.addFocus]
-			if len(f.value) > 0 {
-				f.value = f.value[:len(f.value)-1]
-			}
-		}
-	default:
-		switch m.addFocus {
-		case jobFieldStatus:
-			switch {
-			case isKey(msg, "left"):
-				m.addStatusIdx = (m.addStatusIdx - 1 + len(jobStatusOptions)) % len(jobStatusOptions)
-			case isKey(msg, "right"), isSpace(msg):
-				m.addStatusIdx = (m.addStatusIdx + 1) % len(jobStatusOptions)
-			}
-		case jobFieldPriority:
-			switch {
-			case isKey(msg, "left"):
-				m.addPriorityIdx = (m.addPriorityIdx - 1 + len(jobPriorityOptions)) % len(jobPriorityOptions)
-			case isKey(msg, "right"), isSpace(msg):
-				m.addPriorityIdx = (m.addPriorityIdx + 1) % len(jobPriorityOptions)
-			}
-		default:
-			ch := keyText(msg)
-			if (len(ch) == 1 || ch == " ") && (m.addFocus == jobFieldTitle || m.addFocus == jobFieldDescription) {
-				m.addFields[m.addFocus].value += ch
-			}
-		}
+		return m, nil
 	}
-	return m, nil
+	if m.modeFocus {
+		return m.handleModeKeys(msg)
+	}
+
+	if m.addForm == nil {
+		m.initAddForm()
+		cmd := m.addForm.Init()
+		return m, cmd
+	}
+
+	_, cmd := m.addForm.Update(msg)
+
+	switch m.addForm.State {
+	case huh.StateCompleted:
+		return m.saveAdd()
+	case huh.StateAborted:
+		m.resetAddForm()
+		return m, nil
+	}
+
+	return m, cmd
 }
 
-// renderAdd renders render add.
+// renderAdd renders the add job form.
 func (m JobsModel) renderAdd() string {
 	if m.addSaving {
-		return MutedStyle.Render("Saving...")
+		return components.TitledBox("Add Job", MutedStyle.Render("  Saving..."), m.width)
 	}
 	if m.addSaved {
-		return components.Box(SuccessStyle.Render("Job saved! Press Esc to add another."), m.width)
+		return components.TitledBox("Add Job", SuccessStyle.Render("  Job saved! Press Esc to add another."), m.width)
 	}
-
-	var b strings.Builder
-	for i, f := range m.addFields {
-		label := f.label
-		switch i {
-		case jobFieldStatus:
-			status := jobStatusOptions[m.addStatusIdx]
-			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + status))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + status))
-			}
-		case jobFieldPriority:
-			priority := jobPriorityOptions[m.addPriorityIdx]
-			if priority == "" {
-				priority = "-"
-			}
-			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + priority))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + priority))
-			}
-		default:
-			if i == m.addFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + f.value))
-				b.WriteString(AccentStyle.Render("█"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				val := f.value
-				if val == "" {
-					val = "-"
-				}
-				b.WriteString(NormalStyle.Render("  " + val))
-			}
-		}
-
-		if i < jobFieldCount-1 {
-			b.WriteString("\n\n")
-		}
+	if m.addForm == nil {
+		return components.TitledBox("Add Job", MutedStyle.Render("  Initializing..."), m.width)
 	}
-
-	if m.addErr != "" {
-		b.WriteString("\n\n")
-		b.WriteString(components.ErrorBox("Error", m.addErr, m.width))
-	}
-	return components.TitledBox("Add Job", b.String(), m.width)
+	return components.TitledBox("Add Job", m.addForm.View(), m.width)
 }
 
 // saveAdd handles save add.
 func (m JobsModel) saveAdd() (JobsModel, tea.Cmd) {
-	title := strings.TrimSpace(m.addFields[jobFieldTitle].value)
+	title := strings.TrimSpace(m.addTitle)
 	if title == "" {
 		m.addErr = "Title is required"
 		return m, nil
 	}
-	desc := strings.TrimSpace(m.addFields[jobFieldDescription].value)
-	status := jobStatusOptions[m.addStatusIdx]
-	priority := strings.TrimSpace(jobPriorityOptions[m.addPriorityIdx])
+	desc := strings.TrimSpace(m.addDesc)
+	status := m.addStatus
+	if status == "" {
+		status = "pending"
+	}
+	priority := strings.TrimSpace(m.addPriority)
 
 	input := api.CreateJobInput{
 		Title:       title,
@@ -770,13 +713,60 @@ func (m *JobsModel) resetAddForm() {
 	m.addSaved = false
 	m.addSaving = false
 	m.addErr = ""
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(jobStatusOptions, "pending")
-	m.addPriorityIdx = statusIndex(jobPriorityOptions, "")
-	for i := range m.addFields {
-		m.addFields[i].value = ""
-	}
+	m.addTitle = ""
+	m.addDesc = ""
+	m.addStatus = "pending"
+	m.addPriority = ""
+	m.initAddForm()
 }
+// initAddForm creates a new huh form for the add job flow.
+func (m *JobsModel) initAddForm() {
+	statusOpts := make([]huh.Option[string], len(jobStatusOptions))
+	for i, s := range jobStatusOptions {
+		statusOpts[i] = huh.NewOption(s, s)
+	}
+	priorityOpts := make([]huh.Option[string], len(jobPriorityOptions))
+	for i, p := range jobPriorityOptions {
+		label := p
+		if label == "" {
+			label = "(none)"
+		}
+		priorityOpts[i] = huh.NewOption(label, p)
+	}
+	m.addForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Title").Value(&m.addTitle),
+			huh.NewInput().Title("Description").Value(&m.addDesc),
+			huh.NewSelect[string]().Title("Status").Options(statusOpts...).Value(&m.addStatus),
+			huh.NewSelect[string]().Title("Priority").Options(priorityOpts...).Value(&m.addPriority),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
+}
+
+// initEditForm creates a new huh form for the edit job flow.
+func (m *JobsModel) initEditForm() {
+	statusOpts := make([]huh.Option[string], len(jobStatusOptions))
+	for i, s := range jobStatusOptions {
+		statusOpts[i] = huh.NewOption(s, s)
+	}
+	priorityOpts := make([]huh.Option[string], len(jobPriorityOptions))
+	for i, p := range jobPriorityOptions {
+		label := p
+		if label == "" {
+			label = "(none)"
+		}
+		priorityOpts[i] = huh.NewOption(label, p)
+	}
+	m.editForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().Title("Status").Options(statusOpts...).Value(&m.editStatus),
+			huh.NewInput().Title("Description").Value(&m.editDesc),
+			huh.NewSelect[string]().Title("Priority").Options(priorityOpts...).Value(&m.editPriority),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
+}
+
+
 
 // --- Edit ---
 
@@ -784,11 +774,12 @@ func (m *JobsModel) startEdit() {
 	if m.detail == nil {
 		return
 	}
-	m.editFocus = jobEditFieldStatus
-	m.editStatusIdx = statusIndex(jobStatusOptions, m.detail.Status)
-	m.editPriorityIdx = statusIndex(jobPriorityOptions, valueOrEmpty(m.detail.Priority))
+	m.editStatus = m.detail.Status
+	m.editPriority = valueOrEmpty(m.detail.Priority)
 	m.editDesc = valueOrEmpty(m.detail.Description)
 	m.editSaving = false
+	m.editForm = nil
+	m.initEditForm()
 }
 
 // handleEditKeys handles handle edit keys.
@@ -796,105 +787,44 @@ func (m JobsModel) handleEditKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
-	switch {
-	case isDown(msg):
-		m.editFocus = (m.editFocus + 1) % jobEditFieldCount
-	case isUp(msg):
-		if m.editFocus > 0 {
-			m.editFocus = (m.editFocus - 1 + jobEditFieldCount) % jobEditFieldCount
-		}
-	case isBack(msg):
-		m.view = jobsViewDetail
-	case isKey(msg, "ctrl+s"):
-		return m.saveEdit()
-	default:
-		switch m.editFocus {
-		case jobEditFieldStatus:
-			switch {
-			case isKey(msg, "left"):
-				m.editStatusIdx = (m.editStatusIdx - 1 + len(jobStatusOptions)) % len(jobStatusOptions)
-			case isKey(msg, "right"), isSpace(msg):
-				m.editStatusIdx = (m.editStatusIdx + 1) % len(jobStatusOptions)
-			}
-		case jobEditFieldPriority:
-			switch {
-			case isKey(msg, "left"):
-				m.editPriorityIdx = (m.editPriorityIdx - 1 + len(jobPriorityOptions)) % len(jobPriorityOptions)
-			case isKey(msg, "right"), isSpace(msg):
-				m.editPriorityIdx = (m.editPriorityIdx + 1) % len(jobPriorityOptions)
-			}
-		case jobEditFieldDescription:
-			switch {
-			case isKey(msg, "backspace"):
-				m.editDesc = dropLastRune(m.editDesc)
-			default:
-				ch := keyText(msg)
-				if ch != "" {
-					m.editDesc += ch
-				}
-			}
-		}
+	if m.modeFocus {
+		return m.handleModeKeys(msg)
 	}
-	return m, nil
+
+	if isBack(msg) {
+		m.view = jobsViewDetail
+		return m, nil
+	}
+
+	if m.editForm == nil {
+		m.initEditForm()
+		cmd := m.editForm.Init()
+		return m, cmd
+	}
+
+	_, cmd := m.editForm.Update(msg)
+
+	switch m.editForm.State {
+	case huh.StateCompleted:
+		return m.saveEdit()
+	case huh.StateAborted:
+		m.view = jobsViewDetail
+		return m, nil
+	}
+
+	return m, cmd
 }
 
-// renderEdit renders render edit.
+// renderEdit renders the edit job form.
 func (m JobsModel) renderEdit() string {
+	if m.editForm == nil {
+		return components.TitledBox("Edit Job", MutedStyle.Render("  Initializing..."), m.width)
+	}
 	var b strings.Builder
-
-	// Status
-	status := jobStatusOptions[m.editStatusIdx]
-	if m.editFocus == jobEditFieldStatus {
-		b.WriteString(SelectedStyle.Render("  Status:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + status))
-	} else {
-		b.WriteString(MutedStyle.Render("  Status:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + status))
-	}
-
-	b.WriteString("\n\n")
-
-	// Description
-	if m.editFocus == jobEditFieldDescription {
-		b.WriteString(SelectedStyle.Render("  Description:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.editDesc))
-		b.WriteString(AccentStyle.Render("█"))
-	} else {
-		b.WriteString(MutedStyle.Render("  Description:"))
-		b.WriteString("\n")
-		val := m.editDesc
-		if val == "" {
-			val = "-"
-		}
-		b.WriteString(NormalStyle.Render("  " + val))
-	}
-
-	b.WriteString("\n\n")
-
-	// Priority
-	priority := jobPriorityOptions[m.editPriorityIdx]
-	if priority == "" {
-		priority = "-"
-	}
-	if m.editFocus == jobEditFieldPriority {
-		b.WriteString(SelectedStyle.Render("  Priority:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + priority))
-	} else {
-		b.WriteString(MutedStyle.Render("  Priority:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + priority))
-	}
-
-	b.WriteString("\n\n")
-
+	b.WriteString(m.editForm.View())
 	if m.editSaving {
 		b.WriteString("\n\n" + MutedStyle.Render("Saving..."))
 	}
-
 	return components.TitledBox("Edit Job", b.String(), m.width)
 }
 
@@ -903,8 +833,11 @@ func (m JobsModel) saveEdit() (JobsModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
 	}
-	status := jobStatusOptions[m.editStatusIdx]
-	priority := strings.TrimSpace(jobPriorityOptions[m.editPriorityIdx])
+	status := m.editStatus
+	if status == "" {
+		status = "pending"
+	}
+	priority := strings.TrimSpace(m.editPriority)
 	desc := strings.TrimSpace(m.editDesc)
 
 	input := api.UpdateJobInput{

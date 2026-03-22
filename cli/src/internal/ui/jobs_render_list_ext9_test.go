@@ -122,8 +122,8 @@ func TestJobsSaveEditNilDetailAndSuccess(t *testing.T) {
 	model = NewJobsModel(client)
 	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc}
 	model.startEdit()
-	model.editStatusIdx = 1
-	model.editPriorityIdx = 2
+	model.editStatus = jobStatusOptions[1]
+	model.editPriority = jobPriorityOptions[2]
 	model.editDesc = "updated desc"
 
 	updated, cmd = model.saveEdit()

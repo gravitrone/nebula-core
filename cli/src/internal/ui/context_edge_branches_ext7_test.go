@@ -12,16 +12,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestContextUpdateBackspaceTagBufferBeforeRemovingTags(t *testing.T) {
+func TestContextAddTagStrNormalizesViaParseAndNormalize(t *testing.T) {
 	model := NewContextModel(nil)
-	model.focus = fieldTags
-	model.tags = []string{"alpha"}
-	model.tagBuf = "xy"
-
-	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Equal(t, "x", updated.tagBuf)
-	assert.Equal(t, []string{"alpha"}, updated.tags)
+	model.addTagStr = "#Foo Bar, beta_tag, "
+	tags := parseCommaSeparated(model.addTagStr)
+	for i, t := range tags {
+		tags[i] = normalizeTag(t)
+	}
+	tags = dedup(tags)
+	assert.Equal(t, []string{"foo-bar", "beta-tag"}, tags)
 }
 
 func TestContextRenderListHandlesNarrowColumnsAndOutOfRangeVisibleRows(t *testing.T) {
@@ -78,16 +77,21 @@ func TestContextPreviewAndLineUseContentFallbackWhenMetadataMissing(t *testing.T
 	assert.Contains(t, line, "content fallback")
 }
 
-func TestContextRenderTagsSpacingForMultipleValues(t *testing.T) {
+func TestContextRenderLinkedEntitiesFallbackAndValues(t *testing.T) {
 	model := NewContextModel(nil)
-	model.tags = []string{"alpha", "beta"}
 
-	out := components.SanitizeText(model.renderTags(false))
-	assert.Contains(t, out, "[alpha] [beta]")
+	// No entities: renderLinkedEntities returns empty string.
+	out := model.renderLinkedEntities()
+	assert.Equal(t, "", out)
 
-	model.editTags = []string{"one", "two"}
-	out = components.SanitizeText(model.renderEditTags(false))
-	assert.Contains(t, out, "[one] [two]")
+	// With entities: rendered as [Name] pills.
+	model.linkEntities = []api.Entity{
+		{ID: "ent-1", Name: "Alpha"},
+		{ID: "ent-2", Name: "Beta"},
+	}
+	out = components.SanitizeText(model.renderLinkedEntities())
+	assert.Contains(t, out, "Alpha")
+	assert.Contains(t, out, "Beta")
 }
 
 func TestContextHandleLinkSearchMovesCursorWhenListPresent(t *testing.T) {

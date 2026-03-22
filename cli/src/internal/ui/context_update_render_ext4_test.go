@@ -121,54 +121,18 @@ func TestContextViewEarlyReturnBranches(t *testing.T) {
 func TestContextRenderAddBranchMatrix(t *testing.T) {
 	model := NewContextModel(nil)
 	model.width = 92
-	model.scopeOptions = []string{"public", "private"}
-	model.fields[fieldTitle].value = "Title A"
-	model.fields[fieldURL].value = "https://a"
-	model.fields[fieldNotes].value = "notes"
-	model.tags = []string{"alpha"}
-	model.tagBuf = "beta"
-	model.scopes = []string{"public"}
-	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
 
-	model.focus = fieldType
-	model.typeSelecting = true
+	// With nil addForm, renders "Initializing..." placeholder.
+	model.addForm = nil
 	out := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "[note]")
+	assert.Contains(t, out, "Initializing")
 
-	model.typeSelecting = false
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Type:")
-	assert.Contains(t, out, "note")
-
-	model.focus = fieldTags
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "alpha")
-	assert.Contains(t, out, "beta")
-
-	model.focus = fieldScopes
-	model.scopeSelecting = true
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "public")
-
-	model.scopeSelecting = false
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Scopes:")
-
-	model.focus = fieldEntities
+	// With linked entities, entity names are shown.
+	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Entity One")
 
-	model.focus = fieldTitle
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Title A")
-	assert.Contains(t, out, "█")
-
-	model.focus = fieldTitle
-	model.fields[fieldURL].value = ""
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "URL:")
-	assert.Contains(t, out, "-")
-
+	// With errText, error message is rendered.
 	model.errText = "add render error"
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "add render error")
@@ -177,187 +141,46 @@ func TestContextRenderAddBranchMatrix(t *testing.T) {
 func TestContextRenderEditBranchMatrix(t *testing.T) {
 	model := NewContextModel(nil)
 	model.width = 92
-	model.scopeOptions = []string{"public", "private"}
-	model.contextEditFields[contextEditFieldTitle].value = "Title E"
-	model.contextEditFields[contextEditFieldURL].value = "https://e"
-	model.contextEditFields[contextEditFieldNotes].value = "notes edit"
-	model.editTags = []string{"alpha"}
-	model.editTagBuf = "beta"
-	model.editScopes = []string{"public"}
 
-	model.editFocus = contextEditFieldType
-	model.editTypeSelecting = true
-	out := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "[note]")
-
-	model.editTypeSelecting = false
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Type:")
-
-	model.editFocus = contextEditFieldStatus
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Status:")
-
-	model.editFocus = contextEditFieldTags
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "alpha")
-	assert.Contains(t, out, "beta")
-
-	model.editFocus = contextEditFieldScopes
-	model.editScopeSelecting = true
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "public")
-
-	model.editScopeSelecting = false
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Scopes:")
-
-	model.editFocus = contextEditFieldNotes
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "notes edit")
-
-	model.editFocus = contextEditFieldTitle
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Title E")
-	assert.Contains(t, out, "█")
-
-	model.contextEditFields[contextEditFieldURL].value = ""
-	model.editFocus = contextEditFieldTitle
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "URL:")
-	assert.Contains(t, out, "-")
-
-	model.errText = "edit render error"
+	// editSaving shows saving indicator.
 	model.editSaving = true
+	out := components.SanitizeText(model.renderEdit())
+	assert.Contains(t, out, "Saving...")
+
+	// nil editForm without editSaving shows initializing.
+	model.editSaving = false
+	model.editForm = nil
 	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "edit render error")
-	assert.True(t, strings.Contains(out, "Saving..."))
+	assert.Contains(t, out, "Initializing")
+
+	// errText is rendered when editForm is initialized.
+	model.detail = &api.Context{ID: "ctx-1", Title: "Alpha", SourceType: "note", Status: "active"}
+	model.startEdit()
+	model.errText = "edit render error"
+	out = components.SanitizeText(model.renderEdit())
+	assert.True(t, strings.Contains(out, "edit render error"))
 }
 
 func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
+	// Mode toggle from add goes to list and emits a load command.
 	model := NewContextModel(nil)
+	model.view = contextViewAdd
+	var cmd tea.Cmd
+	model, cmd = model.toggleMode()
+	assert.NotNil(t, cmd)
+	assert.Equal(t, contextViewList, model.view)
+	assert.True(t, model.loadingList)
 
-	// Type selector branches.
-	model.focus = fieldType
-	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	require.Nil(t, cmd)
-	assert.True(t, updated.typeSelecting)
+	// Empty title in save() emits errText.
+	model2 := NewContextModel(nil)
+	model2.addTitle = ""
+	model2, _ = model2.save()
+	assert.Equal(t, "Title is required", model2.errText)
 
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.typeIdx)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
-	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.typeIdx)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	require.Nil(t, cmd)
-	assert.False(t, updated.typeSelecting)
-
-	// Scope selector branches.
-	updated.focus = fieldScopes
-	updated.scopeOptions = []string{"public", "private"}
-	updated.scopeSelecting = true
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.scopeIdx)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	require.Nil(t, cmd)
-	assert.Equal(t, []string{"private"}, updated.scopes)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
-	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.scopeIdx)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	require.Nil(t, cmd)
-	assert.False(t, updated.scopeSelecting)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeySpace})
-	require.Nil(t, cmd)
-	assert.True(t, updated.scopeSelecting)
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	require.Nil(t, cmd)
-	assert.False(t, updated.scopeSelecting)
-
-	// Tags commit + typing branches.
-	updated.focus = fieldTags
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
-	require.Nil(t, cmd)
-	assert.Equal(t, "A", updated.tagBuf)
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: ',', Text: ","})
-	require.Nil(t, cmd)
-	assert.Equal(t, []string{"a"}, updated.tags)
-	assert.Equal(t, "", updated.tagBuf)
-
-	// Backspace branches for tags/scopes/entities/default fields.
-	updated.tags = []string{"a", "b"}
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Equal(t, []string{"a"}, updated.tags)
-
-	updated.focus = fieldScopes
-	updated.scopes = []string{"public"}
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Empty(t, updated.scopes)
-
-	updated.focus = fieldEntities
-	updated.linkEntities = []api.Entity{{ID: "ent-1"}}
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Empty(t, updated.linkEntities)
-
-	updated.focus = fieldTitle
-	updated.fields[fieldTitle].value = "abc"
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Equal(t, "ab", updated.fields[fieldTitle].value)
-
-	// Entities enter opens search mode.
-	updated.focus = fieldEntities
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	require.Nil(t, cmd)
-	assert.True(t, updated.linkSearching)
-
-	// Entities typing starts link search and emits command.
-	updated.focus = fieldEntities
-	updated.linkSearching = false
-	updated.linkQuery = ""
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
-	require.NotNil(t, cmd)
-	assert.True(t, updated.linkSearching)
-	assert.Equal(t, "x", updated.linkQuery)
-
-	// Global navigation + reset + save branches.
-	updated.linkSearching = false
-	updated.focus = fieldTitle
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	require.Nil(t, cmd)
-	assert.Equal(t, fieldURL, updated.focus)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	require.Nil(t, cmd)
-	assert.Equal(t, fieldTitle, updated.focus)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	require.Nil(t, cmd)
-	assert.True(t, updated.modeFocus)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	require.Nil(t, cmd)
-	assert.Equal(t, "ab", updated.fields[fieldTitle].value)
-	assert.False(t, updated.modeFocus)
-
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
-	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.fields[fieldTitle].value)
-	assert.False(t, updated.modeFocus)
-
-	updated.fields[fieldTitle].value = ""
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	require.Nil(t, cmd)
-	assert.Equal(t, "Title is required", updated.errText)
+	// Keys in add view with addForm nil init the form and return non-nil cmd.
+	model3 := NewContextModel(nil)
+	model3.view = contextViewAdd
+	model3.addForm = nil
+	_, cmd = model3.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	assert.NotNil(t, cmd)
 }

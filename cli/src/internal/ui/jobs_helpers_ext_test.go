@@ -85,51 +85,41 @@ func TestJobsHandleModeKeysAndToggle(t *testing.T) {
 	assert.False(t, updated.modeFocus)
 }
 
-func TestJobsHandleAddKeysStatusPriorityBranches(t *testing.T) {
+func TestJobsInitAddFormCreatesNonNilForm(t *testing.T) {
 	model := NewJobsModel(nil)
-	model.view = jobsViewAdd
-	model.addFocus = jobFieldStatus
-
-	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.addStatusIdx)
-
-	updated.addFocus = jobFieldPriority
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	assert.Equal(t, 1, updated.addPriorityIdx)
-
-	updated.addFocus = jobFieldTitle
-	updated.addFields[jobFieldTitle].value = "abc"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "ab", updated.addFields[jobFieldTitle].value)
-
-	updated.addFocus = 0
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.True(t, updated.modeFocus)
+	model.addForm = nil
+	model.initAddForm()
+	assert.NotNil(t, model.addForm)
 }
 
-func TestJobsHandleEditKeysStatusPriorityDescriptionAndBack(t *testing.T) {
+func TestJobsHandleAddKeysInitializesFormOnFirstKey(t *testing.T) {
+	model := NewJobsModel(nil)
+	model.view = jobsViewAdd
+	model.addForm = nil
+
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
+	assert.NotNil(t, cmd)
+	assert.NotNil(t, updated.addForm)
+}
+
+func TestJobsHandleEditKeysWithFormForwardsMessages(t *testing.T) {
 	desc := "hello"
 	model := NewJobsModel(nil)
 	model.view = jobsViewEdit
 	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc}
 	model.startEdit()
 
-	model.editFocus = jobEditFieldStatus
-	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
+	assert.NotNil(t, model.editForm)
+
+	// Forward key to form
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
+	// cmd may or may not be nil depending on form state
+	_ = cmd
+	_ = updated
+
+	// Escape goes back to detail
+	updated, cmd = model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.editStatusIdx)
-
-	updated.editFocus = jobEditFieldPriority
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	assert.Equal(t, 1, updated.editPriorityIdx)
-
-	updated.editFocus = jobEditFieldDescription
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
-	assert.Contains(t, updated.editDesc, "x")
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.NotContains(t, updated.editDesc, "x")
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, jobsViewDetail, updated.view)
 }
 
@@ -140,42 +130,16 @@ func TestJobsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1", Status: "pending", Description: &desc}
 	model.startEdit()
 
+	// editSaving blocks key input
 	model.editSaving = true
 	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, model.editFocus, updated.editFocus)
 	assert.True(t, updated.editSaving)
 
-	updated.editSaving = false
-	updated.editFocus = 0
-	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
+	// Escape returns to detail
+	model.editSaving = false
+	updated, cmd = model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.editFocus)
-
-	updated.editFocus = jobEditFieldStatus
-	updated.editStatusIdx = 0
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-	assert.Equal(t, len(jobStatusOptions)-1, updated.editStatusIdx)
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-	assert.Equal(t, 0, updated.editStatusIdx)
-
-	updated.editFocus = jobEditFieldPriority
-	updated.editPriorityIdx = 0
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-	assert.Equal(t, len(jobPriorityOptions)-1, updated.editPriorityIdx)
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-	assert.Equal(t, 0, updated.editPriorityIdx)
-
-	updated.editFocus = jobEditFieldDescription
-	updated.editDesc = "x"
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.editDesc)
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
-	assert.Equal(t, "z", updated.editDesc)
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, "z", updated.editDesc)
-
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, jobsViewDetail, updated.view)
 }
 

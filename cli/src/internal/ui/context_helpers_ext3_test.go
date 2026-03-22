@@ -135,24 +135,19 @@ func TestContextScopeFormattingAndNameHelpers(t *testing.T) {
 	assert.Equal(t, "alp...", truncateContextName("alpha", 3))
 }
 
-func TestContextCommitEditTagBranches(t *testing.T) {
-	model := NewContextModel(nil)
-	model.editTags = []string{"alpha-tag"}
+func TestContextNormalizeTagBranchMatrix(t *testing.T) {
+	// whitespace-only and # prefix produce empty string.
+	assert.Equal(t, "", normalizeTag("   "))
+	assert.Equal(t, "", normalizeTag("#"))
 
-	model.editTagBuf = "   "
-	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
-	assert.Equal(t, []string{"alpha-tag"}, model.editTags)
+	// normalization: trim, strip #, lowercase, collapse spaces/underscores to dashes.
+	assert.Equal(t, "alpha-tag", normalizeTag("#Alpha Tag"))
+	assert.Equal(t, "beta-tag", normalizeTag("Beta_Tag"))
 
-	model.editTagBuf = "#Alpha Tag"
-	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
-	assert.Equal(t, []string{"alpha-tag"}, model.editTags)
-
-	model.editTagBuf = "Beta_Tag"
-	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
-	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, model.editTags)
+	// dedup removes duplicates after normalization.
+	tags := []string{"alpha-tag", "alpha-tag"}
+	tags = dedup(tags)
+	assert.Equal(t, []string{"alpha-tag"}, tags)
 }
 
 func TestContextLoadScopeNamesSuccessErrorAndNilClient(t *testing.T) {

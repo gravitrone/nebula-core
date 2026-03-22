@@ -40,8 +40,8 @@ func TestContextSaveLinksEntities(t *testing.T) {
 	})
 
 	model := NewContextModel(client)
-	model.fields[fieldTitle].value = "Test"
-	model.fields[fieldNotes].value = "Notes"
+	model.addTitle = "Test"
+	model.addNotes = "Notes"
 	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Alpha"}, {ID: "ent-2", Name: "Beta"}}
 
 	model, cmd := model.save()
@@ -102,31 +102,25 @@ func TestNormalizeScope(t *testing.T) {
 	assert.Equal(t, "team-scope", normalizeScope("#Team Scope"))
 }
 
-// TestCommitTagDedupes handles test commit tag dedupes.
-func TestCommitTagDedupes(t *testing.T) {
-	model := NewContextModel(nil)
-	model.tags = []string{"alpha"}
-	model.tagBuf = "ALPHA"
-	model.commitTag()
-	assert.Equal(t, []string{"alpha"}, model.tags)
+// TestTagDedupes verifies that duplicate tags are removed after normalization.
+func TestTagDedupes(t *testing.T) {
+	tags := []string{"alpha", normalizeTag("ALPHA")}
+	tags = dedup(tags)
+	assert.Equal(t, []string{"alpha"}, tags)
 }
 
-// TestCommitScopeDedupes handles test commit scope dedupes.
-func TestCommitScopeDedupes(t *testing.T) {
-	model := NewContextModel(nil)
-	model.scopes = []string{"public"}
-	model.scopeBuf = " Public "
-	model.commitScope()
-	assert.Equal(t, []string{"public"}, model.scopes)
+// TestScopeDedupes verifies that duplicate scopes are removed after normalization.
+func TestScopeDedupes(t *testing.T) {
+	scopes := []string{"public", normalizeScope(" Public ")}
+	scopes = dedup(scopes)
+	assert.Equal(t, []string{"public"}, scopes)
 }
 
-// TestCommitEditScopeDedupes handles test commit edit scope dedupes.
-func TestCommitEditScopeDedupes(t *testing.T) {
-	model := NewContextModel(nil)
-	model.editScopes = []string{"public"}
-	model.editScopeBuf = " PUBLIC "
-	model.commitEditScope()
-	assert.Equal(t, []string{"public"}, model.editScopes)
+// TestEditScopeDedupes verifies that edit scope normalization removes duplicates.
+func TestEditScopeDedupes(t *testing.T) {
+	scopes := []string{"public", normalizeScope(" PUBLIC ")}
+	scopes = dedup(scopes)
+	assert.Equal(t, []string{"public"}, scopes)
 }
 
 // TestContextToggleModeLoadsList handles test context toggle mode loads list.
@@ -190,15 +184,28 @@ func TestContextListEnterRejectsMissingID(t *testing.T) {
 	assert.Equal(t, contextViewList, model.view)
 }
 
-// TestContextRenderEditShowsTagsAndScopes handles test context render edit shows tags and scopes.
+// TestContextRenderEditShowsTagsAndScopes verifies startEdit populates edit binding strings.
 func TestContextRenderEditShowsTagsAndScopes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.width = 100
 	model.view = contextViewEdit
-	model.editTags = []string{"alpha"}
-	model.editScopes = []string{"public"}
+	model.scopeNames = map[string]string{"scope-1": "public"}
+	model.detail = &api.Context{
+		ID:              "ctx-1",
+		Title:           "Alpha",
+		SourceType:      "note",
+		Status:          "active",
+		Tags:            []string{"alpha"},
+		PrivacyScopeIDs: []string{"scope-1"},
+	}
+	model.startEdit()
 
+	// startEdit populates editTagStr and editScopeStr from the detail.
+	assert.Equal(t, "alpha", model.editTagStr)
+	assert.Equal(t, "public", model.editScopeStr)
+	// Edit form is initialized.
+	assert.NotNil(t, model.editForm)
+	// renderEdit doesn't panic and returns non-empty output.
 	out := model.renderEdit()
-	assert.Contains(t, out, "alpha")
-	assert.Contains(t, out, "public")
+	assert.NotEmpty(t, out)
 }

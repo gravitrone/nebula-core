@@ -105,7 +105,7 @@ func TestHasUnsavedMatrix(t *testing.T) {
 
 	app = NewApp(nil, &config.Config{})
 	app.know.view = contextViewAdd
-	app.know.fields[fieldTitle].value = "draft"
+	app.know.addTitle = "draft"
 	assert.True(t, app.hasUnsaved())
 
 	app = NewApp(nil, &config.Config{})
@@ -125,11 +125,11 @@ func TestContextHasInputMatrix(t *testing.T) {
 	model := NewContextModel(nil)
 	assert.False(t, contextHasInput(model))
 
-	model.fields[fieldTitle].value = "hello"
+	model.addTitle = "hello"
 	assert.True(t, contextHasInput(model))
 
 	model = NewContextModel(nil)
-	model.tagBuf = "tag-1"
+	model.addTagStr = "tag-1"
 	assert.True(t, contextHasInput(model))
 
 	model = NewContextModel(nil)
@@ -161,7 +161,6 @@ func TestCanExitToTabNavMatrix(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabKnow
 	app.know.view = contextViewAdd
-	app.know.focus = fieldTitle
 	assert.True(t, app.canExitToTabNav())
 	app.know.modeFocus = true
 	assert.False(t, app.canExitToTabNav())
@@ -280,8 +279,7 @@ func TestCanExitToTabNavAdditionalGuards(t *testing.T) {
 	app.know.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 	app.know.view = contextViewAdd
-	app.know.modeFocus = false
-	app.know.focus = fieldNotes
+	app.know.modeFocus = true
 	assert.False(t, app.canExitToTabNav())
 	app.know.view = contextViewDetail
 	assert.False(t, app.canExitToTabNav())

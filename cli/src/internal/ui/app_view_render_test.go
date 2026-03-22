@@ -77,7 +77,7 @@ func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 	model, _ = app.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	app = model.(App)
 	app.know.view = contextViewAdd
-	app.know.fields[fieldTitle].value = "draft"
+	app.know.addTitle = "draft"
 
 	model, _ = app.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	app = model.(App)

@@ -6,52 +6,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestContextCommitScopeBranchMatrix(t *testing.T) {
-	model := NewContextModel(nil)
-	model.scopes = []string{"public"}
+func TestContextNormalizeScopeBranchMatrix(t *testing.T) {
+	// Whitespace-only and # prefix produce empty string.
+	assert.Equal(t, "", normalizeScope("   "))
+	assert.Equal(t, "", normalizeScope("#"))
 
-	model.scopeBuf = "   "
-	model.commitScope()
-	assert.Equal(t, []string{"public"}, model.scopes)
-	assert.Equal(t, "", model.scopeBuf)
+	// Normalization: trim, strip #, lowercase, collapse spaces to dashes.
+	assert.Equal(t, "public", normalizeScope(" Public "))
+	assert.Equal(t, "team-scope", normalizeScope("Team Scope"))
+	assert.Equal(t, "admin_team", normalizeScope("#Admin_Team"))
 
-	model.scopeBuf = "#"
-	model.commitScope()
-	assert.Equal(t, []string{"public"}, model.scopes)
-	assert.Equal(t, "", model.scopeBuf)
-
-	model.scopeBuf = " Public "
-	model.commitScope()
-	assert.Equal(t, []string{"public"}, model.scopes)
-	assert.Equal(t, "", model.scopeBuf)
-
-	model.scopeBuf = "Team Scope"
-	model.commitScope()
-	assert.Equal(t, []string{"public", "team-scope"}, model.scopes)
-	assert.Equal(t, "", model.scopeBuf)
+	// Dedup removes repeated entries after normalization.
+	scopes := []string{"public", "public", "team-scope"}
+	scopes = dedup(scopes)
+	assert.Equal(t, []string{"public", "team-scope"}, scopes)
 }
 
-func TestContextCommitEditScopeBranchMatrix(t *testing.T) {
-	model := NewContextModel(nil)
-	model.editScopes = []string{"private"}
-
-	model.editScopeBuf = "   "
-	model.commitEditScope()
-	assert.Equal(t, []string{"private"}, model.editScopes)
-	assert.Equal(t, "", model.editScopeBuf)
-
-	model.editScopeBuf = "#"
-	model.commitEditScope()
-	assert.Equal(t, []string{"private"}, model.editScopes)
-	assert.Equal(t, "", model.editScopeBuf)
-
-	model.editScopeBuf = " PRIVATE "
-	model.commitEditScope()
-	assert.Equal(t, []string{"private"}, model.editScopes)
-	assert.Equal(t, "", model.editScopeBuf)
-
-	model.editScopeBuf = "Admin Team"
-	model.commitEditScope()
-	assert.Equal(t, []string{"private", "admin-team"}, model.editScopes)
-	assert.Equal(t, "", model.editScopeBuf)
+func TestContextNormalizeScopeListDedupsViaParseAndNormalize(t *testing.T) {
+	// Parse comma-separated, normalize each, dedup.
+	scopeStr := "private, Admin Team, #private"
+	scopes := parseCommaSeparated(scopeStr)
+	for i, s := range scopes {
+		scopes[i] = normalizeScope(s)
+	}
+	scopes = normalizeScopeList(scopes)
+	assert.Contains(t, scopes, "private")
+	assert.Contains(t, scopes, "admin-team")
+	assert.Len(t, scopes, 2) // #private normalizes to "private" which deduplicates
 }

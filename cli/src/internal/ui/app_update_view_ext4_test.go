@@ -169,7 +169,7 @@ func TestUpdateKeyFlowRecoveryAndGlobalBranches(t *testing.T) {
 	updated.quickstartOpen = false
 	updated.err = ""
 	updated.know.view = contextViewAdd
-	updated.know.fields[fieldTitle].value = "draft"
+	updated.know.addTitle = "draft"
 	model, _ = updated.Update(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	updated = model.(App)
 	assert.True(t, updated.quitConfirm)

@@ -123,11 +123,8 @@ func TestJobsUpdateKeyRoutingBranches(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.False(t, updated.modeFocus)
 
-	model = NewJobsModel(nil)
-	model.view = jobsViewAdd
-	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	require.Nil(t, cmd)
-	assert.True(t, updated.modeFocus)
+	// With huh forms, modeFocus in add view is set via the mode line, not raw KeyUp.
+	// The modeFocus=true path is covered by handleModeKeys/handleListKeys tests.
 
 	model = NewJobsModel(nil)
 	model.view = jobsViewEdit
