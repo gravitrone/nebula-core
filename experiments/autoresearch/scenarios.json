@@ -2,7 +2,7 @@
   {
     "name": "startup_banner",
     "tape": "startup",
-    "screenshot": "testing/vhs/baselines/startup.png",
+    "screenshot": "experiments/vhs/baselines/startup.png",
     "checks": [
       "ASCII banner is horizontally centered within the terminal width",
       "Subtitle 'Context Infrastructure for Agents' appears below the banner",
@@ -14,7 +14,7 @@
   {
     "name": "tab_bar_layout",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_inbox.png",
+    "screenshot": "experiments/vhs/baselines/tab_inbox.png",
     "checks": [
       "All 10 tab names are visible without truncation",
       "Tab names are evenly spaced across the bar",
@@ -26,7 +26,7 @@
   {
     "name": "entity_table",
     "tape": "entity_crud",
-    "screenshot": "testing/vhs/baselines/entity_list.png",
+    "screenshot": "experiments/vhs/baselines/entity_list.png",
     "checks": [
       "Table has a visible header row with column names",
       "Table columns are evenly spaced and aligned",
@@ -38,7 +38,7 @@
   {
     "name": "entity_table_focused",
     "tape": "entity_crud",
-    "screenshot": "testing/vhs/baselines/entity_table_focused.png",
+    "screenshot": "experiments/vhs/baselines/entity_table_focused.png",
     "checks": [
       "One row in the table has a visible selection highlight",
       "Selected row text is readable against the highlight background",
@@ -49,7 +49,7 @@
   {
     "name": "entity_detail",
     "tape": "entity_crud",
-    "screenshot": "testing/vhs/baselines/entity_detail.png",
+    "screenshot": "experiments/vhs/baselines/entity_detail.png",
     "checks": [
       "Detail view shows entity information in key-value format",
       "Labels are visually distinct from values",
@@ -60,7 +60,7 @@
   {
     "name": "entity_add_form",
     "tape": "entity_crud",
-    "screenshot": "testing/vhs/baselines/entity_add_form.png",
+    "screenshot": "experiments/vhs/baselines/entity_add_form.png",
     "checks": [
       "Form fields are visible with labels",
       "Input fields have clear boundaries or indicators",
@@ -71,7 +71,7 @@
   {
     "name": "command_palette_open",
     "tape": "command_palette",
-    "screenshot": "testing/vhs/baselines/palette_open.png",
+    "screenshot": "experiments/vhs/baselines/palette_open.png",
     "checks": [
       "Command palette overlay is visible",
       "Search input field has a cursor or prompt indicator",
@@ -82,7 +82,7 @@
   {
     "name": "command_palette_search",
     "tape": "command_palette",
-    "screenshot": "testing/vhs/baselines/palette_search.png",
+    "screenshot": "experiments/vhs/baselines/palette_search.png",
     "checks": [
       "Search query text is visible in the input field",
       "Search results or filtered actions are displayed below input",
@@ -93,7 +93,7 @@
   {
     "name": "entities_tab_view",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_entities.png",
+    "screenshot": "experiments/vhs/baselines/tab_entities.png",
     "checks": [
       "Entities tab content area shows table or empty state",
       "Tab bar indicates Entities as the active tab",
@@ -104,7 +104,7 @@
   {
     "name": "jobs_tab_view",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_jobs.png",
+    "screenshot": "experiments/vhs/baselines/tab_jobs.png",
     "checks": [
       "Jobs tab content area shows table or empty state",
       "Tab bar indicates Jobs as the active tab",
@@ -115,7 +115,7 @@
   {
     "name": "context_tab_view",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_context.png",
+    "screenshot": "experiments/vhs/baselines/tab_context.png",
     "checks": [
       "Context tab shows content or empty state",
       "Tab bar highlights Context tab",
@@ -125,7 +125,7 @@
   {
     "name": "settings_tab_view",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_settings.png",
+    "screenshot": "experiments/vhs/baselines/tab_settings.png",
     "checks": [
       "Settings/Profile tab shows configuration sections",
       "API key, agents, and taxonomy sections are visible or labeled",
@@ -135,7 +135,7 @@
   {
     "name": "search_results",
     "tape": "search_flow",
-    "screenshot": "testing/vhs/baselines/search_results.png",
+    "screenshot": "experiments/vhs/baselines/search_results.png",
     "checks": [
       "Search input shows the typed query",
       "Results are displayed in a structured format",
@@ -146,7 +146,7 @@
   {
     "name": "empty_state",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_history.png",
+    "screenshot": "experiments/vhs/baselines/tab_history.png",
     "checks": [
       "Empty state message is displayed when no data",
       "Message is helpful and suggests next steps",
@@ -156,7 +156,7 @@
   {
     "name": "relationships_tab",
     "tape": "tab_navigation",
-    "screenshot": "testing/vhs/baselines/tab_relationships.png",
+    "screenshot": "experiments/vhs/baselines/tab_relationships.png",
     "checks": [
       "Relationships tab renders without errors",
       "Tab bar shows Relationships as active",

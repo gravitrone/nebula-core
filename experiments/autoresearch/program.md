@@ -9,7 +9,7 @@ Each iteration you will:
 1. Build the CLI binary: `make build`
 2. Run VHS tape scenarios that capture terminal screenshots as PNGs
 3. Read each screenshot and evaluate it against the scenario's visual checks
-4. Report findings as structured JSON to `testing/autoresearch/reports/latest.json`
+4. Report findings as structured JSON to `experiments/autoresearch/reports/latest.json`
 5. If visual bugs are found, fix the Go source code in `cli/src/internal/ui/`
 6. Rebuild and re-evaluate to verify the fix improved the score
 7. If score improved, commit. If score regressed or tests broke, revert.
@@ -70,7 +70,7 @@ When analyzing a screenshot, check for these categories of visual bugs:
 
 <rules>
 - Only modify files in `cli/src/internal/ui/` and `cli/src/internal/ui/components/`
-- Never modify files in `testing/autoresearch/` (this file, evaluate.sh, scenarios.json)
+- Never modify files in `experiments/autoresearch/` (this file, evaluate.sh, scenarios.json)
 - Run `make test-cli` after every code change to ensure no test regressions
 - If tests fail after a fix, revert the fix immediately
 - No co-author tags on commits
@@ -95,7 +95,7 @@ When analyzing a screenshot, check for these categories of visual bugs:
 
 ## Output Format
 
-After analyzing all scenarios, write this JSON to `testing/autoresearch/reports/latest.json`:
+After analyzing all scenarios, write this JSON to `experiments/autoresearch/reports/latest.json`:
 
 ```json
 {
@@ -106,7 +106,7 @@ After analyzing all scenarios, write this JSON to `testing/autoresearch/reports/
   "scenarios": [
     {
       "name": "banner_alignment",
-      "screenshot": "testing/vhs/baselines/startup.png",
+      "screenshot": "experiments/vhs/baselines/startup.png",
       "checks": [
         {"assertion": "Banner horizontally centered", "pass": true},
         {"assertion": "Tab bar shows all 10 tabs", "pass": false, "issue": "History tab truncated at terminal edge", "severity": "major", "fix_hint": "Reduce tab label padding in renderTabBar()"}

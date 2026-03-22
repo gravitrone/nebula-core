@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 ROOT="$(cd ../.. && pwd)"
 
 # ── config ──────────────────────────────────────────────────────────────────
@@ -24,12 +25,12 @@ banner() {
   gum style --border double --padding "1 2" \
     --border-foreground "$P" --foreground "$T" --width 60 \
     "" \
-    "  nebula autoresearch" \
-    "  autonomous visual bug hunter" \
+    "  Nebula Autoresearch" \
+    "  Autonomous Visual Bug Hunter" \
     "" \
-    "  iterations   $MAX_ITERATIONS" \
-    "  branch       $BRANCH" \
-    "  isolation    git worktrees" \
+    "  Iterations   $MAX_ITERATIONS" \
+    "  Branch       $BRANCH" \
+    "  Isolation    Git Worktrees" \
     ""
 }
 
@@ -93,9 +94,9 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
 
   # ── run tests in worktree ─────────────────────────────────────────────────
   spin "running golden tests..." \
-    bash -c "cd '$ITER_DIR/cli/src' && go test ./internal/ui/ -run TestGolden -count=1 > /tmp/ar-golden.txt 2>&1" || true
+    bash -c "cd '$ITER_DIR/cli/src' && go test ./internal/ui/ -run TestGolden -count=1 -v > /tmp/ar-golden.txt 2>&1" || true
 
-  GOLDEN_PASS=$(grep -c "PASS" /tmp/ar-golden.txt 2>/dev/null || echo "0")
+  GOLDEN_PASS=$(grep -c "--- PASS" /tmp/ar-golden.txt 2>/dev/null || echo "0")
   info "golden tests: $GOLDEN_PASS passing"
 
   spin "running full test suite..." \
@@ -115,7 +116,7 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
   # ── launch claude code headless ───────────────────────────────────────────
   echo "launching claude to analyze and fix visual bugs..." | gum style --foreground "$M"
 
-  PROMPT=$(cat program.md)
+  PROMPT=$(cat "$SCRIPT_DIR/program.md")
   SUITE_STATUS=$(tail -1 /tmp/ar-tests.txt 2>/dev/null || echo "unknown")
   PROMPT="$PROMPT
 
@@ -131,12 +132,12 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
 5. Only keep changes that pass tests
 6. Be specific about what you changed and why"
 
-  claude -p "$PROMPT" \
-    --headless \
+  (cd "$ITER_DIR" && claude -p "$PROMPT" \
     --model opus \
     --allowedTools "Read,Edit,Write,Bash" \
     --max-turns 25 \
-    --cwd "$ITER_DIR" 2>/dev/null || {
+    --dangerously-skip-permissions \
+    2>/dev/null) || {
       warn "claude session ended"
     }
 
@@ -176,7 +177,6 @@ $DIFF_STAT
 
 Diff preview:
 $DIFF_SUMMARY" \
-    --headless \
     --model haiku \
     --max-turns 1 2>/dev/null || echo "fix(cli): autoresearch visual fixes (iteration $ITERATION)")
 
@@ -214,11 +214,11 @@ echo ""
 gum style --border rounded --padding "1 2" \
   --border-foreground "$OK" --foreground "$T" --width 60 \
   "" \
-  "  autoresearch complete" \
+  "  Autoresearch Complete" \
   "" \
-  "  iterations    $ITERATION" \
-  "  fixes merged  $TOTAL_FIXES" \
-  "  branch        $BRANCH" \
+  "  Iterations    $ITERATION" \
+  "  Fixes Merged  $TOTAL_FIXES" \
+  "  Branch        $BRANCH" \
   ""
 
 # cleanup worktree dir if empty
