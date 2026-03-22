@@ -133,6 +133,7 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
 
   claude -p "$PROMPT" \
     --headless \
+    --model opus \
     --allowedTools "Read,Edit,Write,Bash" \
     --max-turns 25 \
     --cwd "$ITER_DIR" 2>/dev/null || {
@@ -168,7 +169,7 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
   DIFF_STAT=$(cd "$ITER_DIR" && git diff --stat)
   DIFF_SUMMARY=$(cd "$ITER_DIR" && git diff --no-color | head -200)
 
-  COMMIT_MSG=$(claude -p "Generate a conventional commit message for this diff. Format: fix(cli): one-line description. Be specific about what visual bugs were fixed. No co-author tags.
+  COMMIT_MSG=$(claude -p "Generate a conventional commit message for this diff. Format: fix(cli): one-line description. Be specific about what visual bugs were fixed. No co-author tags. Output ONLY the commit message, nothing else.
 
 Diff stat:
 $DIFF_STAT
@@ -176,6 +177,7 @@ $DIFF_STAT
 Diff preview:
 $DIFF_SUMMARY" \
     --headless \
+    --model haiku \
     --max-turns 1 2>/dev/null || echo "fix(cli): autoresearch visual fixes (iteration $ITERATION)")
 
   # clean up the message (remove quotes, markdown, etc)
