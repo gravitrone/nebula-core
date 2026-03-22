@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -67,6 +68,7 @@ type ProtocolsModel struct {
 	items      []api.Protocol
 	allItems   []api.Protocol
 	loading    bool
+	spinner    spinner.Model
 	view       protocolsView
 	detail     *api.Protocol
 	detailRels []api.Relationship
@@ -103,8 +105,9 @@ type ProtocolsModel struct {
 // NewProtocolsModel builds the protocols UI model.
 func NewProtocolsModel(client *api.Client) ProtocolsModel {
 	return ProtocolsModel{
-		client: client,
-		list:   components.NewList(12),
+		client:  client,
+		spinner: components.NewNebulaSpinner(),
+		list:    components.NewList(12),
 		view:   protocolsViewList,
 		addFields: []formField{
 			{label: "Name"},
@@ -158,12 +161,17 @@ func (m ProtocolsModel) Init() tea.Cmd {
 	m.editApplyBuf = ""
 	m.editMeta.Reset()
 	m.editSaving = false
-	return m.loadProtocols
+	return tea.Batch(m.loadProtocols, m.spinner.Tick)
 }
 
 // Update updates update.
 func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case protocolsLoadedMsg:
 		m.loading = false
 		m.allItems = msg.items
@@ -173,14 +181,14 @@ func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 		m.addSaving = false
 		m.addErr = ""
 		m.loading = true
-		return m, m.loadProtocols
+		return m, tea.Batch(m.loadProtocols, m.spinner.Tick)
 	case protocolUpdatedMsg:
 		m.editSaving = false
 		m.detail = nil
 		m.detailRels = nil
 		m.view = protocolsViewList
 		m.loading = true
-		return m, m.loadProtocols
+		return m, tea.Batch(m.loadProtocols, m.spinner.Tick)
 	case protocolRelationshipsLoadedMsg:
 		if m.detail != nil && m.detail.ID == msg.id {
 			m.detailRels = msg.relationships
@@ -407,7 +415,7 @@ func (m ProtocolsModel) handleFilterInput(msg tea.KeyPressMsg) (ProtocolsModel, 
 // renderList renders render list.
 func (m ProtocolsModel) renderList() string {
 	if m.loading {
-		return components.CenterLine("Loading protocols...", m.width)
+		return components.CenterLine(m.spinner.View()+" Loading protocols...", m.width)
 	}
 	if len(m.items) == 0 {
 		return components.EmptyStateBox(

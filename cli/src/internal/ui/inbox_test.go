@@ -50,9 +50,7 @@ func TestInboxModelLoadsApprovals(t *testing.T) {
 	model := NewInboxModel(client)
 
 	// Init and load
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	assert.Len(t, model.items, 2)
 	assert.Equal(t, "ap-1", model.items[0].ID)
@@ -74,9 +72,7 @@ func TestInboxModelNavigationKeys(t *testing.T) {
 	model := NewInboxModel(client)
 
 	// Load items
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Initially at index 0
 	assert.Equal(t, 0, model.list.Selected())
@@ -105,9 +101,7 @@ func TestInboxModelEnterShowsDetail(t *testing.T) {
 	model := NewInboxModel(client)
 
 	// Load items
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Press enter to view detail
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -150,14 +144,12 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 	})
 
 	model := NewInboxModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	var detailCmd tea.Cmd
 	model, detailCmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, detailCmd)
-	msg = detailCmd()
+	msg := detailCmd()
 	model, _ = model.Update(msg)
 
 	if !diffCalled {
@@ -184,9 +176,7 @@ func TestInboxModelEscapeBackFromDetail(t *testing.T) {
 	model := NewInboxModel(client)
 
 	// Load and enter detail
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.NotNil(t, model.detail)
 
@@ -208,9 +198,7 @@ func TestInboxModelRenderEmpty(t *testing.T) {
 	model := NewInboxModel(client)
 
 	// Load empty list
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	view := model.View()
 	assert.Contains(t, view, "No pending approvals")
@@ -232,9 +220,7 @@ func TestInboxBulkApproveRequiresConfirm(t *testing.T) {
 	model := NewInboxModel(client)
 	model.confirmBulk = true
 
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 
@@ -271,9 +257,7 @@ func TestInboxModelRejectInputHandling(t *testing.T) {
 	model := NewInboxModel(client)
 
 	// Load items
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Press 'r' to start rejecting
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'r', Text: "r"})
@@ -460,20 +444,18 @@ func TestInboxBatchApproveSelected(t *testing.T) {
 	})
 
 	model := NewInboxModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 
 	require.Nil(t, cmd)
 
 	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	_, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, approved)
@@ -527,20 +509,18 @@ func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 	})
 
 	model := NewInboxModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Multi-select two mixed request types.
 	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.Nil(t, cmd)
 
 	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	_, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-bulk", "ap-update"}, approved)
@@ -569,8 +549,7 @@ func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 	})
 
 	model := NewInboxModel(client)
-	cmd := model.Init()
-	model, _ = model.Update(cmd())
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.True(t, model.grantEditing)
@@ -615,13 +594,12 @@ func TestInboxApproveRegisterAgentSendsGrantPayload(t *testing.T) {
 	})
 
 	model := NewInboxModel(client)
-	cmd := model.Init()
-	model, _ = model.Update(cmd())
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.True(t, model.grantEditing)
 	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 
@@ -654,9 +632,7 @@ func TestInboxBatchRejectSelected(t *testing.T) {
 	})
 
 	model := NewInboxModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -665,12 +641,12 @@ func TestInboxBatchRejectSelected(t *testing.T) {
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'o', Text: "o"})
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 
 	model, cmd = model.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	_, _ = model.Update(msg)
 
 	assert.ElementsMatch(t, []string{"ap-1", "ap-2"}, rejected)

@@ -62,13 +62,10 @@ func TestFilesInitLoadsFilesAndScopes(t *testing.T) {
 	})
 
 	model := NewFilesModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, cmd = model.Update(msg)
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 
 	require.NotNil(t, cmd)
-	msg = cmd()
+	msg := cmd()
 	model, _ = model.Update(msg)
 
 	assert.False(t, model.loading)
@@ -123,10 +120,8 @@ func TestFilesUpdateHandlesAPIError(t *testing.T) {
 	})
 
 	model := NewFilesModel(client)
-	cmd := model.Init()
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 	msg := cmd()
-	model, cmd = model.Update(msg)
-	msg = cmd()
 	model, _ = model.Update(msg)
 
 	// Enter detail

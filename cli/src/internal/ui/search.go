@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -50,6 +51,7 @@ type SearchModel struct {
 	query   string
 	mode    string
 	loading bool
+	spinner spinner.Model
 	list    *components.List
 	items   []searchEntry
 	width   int
@@ -63,9 +65,10 @@ const (
 // NewSearchModel builds the search UI model.
 func NewSearchModel(client *api.Client) SearchModel {
 	return SearchModel{
-		client: client,
-		mode:   searchModeText,
-		list:   components.NewList(12),
+		client:  client,
+		spinner: components.NewNebulaSpinner(),
+		mode:    searchModeText,
+		list:    components.NewList(12),
 	}
 }
 
@@ -77,6 +80,11 @@ func (m SearchModel) Init() tea.Cmd {
 // Update updates update.
 func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case searchResultsMsg:
 		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.query) {
 			return m, nil
@@ -121,7 +129,10 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		case isKey(msg, "backspace", "delete"):
 			if len(m.query) > 0 {
 				m.query = m.query[:len(m.query)-1]
-				return m, m.search(m.query)
+				if cmd := m.search(m.query); cmd != nil {
+					return m, tea.Batch(cmd, m.spinner.Tick)
+				}
+				return m, nil
 			}
 		case isDown(msg):
 			m.list.Down()
@@ -139,7 +150,10 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 				m.list.SetItems(nil)
 				return m, nil
 			}
-			return m, m.search(m.query)
+			if cmd := m.search(m.query); cmd != nil {
+				return m, tea.Batch(cmd, m.spinner.Tick)
+			}
+			return m, nil
 		case isEnter(msg):
 			if idx := m.list.Selected(); idx < len(m.items) {
 				entry := m.items[idx]
@@ -152,7 +166,10 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 					return m, nil
 				}
 				m.query += ch
-				return m, m.search(m.query)
+				if cmd := m.search(m.query); cmd != nil {
+					return m, tea.Batch(cmd, m.spinner.Tick)
+				}
+				return m, nil
 			}
 		}
 	}
@@ -175,7 +192,7 @@ func (m SearchModel) View() string {
 	b.WriteString("\n\n")
 
 	if m.loading {
-		b.WriteString(MutedStyle.Render("Searching..."))
+		b.WriteString(m.spinner.View() + " " + MutedStyle.Render("Searching..."))
 	} else if strings.TrimSpace(m.query) == "" {
 		b.WriteString(MutedStyle.Render("Type to search."))
 	} else if len(m.items) == 0 {

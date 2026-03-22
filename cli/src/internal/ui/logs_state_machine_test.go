@@ -66,14 +66,10 @@ func TestLogsInitLoadsLogsAndScopes(t *testing.T) {
 	})
 
 	model := NewLogsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, cmd = model.Update(msg)
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 
 	require.NotNil(t, cmd)
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(cmd())
 
 	assert.False(t, model.loading)
 	assert.Len(t, model.items, 1)
@@ -135,9 +131,7 @@ func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 	})
 
 	model := NewLogsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	model, cmd = model.Update(cmd())
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 
@@ -231,9 +225,7 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	})
 
 	model := NewLogsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	model, cmd = model.Update(cmd())
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 
@@ -275,7 +267,7 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	// Reload logs and scopes.
-	model, cmd = model.Update(cmd())
+	model, cmd = model.Update(runCmdFirst(cmd))
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 
@@ -327,9 +319,7 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	})
 
 	model := NewLogsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	model, cmd = model.Update(cmd())
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 
@@ -354,7 +344,7 @@ func TestLogsEditFlowSavesPatchAndReturnsToList(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	// Reload logs and scopes (post-update path).
-	model, cmd = model.Update(cmd())
+	model, cmd = model.Update(runCmdFirst(cmd))
 	require.NotNil(t, cmd)
 	model, _ = model.Update(cmd())
 

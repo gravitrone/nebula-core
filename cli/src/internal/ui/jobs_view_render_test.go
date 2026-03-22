@@ -63,14 +63,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model.width = 90
 
 	// Init + load jobs + scopes.
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, cmd = model.Update(msg)
-	if cmd != nil {
-		msg = cmd()
-		model, _ = model.Update(msg)
-	}
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "1 total")
@@ -97,8 +90,8 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	var saveCmd tea.Cmd
 	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, saveCmd)
-	msg = saveCmd()
-	model, cmd = model.Update(msg)
+	msg := saveCmd()
+	model, cmd := model.Update(msg)
 	require.NotNil(t, cmd) // reload jobs
 
 	assert.True(t, createCalled)

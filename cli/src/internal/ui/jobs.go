@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -63,6 +64,7 @@ type JobsModel struct {
 	list             *components.List
 	selected         map[string]bool
 	loading          bool
+	spinner          spinner.Model
 	detail           *api.Job
 	detailRels       []api.Relationship
 	filtering        bool
@@ -109,6 +111,7 @@ type JobsModel struct {
 func NewJobsModel(client *api.Client) JobsModel {
 	return JobsModel{
 		client:   client,
+		spinner:  components.NewNebulaSpinner(),
 		list:     components.NewList(15),
 		selected: map[string]bool{},
 		view:     jobsViewList,
@@ -144,12 +147,17 @@ func (m JobsModel) Init() tea.Cmd {
 	m.contextLinkBuf = ""
 	m.contextCreating = false
 	m.contextCreateBuf = ""
-	return m.loadJobs
+	return tea.Batch(m.loadJobs, m.spinner.Tick)
 }
 
 // Update updates update.
 func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case jobsLoadedMsg:
 		m.loading = false
 		m.allItems = msg.items
@@ -179,19 +187,21 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.changingSt = false
 		m.statusBuf = ""
 		m.statusTargets = nil
-		return m, m.loadJobs
+		m.loading = true
+		return m, tea.Batch(m.loadJobs, m.spinner.Tick)
 	case subtaskCreatedMsg:
 		m.detail = nil
 		m.detailContext = nil
 		m.contextLoading = false
 		m.creatingSubtask = false
 		m.subtaskBuf = ""
-		return m, m.loadJobs
+		m.loading = true
+		return m, tea.Batch(m.loadJobs, m.spinner.Tick)
 	case jobCreatedMsg:
 		m.addSaving = false
 		m.addSaved = true
 		m.loading = true
-		return m, m.loadJobs
+		return m, tea.Batch(m.loadJobs, m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.addSaving = false
@@ -327,7 +337,7 @@ func (m JobsModel) toggleMode() (JobsModel, tea.Cmd) {
 	if m.view == jobsViewAdd {
 		m.view = jobsViewList
 		m.loading = true
-		return m, m.loadJobs
+		return m, tea.Batch(m.loadJobs, m.spinner.Tick)
 	}
 	m.view = jobsViewAdd
 	return m, nil
@@ -337,7 +347,7 @@ func (m JobsModel) toggleMode() (JobsModel, tea.Cmd) {
 
 func (m JobsModel) renderList() string {
 	if m.loading {
-		return MutedStyle.Render("Loading jobs...")
+		return m.spinner.View() + " " + MutedStyle.Render("Loading jobs...")
 	}
 	if len(m.items) == 0 {
 		return components.EmptyStateBox(
