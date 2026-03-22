@@ -188,10 +188,10 @@ func TestUpdateKeyFlowRecoveryAndGlobalBranches(t *testing.T) {
 	assert.Nil(t, cmd)
 
 	updated = NewApp(nil, &config.Config{})
-	updated.bodyScroll = 1
+	updated.scrollTarget = 1
 	model, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyPgUp})
 	updated = model.(App)
-	assert.Equal(t, 0, updated.bodyScroll)
+	assert.Equal(t, float64(0), updated.scrollTarget)
 
 	updated = NewApp(nil, &config.Config{})
 	updated.tab = tabJobs
