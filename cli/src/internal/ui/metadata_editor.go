@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
@@ -27,7 +27,7 @@ type MetadataEditor struct {
 	scopeSelecting bool
 
 	rows     []metadataEditorRow
-	list     *components.List
+	list     table.Model
 	selected map[int]bool
 
 	entryMode    bool
@@ -55,7 +55,7 @@ func (m *MetadataEditor) Reset() {
 	m.scopeIdx = 0
 	m.scopeSelecting = false
 	m.rows = nil
-	m.list = nil
+	m.list = components.NewNebulaTable(nil, metadataPanelPageSize(false))
 	m.selected = nil
 	m.entryMode = false
 	m.entryBuf = ""
@@ -164,13 +164,9 @@ func (m *MetadataEditor) HandleKey(msg tea.KeyPressMsg) bool {
 		m.scopeSelecting = true
 		return false
 	case isDown(msg):
-		if m.list != nil {
-			m.list.Down()
-		}
+		m.list.MoveDown(1)
 	case isUp(msg):
-		if m.list != nil {
-			m.list.Up()
-		}
+		m.list.MoveUp(1)
 	case isSpace(msg):
 		idx := m.selectedRowIndex()
 		if idx >= 0 {
@@ -246,12 +242,6 @@ func (m MetadataEditor) renderTableMode(width int) string {
 		return components.Indent(body+"\n\n"+scopeBox+"\n\n"+footer, 1)
 	}
 
-	if m.list == nil {
-		list := components.NewList(metadataPanelPageSize(false))
-		syncMetadataList(list, m.toDisplayRows(), metadataPanelPageSize(false))
-		m.list = list
-	}
-	visible := m.list.Visible()
 	selectedCount := 0
 	for idx, selected := range m.selected {
 		if !selected {
@@ -265,32 +255,24 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	showSelectionColumn := selectedCount > 0
 	columnBudget := contentWidth
 	if showSelectionColumn {
-		columnBudget -= 5
+		columnBudget -= 6
 	}
 	groupWidth, fieldWidth, valueWidth := metadataColumnWidths(columnBudget)
-	columns := make([]components.TableColumn, 0, 4)
+
+	tableCols := make([]table.Column, 0, 4)
 	if showSelectionColumn {
-		columns = append(columns, components.TableColumn{Header: "Sel", Width: 4, Align: lipgloss.Left})
+		tableCols = append(tableCols, table.Column{Title: "Sel", Width: 4})
 	}
-	columns = append(columns,
-		components.TableColumn{Header: "Group", Width: groupWidth, Align: lipgloss.Left},
-		components.TableColumn{Header: "Field", Width: fieldWidth, Align: lipgloss.Left},
-		components.TableColumn{Header: "Value", Width: valueWidth, Align: lipgloss.Left},
+	tableCols = append(tableCols,
+		table.Column{Title: "Group", Width: groupWidth},
+		table.Column{Title: "Field", Width: fieldWidth},
+		table.Column{Title: "Value", Width: valueWidth},
 	)
 
-	gridRows := make([][]string, 0, len(visible))
-	activeRow := -1
-	for relIdx := range visible {
-		absIdx := m.list.RelToAbs(relIdx)
-		if absIdx < 0 || absIdx >= len(rows) {
-			continue
-		}
-		row := rows[absIdx]
+	tableRows := make([]table.Row, 0, len(rows))
+	for absIdx, row := range rows {
 		group, field := metadataGroupAndField(row.path)
-		if m.list.IsSelected(absIdx) {
-			activeRow = len(gridRows)
-		}
-		cells := make([]string, 0, 4)
+		cells := make(table.Row, 0, 4)
 		if showSelectionColumn {
 			mark := "[ ]"
 			if m.selected != nil && m.selected[absIdx] {
@@ -299,17 +281,19 @@ func (m MetadataEditor) renderTableMode(width int) string {
 			cells = append(cells, mark)
 		}
 		cells = append(cells, group, field, row.value)
-		gridRows = append(gridRows, cells)
+		tableRows = append(tableRows, cells)
 	}
-	table := components.TableGridWithActiveRow(columns, gridRows, contentWidth, activeRow)
-	table = colorizeScopeBadges(table)
 
-	start := m.list.Offset + 1
-	end := m.list.Offset + len(gridRows)
-	if start < 1 {
-		start = 1
+	m.list.SetColumns(tableCols)
+	m.list.SetWidth(contentWidth)
+	m.list.SetHeight(metadataPanelPageSize(false))
+	m.list.SetRows(tableRows)
+
+	cursor := m.list.Cursor()
+	if cursor < 0 {
+		cursor = 0
 	}
-	info := fmt.Sprintf("Rows %d-%d of %d", start, end, len(rows))
+	info := fmt.Sprintf("Rows 1-%d of %d", len(rows), len(rows))
 	if selectedCount > 0 {
 		info += fmt.Sprintf(" · selected %d", selectedCount)
 	}
@@ -317,7 +301,8 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	if m.notice != "" {
 		footer += "\n" + MutedStyle.Render(m.notice)
 	}
-	body := table + "\n\n" + MutedStyle.Render(info) + "\n" + MutedStyle.Render(footer)
+	tableView := colorizeScopeBadges(m.list.View())
+	body := tableView + "\n\n" + MutedStyle.Render(info) + "\n" + MutedStyle.Render(footer)
 	return components.Indent(components.TitledBox("Metadata", body, width)+"\n\n"+m.renderScopeBox(width), 1)
 }
 
@@ -405,14 +390,28 @@ func dropLastRune(s string) string {
 
 // syncList handles sync list.
 func (m *MetadataEditor) syncList() {
-	if m.list == nil {
-		m.list = components.NewList(metadataPanelPageSize(false))
-	}
 	if m.selected == nil {
 		m.selected = map[int]bool{}
 	}
 	rows := m.toDisplayRows()
-	syncMetadataList(m.list, rows, metadataPanelPageSize(false))
+	tableRows := make([]table.Row, 0, len(rows))
+	for _, r := range rows {
+		tableRows = append(tableRows, table.Row{r.field, r.value})
+	}
+	prevCursor := m.list.Cursor()
+	// Columns must be set before SetRows to avoid renderRow panicking on UpdateViewport.
+	m.list.SetColumns([]table.Column{
+		{Title: "Path", Width: 30},
+		{Title: "Value", Width: 40},
+	})
+	m.list.SetRows(tableRows)
+	if len(tableRows) > 0 {
+		if prevCursor >= 0 && prevCursor < len(tableRows) {
+			m.list.SetCursor(prevCursor)
+		} else {
+			m.list.SetCursor(0)
+		}
+	}
 	for idx := range m.selected {
 		if idx < 0 || idx >= len(rows) {
 			delete(m.selected, idx)
@@ -431,10 +430,7 @@ func (m MetadataEditor) toDisplayRows() []metadataDisplayRow {
 
 // selectedRowIndex handles selected row index.
 func (m MetadataEditor) selectedRowIndex() int {
-	if m.list == nil {
-		return -1
-	}
-	idx := m.list.Selected()
+	idx := m.list.Cursor()
 	if idx < 0 || idx >= len(m.rows) {
 		return -1
 	}

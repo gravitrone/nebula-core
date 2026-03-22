@@ -4,15 +4,16 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestProfileSelectedTaxonomyNilListBranch(t *testing.T) {
+func TestProfileSelectedTaxonomyEmptyItemsBranch(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{})
-	model.taxList = nil
+	// taxItems is empty, so selectedTaxonomy returns nil
 	assert.Nil(t, model.selectedTaxonomy())
 }
 
@@ -36,8 +37,8 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 			CreatedAt: now,
 			UpdatedAt: now,
 		}}
-		model.taxList.SetItems([]string{"row-1", "stale-row"})
-		model.taxList.Cursor = 99
+		model.taxList.SetRows([]table.Row{{"row-1"}, {"stale-row"}})
+		model.taxList.SetCursor(0)
 
 		out := model.renderTaxonomy()
 		assert.Contains(t, out, "rows")
@@ -60,8 +61,8 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		}}
-		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
-		model.taxList.Cursor = 0
+		model.taxList.SetRows([]table.Row{{formatTaxonomyLine(model.taxItems[0])}})
+		model.taxList.SetCursor(0)
 
 		selected := model.selectedTaxonomy()
 		require.NotNil(t, selected)
@@ -89,21 +90,22 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 			CreatedAt: now,
 			UpdatedAt: now,
 		}}
-		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
-		model.taxList.Cursor = 0
+		model.taxList.SetRows([]table.Row{{formatTaxonomyLine(model.taxItems[0])}})
+		model.taxList.SetCursor(0)
 
 		out := model.renderTaxonomy()
 		assert.Contains(t, out, "Selected")
 		assert.Contains(t, out, "filter: scope")
 	})
 
-	t.Run("wide layout without preview when selection is out of range", func(t *testing.T) {
+	t.Run("wide layout without preview when section focus suppresses preview", func(t *testing.T) {
 		model := NewProfileModel(nil, &config.Config{})
 		model.width = 180
 		model.taxKind = 3
 		model.taxLoading = false
 		model.taxIncludeInactive = true
 		model.taxSearch = ""
+		model.sectionFocus = true
 		model.taxItems = []api.TaxonomyEntry{{
 			ID:        "log-1",
 			Name:      "journal",
@@ -112,8 +114,8 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 			CreatedAt: now,
 			UpdatedAt: now,
 		}}
-		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
-		model.taxList.Cursor = 99
+		model.taxList.SetRows([]table.Row{{formatTaxonomyLine(model.taxItems[0])}})
+		model.taxList.SetCursor(0)
 
 		out := model.renderTaxonomy()
 		assert.NotContains(t, out, "Selected")
@@ -133,8 +135,8 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		}}
-		model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
-		model.taxList.Cursor = 0
+		model.taxList.SetRows([]table.Row{{formatTaxonomyLine(model.taxItems[0])}})
+		model.taxList.SetCursor(0)
 
 		out := model.renderTaxonomy()
 		assert.Contains(t, out, "Name")

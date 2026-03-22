@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -40,24 +41,24 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 
 	updated.section = 2
 	updated.sectionFocus = false
-	updated.taxList.SetItems([]string{"public", "private"})
-	updated.taxList.Cursor = 0
+	updated.taxList.SetRows([]table.Row{{"public"}, {"private"}})
+	updated.taxList.SetCursor(0)
 
 	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	assert.Equal(t, 1, updated.taxList.Cursor)
+	assert.Equal(t, 1, updated.taxList.Cursor())
 
 	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, updated.taxList.Cursor)
+	assert.Equal(t, 0, updated.taxList.Cursor())
 
 	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, updated.sectionFocus)
 
 	updated.section = 0
 	updated.sectionFocus = false
-	updated.keyList.SetItems([]string{"k1", "k2"})
-	updated.keyList.Cursor = 1
+	updated.keyList.SetRows([]table.Row{{"k1"}, {"k2"}})
+	updated.keyList.SetCursor(1)
 	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, updated.keyList.Cursor)
+	assert.Equal(t, 0, updated.keyList.Cursor())
 
 	updated.config = nil
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
@@ -73,8 +74,8 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 	updated.taxItems = []api.TaxonomyEntry{
 		{ID: "scope-1", Name: "public", Description: &desc},
 	}
-	updated.taxList.SetItems([]string{"public"})
-	updated.taxList.Cursor = 0
+	updated.taxList.SetRows([]table.Row{{"public"}})
+	updated.taxList.SetCursor(0)
 
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
@@ -120,8 +121,8 @@ func TestProfileViewAndRenderKeysAdditionalBranches(t *testing.T) {
 			CreatedAt: now,
 		},
 	}
-	model.keyList.SetItems([]string{"row-1", "row-2"})
-	model.keyList.Cursor = 0
+	model.keyList.SetRows([]table.Row{{"row-1"}, {"row-2"}})
+	model.keyList.SetCursor(0)
 	model.section = 0
 	model.sectionFocus = true
 
@@ -173,8 +174,8 @@ func TestProfileRenderKeyAndAgentPreviewAdditionalBranches(t *testing.T) {
 			UpdatedAt:        now,
 		},
 	}
-	model.agentList.SetItems([]string{"row-1", "row-2"})
-	model.agentList.Cursor = 0
+	model.agentList.SetRows([]table.Row{{"row-1"}, {"row-2"}})
+	model.agentList.SetCursor(0)
 
 	agentsWide := stripANSI(model.renderAgents())
 	assert.Contains(t, agentsWide, "trusted")

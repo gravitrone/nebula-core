@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -159,7 +160,8 @@ func TestProfileTaxonomyArchiveAndActivateFlowQueuesReload(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}}
-	model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
+	model.taxList.SetRows([]table.Row{{formatTaxonomyLine(model.taxItems[0])}})
+	model.taxList.SetCursor(0)
 
 	// Archive selected.
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'd', Text: "d"})
@@ -201,7 +203,8 @@ func TestProfileTaxonomyRenderAndHelperCoverage(t *testing.T) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}}
-	model.taxList.SetItems([]string{formatTaxonomyLine(model.taxItems[0])})
+	model.taxList.SetRows([]table.Row{{formatTaxonomyLine(model.taxItems[0])}})
+	model.taxList.SetCursor(0)
 
 	item := model.selectedTaxonomy()
 	require.NotNil(t, item)

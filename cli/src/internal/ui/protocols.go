@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -64,7 +65,7 @@ var protocolStatusOptions = []string{"active", "inactive"}
 
 type ProtocolsModel struct {
 	client     *api.Client
-	list       *components.List
+	dataTable  table.Model
 	items      []api.Protocol
 	allItems   []api.Protocol
 	loading    bool
@@ -105,10 +106,10 @@ type ProtocolsModel struct {
 // NewProtocolsModel builds the protocols UI model.
 func NewProtocolsModel(client *api.Client) ProtocolsModel {
 	return ProtocolsModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(12),
-		view:   protocolsViewList,
+		client:    client,
+		spinner:   components.NewNebulaSpinner(),
+		dataTable: components.NewNebulaTable(nil, 12),
+		view:      protocolsViewList,
 		addFields: []formField{
 			{label: "Name"},
 			{label: "Title"},
@@ -283,7 +284,7 @@ func (m *ProtocolsModel) applySearch() {
 		}
 		m.items = filtered
 	}
-	labels := make([]string, 0, len(m.items))
+	rows := make([]table.Row, 0, len(m.items))
 	for _, item := range m.items {
 		name := components.SanitizeOneLine(item.Name)
 		title := components.SanitizeOneLine(item.Title)
@@ -291,11 +292,10 @@ func (m *ProtocolsModel) applySearch() {
 		if strings.TrimSpace(item.Title) != "" {
 			label = fmt.Sprintf("%s · %s", name, title)
 		}
-		labels = append(labels, label)
+		rows = append(rows, table.Row{label})
 	}
-	if m.list != nil {
-		m.list.SetItems(labels)
-	}
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 }
 
 // --- Mode Line ---
@@ -352,12 +352,12 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isKey(msg, "n"):
 		m.view = protocolsViewAdd
@@ -366,7 +366,7 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea
 		m.view = protocolsViewAdd
 		return m, nil
 	case isEnter(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			m.detail = &m.items[idx]
 			m.detailRels = nil
 			m.view = protocolsViewDetail
@@ -427,7 +427,6 @@ func (m ProtocolsModel) renderList() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -438,13 +437,9 @@ func (m ProtocolsModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -461,27 +456,8 @@ func (m ProtocolsModel) renderList() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-		{Header: "Title", Width: titleWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Protocol
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		p := m.items[absIdx]
-
+	tableRows := make([]table.Row, len(m.items))
+	for i, p := range m.items {
 		name := strings.TrimSpace(components.SanitizeOneLine(p.Name))
 		if name == "" {
 			name = "protocol"
@@ -498,20 +474,22 @@ func (m ProtocolsModel) renderList() string {
 		if at.IsZero() {
 			at = p.CreatedAt
 		}
-
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(name, nameWidth),
 			components.ClampTextWidthEllipsis(title, titleWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			formatLocalTimeCompact(at),
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Name", Width: nameWidth},
+		{Title: "Title", Width: titleWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	title := "Protocols"
 	countLine := fmt.Sprintf("%d total", len(m.items))
@@ -520,18 +498,24 @@ func (m ProtocolsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Protocol
+	if !m.modeFocus {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			previewItem = &m.items[idx]
+		}
+	}
 	if previewItem != nil {
 		content := m.renderProtocolPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"

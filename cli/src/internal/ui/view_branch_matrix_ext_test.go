@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -85,7 +86,8 @@ func TestLogsRenderListAvailableColsFloorBranch(t *testing.T) {
 		CreatedAt: now,
 		UpdatedAt: now,
 	}}
-	model.list.SetItems([]string{"event"})
+	model.dataTable.SetRows([]table.Row{{"event"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "event")

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -61,7 +62,7 @@ type JobsModel struct {
 	client           *api.Client
 	allItems         []api.Job
 	items            []api.Job
-	list             *components.List
+	dataTable        table.Model
 	selected         map[string]bool
 	loading          bool
 	spinner          spinner.Model
@@ -110,10 +111,10 @@ type JobsModel struct {
 // NewJobsModel builds the jobs UI model.
 func NewJobsModel(client *api.Client) JobsModel {
 	return JobsModel{
-		client:   client,
-		spinner:  components.NewNebulaSpinner(),
-		list:     components.NewList(15),
-		selected: map[string]bool{},
+		client:    client,
+		spinner:   components.NewNebulaSpinner(),
+		dataTable: components.NewNebulaTable(nil, 15),
+		selected:  map[string]bool{},
 		view:     jobsViewList,
 		addFields: []formField{
 			{label: "Title"},
@@ -358,7 +359,6 @@ func (m JobsModel) renderList() string {
 		)
 	}
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -369,13 +369,9 @@ func (m JobsModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -387,27 +383,9 @@ func (m JobsModel) renderList() string {
 	if titleWidth < 12 {
 		titleWidth = 12
 	}
-	cols := []components.TableColumn{
-		{Header: "Title", Width: titleWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "Priority", Width: prioWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
 
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Job
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		j := m.items[absIdx]
-
+	tableRows := make([]table.Row, len(m.items))
+	for i, j := range m.items {
 		status := strings.TrimSpace(components.SanitizeOneLine(j.Status))
 		if status == "" {
 			status = "-"
@@ -421,9 +399,6 @@ func (m JobsModel) renderList() string {
 			at = j.CreatedAt
 		}
 
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
 		titleValue := components.SanitizeOneLine(j.Title)
 		if len(m.selected) > 0 {
 			if m.selected[j.ID] {
@@ -433,16 +408,23 @@ func (m JobsModel) renderList() string {
 			}
 		}
 
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(titleValue, titleWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			components.ClampTextWidthEllipsis(priority, prioWidth),
 			formatLocalTimeCompact(at),
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Title", Width: titleWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "Priority", Width: prioWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
+
 	title := "Jobs"
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if selected := m.selectedCount(); selected > 0 {
@@ -456,18 +438,22 @@ func (m JobsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Job
+	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+		previewItem = &m.items[idx]
+	}
 	if previewItem != nil {
 		content := m.renderJobPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -530,15 +516,15 @@ func (m JobsModel) handleListKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isEnter(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.detailRels = nil
@@ -587,7 +573,7 @@ func (m JobsModel) handleListKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 			m.statusTargets = targets
 			return m, nil
 		}
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.view = jobsViewDetail
@@ -969,11 +955,12 @@ func (m *JobsModel) applyJobSearch() {
 		}
 		m.items = filtered
 	}
-	labels := make([]string, len(m.items))
+	rows := make([]table.Row, len(m.items))
 	for i, j := range m.items {
-		labels[i] = formatJobLine(j)
+		rows[i] = table.Row{formatJobLine(j)}
 	}
-	m.list.SetItems(labels)
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 	m.retainSelection()
 	m.updateSearchSuggest()
 }
@@ -998,7 +985,7 @@ func (m *JobsModel) retainSelection() {
 
 // toggleSelected handles toggle selected.
 func (m *JobsModel) toggleSelected() {
-	idx := m.list.Selected()
+	idx := m.dataTable.Cursor()
 	if idx < 0 || idx >= len(m.items) {
 		return
 	}

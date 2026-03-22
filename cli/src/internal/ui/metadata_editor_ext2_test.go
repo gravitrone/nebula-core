@@ -102,8 +102,19 @@ func TestMetadataEditorCopySelectedValuesEmptyBranches(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0, count)
 
+	// With rows set but out-of-range explicit selection and no clipboard, cursor fallback
+	// returns 0 when selected map contains only OOB index.
+	prevCopy := copyMetadataEditorClipboard
+	defer func() { copyMetadataEditorClipboard = prevCopy }()
+	copied := ""
+	copyMetadataEditorClipboard = func(text string) error { copied = text; return nil }
+
+	// With rows but OOB explicit selection: all indices filtered → 0.
 	ed.rows = []metadataEditorRow{{path: "owner", value: "alxx"}}
+	ed.syncList()
+	ed.selected = map[int]bool{9: true} // OOB only
 	count, err = ed.copySelectedValues()
 	require.NoError(t, err)
 	assert.Equal(t, 0, count)
+	assert.Equal(t, "", copied)
 }

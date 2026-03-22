@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,8 @@ func TestInboxUpdateDiffInitConfirmNoopAndListEscClear(t *testing.T) {
 	updated.detail = nil
 	updated.items = []api.Approval{{ID: "ap-1"}}
 	updated.filtered = []int{0}
-	updated.list.SetItems([]string{"ap-1"})
+	updated.dataTable.SetRows([]table.Row{{"ap-1"}})
+	updated.dataTable.SetCursor(0)
 	updated.selected = map[string]bool{"ap-1": true}
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Nil(t, cmd)

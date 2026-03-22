@@ -120,9 +120,8 @@ func TestMetadataEditorSelectedRowIndexHandlesMissingAndOutOfRange(t *testing.T)
 	assert.Equal(t, -1, ed.selectedRowIndex())
 
 	ed.rows = []metadataEditorRow{{path: "owner", value: "alxx"}}
-	ed.list = components.NewList(metadataPanelPageSize(false))
-	syncMetadataList(ed.list, ed.toDisplayRows(), metadataPanelPageSize(false))
-	ed.list.Cursor = 10
+	ed.syncList()
+	ed.rows = nil // cursor remains at 0 but len(rows) is 0, so selectedRowIndex returns -1
 	assert.Equal(t, -1, ed.selectedRowIndex())
 }
 
@@ -199,9 +198,8 @@ func TestMetadataEditorCopySelectedValuesFallbackAndEmptyHandling(t *testing.T) 
 		rows: []metadataEditorRow{
 			{path: "owner", value: ""},
 		},
-		list: components.NewList(metadataPanelPageSize(false)),
 	}
-	syncMetadataList(ed.list, ed.toDisplayRows(), metadataPanelPageSize(false))
+	ed.syncList()
 
 	count, err := ed.copySelectedValues()
 	require.NoError(t, err)

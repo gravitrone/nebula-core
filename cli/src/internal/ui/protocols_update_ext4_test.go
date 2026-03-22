@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +47,8 @@ func TestProtocolsLoadProtocolsSuccessAndError(t *testing.T) {
 func TestProtocolsUpdateMessageMatrix(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	model.width = 88
-	model.list.SetItems([]string{"stale"})
+	model.dataTable.SetRows([]table.Row{{"stale"}})
+	model.dataTable.SetCursor(0)
 	model.loading = true
 	model.searchBuf = "ops"
 

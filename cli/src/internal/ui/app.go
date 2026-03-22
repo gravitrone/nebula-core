@@ -2093,7 +2093,7 @@ func (a App) canExitToTabNav() bool {
 		if a.inbox.detail != nil || a.inbox.rejecting || a.inbox.confirming || a.inbox.rejectPreview {
 			return false
 		}
-		return a.inbox.list == nil || a.inbox.list.Selected() == 0
+		return a.inbox.dataTable.Cursor() == 0
 	case tabEntities:
 		if a.entities.filtering || a.entities.view != entitiesViewList {
 			return false
@@ -2119,22 +2119,22 @@ func (a App) canExitToTabNav() bool {
 		if a.jobs.filtering || a.jobs.detail != nil || a.jobs.changingSt {
 			return false
 		}
-		return a.jobs.list == nil || a.jobs.list.Selected() == 0
+		return a.jobs.dataTable.Cursor() == 0
 	case tabLogs:
 		if a.logs.filtering || a.logs.view != logsViewList {
 			return false
 		}
-		return a.logs.list == nil || a.logs.list.Selected() == 0
+		return a.logs.dataTable.Cursor() == 0
 	case tabFiles:
 		if a.files.filtering || a.files.view != filesViewList {
 			return false
 		}
-		return a.files.list == nil || a.files.list.Selected() == 0
+		return a.files.dataTable.Cursor() == 0
 	case tabProtocols:
 		if a.protocols.filtering || a.protocols.view != protocolsViewList {
 			return false
 		}
-		return a.protocols.list == nil || a.protocols.list.Selected() == 0
+		return a.protocols.dataTable.Cursor() == 0
 	case tabHistory:
 		if a.history.filtering || a.history.view != historyViewList {
 			return false
@@ -2148,12 +2148,12 @@ func (a App) canExitToTabNav() bool {
 			return true
 		}
 		if a.profile.section == 0 {
-			return a.profile.keyList == nil || a.profile.keyList.Selected() == 0
+			return a.profile.keyList.Cursor() == 0
 		}
 		if a.profile.section == 1 {
-			return a.profile.agentList == nil || a.profile.agentList.Selected() == 0
+			return a.profile.agentList.Cursor() == 0
 		}
-		return a.profile.taxList == nil || a.profile.taxList.Selected() == 0
+		return a.profile.taxList.Cursor() == 0
 	}
 	return false
 }

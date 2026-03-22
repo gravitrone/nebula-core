@@ -75,15 +75,15 @@ func TestInboxModelNavigationKeys(t *testing.T) {
 	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Initially at index 0
-	assert.Equal(t, 0, model.list.Selected())
+	assert.Equal(t, 0, model.dataTable.Cursor())
 
 	// Press down (down arrow)
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	assert.Equal(t, 1, model.list.Selected())
+	assert.Equal(t, 1, model.dataTable.Cursor())
 
 	// Press up (up arrow)
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, model.list.Selected())
+	assert.Equal(t, 0, model.dataTable.Cursor())
 }
 
 // TestInboxModelEnterShowsDetail handles test inbox model enter shows detail.
@@ -401,7 +401,7 @@ func TestInboxFilterByAgentAndType(t *testing.T) {
 	model.filterBuf = "agent:alpha type:create"
 	model.applyFilter(true)
 
-	assert.Len(t, model.list.Items, 1)
+	assert.Len(t, model.dataTable.Rows(), 1)
 	assert.Equal(t, "ap-1", model.items[model.filtered[0]].ID)
 }
 
@@ -415,7 +415,7 @@ func TestInboxFilterByTerm(t *testing.T) {
 	model.filterBuf = "foo"
 	model.applyFilter(true)
 
-	assert.Len(t, model.list.Items, 1)
+	assert.Len(t, model.dataTable.Rows(), 1)
 	assert.Equal(t, "ap-1", model.items[model.filtered[0]].ID)
 }
 

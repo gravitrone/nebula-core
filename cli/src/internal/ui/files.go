@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -55,7 +56,7 @@ type FilesModel struct {
 	client        *api.Client
 	items         []api.File
 	all           []api.File
-	list          *components.List
+	dataTable     table.Model
 	loading       bool
 	spinner       spinner.Model
 	view          filesView
@@ -104,10 +105,10 @@ type FilesModel struct {
 // NewFilesModel builds the files UI model.
 func NewFilesModel(client *api.Client) FilesModel {
 	return FilesModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(12),
-		view:   filesViewList,
+		client:    client,
+		spinner:   components.NewNebulaSpinner(),
+		dataTable: components.NewNebulaTable(nil, 12),
+		view:      filesViewList,
 		addFields: []formField{
 			{label: "Filename"},
 			{label: "File Path"},
@@ -318,7 +319,6 @@ func (m FilesModel) renderList() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -329,13 +329,9 @@ func (m FilesModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -347,27 +343,9 @@ func (m FilesModel) renderList() string {
 	if fileWidth < 12 {
 		fileWidth = 12
 	}
-	cols := []components.TableColumn{
-		{Header: "File", Width: fileWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "Size", Width: sizeWidth, Align: lipgloss.Right},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
 
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.File
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		f := m.items[absIdx]
-
+	tableRows := make([]table.Row, len(m.items))
+	for i, f := range m.items {
 		status := strings.TrimSpace(components.SanitizeOneLine(f.Status))
 		if status == "" {
 			status = "-"
@@ -380,20 +358,22 @@ func (m FilesModel) renderList() string {
 		if at.IsZero() {
 			at = f.CreatedAt
 		}
-
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(f.Filename), fileWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			components.ClampTextWidthEllipsis(size, sizeWidth),
 			formatLocalTimeCompact(at),
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "File", Width: fileWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "Size", Width: sizeWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if strings.TrimSpace(m.searchBuf) != "" {
@@ -404,18 +384,24 @@ func (m FilesModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.File
+	if !m.modeFocus {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			previewItem = &m.items[idx]
+		}
+	}
 	if previewItem != nil {
 		content := m.renderFilePreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -481,15 +467,15 @@ func (m FilesModel) handleListKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isEnter(msg), isSpace(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.detailRels = nil
@@ -1161,11 +1147,12 @@ func (m *FilesModel) applyFileSearch() {
 		}
 		m.items = filtered
 	}
-	labels := make([]string, len(m.items))
+	rows := make([]table.Row, len(m.items))
 	for i, f := range m.items {
-		labels[i] = formatFileLine(f)
+		rows[i] = table.Row{formatFileLine(f)}
 	}
-	m.list.SetItems(labels)
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 	m.updateSearchSuggest()
 }
 

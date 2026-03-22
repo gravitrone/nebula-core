@@ -169,29 +169,29 @@ func TestCanExitToTabNavMatrix(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabJobs
 	assert.True(t, app.canExitToTabNav())
-	app.jobs.list.SetItems([]string{"one", "two"})
-	app.jobs.list.Down()
+	app.jobs.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.jobs.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabLogs
 	assert.True(t, app.canExitToTabNav())
-	app.logs.list.SetItems([]string{"one", "two"})
-	app.logs.list.Down()
+	app.logs.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.logs.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabFiles
 	assert.True(t, app.canExitToTabNav())
-	app.files.list.SetItems([]string{"one", "two"})
-	app.files.list.Down()
+	app.files.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.files.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabProtocols
 	assert.True(t, app.canExitToTabNav())
-	app.protocols.list.SetItems([]string{"one", "two"})
-	app.protocols.list.Down()
+	app.protocols.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.protocols.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
@@ -212,24 +212,24 @@ func TestCanExitToTabNavProfileSections(t *testing.T) {
 	app.profile.sectionFocus = false
 	app.profile.section = 0
 	assert.True(t, app.canExitToTabNav())
-	app.profile.keyList.SetItems([]string{"k1", "k2"})
-	app.profile.keyList.Down()
+	app.profile.keyList.SetRows([]table.Row{{"k1"}, {"k2"}})
+	app.profile.keyList.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabProfile
 	app.profile.section = 1
 	assert.True(t, app.canExitToTabNav())
-	app.profile.agentList.SetItems([]string{"a1", "a2"})
-	app.profile.agentList.Down()
+	app.profile.agentList.SetRows([]table.Row{{"a1"}, {"a2"}})
+	app.profile.agentList.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabProfile
 	app.profile.section = 2
 	assert.True(t, app.canExitToTabNav())
-	app.profile.taxList.SetItems([]string{"t1", "t2"})
-	app.profile.taxList.Down()
+	app.profile.taxList.SetRows([]table.Row{{"t1"}, {"t2"}})
+	app.profile.taxList.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
@@ -250,8 +250,8 @@ func TestCanExitToTabNavAdditionalGuards(t *testing.T) {
 	app.inbox.rejectPreview = true
 	assert.False(t, app.canExitToTabNav())
 	app.inbox.rejectPreview = false
-	app.inbox.list.SetItems([]string{"one", "two"})
-	app.inbox.list.Down()
+	app.inbox.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.inbox.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})

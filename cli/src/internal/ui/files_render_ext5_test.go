@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -48,8 +49,8 @@ func TestFilesRenderListLoadingAndSmallWidthBranches(t *testing.T) {
 			UpdatedAt: now,
 		},
 	}
-	// Keep one extra list row so renderList hits the out-of-range guard branch.
-	model.list.SetItems([]string{"row-1", "row-2", "row-3"})
+	model.dataTable.SetRows([]table.Row{{"row-1"}, {"row-2"}})
+	model.dataTable.SetCursor(0)
 	model.searchBuf = "be"
 	model.searchSuggest = "Beta.txt"
 	model.modeFocus = true

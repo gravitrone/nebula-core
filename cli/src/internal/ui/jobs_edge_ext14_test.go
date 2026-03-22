@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -21,8 +22,6 @@ func TestJobsRenderListNarrowWidthStaleRowsAndModeFocus(t *testing.T) {
 		{ID: "job-1", Title: "alpha", Status: "pending", CreatedAt: now},
 		{ID: "job-2", Title: "beta", Status: "active", CreatedAt: now},
 	}
-	// Keep one extra stale visual row so renderList hits the absIdx bounds guard.
-	model.list.SetItems([]string{"alpha", "beta", "ghost"})
 	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
@@ -106,7 +105,8 @@ func TestJobsRenderDetailFallsBackToListWhenDetailMissing(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.width = 88
 	model.items = []api.Job{{ID: "job-1", Title: "alpha", Status: "active", CreatedAt: now}}
-	model.list.SetItems([]string{"alpha"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderDetail())
 	assert.Contains(t, out, "alpha")

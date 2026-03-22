@@ -139,7 +139,7 @@ func TestLogsListNavigationOpensDetailAndReturnsToList(t *testing.T) {
 
 	// Navigate down to second item.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	assert.Equal(t, 1, model.list.Selected())
+	assert.Equal(t, 1, model.dataTable.Cursor())
 
 	// Open detail.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})

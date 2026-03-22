@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,8 @@ func TestLogsRenderListLoadingEmptyAndLayoutBranches(t *testing.T) {
 			CreatedAt: now,
 		},
 	}
-	model.list.SetItems([]string{"log-1", "log-2"})
+	model.dataTable.SetRows([]table.Row{{"log-1"}, {"log-2"}})
+	model.dataTable.SetCursor(0)
 	model.width = 84 // stacked preview layout
 	model.searchBuf = "dep"
 	model.searchSuggest = "deploy"
@@ -57,12 +59,14 @@ func TestLogsRenderListLoadingEmptyAndLayoutBranches(t *testing.T) {
 	out = components.SanitizeText(model.renderList())
 	assert.NotContains(t, out, "next: ")
 
-	model.list.Cursor = -1 // no selected row preview
+	model.dataTable.SetRows(nil) // no rows = cursor goes to -1, no selected row preview
+	model.dataTable.SetCursor(0)
 	out = components.SanitizeText(model.renderList())
 	assert.NotContains(t, out, "Selected")
 
+	model.dataTable.SetRows([]table.Row{{"log-1"}, {"log-2"}})
+	model.dataTable.SetCursor(0)
 	model.width = 170 // side-by-side preview layout
-	model.list.Cursor = 0
 	model.modeFocus = true
 	out = components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "Selected")
@@ -77,7 +81,6 @@ func TestLogsHandleListKeysTabBackAndSpaceOutOfRange(t *testing.T) {
 		{ID: "log-2", LogType: "deploy", Status: "planning", CreatedAt: now},
 	}
 	model.applyLogSearch()
-	model.list.SetItems([]string{"workout", "deploy"})
 
 	model.searchBuf = "wo"
 	model.searchSuggest = "workout"
@@ -104,7 +107,8 @@ func TestLogsHandleListKeysTabBackAndSpaceOutOfRange(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated.list.Cursor = 9
+	updated.items = nil
+	updated.dataTable.SetRows(nil)
 	updated.view = logsViewList
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)

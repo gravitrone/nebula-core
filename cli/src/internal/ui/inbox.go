@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -30,7 +31,7 @@ type approvalDiffLoadedMsg struct {
 type InboxModel struct {
 	client        *api.Client
 	items         []api.Approval
-	list          *components.List
+	dataTable     table.Model
 	loading       bool
 	spinner       spinner.Model
 	detail        *api.Approval
@@ -58,7 +59,7 @@ func NewInboxModel(client *api.Client) InboxModel {
 	return InboxModel{
 		client:       client,
 		spinner:      components.NewNebulaSpinner(),
-		list:         components.NewList(15),
+		dataTable:    components.NewNebulaTable(nil, 15),
 		selected:     make(map[string]bool),
 		pendingLimit: 500,
 	}
@@ -138,9 +139,9 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 		// List view
 		switch {
 		case isDown(msg):
-			m.list.Down()
+			m.dataTable.MoveDown(1)
 		case isUp(msg):
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		case isSpace(msg):
 			m.toggleSelected()
 		case isEnter(msg):
@@ -230,7 +231,6 @@ func (m InboxModel) View() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 	previewWidth := preferredPreviewWidth(contentWidth)
 
 	gap := 3
@@ -240,14 +240,9 @@ func (m InboxModel) View() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// TableGrid draws separators only between columns.
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -260,24 +255,11 @@ func (m InboxModel) View() string {
 	if titleWidth < 12 {
 		titleWidth = 12
 	}
-	cols := []components.TableColumn{
-		{Header: "Title", Width: titleWidth, Align: lipgloss.Left},
-		{Header: "Action", Width: actionWidth, Align: lipgloss.Left},
-		{Header: "Who", Width: whoWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
 
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
 	showCheckboxes := len(m.selected) > 0
-	var previewItem *api.Approval
-	if item, ok := m.selectedItem(); ok {
-		previewItem = &item
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		item, ok := m.itemAtFilteredIndex(absIdx)
+	tableRows := make([]table.Row, 0, len(m.filtered))
+	for i := range m.filtered {
+		item, ok := m.itemAtFilteredIndex(i)
 		if !ok {
 			continue
 		}
@@ -294,12 +276,17 @@ func (m InboxModel) View() string {
 		action := components.ClampTextWidthEllipsis(humanizeApprovalType(item.RequestType), actionWidth)
 		who := components.ClampTextWidthEllipsis(approvalWhoLabel(item), whoWidth)
 		when := formatLocalTimeCompact(item.CreatedAt)
-
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{title, action, who, when})
+		tableRows = append(tableRows, table.Row{title, action, who, when})
 	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Title", Width: titleWidth},
+		{Title: "Action", Width: actionWidth},
+		{Title: "Who", Width: whoWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	title := "Inbox"
 	countLine := fmt.Sprintf("%d pending", len(m.items))
@@ -310,19 +297,24 @@ func (m InboxModel) View() string {
 		countLine = fmt.Sprintf("%s · selected: %d", countLine, count)
 	}
 	countLine = MutedStyle.Render(countLine)
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Approval
+	if item, ok := m.selectedItem(); ok {
+		previewItem = &item
+	}
 	if previewItem != nil {
-		contentWidth := previewBoxContentWidth(previewWidth)
-		content := renderApprovalPreview(*previewItem, m.selected[previewItem.ID], contentWidth)
+		previewContentWidth := previewBoxContentWidth(previewWidth)
+		content := renderApprovalPreview(*previewItem, m.selected[previewItem.ID], previewContentWidth)
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -981,20 +973,25 @@ func (m *InboxModel) applyFilter(resetSelection bool) {
 		m.selected = make(map[string]bool)
 	}
 	m.filtered = m.filtered[:0]
-	labels := make([]string, 0, len(m.items))
 	filter := parseApprovalFilter(m.filterBuf)
 	for i, a := range m.items {
 		if matchesApprovalFilter(a, filter) {
 			m.filtered = append(m.filtered, i)
-			labels = append(labels, formatApprovalLine(a))
 		}
 	}
-	m.list.SetItems(labels)
+	rows := make([]table.Row, len(m.filtered))
+	for i, itemIdx := range m.filtered {
+		if itemIdx >= 0 && itemIdx < len(m.items) {
+			rows[i] = table.Row{formatApprovalLine(m.items[itemIdx])}
+		}
+	}
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 }
 
 // selectedItem handles selected item.
 func (m *InboxModel) selectedItem() (api.Approval, bool) {
-	idx := m.list.Selected()
+	idx := m.dataTable.Cursor()
 	return m.itemAtFilteredIndex(idx)
 }
 

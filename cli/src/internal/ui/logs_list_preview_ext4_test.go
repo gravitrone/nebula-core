@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -56,7 +57,6 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 		{ID: "log-2", LogType: "study", Status: "active", Timestamp: now},
 	}
 	model.applyLogSearch()
-	model.list.SetItems([]string{"workout", "study"})
 
 	model.filtering = true
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -71,13 +71,16 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
-	updated.list.Cursor = 8
+	updated.items = nil
+	updated.dataTable.SetRows(nil)
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 	assert.Nil(t, updated.detail)
 
-	updated.list.Cursor = 0
+	updated.allItems = model.allItems
+	updated.applyLogSearch()
+	updated.dataTable.SetCursor(0)
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, logsViewDetail, updated.view)
@@ -85,18 +88,18 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.Equal(t, "log-1", updated.detail.ID)
 
 	updated.view = logsViewList
-	updated.list.Cursor = 1
+	updated.dataTable.SetCursor(1)
 	updated.modeFocus = false
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.list.Cursor)
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
 	assert.True(t, updated.modeFocus)
 	updated.modeFocus = false
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.list.Cursor)
+	assert.Equal(t, 1, updated.dataTable.Cursor())
 
 	updated.searchBuf = "wo"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
@@ -126,7 +129,7 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.Equal(t, "w", updated.searchBuf)
 
 	updated.searchBuf = ""
-	updated.list.Cursor = 0
+	updated.dataTable.SetCursor(0)
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.NotNil(t, cmd)
 	assert.Equal(t, logsViewDetail, updated.view)
@@ -137,7 +140,8 @@ func TestLogsHandleDetailAndRenderDetailAdditionalBranches(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.width = 88
 	model.items = []api.Log{{ID: "log-1", LogType: "build", Status: "active", Timestamp: now}}
-	model.list.SetItems([]string{"build"})
+	model.dataTable.SetRows([]table.Row{{"build"}})
+	model.dataTable.SetCursor(0)
 
 	model.view = logsViewDetail
 	model.detail = &api.Log{

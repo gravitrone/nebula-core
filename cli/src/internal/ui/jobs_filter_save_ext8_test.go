@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +91,6 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 		{ID: "job-2", Title: "beta", Status: "planning", CreatedAt: now},
 	}
 	model.applyJobSearch()
-	model.list.SetItems([]string{"alpha", "beta"})
 
 	model.searchBuf = "alp"
 	model.searchSuggest = "alpha"
@@ -118,8 +118,8 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 
 	updated.view = jobsViewList
 	updated.items = append([]api.Job{}, updated.allItems...)
-	updated.list.SetItems([]string{"alpha", "beta"})
-	updated.list.Cursor = 0
+	updated.dataTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
+	updated.dataTable.SetCursor(0)
 	updated.searchBuf = ""
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	_ = cmd
@@ -137,7 +137,7 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 	updated.selected = map[string]bool{}
 	updated.changingSt = false
 	updated.statusTargets = nil
-	updated.list.Cursor = 0
+	updated.dataTable.SetCursor(0)
 	updated.view = jobsViewList
 	updated.detail = nil
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Text: "s"})

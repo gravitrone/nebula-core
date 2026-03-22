@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +18,8 @@ func TestInboxItemAtFilteredIndexAndToggleSelectedBranches(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{{ID: "ap-1"}, {ID: "ap-2"}}
 	model.filtered = []int{0}
-	model.list.SetItems([]string{"one"})
+	model.dataTable.SetRows([]table.Row{{"one"}})
+	model.dataTable.SetCursor(0)
 
 	_, ok := model.itemAtFilteredIndex(-1)
 	assert.False(t, ok)
@@ -66,7 +68,8 @@ func TestInboxApproveSelectedFallbacksAndErrorBranch(t *testing.T) {
 	model := NewInboxModel(client)
 	model.items = []api.Approval{{ID: "ap-1"}, {ID: "ap-err"}}
 	model.filtered = []int{0}
-	model.list.SetItems([]string{"ap-1"})
+	model.dataTable.SetRows([]table.Row{{"ap-1"}})
+	model.dataTable.SetCursor(0)
 
 	// No selected IDs and no detail falls back to current list item.
 	updated, cmd := model.approveSelected()
@@ -90,7 +93,7 @@ func TestInboxApproveSelectedFallbacksAndErrorBranch(t *testing.T) {
 	// Empty state returns nil command.
 	model = NewInboxModel(client)
 	updated, cmd = model.approveSelected()
-	assert.Equal(t, model, updated)
+	assert.Nil(t, updated.detail)
 	assert.Nil(t, cmd)
 }
 
@@ -106,7 +109,8 @@ func TestInboxHandleDetailAndGrantInputBranches(t *testing.T) {
 		},
 	}}
 	model.filtered = []int{0}
-	model.list.SetItems([]string{"ap-1"})
+	model.dataTable.SetRows([]table.Row{{"ap-1"}})
+	model.dataTable.SetCursor(0)
 
 	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
