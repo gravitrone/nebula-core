@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -485,7 +486,7 @@ func TestRelationshipsLoadRelationshipsSuccessAndError(t *testing.T) {
 func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewList
-	model.list.SetItems([]string{"a", "b"})
+	model.dataTable.SetRows([]table.Row{{"a"}, {"b"}})
 	model.items = []api.Relationship{
 		{ID: "rel-1"},
 		{ID: "rel-2"},
@@ -493,11 +494,11 @@ func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.list.Selected())
+	assert.Equal(t, 1, updated.dataTable.Cursor())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.list.Selected())
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
@@ -511,7 +512,8 @@ func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
 
 	updated.view = relsViewList
 	updated.detail = nil
-	updated.list.Cursor = 99
+	updated.items = nil
+	updated.dataTable.SetRows(nil)
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.detail)
@@ -544,7 +546,7 @@ func TestRelationshipsViewBranchMatrix(t *testing.T) {
 			CreatedAt:  now,
 		},
 	}
-	model.list.SetItems([]string{"depends-on · unknown entity -> unknown entity"})
+	model.dataTable.SetRows([]table.Row{{"depends-on · unknown entity -> unknown entity"}})
 
 	model.filtering = true
 	model.view = relsViewList

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,7 +58,7 @@ func TestContextLinkSearchAddsEntity(t *testing.T) {
 	model := NewContextModel(nil)
 	model.linkSearching = true
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
-	model.linkList.SetItems([]string{"Alpha"})
+	model.linkTable.SetRows([]table.Row{{"Alpha"}})
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
@@ -159,7 +160,7 @@ func TestContextListEnterShowsDetail(t *testing.T) {
 	model.items = []api.Context{
 		{ID: "k-1", Name: "Alpha", SourceType: "note"},
 	}
-	model.list.SetItems([]string{formatContextLine(model.items[0])})
+	model.dataTable.SetRows([]table.Row{{formatContextLine(model.items[0])}})
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 
@@ -175,7 +176,7 @@ func TestContextListEnterRejectsMissingID(t *testing.T) {
 	model.items = []api.Context{
 		{Name: "Alpha", SourceType: "note"},
 	}
-	model.list.SetItems([]string{formatContextLine(model.items[0])})
+	model.dataTable.SetRows([]table.Row{{formatContextLine(model.items[0])}})
 
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 

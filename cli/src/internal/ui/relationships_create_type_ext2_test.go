@@ -3,6 +3,7 @@ package ui
 import (
 	"testing"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 )
@@ -12,8 +13,8 @@ func TestRelationshipsRenderCreateTypeShowsPreviewForSelectedSuggestion(t *testi
 	model.width = 220
 	model.createType = "dep"
 	model.createTypeResults = []string{"depends-on", "related-to"}
-	model.createTypeList.SetItems(model.createTypeResults)
-	model.createTypeList.Cursor = 0
+	model.createTypeTable.SetRows([]table.Row{{"depends-on"}, {"related-to"}})
+	model.createTypeTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderCreateType())
 	assert.Contains(t, out, "2 suggestions")
@@ -27,8 +28,8 @@ func TestRelationshipsRenderCreateTypeBlankSuggestionFallbackBranch(t *testing.T
 	model.width = 220
 	model.createType = "x"
 	model.createTypeResults = []string{""}
-	model.createTypeList.SetItems(model.createTypeResults)
-	model.createTypeList.Cursor = 0
+	model.createTypeTable.SetRows([]table.Row{{""}})
+	model.createTypeTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderCreateType())
 	assert.Contains(t, out, "1 suggestions")
@@ -44,8 +45,8 @@ func TestRelationshipsRenderCreateTypeSkipsOutOfRangeVisibleRows(t *testing.T) {
 	model.createTypeResults = []string{"depends-on"}
 	// Keep list items longer than createTypeResults so RelToAbs produces
 	// out-of-range indexes for part of visible rows.
-	model.createTypeList.SetItems([]string{"depends-on", "ghost", "ghost-2"})
-	model.createTypeList.Cursor = 0
+	model.createTypeTable.SetRows([]table.Row{{"depends-on"}, {"ghost"}, {"ghost-2"}})
+	model.createTypeTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderCreateType())
 	assert.Contains(t, out, "1 suggestions")

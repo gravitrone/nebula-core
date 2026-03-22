@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 func TestContextHandleListKeysFilteringDispatchAndTopUpFocus(t *testing.T) {
 	model := NewContextModel(nil)
 	model.items = []api.Context{{ID: "ctx-1", Title: "Alpha"}}
-	model.list.SetItems([]string{"Alpha"})
+	model.dataTable.SetRows([]table.Row{{"Alpha"}})
 
 	model.filtering = true
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})

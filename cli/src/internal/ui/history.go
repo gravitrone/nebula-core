@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -44,35 +45,35 @@ type auditFilter struct {
 }
 
 type HistoryModel struct {
-	client    *api.Client
-	items     []api.AuditEntry
-	list      *components.List
-	loading   bool
-	spinner   spinner.Model
-	width     int
-	height    int
-	view      historyView
-	detail    *api.AuditEntry
-	filtering bool
-	filterBuf string
-	filter    auditFilter
-	errText   string
-	scopes    []api.AuditScope
-	actors    []api.AuditActor
-	scopeList *components.List
-	actorList *components.List
-	reverting bool
+	client     *api.Client
+	items      []api.AuditEntry
+	dataTable  table.Model
+	loading    bool
+	spinner    spinner.Model
+	width      int
+	height     int
+	view       historyView
+	detail     *api.AuditEntry
+	filtering  bool
+	filterBuf  string
+	filter     auditFilter
+	errText    string
+	scopes     []api.AuditScope
+	actors     []api.AuditActor
+	scopeTable table.Model
+	actorTable table.Model
+	reverting  bool
 }
 
 // NewHistoryModel builds the audit history UI model.
 func NewHistoryModel(client *api.Client) HistoryModel {
 	return HistoryModel{
-		client:    client,
-		spinner:   components.NewNebulaSpinner(),
-		list:      components.NewList(10),
-		scopeList: components.NewList(10),
-		actorList: components.NewList(10),
-		view:      historyViewList,
+		client:     client,
+		spinner:    components.NewNebulaSpinner(),
+		dataTable:  components.NewNebulaTable(nil, 10),
+		scopeTable: components.NewNebulaTable(nil, 10),
+		actorTable: components.NewNebulaTable(nil, 10),
+		view:       historyViewList,
 	}
 }
 
@@ -94,31 +95,34 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 		m.loading = false
 		m.errText = ""
 		m.items = m.applyLocalFilters(msg.items)
-		labels := make([]string, len(m.items))
+		rows := make([]table.Row, len(m.items))
 		for i, entry := range m.items {
-			labels[i] = formatAuditLine(entry)
+			rows[i] = table.Row{formatAuditLine(entry)}
 		}
-		m.list.SetItems(labels)
+		m.dataTable.SetRows(rows)
+		m.dataTable.SetCursor(0)
 		return m, nil
 	case historyScopesLoadedMsg:
 		m.loading = false
 		m.errText = ""
 		m.scopes = msg.items
-		labels := make([]string, len(m.scopes))
+		rows := make([]table.Row, len(m.scopes))
 		for i, scope := range m.scopes {
-			labels[i] = formatScopeLine(scope)
+			rows[i] = table.Row{formatScopeLine(scope)}
 		}
-		m.scopeList.SetItems(labels)
+		m.scopeTable.SetRows(rows)
+		m.scopeTable.SetCursor(0)
 		return m, nil
 	case historyActorsLoadedMsg:
 		m.loading = false
 		m.errText = ""
 		m.actors = msg.items
-		labels := make([]string, len(m.actors))
+		rows := make([]table.Row, len(m.actors))
 		for i, actor := range m.actors {
-			labels[i] = formatActorLine(actor)
+			rows[i] = table.Row{formatActorLine(actor)}
 		}
-		m.actorList.SetItems(labels)
+		m.actorTable.SetRows(rows)
+		m.actorTable.SetCursor(0)
 		return m, nil
 	case historyRevertedMsg:
 		m.reverting = false
@@ -252,11 +256,14 @@ func (m HistoryModel) confirmRevert() (HistoryModel, tea.Cmd) {
 func (m HistoryModel) handleListKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		m.list.Up()
+		if m.dataTable.Cursor() <= 0 {
+			return m, nil
+		}
+		m.dataTable.MoveUp(1)
 	case isEnter(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			entry := m.items[idx]
 			m.detail = &entry
 			m.view = historyViewDetail
@@ -305,11 +312,14 @@ func (m HistoryModel) handleFilterKeys(msg tea.KeyPressMsg) (HistoryModel, tea.C
 func (m HistoryModel) handleScopeKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
-		m.scopeList.Down()
+		m.scopeTable.MoveDown(1)
 	case isUp(msg):
-		m.scopeList.Up()
+		if m.scopeTable.Cursor() <= 0 {
+			return m, nil
+		}
+		m.scopeTable.MoveUp(1)
 	case isEnter(msg):
-		if idx := m.scopeList.Selected(); idx < len(m.scopes) {
+		if idx := m.scopeTable.Cursor(); idx >= 0 && idx < len(m.scopes) {
 			scope := m.scopes[idx]
 			m.filter.scopeID = scope.ID
 			m.view = historyViewList
@@ -326,11 +336,14 @@ func (m HistoryModel) handleScopeKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cm
 func (m HistoryModel) handleActorKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd) {
 	switch {
 	case isDown(msg):
-		m.actorList.Down()
+		m.actorTable.MoveDown(1)
 	case isUp(msg):
-		m.actorList.Up()
+		if m.actorTable.Cursor() <= 0 {
+			return m, nil
+		}
+		m.actorTable.MoveUp(1)
 	case isEnter(msg):
-		if idx := m.actorList.Selected(); idx < len(m.actors) {
+		if idx := m.actorTable.Cursor(); idx >= 0 && idx < len(m.actors) {
 			actor := m.actors[idx]
 			m.filter.actorType = actor.ActorType
 			m.filter.actorID = actor.ActorID
@@ -397,7 +410,6 @@ func (m HistoryModel) renderList() string {
 	filterLine := formatAuditFilters(m.filter)
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -408,13 +420,8 @@ func (m HistoryModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	numCols := 4
+	availableCols := tableWidth - (numCols * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -431,26 +438,8 @@ func (m HistoryModel) renderList() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-		{Header: "Action", Width: actionWidth, Align: lipgloss.Left},
-		{Header: "Table", Width: tableNameWidth, Align: lipgloss.Left},
-		{Header: "Actor", Width: actorWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.AuditEntry
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		entry := m.items[absIdx]
+	tableRows := make([]table.Row, len(m.items))
+	for i, entry := range m.items {
 		action := strings.TrimSpace(components.SanitizeOneLine(entry.Action))
 		if action == "" {
 			action = "update"
@@ -463,36 +452,44 @@ func (m HistoryModel) renderList() string {
 		if tableName == "" {
 			tableName = "-"
 		}
-		at := entry.ChangedAt
-
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
-			formatLocalTimeCompact(at),
+		tableRows[i] = table.Row{
+			formatLocalTimeCompact(entry.ChangedAt),
 			components.ClampTextWidthEllipsis(strings.ToUpper(action), actionWidth),
 			components.ClampTextWidthEllipsis(tableName, tableNameWidth),
 			components.ClampTextWidthEllipsis(actor, actorWidth),
-		})
+		}
 	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "At", Width: atWidth},
+		{Title: "Action", Width: actionWidth},
+		{Title: "Table", Width: tableNameWidth},
+		{Title: "Actor", Width: actorWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.items)))
 	if filterLine != "" {
 		filterLine = MutedStyle.Render(filterLine)
 	}
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.AuditEntry
+	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+		previewItem = &m.items[idx]
+	}
 	if previewItem != nil {
 		content := m.renderAuditPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	parts := []string{}
@@ -558,7 +555,6 @@ func (m HistoryModel) renderScopes() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.scopeList.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -569,13 +565,8 @@ func (m HistoryModel) renderScopes() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	numCols := 4
+	availableCols := tableWidth - (numCols * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -588,51 +579,42 @@ func (m HistoryModel) renderScopes() string {
 		scopeWidth = 12
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Scope", Width: scopeWidth, Align: lipgloss.Left},
-		{Header: "Agents", Width: agentsWidth, Align: lipgloss.Right},
-		{Header: "Entities", Width: entitiesWidth, Align: lipgloss.Right},
-		{Header: "Context", Width: contextWidth, Align: lipgloss.Right},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.AuditScope
-	if idx := m.scopeList.Selected(); idx >= 0 && idx < len(m.scopes) {
-		previewItem = &m.scopes[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.scopeList.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.scopes) {
-			continue
-		}
-		scope := m.scopes[absIdx]
-
-		if m.scopeList.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+	tableRows := make([]table.Row, len(m.scopes))
+	for i, scope := range m.scopes {
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(scope.Name), scopeWidth),
 			fmt.Sprintf("%d", scope.AgentCount),
 			fmt.Sprintf("%d", scope.EntityCount),
 			fmt.Sprintf("%d", scope.ContextCount),
-		})
+		}
 	}
 
+	m.scopeTable.SetColumns([]table.Column{
+		{Title: "Scope", Width: scopeWidth},
+		{Title: "Agents", Width: agentsWidth},
+		{Title: "Entities", Width: entitiesWidth},
+		{Title: "Context", Width: contextWidth},
+	})
+	m.scopeTable.SetWidth(tableWidth)
+	m.scopeTable.SetRows(tableRows)
+
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.scopes)))
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.scopeTable.View()
 	preview := ""
+	var previewItem *api.AuditScope
+	if idx := m.scopeTable.Cursor(); idx >= 0 && idx < len(m.scopes) {
+		previewItem = &m.scopes[idx]
+	}
 	if previewItem != nil {
 		content := m.renderScopePreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -675,7 +657,6 @@ func (m HistoryModel) renderActors() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.actorList.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -686,13 +667,8 @@ func (m HistoryModel) renderActors() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 3 columns -> 2 separators.
-	availableCols := tableWidth - (2 * sepWidth)
+	numCols := 3
+	availableCols := tableWidth - (numCols * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -704,52 +680,42 @@ func (m HistoryModel) renderActors() string {
 		actorWidth = 14
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Actor", Width: actorWidth, Align: lipgloss.Left},
-		{Header: "Actions", Width: actionsWidth, Align: lipgloss.Right},
-		{Header: "Last", Width: lastWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.AuditActor
-	if idx := m.actorList.Selected(); idx >= 0 && idx < len(m.actors) {
-		previewItem = &m.actors[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.actorList.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.actors) {
-			continue
-		}
-		actor := m.actors[absIdx]
-
+	tableRows := make([]table.Row, len(m.actors))
+	for i, actor := range m.actors {
 		name := actorDisplayName(actor)
 		display := formatActorDisplay(actor, name)
-
-		if m.actorList.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(display), actorWidth),
 			fmt.Sprintf("%d", actor.ActionCount),
 			formatLocalTimeCompact(actor.LastSeen),
-		})
+		}
 	}
 
+	m.actorTable.SetColumns([]table.Column{
+		{Title: "Actor", Width: actorWidth},
+		{Title: "Actions", Width: actionsWidth},
+		{Title: "Last", Width: lastWidth},
+	})
+	m.actorTable.SetWidth(tableWidth)
+	m.actorTable.SetRows(tableRows)
+
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.actors)))
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.actorTable.View()
 	preview := ""
+	var previewItem *api.AuditActor
+	if idx := m.actorTable.Cursor(); idx >= 0 && idx < len(m.actors) {
+		previewItem = &m.actors[idx]
+	}
 	if previewItem != nil {
 		content := m.renderActorPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"

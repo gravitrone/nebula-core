@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -18,15 +19,15 @@ func TestHistoryRenderListFallbackAndPreviewBranches(t *testing.T) {
 		Action:    "",
 		ChangedAt: time.Time{},
 	}}
-	model.list.SetItems([]string{"audit-1"})
-	model.list.Cursor = 9 // out-of-range selected index => no preview branch
+	model.dataTable.SetRows([]table.Row{{"audit-1"}})
+	model.dataTable.SetCursor(9) // out-of-range selected index => no preview branch
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "1 total")
 	assert.NotContains(t, out, "Filters:")
 
 	model.width = 150
-	model.list.Cursor = 0
+	model.dataTable.SetCursor(0)
 	out = components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "UPDATE")
@@ -43,14 +44,14 @@ func TestHistoryRenderScopesAndActorsBranchMatrix(t *testing.T) {
 
 	// Scopes with out-of-range cursor to skip preview.
 	model.scopes = []api.AuditScope{{ID: "scope-1", Name: "", AgentCount: 1, EntityCount: 2, ContextCount: 3}}
-	model.scopeList.SetItems([]string{"scope-1"})
-	model.scopeList.Cursor = 7
+	model.scopeTable.SetRows([]table.Row{{"scope-1"}})
+	model.scopeTable.SetCursor(7)
 	out := components.SanitizeText(model.renderScopes())
 	assert.Contains(t, out, "1 total")
 
 	// Scopes with selected row to render preview and fallback title.
 	model.width = 150
-	model.scopeList.Cursor = 0
+	model.scopeTable.SetCursor(0)
 	out = components.SanitizeText(model.renderScopes())
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "scope")
@@ -58,14 +59,14 @@ func TestHistoryRenderScopesAndActorsBranchMatrix(t *testing.T) {
 	// Actors with out-of-range cursor branch.
 	model.width = 84
 	model.actors = []api.AuditActor{{ActorType: "", ActorID: "", ActionCount: 0}}
-	model.actorList.SetItems([]string{"system"})
-	model.actorList.Cursor = 5
+	model.actorTable.SetRows([]table.Row{{"system"}})
+	model.actorTable.SetCursor(5)
 	out = components.SanitizeText(model.renderActors())
 	assert.Contains(t, out, "1 total")
 
 	// Actors with selected row to render preview fallback values.
 	model.width = 150
-	model.actorList.Cursor = 0
+	model.actorTable.SetCursor(0)
 	out = components.SanitizeText(model.renderActors())
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "system")

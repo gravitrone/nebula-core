@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestRelationshipsHandleCreateKeysSourceSearchClearAndExit(t *testing.T) {
 	model.view = relsViewCreateSourceSearch
 	model.createQuery = "alpha"
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
-	model.createList.SetItems([]string{"ent-1"})
+	model.createTable.SetRows([]table.Row{{"ent-1"}})
 	model.createLoading = true
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -25,7 +26,7 @@ func TestRelationshipsHandleCreateKeysSourceSearchClearAndExit(t *testing.T) {
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
 	assert.Equal(t, "", updated.createQuery)
 	assert.Empty(t, updated.createResults)
-	assert.Empty(t, updated.createList.Items)
+	assert.Empty(t, updated.createTable.Rows())
 	assert.False(t, updated.createLoading)
 
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -46,14 +47,14 @@ func TestRelationshipsHandleCreateKeysSourceSearchBackspaceUsesCache(t *testing.
 	assert.Equal(t, "b", updated.createQuery)
 	assert.False(t, updated.createLoading)
 	require.NotEmpty(t, updated.createResults)
-	require.NotEmpty(t, updated.createList.Items)
+	require.NotEmpty(t, updated.createTable.Rows())
 }
 
 func TestRelationshipsHandleCreateKeysSourceSearchEnterAdvancesToTarget(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateSourceSearch
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-1", NodeType: "entity", Name: "alpha"}}
-	model.createList.SetItems([]string{"alpha"})
+	model.createTable.SetRows([]table.Row{{"alpha"}})
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
@@ -68,7 +69,7 @@ func TestRelationshipsHandleCreateKeysSourceSelectBackAndEnter(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateSourceSelect
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-2", NodeType: "entity", Name: "beta"}}
-	model.createList.SetItems([]string{"beta"})
+	model.createTable.SetRows([]table.Row{{"beta"}})
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
@@ -85,7 +86,7 @@ func TestRelationshipsHandleCreateKeysSourceSelectBackAndEnter(t *testing.T) {
 func TestRelationshipsHandleCreateKeysSourceSearchAdditionalBranches(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateSourceSearch
-	model.createList.SetItems([]string{"alpha", "beta"})
+	model.createTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
 
 	// Query-empty ctrl-u exits to list.
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
@@ -97,27 +98,28 @@ func TestRelationshipsHandleCreateKeysSourceSearchAdditionalBranches(t *testing.
 	updated.createQuery = "abc"
 	updated.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
 	updated.createLoading = true
-	updated.createList.SetItems([]string{"ent-1"})
+	updated.createTable.SetRows([]table.Row{{"ent-1"}})
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
 	assert.Equal(t, "", updated.createQuery)
 	assert.Empty(t, updated.createResults)
-	assert.Empty(t, updated.createList.Items)
+	assert.Empty(t, updated.createTable.Rows())
 	assert.False(t, updated.createLoading)
 
 	// Navigation branches.
-	updated.createList.SetItems([]string{"row-a", "row-b"})
+	updated.createTable.SetRows([]table.Row{{"row-a"}, {"row-b"}})
+	updated.createTable.SetCursor(0)
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.createList.Selected())
+	assert.Equal(t, 1, updated.createTable.Cursor())
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.createList.Selected())
+	assert.Equal(t, 0, updated.createTable.Cursor())
 
-	// Enter with out-of-range selection does nothing.
-	updated.createList.Cursor = 5
-	updated.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
+	// Enter with empty results does nothing (cursor -1).
+	updated.createTable.SetRows(nil)
+	updated.createResults = nil
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.createSource)
@@ -136,18 +138,19 @@ func TestRelationshipsHandleCreateKeysSelectViewNavigationBranches(t *testing.T)
 		{ID: "ent-1", NodeType: "entity", Name: "alpha"},
 		{ID: "ent-2", NodeType: "entity", Name: "beta"},
 	}
-	model.createList.SetItems([]string{"alpha", "beta"})
+	model.createTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
 
 	model.view = relsViewCreateSourceSelect
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.createList.Selected())
+	assert.Equal(t, 1, updated.createTable.Cursor())
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.createList.Selected())
+	assert.Equal(t, 0, updated.createTable.Cursor())
 
-	// Out-of-range enter should not set source.
-	updated.createList.Cursor = 9
+	// Enter with empty results does nothing (cursor -1).
+	updated.createResults = nil
+	updated.createTable.SetRows(nil)
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.createSource)
@@ -156,15 +159,18 @@ func TestRelationshipsHandleCreateKeysSelectViewNavigationBranches(t *testing.T)
 	model.view = relsViewCreateTargetSelect
 	model.createTypeResults = []string{"depends-on"}
 	model.typeOptions = []string{"depends-on"}
-	model.createList.Cursor = 0
+	model.createTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
+	model.createTable.SetCursor(0)
 	updated, cmd = model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.createList.Selected())
+	assert.Equal(t, 1, updated.createTable.Cursor())
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.createList.Selected())
+	assert.Equal(t, 0, updated.createTable.Cursor())
 
-	updated.createList.Cursor = 9
+	// Enter with empty results does nothing.
+	updated.createResults = nil
+	updated.createTable.SetRows(nil)
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.createTarget)
@@ -176,7 +182,7 @@ func TestRelationshipsHandleCreateKeysTargetSearchClearAndBack(t *testing.T) {
 	model.view = relsViewCreateTargetSearch
 	model.createQuery = "gamma"
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-3"}}
-	model.createList.SetItems([]string{"ent-3"})
+	model.createTable.SetRows([]table.Row{{"ent-3"}})
 	model.createLoading = true
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
@@ -184,7 +190,7 @@ func TestRelationshipsHandleCreateKeysTargetSearchClearAndBack(t *testing.T) {
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
 	assert.Equal(t, "", updated.createQuery)
 	assert.Empty(t, updated.createResults)
-	assert.Empty(t, updated.createList.Items)
+	assert.Empty(t, updated.createTable.Rows())
 	assert.False(t, updated.createLoading)
 
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -195,7 +201,7 @@ func TestRelationshipsHandleCreateKeysTargetSearchClearAndBack(t *testing.T) {
 func TestRelationshipsHandleCreateKeysTargetSearchAdditionalBranches(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateTargetSearch
-	model.createList.SetItems([]string{"target-a", "target-b"})
+	model.createTable.SetRows([]table.Row{{"target-a"}, {"target-b"}})
 	model.createSource = &relationshipCreateCandidate{ID: "ent-1", NodeType: "entity", Name: "alpha"}
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
@@ -206,25 +212,27 @@ func TestRelationshipsHandleCreateKeysTargetSearchAdditionalBranches(t *testing.
 	updated.createQuery = "abc"
 	updated.createResults = []relationshipCreateCandidate{{ID: "ent-2"}}
 	updated.createLoading = true
-	updated.createList.SetItems([]string{"ent-2"})
+	updated.createTable.SetRows([]table.Row{{"ent-2"}})
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
 	assert.Equal(t, "", updated.createQuery)
 	assert.Empty(t, updated.createResults)
-	assert.Empty(t, updated.createList.Items)
+	assert.Empty(t, updated.createTable.Rows())
 	assert.False(t, updated.createLoading)
 
-	updated.createList.SetItems([]string{"target-a", "target-b"})
+	updated.createTable.SetRows([]table.Row{{"target-a"}, {"target-b"}})
+	updated.createTable.SetCursor(0)
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.createList.Selected())
+	assert.Equal(t, 1, updated.createTable.Cursor())
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.createList.Selected())
+	assert.Equal(t, 0, updated.createTable.Cursor())
 
-	updated.createResults = []relationshipCreateCandidate{{ID: "ent-2", NodeType: "entity", Name: "beta"}}
-	updated.createList.Cursor = 9
+	// Enter with empty results does nothing.
+	updated.createResults = nil
+	updated.createTable.SetRows(nil)
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.Nil(t, updated.createTarget)
@@ -236,7 +244,7 @@ func TestRelationshipsHandleCreateKeysTargetSelectBackAndEnter(t *testing.T) {
 	model.view = relsViewCreateTargetSelect
 	model.typeOptions = []string{"depends-on"}
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-4", NodeType: "entity", Name: "delta"}}
-	model.createList.SetItems([]string{"delta"})
+	model.createTable.SetRows([]table.Row{{"delta"}})
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
@@ -310,7 +318,7 @@ func TestRelationshipsHandleCreateKeysTypeEnterRequiresState(t *testing.T) {
 	model.view = relsViewCreateType
 	model.createType = ""
 	model.createTypeResults = []string{"depends-on"}
-	model.createTypeList.SetItems(model.createTypeResults)
+	model.createTypeTable.SetRows([]table.Row{{"depends-on"}})
 	model.createTypeNav = true
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -322,7 +330,7 @@ func TestRelationshipsHandleCreateKeysTypeEnterUsesSuggestion(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateType
 	model.createTypeResults = []string{"depends-on"}
-	model.createTypeList.SetItems(model.createTypeResults)
+	model.createTypeTable.SetRows([]table.Row{{"depends-on"}})
 	model.createTypeNav = true
 	model.createSource = &relationshipCreateCandidate{ID: "ent-1", NodeType: "entity"}
 	model.createTarget = &relationshipCreateCandidate{ID: "ent-2", NodeType: "entity"}
@@ -349,7 +357,7 @@ func TestRelationshipsRenderCreateSearchStateMessages(t *testing.T) {
 
 	model.createQuery = "x"
 	model.createResults = nil
-	model.createList.SetItems(nil)
+	model.createTable.SetRows(nil)
 	out = components.SanitizeText(model.renderCreateSearch("Source Node"))
 	assert.Contains(t, out, "No matches.")
 }
@@ -362,8 +370,8 @@ func TestRelationshipsRenderCreateSearchTableFallbacks(t *testing.T) {
 		{ID: "ent-1", NodeType: "entity", Name: "", Kind: "", Status: ""},
 		{ID: "ctx-1", NodeType: "context", Name: "alpha note", Kind: "context/note", Status: "active"},
 	}
-	model.createList.SetItems([]string{"ent-1", "ctx-1"})
-	model.createList.Cursor = -1 // hide side preview, keep assertions focused on table fallbacks
+	model.createTable.SetRows([]table.Row{{"ent-1"}, {"ctx-1"}})
+	model.createTable.SetCursor(-1) // hide side preview, keep assertions focused on table fallbacks
 
 	out := components.SanitizeText(model.renderCreateSearch("Source Node"))
 	assert.Contains(t, out, "2 results")
@@ -388,7 +396,7 @@ func TestRelationshipsRenderCreateTypeStateMessages(t *testing.T) {
 	assert.Contains(t, out, "No suggestions.")
 
 	model.createTypeResults = []string{"depends-on", "related-to"}
-	model.createTypeList.SetItems(model.createTypeResults)
+	model.createTypeTable.SetRows([]table.Row{{"depends-on"}})
 	out = components.SanitizeText(model.renderCreateType())
 	assert.Contains(t, out, "2 suggestions")
 	assert.Contains(t, out, "depends-on")
@@ -402,7 +410,7 @@ func TestRelationshipsApplyListFilterAndSelectionHelpers(t *testing.T) {
 		{ID: "rel-1", Type: "depends-on", Status: "active", SourceID: "ent-1", TargetID: "ent-2"},
 		{ID: "rel-2", Type: "blocks", Status: "inactive", SourceID: "ent-2", TargetID: "ent-1"},
 	}
-	model.list.SetItems([]string{"x", "y"})
+	model.dataTable.SetRows([]table.Row{{"x"}, {"y"}})
 
 	model.filterBuf = "depends"
 	model.applyListFilter()
@@ -413,9 +421,15 @@ func TestRelationshipsApplyListFilterAndSelectionHelpers(t *testing.T) {
 	model.applyListFilter()
 	require.Len(t, model.items, 2)
 
-	model.list.Cursor = 99
+	model.items = nil
+	model.dataTable.SetRows(nil)
 	assert.Nil(t, model.selectedRelationship())
-	model.list.Cursor = 0
+	model.items = []api.Relationship{
+		{ID: "rel-1", Type: "depends-on", Status: "active", SourceID: "ent-1", TargetID: "ent-2"},
+		{ID: "rel-2", Type: "blocks", Status: "inactive", SourceID: "ent-2", TargetID: "ent-1"},
+	}
+	model.dataTable.SetRows([]table.Row{{"rel-1"}, {"rel-2"}})
+	model.dataTable.SetCursor(0)
 	require.NotNil(t, model.selectedRelationship())
 	assert.Equal(t, "rel-1", model.selectedRelationship().ID)
 }
@@ -611,13 +625,13 @@ func TestRelationshipsUpdateCreateSearchBranchMatrix(t *testing.T) {
 
 	model.createQuery = "   "
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
-	model.createList.SetItems([]string{"ent-1"})
+	model.createTable.SetRows([]table.Row{{"ent-1"}})
 	model.createLoading = true
 	cmd := model.updateCreateSearch()
 	assert.Nil(t, cmd)
 	assert.False(t, model.createLoading)
 	assert.Nil(t, model.createResults)
-	assert.Empty(t, model.createList.Items)
+	assert.Empty(t, model.createTable.Rows())
 
 	model.entityCache = []api.Entity{{ID: "ent-1", Name: "alpha", Type: "person", Status: "active"}}
 	model.contextCache = []api.Context{{ID: "ctx-1", Title: "alpha context", SourceType: "note", Status: "active"}}
@@ -627,7 +641,7 @@ func TestRelationshipsUpdateCreateSearchBranchMatrix(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.False(t, model.createLoading)
 	require.NotEmpty(t, model.createResults)
-	require.NotEmpty(t, model.createList.Items)
+	require.NotEmpty(t, model.createTable.Rows())
 
 	model = NewRelationshipsModel(nil)
 	model.createQuery = "alpha"

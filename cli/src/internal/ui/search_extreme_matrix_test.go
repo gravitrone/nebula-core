@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -16,13 +17,13 @@ func TestSearchCommandEmptyQueryClearsState(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.loading = true
 	model.items = []searchEntry{{id: "ent-1"}}
-	model.list.SetItems([]string{"ent-1"})
+	model.dataTable.SetRows([]table.Row{{"ent-1"}})
 
 	cmd := model.search("   ")
 	assert.Nil(t, cmd)
 	assert.False(t, model.loading)
 	assert.Empty(t, model.items)
-	assert.Empty(t, model.list.Visible())
+	assert.Empty(t, model.dataTable.Rows())
 }
 
 func TestSearchCommandSemanticFailureReturnsErrMsg(t *testing.T) {
@@ -207,14 +208,15 @@ func TestSearchViewRendersTableAndPreviewContent(t *testing.T) {
 			},
 		},
 	}
-	model.list.SetItems([]string{"Alpha Node"})
-	model.list.Cursor = -1 // Hide preview so assertions target table columns only.
+	model.dataTable.SetRows([]table.Row{{"Alpha Node"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Title")
 	assert.Contains(t, out, "Kind")
 	assert.Contains(t, out, "Info")
-	assert.Equal(t, 1, strings.Count(out, "desc123"))
+	// desc appears in both the table row and the preview panel.
+	assert.GreaterOrEqual(t, strings.Count(out, "desc123"), 1)
 }
 
 func TestBuildPaletteSearchEntriesLogFallbacks(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -35,7 +36,7 @@ func TestContextRenderListHandlesNarrowColumnsAndOutOfRangeVisibleRows(t *testin
 		CreatedAt:  now,
 	}}
 	// The second visible row has no backing item and should be skipped.
-	model.list.SetItems([]string{"alpha", "ghost"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}, {"ghost"}})
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "Context")
@@ -54,7 +55,7 @@ func TestContextRenderDetailFallsBackToListWhenDetailMissing(t *testing.T) {
 		Status:     "active",
 		CreatedAt:  now,
 	}}
-	model.list.SetItems([]string{formatContextLine(model.items[0])})
+	model.dataTable.SetRows([]table.Row{{formatContextLine(model.items[0])}})
 
 	out := components.SanitizeText(model.renderDetail())
 	assert.Contains(t, out, "Detail Fallback")
@@ -93,15 +94,16 @@ func TestContextHandleLinkSearchMovesCursorWhenListPresent(t *testing.T) {
 	model := NewContextModel(nil)
 	model.startLinkSearch()
 	model.linkResults = []api.Entity{{ID: "ent-1"}, {ID: "ent-2"}}
-	model.linkList.SetItems([]string{"ent-1", "ent-2"})
+	model.linkTable.SetRows([]table.Row{{"ent-1"}, {"ent-2"}})
+	model.linkTable.SetCursor(0)
 
-	assert.Equal(t, 0, model.linkList.Selected())
+	assert.Equal(t, 0, model.linkTable.Cursor())
 
 	updated, cmd := model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.linkList.Selected())
+	assert.Equal(t, 1, updated.linkTable.Cursor())
 
 	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.linkList.Selected())
+	assert.Equal(t, 0, updated.linkTable.Cursor())
 }

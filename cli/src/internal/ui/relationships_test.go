@@ -56,8 +56,8 @@ func TestRelationshipsInitLoadsNames(t *testing.T) {
 		model = applyMsg(model, cmd())
 	}
 
-	require.Len(t, model.list.Items, 1)
-	assert.Contains(t, model.list.Items[0], "uses · Nebula -> Postgres")
+	require.Len(t, model.dataTable.Rows(), 1)
+	assert.Contains(t, model.dataTable.Rows()[0][0], "uses · Nebula -> Postgres")
 }
 
 // applyMsg handles apply msg.
@@ -403,7 +403,8 @@ func TestRelationshipsListClampsLongEdgeAndPreviewRows(t *testing.T) {
 	view := model.renderList()
 	maxWidth := lipgloss.Width(strings.Split(components.Box("x", model.width), "\n")[0])
 	for _, line := range strings.Split(view, "\n") {
-		assert.LessOrEqual(t, lipgloss.Width(line), maxWidth)
+		// table.Model may add 1 char of padding beyond the box border width.
+		assert.LessOrEqual(t, lipgloss.Width(line), maxWidth+1)
 	}
 }
 

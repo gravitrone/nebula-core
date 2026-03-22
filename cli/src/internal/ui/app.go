@@ -2103,13 +2103,13 @@ func (a App) canExitToTabNav() bool {
 		if a.rels.filtering || a.rels.view != relsViewList {
 			return false
 		}
-		return a.rels.list == nil || a.rels.list.Selected() == 0
+		return a.rels.dataTable.Cursor() <= 0
 	case tabKnow:
 		if a.know.view == contextViewList {
 			if a.know.filtering {
 				return false
 			}
-			return a.know.list == nil || a.know.list.Selected() == 0
+			return a.know.dataTable.Cursor() <= 0
 		}
 		if a.know.view != contextViewAdd {
 			return false
@@ -2139,7 +2139,7 @@ func (a App) canExitToTabNav() bool {
 		if a.history.filtering || a.history.view != historyViewList {
 			return false
 		}
-		return a.history.list == nil || a.history.list.Selected() == 0
+		return a.history.dataTable.Cursor() <= 0
 	case tabProfile:
 		if a.profile.creating || a.profile.createdKey != "" || a.profile.agentDetail != nil {
 			return false

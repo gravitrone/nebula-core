@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,13 +17,13 @@ func TestContextUpdateLinkSearchClearsAndStartsLoading(t *testing.T) {
 	model.linkQuery = "   "
 	model.linkLoading = true
 	model.linkResults = []api.Entity{{ID: "ent-1"}}
-	model.linkList.SetItems([]string{"existing"})
+	model.linkTable.SetRows([]table.Row{{"existing"}})
 
 	cmd := model.updateLinkSearch()
 	assert.Nil(t, cmd)
 	assert.False(t, model.linkLoading)
 	assert.Nil(t, model.linkResults)
-	assert.Empty(t, model.linkList.Items)
+	assert.Empty(t, model.linkTable.Rows())
 
 	model.linkQuery = "alpha"
 	cmd = model.updateLinkSearch()

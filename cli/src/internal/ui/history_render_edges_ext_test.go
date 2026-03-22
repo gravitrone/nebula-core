@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -60,9 +61,8 @@ func TestHistoryRenderListHandlesUnsyncedVisibleRowsAndFallbackValues(t *testing
 		},
 	}
 	// Keep one extra visible row to exercise the out-of-range guard branch.
-	model.list.Items = []string{"row-0", "row-1"}
-	model.list.Cursor = 0
-	model.list.Offset = 0
+	model.dataTable.SetRows([]table.Row{{"row-0"}, {"row-1"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderList())
 
@@ -92,9 +92,8 @@ func TestHistoryRenderListSkipsPreviewWhenCursorOutOfRange(t *testing.T) {
 			},
 		},
 	})
-	model.list.Cursor = 999
-
+	// With table.Model, cursor is always clamped to valid range,
+	// so preview is shown when items exist.
 	out := components.SanitizeText(model.renderList())
-
-	assert.NotContains(t, out, "Selected")
+	assert.Contains(t, out, "Selected")
 }

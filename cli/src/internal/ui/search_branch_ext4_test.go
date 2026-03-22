@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -17,14 +18,14 @@ func TestSearchUpdateBackClearsActiveQueryState(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.textInput.SetValue("alpha")
 	model.items = []searchEntry{{id: "ent-1"}}
-	model.list.SetItems([]string{"ent-1"})
+	model.dataTable.SetRows([]table.Row{{"ent-1"}})
 	model.loading = true
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.textInput.Value())
 	assert.Empty(t, updated.items)
-	assert.Empty(t, updated.list.Items)
+	assert.Empty(t, updated.dataTable.Rows())
 	assert.False(t, updated.loading)
 }
 
@@ -36,7 +37,7 @@ func TestSearchViewCoversTinyWidthAndRowFallbacks(t *testing.T) {
 		{kind: "", id: "ent-1", label: "", desc: ""},
 	}
 	// Keep one extra list row so rel->abs index can exceed item slice bounds.
-	model.list.SetItems([]string{"row-1", "row-2"})
+	model.dataTable.SetRows([]table.Row{{"row-1"}, {"row-2"}})
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "1 results")
@@ -59,7 +60,7 @@ func TestSearchViewUsesSideBySidePreviewWhenWide(t *testing.T) {
 			},
 		},
 	}
-	model.list.SetItems([]string{"Alpha"})
+	model.dataTable.SetRows([]table.Row{{"Alpha"}})
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "1 results")

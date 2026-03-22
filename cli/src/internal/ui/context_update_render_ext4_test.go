@@ -41,7 +41,7 @@ func TestContextUpdateMessageMatrix(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkLoading)
 	require.Len(t, updated.linkResults, 2)
-	assert.Equal(t, 2, len(updated.linkList.Visible()))
+	assert.Equal(t, 2, len(updated.linkTable.Rows()))
 
 	model = NewContextModel(nil)
 	model.loadingList = true

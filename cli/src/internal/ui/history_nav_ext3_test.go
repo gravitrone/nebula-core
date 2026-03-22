@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,18 +17,19 @@ func TestHistoryHandleScopeKeysNavigationBranches(t *testing.T) {
 		{ID: "scope-1", Name: "public"},
 		{ID: "scope-2", Name: "private"},
 	}
-	model.scopeList.SetItems([]string{"public", "private"})
+	model.scopeTable.SetRows([]table.Row{{"public"}, {"private"}})
 
 	updated, cmd := model.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.scopeList.Selected())
+	assert.Equal(t, 1, updated.scopeTable.Cursor())
 
 	updated, cmd = updated.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.scopeList.Selected())
+	assert.Equal(t, 0, updated.scopeTable.Cursor())
 
-	// Enter with out-of-range selected index is a no-op.
-	updated.scopeList.Cursor = 9
+	// Enter with no scopes is a no-op (cursor -1 via empty table).
+	updated.scopes = nil
+	updated.scopeTable.SetRows(nil)
 	updated.loading = false
 	updated, cmd = updated.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
@@ -42,18 +44,19 @@ func TestHistoryHandleActorKeysNavigationBranches(t *testing.T) {
 		{ActorType: "agent", ActorID: "agent-1"},
 		{ActorType: "user", ActorID: "user-1"},
 	}
-	model.actorList.SetItems([]string{"agent:agent-1", "user:user-1"})
+	model.actorTable.SetRows([]table.Row{{"agent:agent-1"}, {"user:user-1"}})
 
 	updated, cmd := model.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.actorList.Selected())
+	assert.Equal(t, 1, updated.actorTable.Cursor())
 
 	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.actorList.Selected())
+	assert.Equal(t, 0, updated.actorTable.Cursor())
 
-	// Enter with out-of-range selected index is a no-op.
-	updated.actorList.Cursor = 9
+	// Enter with no actors is a no-op (cursor -1 via empty table).
+	updated.actors = nil
+	updated.actorTable.SetRows(nil)
 	updated.loading = false
 	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)

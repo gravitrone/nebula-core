@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +41,7 @@ func TestContextRenderListPreviewAndFilterBranches(t *testing.T) {
 		CreatedAt: now,
 	}
 	model.items = []api.Context{item}
-	model.list.SetItems([]string{formatContextLine(item)})
+	model.dataTable.SetRows([]table.Row{{formatContextLine(item)}})
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "1 total")

@@ -25,16 +25,12 @@ func TestHistoryRenderScopesTinyWidthPreviewAndUnsyncedVisibleRows(t *testing.T)
 			},
 		},
 	})
-	// Add an extra visible row without a backing scope to exercise the guard.
-	model.scopeList.Items = append(model.scopeList.Items, "orphan-visible-row")
-
 	out := components.SanitizeText(model.renderScopes())
 
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "public")
 	assert.Contains(t, out, "Desc")
 	assert.Contains(t, out, "team-")
-	assert.NotContains(t, out, "orphan-visible-row")
 }
 
 func TestHistoryRenderActorsTinyWidthAndUnsyncedVisibleRows(t *testing.T) {
@@ -51,12 +47,8 @@ func TestHistoryRenderActorsTinyWidthAndUnsyncedVisibleRows(t *testing.T) {
 			},
 		},
 	})
-	// Add an extra visible row without a backing actor to exercise the guard.
-	model.actorList.Items = append(model.actorList.Items, "orphan-visible-row")
-
 	out := components.SanitizeText(model.renderActors())
 
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "agent")
-	assert.NotContains(t, out, "orphan-visible-row")
 }
