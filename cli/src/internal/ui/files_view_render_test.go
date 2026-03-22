@@ -48,13 +48,9 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 	model := NewFilesModel(client)
 	model.width = 80
 
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, cmd = model.Update(msg)
+	model, cmd := model.Update(runCmdFirst(model.Init()))
 	require.NotNil(t, cmd) // loadScopeOptions
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(cmd())
 
 	out := model.View()
 	clean := components.SanitizeText(out)

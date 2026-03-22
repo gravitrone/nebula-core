@@ -138,13 +138,10 @@ func TestEntitiesLiveSearchTriggersQuery(t *testing.T) {
 	})
 
 	model := NewEntitiesModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "a", searchText)
 	assert.Equal(t, "a", model.searchBuf)
@@ -180,13 +177,10 @@ func TestEntitiesSearchSuggest(t *testing.T) {
 	})
 
 	model := NewEntitiesModel(client)
-	cmd := model.Init()
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	msg = cmd()
-	model, _ = model.Update(msg)
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "a", searchText)
 	assert.Equal(t, "alxx", model.searchSuggest)
@@ -211,8 +205,7 @@ func TestEntitiesSearchSuggestTabAccepts(t *testing.T) {
 	var cmd tea.Cmd
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "alxx", model.searchBuf)
 	assert.Equal(t, "alxx", searchText)

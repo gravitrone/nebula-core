@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -60,6 +61,7 @@ type LogsModel struct {
 	allItems      []api.Log
 	list          *components.List
 	loading       bool
+	spinner       spinner.Model
 	view          logsView
 	modeFocus     bool
 	filtering     bool
@@ -103,8 +105,9 @@ type LogsModel struct {
 // NewLogsModel builds the logs UI model.
 func NewLogsModel(client *api.Client) LogsModel {
 	return LogsModel{
-		client: client,
-		list:   components.NewList(12),
+		client:  client,
+		spinner: components.NewNebulaSpinner(),
+		list:    components.NewList(12),
 		view:   logsViewList,
 		addFields: []formField{
 			{label: "Type"},
@@ -149,12 +152,17 @@ func (m LogsModel) Init() tea.Cmd {
 	m.editValue.Reset()
 	m.editMeta.Reset()
 	m.editSaving = false
-	return m.loadLogs()
+	return tea.Batch(m.loadLogs(), m.spinner.Tick)
 }
 
 // Update updates update.
 func (m LogsModel) Update(msg tea.Msg) (LogsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case logsLoadedMsg:
 		m.loading = false
 		m.allItems = msg.items
@@ -174,13 +182,13 @@ func (m LogsModel) Update(msg tea.Msg) (LogsModel, tea.Cmd) {
 		m.addSaving = false
 		m.addSaved = true
 		m.loading = true
-		return m, m.loadLogs()
+		return m, tea.Batch(m.loadLogs(), m.spinner.Tick)
 	case logUpdatedMsg:
 		m.editSaving = false
 		m.detail = nil
 		m.view = logsViewList
 		m.loading = true
-		return m, m.loadLogs()
+		return m, tea.Batch(m.loadLogs(), m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.addSaving = false
@@ -307,7 +315,7 @@ func (m LogsModel) toggleMode() (LogsModel, tea.Cmd) {
 
 func (m LogsModel) renderList() string {
 	if m.loading {
-		return "  " + MutedStyle.Render("Loading logs...")
+		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading logs...")
 	}
 	if len(m.items) == 0 {
 		return components.EmptyStateBox(

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -102,6 +103,7 @@ type ContextModel struct {
 	filtering           bool
 	filterBuf           string
 	loadingList         bool
+	spinner             spinner.Model
 	detail              *api.Context
 	detailRelationships []api.Relationship
 	contextEditFields   []formField
@@ -130,7 +132,8 @@ type formField struct {
 // NewContextModel builds the context UI model.
 func NewContextModel(client *api.Client) ContextModel {
 	return ContextModel{
-		client: client,
+		client:  client,
+		spinner: components.NewNebulaSpinner(),
 		fields: []formField{
 			{label: "Title"},
 			{label: "URL"},
@@ -209,6 +212,11 @@ func (m ContextModel) Init() tea.Cmd {
 // Update updates update.
 func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case contextSavedMsg:
 		m.saving = false
 		m.saved = true
@@ -672,7 +680,7 @@ func (m ContextModel) toggleMode() (ContextModel, tea.Cmd) {
 	if m.view == contextViewAdd {
 		m.view = contextViewList
 		m.loadingList = true
-		return m, m.loadContextList()
+		return m, tea.Batch(m.loadContextList(), m.spinner.Tick)
 	}
 	if m.view == contextViewDetail || m.view == contextViewEdit {
 		m.view = contextViewList
@@ -896,7 +904,7 @@ func (m ContextModel) handleEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 // renderList renders render list.
 func (m ContextModel) renderList() string {
 	if m.loadingList {
-		return components.Box(MutedStyle.Render("Loading context..."), m.width)
+		return components.Box(m.spinner.View()+" "+MutedStyle.Render("Loading context..."), m.width)
 	}
 
 	if len(m.items) == 0 {

@@ -142,7 +142,7 @@ func TestHistoryUpdateRevertedAndErrMsgBranches(t *testing.T) {
 	assert.Nil(t, updated.detail)
 	assert.True(t, updated.loading)
 
-	msg := cmd()
+	msg := runCmdFirst(cmd)
 	loaded, ok := msg.(historyLoadedMsg)
 	require.True(t, ok)
 	require.Len(t, loaded.items, 1)

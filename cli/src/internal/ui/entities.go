@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -108,6 +109,7 @@ type EntitiesModel struct {
 	allItems       []api.Entity
 	list           *components.List
 	loading        bool
+	spinner        spinner.Model
 	view           entitiesView
 	modeFocus      bool
 	filtering      bool
@@ -204,8 +206,9 @@ type EntitiesModel struct {
 // NewEntitiesModel builds the entities UI model.
 func NewEntitiesModel(client *api.Client) EntitiesModel {
 	return EntitiesModel{
-		client: client,
-		list:   components.NewList(15),
+		client:  client,
+		spinner: components.NewNebulaSpinner(),
+		list:    components.NewList(15),
 		addFields: []formField{
 			{label: "Name"},
 			{label: "Type"},
@@ -261,12 +264,18 @@ func (m EntitiesModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadEntities(""),
 		m.loadScopeNames(),
+		m.spinner.Tick,
 	)
 }
 
 // Update updates update.
 func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case entitiesLoadedMsg:
 		m.loading = false
 		m.allItems = msg.items
@@ -319,7 +328,7 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 		m.addSaving = false
 		m.addSaved = true
 		m.loading = true
-		return m, m.loadEntities("")
+		return m, tea.Batch(m.loadEntities(""), m.spinner.Tick)
 
 	case relationshipUpdatedMsg:
 		m.relLoading = true
@@ -349,7 +358,7 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 		m.bulkRunning = false
 		m.clearBulkSelection()
 		m.loading = true
-		return m, m.loadEntities(strings.TrimSpace(m.searchBuf))
+		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
 	case entityScopesLoadedMsg:
 		if m.scopeNames == nil {
 			m.scopeNames = map[string]string{}
@@ -491,7 +500,7 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 		}
 		m.searchBuf += " "
 		m.loading = true
-		return m, m.loadEntities(strings.TrimSpace(m.searchBuf))
+		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
 	case isEnter(msg):
 		if idx := m.list.Selected(); idx < len(m.items) {
 			item := m.items[idx]
@@ -513,27 +522,27 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 		if m.searchSuggest != "" && strings.TrimSpace(m.searchBuf) != strings.TrimSpace(m.searchSuggest) {
 			m.searchBuf = m.searchSuggest
 			m.loading = true
-			return m, m.loadEntities(strings.TrimSpace(m.searchBuf))
+			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
 		}
 	case isKey(msg, "backspace", "delete"):
 		if len(m.searchBuf) > 0 {
 			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
 			m.loading = true
-			return m, m.loadEntities(strings.TrimSpace(m.searchBuf))
+			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
 		}
 	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
 		if m.searchBuf != "" {
 			m.searchBuf = ""
 			m.searchSuggest = ""
 			m.loading = true
-			return m, m.loadEntities("")
+			return m, tea.Batch(m.loadEntities(""), m.spinner.Tick)
 		}
 	case isBack(msg):
 		if m.searchBuf != "" {
 			m.searchBuf = ""
 			m.searchSuggest = ""
 			m.loading = true
-			return m, m.loadEntities("")
+			return m, tea.Batch(m.loadEntities(""), m.spinner.Tick)
 		}
 	case isKey(msg, "t"):
 		if m.bulkCount() > 0 {
@@ -559,7 +568,7 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 		if ch != "" {
 			m.searchBuf += ch
 			m.loading = true
-			return m, m.loadEntities(strings.TrimSpace(m.searchBuf))
+			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
 		}
 	}
 	return m, nil
@@ -1273,7 +1282,7 @@ func (m *EntitiesModel) commitAddScope() {
 // renderList renders render list.
 func (m EntitiesModel) renderList() string {
 	if m.loading {
-		return "  " + MutedStyle.Render("Loading entities...")
+		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading entities...")
 	}
 
 	if len(m.items) == 0 {
@@ -1628,7 +1637,7 @@ func (m EntitiesModel) handleSearchInput(msg tea.KeyPressMsg) (EntitiesModel, te
 		m.searchBuf = ""
 		m.loading = true
 		m.view = entitiesViewList
-		return m, m.loadEntities(query)
+		return m, tea.Batch(m.loadEntities(query), m.spinner.Tick)
 	case isKey(msg, "backspace", "delete"):
 		if len(m.searchBuf) > 0 {
 			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]

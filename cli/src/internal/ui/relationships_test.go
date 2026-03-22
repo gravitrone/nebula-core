@@ -96,8 +96,7 @@ func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "ent-1", captured.SourceID)
 	assert.Equal(t, "job-2", captured.TargetID)
@@ -372,7 +371,7 @@ func TestRelationshipsCreateFlowSubmitsAndReturnsToList(t *testing.T) {
 	}
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	model = applyMsg(model, cmd())
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "knows", createdType)
 	assert.Equal(t, relsViewList, model.view)

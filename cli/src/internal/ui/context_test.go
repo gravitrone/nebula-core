@@ -146,8 +146,7 @@ func TestContextToggleModeLoadsList(t *testing.T) {
 
 	model, cmd := model.toggleMode()
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, contextViewList, model.view)
 	assert.Len(t, model.items, 1)

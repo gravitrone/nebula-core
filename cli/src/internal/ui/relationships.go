@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/spinner"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -67,6 +68,7 @@ type RelationshipsModel struct {
 	allItems  []api.Relationship
 	list      *components.List
 	loading   bool
+	spinner   spinner.Model
 	view      relationshipsView
 	modeFocus bool
 	filtering bool
@@ -108,6 +110,7 @@ type RelationshipsModel struct {
 func NewRelationshipsModel(client *api.Client) RelationshipsModel {
 	return RelationshipsModel{
 		client:         client,
+		spinner:        components.NewNebulaSpinner(),
 		list:           components.NewList(12),
 		createList:     components.NewList(8),
 		createTypeList: components.NewList(6),
@@ -131,12 +134,18 @@ func (m RelationshipsModel) Init() tea.Cmd {
 		m.loadEntityCache(),
 		m.loadContextCache(),
 		m.loadJobCache(),
+		m.spinner.Tick,
 	)
 }
 
 // Update updates update.
 func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 	switch msg := msg.(type) {
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+
 	case relTabLoadedMsg:
 		m.loading = false
 		m.allItems = append([]api.Relationship{}, msg.items...)
@@ -184,7 +193,7 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 		m.editSaving = false
 		m.loading = true
 		m.view = relsViewList
-		return m, m.loadRelationships()
+		return m, tea.Batch(m.loadRelationships(), m.spinner.Tick)
 
 	case errMsg:
 		m.loading = false
@@ -362,7 +371,7 @@ func (m RelationshipsModel) isAddView() bool {
 // renderList renders render list.
 func (m RelationshipsModel) renderList() string {
 	if m.loading {
-		return "  " + MutedStyle.Render("Loading relationships...")
+		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading relationships...")
 	}
 
 	if len(m.items) == 0 {
@@ -887,7 +896,7 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			}
 			m.view = relsViewList
 			m.loading = true
-			return m, m.createRelationship(*m.createSource, *m.createTarget, kind)
+			return m, tea.Batch(m.createRelationship(*m.createSource, *m.createTarget, kind), m.spinner.Tick)
 		case isKey(msg, "backspace", "delete"):
 			if len(m.createType) > 0 {
 				m.createType = m.createType[:len(m.createType)-1]

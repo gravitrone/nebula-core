@@ -51,10 +51,7 @@ func TestProtocolsListToDetailToEditFlow(t *testing.T) {
 	})
 
 	model := NewProtocolsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	assert.False(t, model.loading)
 	assert.Len(t, model.items, 1)
@@ -151,9 +148,7 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 	})
 
 	model := NewProtocolsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	model, _ = model.Update(cmd())
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// Enter Add.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'n', Text: "n"})
@@ -194,11 +189,11 @@ func TestProtocolsAddFlowSubmitsCreateProtocol(t *testing.T) {
 	}
 
 	// Save.
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
-	model, _ = model.Update(cmd())
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	require.True(t, posted)
 	assert.Equal(t, "p1", created.Name)
@@ -242,9 +237,7 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 	})
 
 	model := NewProtocolsModel(client)
-	cmd := model.Init()
-	require.NotNil(t, cmd)
-	model, _ = model.Update(cmd())
+	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	// List -> detail -> edit.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -270,11 +263,11 @@ func TestProtocolsEditFlowCommitsTagAndApplyAndSaves(t *testing.T) {
 		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
 
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	model, cmd = model.Update(cmd())
 	require.NotNil(t, cmd)
-	model, _ = model.Update(cmd())
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "p1", patchedName)
 	require.NotNil(t, patched.AppliesTo)
