@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -95,9 +96,9 @@ type ContextModel struct {
 	linkLoading         bool
 	linkQuery           string
 	linkResults         []api.Entity
-	linkList            *components.List
+	linkTable           table.Model
 	linkEntities        []api.Entity
-	list                *components.List
+	dataTable           table.Model
 	allItems            []api.Context
 	items               []api.Context
 	filtering           bool
@@ -152,8 +153,8 @@ func NewContextModel(client *api.Client) ContextModel {
 			{label: "Scopes"},
 			{label: "Notes"},
 		},
-		linkList: components.NewList(6),
-		list:     components.NewList(10),
+		linkTable: components.NewNebulaTable(nil, 6),
+		dataTable: components.NewNebulaTable(nil, 10),
 	}
 }
 
@@ -197,12 +198,10 @@ func (m ContextModel) Init() tea.Cmd {
 	if m.scopeNames == nil {
 		m.scopeNames = map[string]string{}
 	}
-	if m.linkList != nil {
-		m.linkList.SetItems(nil)
-	}
-	if m.list != nil {
-		m.list.SetItems(nil)
-	}
+	m.linkTable.SetRows(nil)
+	m.linkTable.SetCursor(0)
+	m.dataTable.SetRows(nil)
+	m.dataTable.SetCursor(0)
 	for i := range m.fields {
 		m.fields[i].value = ""
 	}
@@ -230,13 +229,12 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 	case contextLinkResultsMsg:
 		m.linkLoading = false
 		m.linkResults = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, e := range msg.items {
-			labels[i] = formatEntityLine(e)
+			rows[i] = table.Row{formatEntityLine(e)}
 		}
-		if m.linkList != nil {
-			m.linkList.SetItems(labels)
-		}
+		m.linkTable.SetRows(rows)
+		m.linkTable.SetCursor(0)
 		return m, nil
 
 	case contextListLoadedMsg:
@@ -697,15 +695,15 @@ func (m ContextModel) handleListKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isEnter(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			item := m.items[idx]
 			itemID := strings.TrimSpace(item.ID)
 			if itemID == "" {
@@ -917,7 +915,6 @@ func (m ContextModel) renderList() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -928,13 +925,9 @@ func (m ContextModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -946,27 +939,9 @@ func (m ContextModel) renderList() string {
 	if titleWidth < 12 {
 		titleWidth = 12
 	}
-	cols := []components.TableColumn{
-		{Header: "Title", Width: titleWidth, Align: lipgloss.Left},
-		{Header: "Type", Width: typeWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
 
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Context
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		k := m.items[absIdx]
-
+	tableRows := make([]table.Row, len(m.items))
+	for i, k := range m.items {
 		title := components.ClampTextWidthEllipsis(components.SanitizeOneLine(contextTitle(k)), titleWidth)
 		typ := strings.TrimSpace(components.SanitizeOneLine(k.SourceType))
 		if typ == "" {
@@ -982,19 +957,22 @@ func (m ContextModel) renderList() string {
 		}
 		when := formatLocalTimeCompact(at)
 
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			title,
 			components.ClampTextWidthEllipsis(typ, typeWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			when,
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Title", Width: titleWidth},
+		{Title: "Type", Width: typeWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if query := strings.TrimSpace(m.filterBuf); query != "" {
@@ -1002,18 +980,22 @@ func (m ContextModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Context
+	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+		previewItem = &m.items[idx]
+	}
 	if previewItem != nil {
 		content := m.renderContextPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -1241,13 +1223,12 @@ func (m *ContextModel) applyContextFilter() {
 		}
 		m.items = filtered
 	}
-	labels := make([]string, len(m.items))
+	rows := make([]table.Row, len(m.items))
 	for i, item := range m.items {
-		labels[i] = formatContextLine(item)
+		rows[i] = table.Row{formatContextLine(item)}
 	}
-	if m.list != nil {
-		m.list.SetItems(labels)
-	}
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 }
 
 // loadContextDetail loads load context detail.
@@ -1387,9 +1368,8 @@ func (m *ContextModel) resetForm() {
 	m.linkQuery = ""
 	m.linkResults = nil
 	m.linkEntities = nil
-	if m.linkList != nil {
-		m.linkList.SetItems(nil)
-	}
+	m.linkTable.SetRows(nil)
+	m.linkTable.SetCursor(0)
 	for i := range m.fields {
 		m.fields[i].value = ""
 	}
@@ -1541,9 +1521,8 @@ func (m *ContextModel) startLinkSearch() {
 	m.linkLoading = false
 	m.linkQuery = ""
 	m.linkResults = nil
-	if m.linkList != nil {
-		m.linkList.SetItems(nil)
-	}
+	m.linkTable.SetRows(nil)
+	m.linkTable.SetCursor(0)
 }
 
 // handleLinkSearch handles handle link search.
@@ -1554,30 +1533,22 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyPressMsg) (ContextModel, tea.C
 		m.linkLoading = false
 		m.linkQuery = ""
 		m.linkResults = nil
-		if m.linkList != nil {
-			m.linkList.SetItems(nil)
-		}
+		m.linkTable.SetRows(nil)
+		m.linkTable.SetCursor(0)
 	case isDown(msg):
-		if m.linkList != nil {
-			m.linkList.Down()
-		}
+		m.linkTable.MoveDown(1)
 	case isUp(msg):
-		if m.linkList != nil {
-			m.linkList.Up()
-		}
+		m.linkTable.MoveUp(1)
 	case isEnter(msg):
-		if m.linkList != nil {
-			if idx := m.linkList.Selected(); idx < len(m.linkResults) {
-				m.addLinkedEntity(m.linkResults[idx])
-			}
+		if idx := m.linkTable.Cursor(); idx >= 0 && idx < len(m.linkResults) {
+			m.addLinkedEntity(m.linkResults[idx])
 		}
 		m.linkSearching = false
 		m.linkLoading = false
 		m.linkQuery = ""
 		m.linkResults = nil
-		if m.linkList != nil {
-			m.linkList.SetItems(nil)
-		}
+		m.linkTable.SetRows(nil)
+		m.linkTable.SetCursor(0)
 	case isKey(msg, "backspace"):
 		if len(m.linkQuery) > 0 {
 			m.linkQuery = m.linkQuery[:len(m.linkQuery)-1]
@@ -1587,18 +1558,16 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyPressMsg) (ContextModel, tea.C
 		if m.linkQuery != "" {
 			m.linkQuery = ""
 			m.linkResults = nil
-			if m.linkList != nil {
-				m.linkList.SetItems(nil)
-			}
+			m.linkTable.SetRows(nil)
+			m.linkTable.SetCursor(0)
 			return m, nil
 		}
 	default:
 		if ch := keyText(msg); ch != "" {
 			if len(m.linkResults) > 0 {
 				m.linkResults = nil
-				if m.linkList != nil {
-					m.linkList.SetItems(nil)
-				}
+				m.linkTable.SetRows(nil)
+				m.linkTable.SetCursor(0)
 			}
 			m.linkQuery += ch
 			return m, m.updateLinkSearch()
@@ -1621,7 +1590,6 @@ func (m ContextModel) renderLinkSearch() string {
 		b.WriteString(MutedStyle.Render("No matches."))
 	} else {
 		contentWidth := components.BoxContentWidth(m.width)
-		visible := m.linkList.Visible()
 
 		previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -1632,13 +1600,9 @@ func (m ContextModel) renderLinkSearch() string {
 			tableWidth = contentWidth - previewWidth - gap
 		}
 
-		sepWidth := 1
-		if br := lipgloss.RoundedBorder().Left; br != "" {
-			sepWidth = lipgloss.Width(br)
-		}
-
-		// 3 columns -> 2 separators.
-		availableCols := tableWidth - (2 * sepWidth)
+		// Each table cell has Padding(0,1) = 2 chars. 3 columns = 6 chars of padding.
+		cellPadding := 3 * 2
+		availableCols := tableWidth - cellPadding
 		if availableCols < 30 {
 			availableCols = 30
 		}
@@ -1654,26 +1618,8 @@ func (m ContextModel) renderLinkSearch() string {
 			}
 		}
 
-		cols := []components.TableColumn{
-			{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-			{Header: "Type", Width: typeWidth, Align: lipgloss.Left},
-			{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		}
-
-		tableRows := make([][]string, 0, len(visible))
-		activeRowRel := -1
-		var previewItem *api.Entity
-		if idx := m.linkList.Selected(); idx >= 0 && idx < len(m.linkResults) {
-			previewItem = &m.linkResults[idx]
-		}
-
-		for i := range visible {
-			absIdx := m.linkList.RelToAbs(i)
-			if absIdx < 0 || absIdx >= len(m.linkResults) {
-				continue
-			}
-			e := m.linkResults[absIdx]
-
+		tableRows := make([]table.Row, len(m.linkResults))
+		for i, e := range m.linkResults {
 			name := strings.TrimSpace(components.SanitizeOneLine(e.Name))
 			if name == "" {
 				name = "entity"
@@ -1687,29 +1633,38 @@ func (m ContextModel) renderLinkSearch() string {
 				status = "-"
 			}
 
-			if m.linkList.IsSelected(absIdx) {
-				activeRowRel = len(tableRows)
-			}
-			tableRows = append(tableRows, []string{
+			tableRows[i] = table.Row{
 				components.ClampTextWidthEllipsis(name, nameWidth),
 				components.ClampTextWidthEllipsis(typ, typeWidth),
 				components.ClampTextWidthEllipsis(status, statusWidth),
-			})
+			}
 		}
 
+		m.linkTable.SetColumns([]table.Column{
+			{Title: "Name", Width: nameWidth},
+			{Title: "Type", Width: typeWidth},
+			{Title: "Status", Width: statusWidth},
+		})
+		m.linkTable.SetWidth(tableWidth)
+		m.linkTable.SetRows(tableRows)
+
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.linkResults)))
-		table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+		tableView := m.linkTable.View()
 		preview := ""
+		var previewItem *api.Entity
+		if idx := m.linkTable.Cursor(); idx >= 0 && idx < len(m.linkResults) {
+			previewItem = &m.linkResults[idx]
+		}
 		if previewItem != nil {
 			content := m.renderLinkEntityPreview(*previewItem, previewBoxContentWidth(previewWidth))
 			preview = renderPreviewBox(content, previewWidth)
 		}
 
-		body := table
+		body := tableView
 		if sideBySide && preview != "" {
-			body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+			body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 		} else if preview != "" {
-			body = table + "\n\n" + preview
+			body = tableView + "\n\n" + preview
 		}
 
 		b.WriteString(countLine)
@@ -1771,9 +1726,8 @@ func (m *ContextModel) updateLinkSearch() tea.Cmd {
 	if query == "" {
 		m.linkLoading = false
 		m.linkResults = nil
-		if m.linkList != nil {
-			m.linkList.SetItems(nil)
-		}
+		m.linkTable.SetRows(nil)
+		m.linkTable.SetCursor(0)
 		return nil
 	}
 	m.linkLoading = true

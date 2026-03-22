@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -26,8 +27,8 @@ func TestRelationshipsRenderListNarrowEdgeCaseBranches(t *testing.T) {
 		},
 	}
 	// Keep one out-of-range row so the absIdx guard branch is exercised.
-	model.list.SetItems([]string{"rel-1", "phantom"})
-	model.list.Cursor = 0
+	model.dataTable.SetRows([]table.Row{{"rel-1"}, {"phantom"}})
+	model.dataTable.SetCursor(0)
 	model.modeFocus = true
 	model.filterBuf = "ent-1"
 
@@ -54,8 +55,8 @@ func TestRelationshipsRenderListWideSideBySidePreviewBranch(t *testing.T) {
 			CreatedAt:  now,
 		},
 	}
-	model.list.SetItems([]string{"rel-1"})
-	model.list.Cursor = 0
+	model.dataTable.SetRows([]table.Row{{"rel-1"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "depends-on")

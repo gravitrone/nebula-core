@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -75,7 +76,7 @@ func TestRelationshipsRenderListTinyWidthAndPreviewGuardBranches(t *testing.T) {
 			Type:       "depends-on",
 		},
 	}
-	model.list.SetItems([]string{"rel-1"})
+	model.dataTable.SetRows([]table.Row{{"rel-1"}})
 
 	assert.Equal(t, "", model.renderRelationshipPreview(model.items[0], 0))
 }
@@ -137,7 +138,7 @@ func TestRelationshipsCreateKeyAdditionalBranches(t *testing.T) {
 	updated.view = relsViewCreateTargetSearch
 	updated.createQuery = "ab"
 	updated.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
-	updated.createList.SetItems([]string{"ent-1"})
+	updated.createTable.SetRows([]table.Row{{"ent-1"}})
 	updated.createLoading = true
 
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -145,7 +146,7 @@ func TestRelationshipsCreateKeyAdditionalBranches(t *testing.T) {
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
 	assert.Equal(t, "", updated.createQuery)
 	assert.Empty(t, updated.createResults)
-	assert.Empty(t, updated.createList.Items)
+	assert.Empty(t, updated.createTable.Rows())
 	assert.False(t, updated.createLoading)
 
 	updated.entityCache = []api.Entity{{ID: "ent-1", Name: "alpha", Type: "person", Status: "active"}}

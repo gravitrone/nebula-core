@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -66,7 +67,7 @@ type RelationshipsModel struct {
 	client    *api.Client
 	items     []api.Relationship
 	allItems  []api.Relationship
-	list      *components.List
+	dataTable table.Model
 	loading   bool
 	spinner   spinner.Model
 	view      relationshipsView
@@ -94,12 +95,12 @@ type RelationshipsModel struct {
 	// create flow
 	createQuery       string
 	createResults     []relationshipCreateCandidate
-	createList        *components.List
+	createTable       table.Model
 	createSource      *relationshipCreateCandidate
 	createTarget      *relationshipCreateCandidate
 	createType        string
 	createTypeResults []string
-	createTypeList    *components.List
+	createTypeTable   table.Model
 	createTypeNav     bool
 	createLoading     bool
 
@@ -111,9 +112,9 @@ func NewRelationshipsModel(client *api.Client) RelationshipsModel {
 	return RelationshipsModel{
 		client:         client,
 		spinner:        components.NewNebulaSpinner(),
-		list:           components.NewList(12),
-		createList:     components.NewList(8),
-		createTypeList: components.NewList(6),
+		dataTable:       components.NewNebulaTable(nil, 12),
+		createTable:     components.NewNebulaTable(nil, 8),
+		createTypeTable: components.NewNebulaTable(nil, 6),
 		view:           relsViewList,
 		names:          map[string]string{},
 	}
@@ -182,11 +183,12 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 		}
 		m.createLoading = false
 		m.createResults = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, candidate := range msg.items {
-			labels[i] = formatCreateCandidateLine(candidate)
+			rows[i] = table.Row{formatCreateCandidateLine(candidate)}
 		}
-		m.createList.SetItems(labels)
+		m.createTable.SetRows(rows)
+		m.createTable.SetCursor(0)
 		return m, nil
 
 	case relTabSavedMsg:
@@ -262,12 +264,12 @@ func (m RelationshipsModel) handleListKeys(msg tea.KeyPressMsg) (RelationshipsMo
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isEnter(msg), isSpace(msg):
 		if rel := m.selectedRelationship(); rel != nil {
@@ -384,7 +386,6 @@ func (m RelationshipsModel) renderList() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -395,13 +396,8 @@ func (m RelationshipsModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	numCols := 4
+	availableCols := tableWidth - (numCols * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -413,25 +409,9 @@ func (m RelationshipsModel) renderList() string {
 	if edgeWidth < 12 {
 		edgeWidth = 12
 	}
-	cols := []components.TableColumn{
-		{Header: "Rel", Width: relWidth, Align: lipgloss.Left},
-		{Header: "Edge", Width: edgeWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
 
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Relationship
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		rel := m.items[absIdx]
+	tableRows := make([]table.Row, len(m.items))
+	for i, rel := range m.items {
 		relType := strings.TrimSpace(components.SanitizeOneLine(rel.Type))
 		if relType == "" {
 			relType = "-"
@@ -445,19 +425,22 @@ func (m RelationshipsModel) renderList() string {
 		}
 		when := formatLocalTimeCompact(rel.CreatedAt)
 
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(relType, relWidth),
 			components.ClampTextWidthEllipsis(edge, edgeWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			when,
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Rel", Width: relWidth},
+		{Title: "Edge", Width: edgeWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	title := "Relationships"
 	count := fmt.Sprintf("%d total", len(m.items))
@@ -466,18 +449,22 @@ func (m RelationshipsModel) renderList() string {
 	}
 	countLine := MutedStyle.Render(count)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Relationship
+	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+		previewItem = &m.items[idx]
+	}
 	if previewItem != nil {
 		content := m.renderRelationshipPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -723,12 +710,14 @@ func (m RelationshipsModel) renderConfirm() string {
 func (m *RelationshipsModel) startCreate() {
 	m.createQuery = ""
 	m.createResults = nil
-	m.createList.SetItems(nil)
+	m.createTable.SetRows(nil)
+	m.createTable.SetCursor(0)
 	m.createSource = nil
 	m.createTarget = nil
 	m.createType = ""
 	m.createTypeResults = nil
-	m.createTypeList.SetItems(nil)
+	m.createTypeTable.SetRows(nil)
+	m.createTypeTable.SetCursor(0)
 	m.createTypeNav = false
 	m.createLoading = false
 }
@@ -742,7 +731,8 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if m.createQuery != "" {
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.createLoading = false
 				return m, nil
 			}
@@ -751,22 +741,24 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if m.createQuery != "" {
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.createLoading = false
 				return m, nil
 			}
 			m.view = relsViewList
 		case isDown(msg):
-			m.createList.Down()
+			m.createTable.MoveDown(1)
 		case isUp(msg):
-			m.createList.Up()
+			m.createTable.MoveUp(1)
 		case isEnter(msg):
-			if idx := m.createList.Selected(); idx < len(m.createResults) {
+			if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createSource = &item
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.view = relsViewCreateTargetSearch
 			}
 		case isKey(msg, "backspace", "delete"):
@@ -789,16 +781,17 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 		case isBack(msg):
 			m.view = relsViewCreateSourceSearch
 		case isDown(msg):
-			m.createList.Down()
+			m.createTable.MoveDown(1)
 		case isUp(msg):
-			m.createList.Up()
+			m.createTable.MoveUp(1)
 		case isEnter(msg):
-			if idx := m.createList.Selected(); idx < len(m.createResults) {
+			if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createSource = &item
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.view = relsViewCreateTargetSearch
 			}
 		}
@@ -808,7 +801,8 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if m.createQuery != "" {
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.createLoading = false
 				return m, nil
 			}
@@ -817,22 +811,24 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if m.createQuery != "" {
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.createLoading = false
 				return m, nil
 			}
 			m.view = relsViewCreateSourceSearch
 		case isDown(msg):
-			m.createList.Down()
+			m.createTable.MoveDown(1)
 		case isUp(msg):
-			m.createList.Up()
+			m.createTable.MoveUp(1)
 		case isEnter(msg):
-			if idx := m.createList.Selected(); idx < len(m.createResults) {
+			if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createTarget = &item
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.view = relsViewCreateType
 				m.resetTypeSuggestions()
 			}
@@ -856,16 +852,17 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 		case isBack(msg):
 			m.view = relsViewCreateTargetSearch
 		case isDown(msg):
-			m.createList.Down()
+			m.createTable.MoveDown(1)
 		case isUp(msg):
-			m.createList.Up()
+			m.createTable.MoveUp(1)
 		case isEnter(msg):
-			if idx := m.createList.Selected(); idx < len(m.createResults) {
+			if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createTarget = &item
 				m.createQuery = ""
 				m.createResults = nil
-				m.createList.SetItems(nil)
+				m.createTable.SetRows(nil)
+				m.createTable.SetCursor(0)
 				m.view = relsViewCreateType
 				m.resetTypeSuggestions()
 			}
@@ -877,17 +874,17 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 		case isDown(msg):
 			if len(m.createTypeResults) > 0 {
 				m.createTypeNav = true
-				m.createTypeList.Down()
+				m.createTypeTable.MoveDown(1)
 			}
 		case isUp(msg):
 			if len(m.createTypeResults) > 0 {
 				m.createTypeNav = true
-				m.createTypeList.Up()
+				m.createTypeTable.MoveUp(1)
 			}
 		case isEnter(msg):
 			kind := strings.TrimSpace(m.createType)
 			if m.createTypeNav && len(m.createTypeResults) > 0 {
-				if idx := m.createTypeList.Selected(); idx < len(m.createTypeResults) {
+				if idx := m.createTypeTable.Cursor(); idx >= 0 && idx < len(m.createTypeResults) {
 					kind = m.createTypeResults[idx]
 				}
 			}
@@ -954,7 +951,6 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 		b.WriteString(MutedStyle.Render("No matches."))
 	} else {
 		contentWidth := components.BoxContentWidth(m.width)
-		visible := m.createList.Visible()
 
 		previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -965,13 +961,8 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 			tableWidth = contentWidth - previewWidth - gap
 		}
 
-		sepWidth := 1
-		if br := lipgloss.RoundedBorder().Left; br != "" {
-			sepWidth = lipgloss.Width(br)
-		}
-
-		// 3 columns -> 2 separators.
-		availableCols := tableWidth - (2 * sepWidth)
+		numCols := 3
+		availableCols := tableWidth - (numCols * 2)
 		if availableCols < 30 {
 			availableCols = 30
 		}
@@ -987,26 +978,8 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 			}
 		}
 
-		cols := []components.TableColumn{
-			{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-			{Header: "Kind", Width: kindWidth, Align: lipgloss.Left},
-			{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		}
-
-		tableRows := make([][]string, 0, len(visible))
-		activeRowRel := -1
-		var previewItem *relationshipCreateCandidate
-		if idx := m.createList.Selected(); idx >= 0 && idx < len(m.createResults) {
-			previewItem = &m.createResults[idx]
-		}
-
-		for i := range visible {
-			absIdx := m.createList.RelToAbs(i)
-			if absIdx < 0 || absIdx >= len(m.createResults) {
-				continue
-			}
-			candidate := m.createResults[absIdx]
-
+		tableRows := make([]table.Row, len(m.createResults))
+		for i, candidate := range m.createResults {
 			name := strings.TrimSpace(components.SanitizeOneLine(candidate.Name))
 			if name == "" {
 				name = "node"
@@ -1023,30 +996,38 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 				status = "-"
 			}
 
-			if m.createList.IsSelected(absIdx) {
-				activeRowRel = len(tableRows)
-			}
-
-			tableRows = append(tableRows, []string{
+			tableRows[i] = table.Row{
 				components.ClampTextWidthEllipsis(name, nameWidth),
 				components.ClampTextWidthEllipsis(kind, kindWidth),
 				components.ClampTextWidthEllipsis(status, statusWidth),
-			})
+			}
 		}
 
+		m.createTable.SetColumns([]table.Column{
+			{Title: "Name", Width: nameWidth},
+			{Title: "Kind", Width: kindWidth},
+			{Title: "Status", Width: statusWidth},
+		})
+		m.createTable.SetWidth(tableWidth)
+		m.createTable.SetRows(tableRows)
+
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.createResults)))
-		table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+		tableView := m.createTable.View()
 		preview := ""
+		var previewItem *relationshipCreateCandidate
+		if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
+			previewItem = &m.createResults[idx]
+		}
 		if previewItem != nil {
 			content := m.renderCreateNodePreview(*previewItem, previewBoxContentWidth(previewWidth))
 			preview = renderPreviewBox(content, previewWidth)
 		}
 
-		body := table
+		body := tableView
 		if sideBySide && preview != "" {
-			body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+			body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 		} else if preview != "" {
-			body = table + "\n\n" + preview
+			body = tableView + "\n\n" + preview
 		}
 
 		b.WriteString(countLine)
@@ -1070,7 +1051,6 @@ func (m RelationshipsModel) renderCreateType() string {
 		b.WriteString(MutedStyle.Render("No suggestions."))
 	} else {
 		contentWidth := components.BoxContentWidth(m.width)
-		visible := m.createTypeList.Visible()
 
 		previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -1081,49 +1061,40 @@ func (m RelationshipsModel) renderCreateType() string {
 			tableWidth = contentWidth - previewWidth - gap
 		}
 
-		cols := []components.TableColumn{
-			{Header: "Suggestion", Width: tableWidth, Align: lipgloss.Left},
-		}
-
-		tableRows := make([][]string, 0, len(visible))
-		activeRowRel := -1
-		var selectedSuggestion string
-		if idx := m.createTypeList.Selected(); idx >= 0 && idx < len(m.createTypeResults) {
-			selectedSuggestion = m.createTypeResults[idx]
-		}
-
-		for i := range visible {
-			absIdx := m.createTypeList.RelToAbs(i)
-			if absIdx < 0 || absIdx >= len(m.createTypeResults) {
-				continue
-			}
-			s := strings.TrimSpace(components.SanitizeOneLine(m.createTypeResults[absIdx]))
+		tableRows := make([]table.Row, len(m.createTypeResults))
+		for i, s := range m.createTypeResults {
+			s = strings.TrimSpace(components.SanitizeOneLine(s))
 			if s == "" {
 				s = "-"
 			}
-
-			if m.createTypeList.IsSelected(absIdx) {
-				activeRowRel = len(tableRows)
-			}
-
-			tableRows = append(tableRows, []string{
+			tableRows[i] = table.Row{
 				components.ClampTextWidthEllipsis(s, tableWidth),
-			})
+			}
 		}
 
+		m.createTypeTable.SetColumns([]table.Column{
+			{Title: "Suggestion", Width: tableWidth},
+		})
+		m.createTypeTable.SetWidth(tableWidth)
+		m.createTypeTable.SetRows(tableRows)
+
 		countLine := MutedStyle.Render(fmt.Sprintf("%d suggestions", len(m.createTypeResults)))
-		table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+		tableView := m.createTypeTable.View()
 		preview := ""
+		var selectedSuggestion string
+		if idx := m.createTypeTable.Cursor(); idx >= 0 && idx < len(m.createTypeResults) {
+			selectedSuggestion = m.createTypeResults[idx]
+		}
 		if strings.TrimSpace(selectedSuggestion) != "" {
 			content := m.renderCreateTypePreview(selectedSuggestion, previewBoxContentWidth(previewWidth))
 			preview = renderPreviewBox(content, previewWidth)
 		}
 
-		body := table
+		body := tableView
 		if sideBySide && preview != "" {
-			body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+			body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 		} else if preview != "" {
-			body = table + "\n\n" + preview
+			body = tableView + "\n\n" + preview
 		}
 
 		b.WriteString(countLine)
@@ -1304,9 +1275,13 @@ func (m *RelationshipsModel) applyListFilter() {
 		}
 		m.items = filtered
 	}
-	if m.list != nil {
-		m.list.SetItems(m.buildListLabels())
+	labels := m.buildListLabels()
+	rows := make([]table.Row, len(labels))
+	for i, l := range labels {
+		rows[i] = table.Row{l}
 	}
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 }
 
 // displayNode handles display node.
@@ -1334,7 +1309,7 @@ func (m RelationshipsModel) selectedRelationship() *api.Relationship {
 	if len(m.items) == 0 {
 		return nil
 	}
-	idx := m.list.Selected()
+	idx := m.dataTable.Cursor()
 	if idx < 0 || idx >= len(m.items) {
 		return nil
 	}
@@ -1385,18 +1360,20 @@ func (m *RelationshipsModel) updateCreateSearch() tea.Cmd {
 	if query == "" {
 		m.createLoading = false
 		m.createResults = nil
-		m.createList.SetItems(nil)
+		m.createTable.SetRows(nil)
+		m.createTable.SetCursor(0)
 		return nil
 	}
 	if len(m.entityCache) > 0 || len(m.contextCache) > 0 || len(m.jobCache) > 0 {
 		m.createLoading = false
 		candidates := combineCreateCandidates(m.entityCache, m.contextCache, m.jobCache)
 		m.createResults = filterCreateCandidatesByQuery(candidates, query)
-		labels := make([]string, len(m.createResults))
+		rows := make([]table.Row, len(m.createResults))
 		for i, candidate := range m.createResults {
-			labels[i] = formatCreateCandidateLine(candidate)
+			rows[i] = table.Row{formatCreateCandidateLine(candidate)}
 		}
-		m.createList.SetItems(labels)
+		m.createTable.SetRows(rows)
+		m.createTable.SetCursor(0)
 		return nil
 	}
 	m.createLoading = true
@@ -1406,14 +1383,24 @@ func (m *RelationshipsModel) updateCreateSearch() tea.Cmd {
 // resetTypeSuggestions handles reset type suggestions.
 func (m *RelationshipsModel) resetTypeSuggestions() {
 	m.createTypeResults = filterRelationshipTypes(m.typeOptions, "")
-	m.createTypeList.SetItems(m.createTypeResults)
+	typeRows := make([]table.Row, len(m.createTypeResults))
+	for i, s := range m.createTypeResults {
+		typeRows[i] = table.Row{s}
+	}
+	m.createTypeTable.SetRows(typeRows)
+	m.createTypeTable.SetCursor(0)
 	m.createTypeNav = false
 }
 
 // updateTypeSuggestions updates update type suggestions.
 func (m *RelationshipsModel) updateTypeSuggestions() {
 	m.createTypeResults = filterRelationshipTypes(m.typeOptions, m.createType)
-	m.createTypeList.SetItems(m.createTypeResults)
+	typeRows := make([]table.Row, len(m.createTypeResults))
+	for i, s := range m.createTypeResults {
+		typeRows[i] = table.Row{s}
+	}
+	m.createTypeTable.SetRows(typeRows)
+	m.createTypeTable.SetCursor(0)
 }
 
 // loadScopeOptions loads load scope options.

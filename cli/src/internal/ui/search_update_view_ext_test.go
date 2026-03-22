@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -47,13 +48,13 @@ func TestSearchUpdateBackspaceAndDeleteSearchBranches(t *testing.T) {
 	updated.textInput.SetValue("a")
 	updated.loading = true
 	updated.items = []searchEntry{{id: "ent-1"}}
-	updated.list.SetItems([]string{"ent-1"})
+	updated.dataTable.SetRows([]table.Row{{"ent-1"}})
 
 	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.textInput.Value())
 	assert.False(t, updated.loading)
 	assert.Empty(t, updated.items)
-	assert.Empty(t, updated.list.Items)
+	assert.Empty(t, updated.dataTable.Rows())
 }
 
 func TestSearchUpdateTabTogglePaths(t *testing.T) {
@@ -61,14 +62,14 @@ func TestSearchUpdateTabTogglePaths(t *testing.T) {
 	model.mode = searchModeText
 	model.loading = true
 	model.items = []searchEntry{{id: "ent-1"}}
-	model.list.SetItems([]string{"ent-1"})
+	model.dataTable.SetRows([]table.Row{{"ent-1"}})
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, searchModeSemantic, updated.mode)
 	assert.False(t, updated.loading)
 	assert.Empty(t, updated.items)
-	assert.Empty(t, updated.list.Items)
+	assert.Empty(t, updated.dataTable.Rows())
 
 	updated.textInput.SetValue("alpha")
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})
@@ -79,9 +80,9 @@ func TestSearchUpdateTabTogglePaths(t *testing.T) {
 
 func TestSearchUpdateEnterOutOfRangeReturnsNil(t *testing.T) {
 	model := NewSearchModel(nil)
-	model.items = []searchEntry{{kind: "entity", id: "ent-1"}}
-	model.list.SetItems([]string{"ent-1"})
-	model.list.Cursor = 5
+	// With table.Model, cursor clamps. Use empty items to test no-selection.
+	model.items = nil
+	model.dataTable.SetRows(nil)
 
 	_, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
@@ -89,15 +90,15 @@ func TestSearchUpdateEnterOutOfRangeReturnsNil(t *testing.T) {
 
 func TestSearchUpdateArrowNavigation(t *testing.T) {
 	model := NewSearchModel(nil)
-	model.list.SetItems([]string{"one", "two"})
+	model.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.list.Cursor)
+	assert.Equal(t, 1, updated.dataTable.Cursor())
 
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.list.Cursor)
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 }
 
 func TestSearchViewLoadingAndNoMatchStates(t *testing.T) {
@@ -111,7 +112,7 @@ func TestSearchViewLoadingAndNoMatchStates(t *testing.T) {
 
 	model.loading = false
 	model.items = nil
-	model.list.SetItems(nil)
+	model.dataTable.SetRows(nil)
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "No matches.")
 }
@@ -132,7 +133,7 @@ func TestSearchViewRendersPreviewWhenSelectionExists(t *testing.T) {
 			},
 		},
 	}
-	model.list.SetItems([]string{"Alpha Node"})
+	model.dataTable.SetRows([]table.Row{{"Alpha Node"}})
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Selected")

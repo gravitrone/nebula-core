@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -133,7 +134,7 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	model := NewHistoryModel(nil)
 	model.view = historyViewScopes
 	model.scopes = []api.AuditScope{{ID: "scope-1", Name: "public"}}
-	model.scopeList.SetItems([]string{"public"})
+	model.scopeTable.SetRows([]table.Row{{"public"}})
 
 	updated, cmd := model.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -142,7 +143,8 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	assert.True(t, updated.loading)
 
 	updated.view = historyViewScopes
-	updated.scopeList.Cursor = 9
+	updated.scopes = nil
+	updated.scopeTable.SetRows(nil)
 	updated.loading = false
 	updated, cmd = updated.handleScopeKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
@@ -155,7 +157,8 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 
 	updated.view = historyViewActors
 	updated.actors = []api.AuditActor{{ActorType: "agent", ActorID: "agent-1"}}
-	updated.actorList.SetItems([]string{"agent:agent-1"})
+	updated.actorTable.SetRows([]table.Row{{"agent:agent-1"}})
+	updated.actorTable.SetCursor(0)
 	updated.loading = false
 	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -165,7 +168,8 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 	assert.True(t, updated.loading)
 
 	updated.view = historyViewActors
-	updated.actorList.Cursor = 9
+	updated.actors = nil
+	updated.actorTable.SetRows(nil)
 	updated.loading = false
 	updated, cmd = updated.handleActorKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
@@ -180,15 +184,15 @@ func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {
 func TestHistoryHandleListKeysBranchMatrix(t *testing.T) {
 	model := NewHistoryModel(nil)
 	model.items = []api.AuditEntry{{ID: "audit-1", RecordID: "ent-1", TableName: "entities"}}
-	model.list.SetItems([]string{"audit-1"})
+	model.dataTable.SetRows([]table.Row{{"audit-1"}})
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Nil(t, cmd)
-	assert.Equal(t, 0, updated.list.Cursor)
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Nil(t, cmd)
-	assert.Equal(t, 0, updated.list.Cursor)
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -302,7 +303,7 @@ func TestSearchModelUpdateClearAndSpaceHandling(t *testing.T) {
 
 	updated.textInput.SetValue("abc")
 	updated.items = []searchEntry{{id: "x"}}
-	updated.list.SetItems([]string{"x"})
+	updated.dataTable.SetRows([]table.Row{{"x"}})
 
 	updated, _ = updated.Update(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	assert.Equal(t, "", updated.textInput.Value())

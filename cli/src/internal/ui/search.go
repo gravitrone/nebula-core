@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
@@ -53,7 +54,7 @@ type SearchModel struct {
 	mode      string
 	loading   bool
 	spinner   spinner.Model
-	list      *components.List
+	dataTable table.Model
 	items     []searchEntry
 	width     int
 }
@@ -73,7 +74,7 @@ func NewSearchModel(client *api.Client) SearchModel {
 		textInput: ti,
 		spinner:   components.NewNebulaSpinner(),
 		mode:      searchModeText,
-		list:      components.NewList(12),
+		dataTable: components.NewNebulaTable(nil, 12),
 	}
 }
 
@@ -103,15 +104,16 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		} else {
 			m.items = buildSearchEntries(msg.query, msg.entities, msg.context, msg.jobs)
 		}
-		labels := make([]string, len(m.items))
+		rows := make([]table.Row, len(m.items))
 		for i, item := range m.items {
-			labels[i] = fmt.Sprintf(
+			rows[i] = table.Row{fmt.Sprintf(
 				"%s  %s",
 				components.SanitizeText(item.label),
 				MutedStyle.Render(components.SanitizeText(item.desc)),
-			)
+			)}
 		}
-		m.list.SetItems(labels)
+		m.dataTable.SetRows(rows)
+		m.dataTable.SetCursor(0)
 		return m, nil
 	case tea.KeyPressMsg:
 		switch {
@@ -119,15 +121,16 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 			if m.textInput.Value() != "" {
 				m.textInput.Reset()
 				m.items = nil
-				m.list.SetItems(nil)
+				m.dataTable.SetRows(nil)
+				m.dataTable.SetCursor(0)
 				m.loading = false
 				return m, nil
 			}
 		case isDown(msg):
-			m.list.Down()
+			m.dataTable.MoveDown(1)
 			return m, nil
 		case isUp(msg):
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 			return m, nil
 		case isKey(msg, "tab"):
 			if m.mode == searchModeText {
@@ -138,7 +141,8 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 			if strings.TrimSpace(m.textInput.Value()) == "" {
 				m.loading = false
 				m.items = nil
-				m.list.SetItems(nil)
+				m.dataTable.SetRows(nil)
+				m.dataTable.SetCursor(0)
 				return m, nil
 			}
 			if cmd := m.search(m.textInput.Value()); cmd != nil {
@@ -146,7 +150,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 			}
 			return m, nil
 		case isEnter(msg):
-			if idx := m.list.Selected(); idx < len(m.items) {
+			if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 				entry := m.items[idx]
 				return m, m.emitSelection(entry)
 			}
@@ -195,7 +199,6 @@ func (m SearchModel) View() string {
 		b.WriteString(MutedStyle.Render("No matches."))
 	} else {
 		contentWidth := components.BoxContentWidth(m.width)
-		visible := m.list.Visible()
 
 		previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -206,13 +209,9 @@ func (m SearchModel) View() string {
 			tableWidth = contentWidth - previewWidth - gap
 		}
 
-		sepWidth := 1
-		if br := lipgloss.RoundedBorder().Left; br != "" {
-			sepWidth = lipgloss.Width(br)
-		}
-
-		// 3 columns -> 2 separators.
-		availableCols := tableWidth - (2 * sepWidth)
+		// Each table cell has Padding(0,1) = 2 chars. 3 columns = 6 chars of padding.
+		cellPadding := 3 * 2
+		availableCols := tableWidth - cellPadding
 		if availableCols < 30 {
 			availableCols = 30
 		}
@@ -228,26 +227,8 @@ func (m SearchModel) View() string {
 			}
 		}
 
-		cols := []components.TableColumn{
-			{Header: "Title", Width: titleWidth, Align: lipgloss.Left},
-			{Header: "Kind", Width: kindWidth, Align: lipgloss.Left},
-			{Header: "Info", Width: infoWidth, Align: lipgloss.Left},
-		}
-
-		tableRows := make([][]string, 0, len(visible))
-		activeRowRel := -1
-		var previewItem *searchEntry
-		if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-			previewItem = &m.items[idx]
-		}
-
-		for i := range visible {
-			absIdx := m.list.RelToAbs(i)
-			if absIdx < 0 || absIdx >= len(m.items) {
-				continue
-			}
-			entry := m.items[absIdx]
-
+		tableRows := make([]table.Row, len(m.items))
+		for i, entry := range m.items {
 			kind := strings.TrimSpace(components.SanitizeOneLine(entry.kind))
 			if kind == "" {
 				kind = "-"
@@ -261,30 +242,38 @@ func (m SearchModel) View() string {
 				info = "-"
 			}
 
-			if m.list.IsSelected(absIdx) {
-				activeRowRel = len(tableRows)
-			}
-
-			tableRows = append(tableRows, []string{
+			tableRows[i] = table.Row{
 				components.ClampTextWidthEllipsis(title, titleWidth),
 				components.ClampTextWidthEllipsis(kind, kindWidth),
 				components.ClampTextWidthEllipsis(info, infoWidth),
-			})
+			}
 		}
 
+		m.dataTable.SetColumns([]table.Column{
+			{Title: "Title", Width: titleWidth},
+			{Title: "Kind", Width: kindWidth},
+			{Title: "Info", Width: infoWidth},
+		})
+		m.dataTable.SetWidth(tableWidth)
+		m.dataTable.SetRows(tableRows)
+
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.items)))
-		table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+		tableView := m.dataTable.View()
 		preview := ""
+		var previewItem *searchEntry
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			previewItem = &m.items[idx]
+		}
 		if previewItem != nil {
 			content := m.renderSearchPreview(*previewItem, previewBoxContentWidth(previewWidth))
 			preview = renderPreviewBox(content, previewWidth)
 		}
 
-		body := table
+		body := tableView
 		if sideBySide && preview != "" {
-			body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+			body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 		} else if preview != "" {
-			body = table + "\n\n" + preview
+			body = tableView + "\n\n" + preview
 		}
 
 		b.WriteString(countLine)
@@ -395,7 +384,8 @@ func (m *SearchModel) search(query string) tea.Cmd {
 	if q == "" {
 		m.loading = false
 		m.items = nil
-		m.list.SetItems(nil)
+		m.dataTable.SetRows(nil)
+		m.dataTable.SetCursor(0)
 		return nil
 	}
 	m.loading = true

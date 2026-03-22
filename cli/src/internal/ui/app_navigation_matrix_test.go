@@ -154,8 +154,8 @@ func TestCanExitToTabNavMatrix(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabRelations
 	assert.True(t, app.canExitToTabNav())
-	app.rels.list.SetItems([]string{"one", "two"})
-	app.rels.list.Down()
+	app.rels.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.rels.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app = NewApp(nil, &config.Config{})
@@ -197,8 +197,8 @@ func TestCanExitToTabNavMatrix(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabHistory
 	assert.True(t, app.canExitToTabNav())
-	app.history.list.SetItems([]string{"one", "two"})
-	app.history.list.Down()
+	app.history.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.history.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 }
 
@@ -276,8 +276,8 @@ func TestCanExitToTabNavAdditionalGuards(t *testing.T) {
 	app.know.filtering = true
 	assert.False(t, app.canExitToTabNav())
 	app.know.filtering = false
-	app.know.list.SetItems([]string{"one", "two"})
-	app.know.list.Down()
+	app.know.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	app.know.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 	app.know.view = contextViewAdd
 	app.know.modeFocus = false

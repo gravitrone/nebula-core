@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,15 +58,15 @@ func TestContextHandleListKeysAdditionalBranches(t *testing.T) {
 		{ID: "", Title: "Missing ID"},
 		{ID: "ctx-2", Title: "With ID"},
 	}
-	model.list.SetItems([]string{"missing", "with-id"})
+	model.dataTable.SetRows([]table.Row{{"missing"}, {"with-id"}})
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.list.Selected())
+	assert.Equal(t, 1, updated.dataTable.Cursor())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)
-	assert.Equal(t, 0, updated.list.Selected())
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	// Enter on row with missing ID returns err command.
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -101,8 +102,8 @@ func TestContextHandleListKeysAdditionalBranches(t *testing.T) {
 	// Enter with stale selected index (idx >= len(items)) is no-op.
 	updated.view = contextViewList
 	updated.items = []api.Context{{ID: "ctx-1", Title: "only one"}}
-	updated.list.SetItems([]string{"one", "two"})
-	updated.list.Down() // selected = 1 while len(items)=1
+	updated.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
+	updated.dataTable.MoveDown(1) // cursor = 1 while len(items)=1
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -290,7 +291,8 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	assert.Equal(t, "", model.linkQuery)
 
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
-	model.linkList.SetItems([]string{"Alpha"})
+	model.linkTable.SetRows([]table.Row{{"Alpha"}})
+	model.linkTable.SetCursor(0)
 	model, cmd := model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, model.linkSearching)
@@ -304,7 +306,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	assert.Equal(t, "a", model.linkQuery)
 
 	model.linkResults = []api.Entity{{ID: "ent-2", Name: "Beta"}}
-	model.linkList.SetItems([]string{"Beta"})
+	model.linkTable.SetRows([]table.Row{{"Beta"}})
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "ax", model.linkQuery)
@@ -312,7 +314,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 
 	model.linkQuery = "query"
 	model.linkResults = []api.Entity{{ID: "ent-3"}}
-	model.linkList.SetItems([]string{"ent-3"})
+	model.linkTable.SetRows([]table.Row{{"ent-3"}})
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", model.linkQuery)
@@ -321,7 +323,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	model.linkSearching = true
 	model.linkQuery = "z"
 	model.linkResults = []api.Entity{{ID: "ent-4"}}
-	model.linkList.SetItems([]string{"ent-4"})
+	model.linkTable.SetRows([]table.Row{{"ent-4"}})
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, model.linkSearching)
@@ -350,7 +352,7 @@ func TestContextRenderLinkSearchAndPreviewBranches(t *testing.T) {
 		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active", Tags: []string{"demo"}},
 		{ID: "ent-2", Name: "Beta", Type: "project", Status: "inactive"},
 	}
-	model.linkList.SetItems([]string{"Alpha", "Beta"})
+	model.linkTable.SetRows([]table.Row{{"Alpha"}, {"Beta"}})
 	view = components.SanitizeText(model.renderLinkSearch())
 	assert.Contains(t, view, "2 results")
 	assert.Contains(t, view, "Name")
@@ -375,18 +377,17 @@ func TestContextRenderLinkSearchWideLayoutAndSelectionFallbackBranches(t *testin
 	model.linkResults = []api.Entity{
 		{ID: "ent-1", Name: "", Type: "", Status: ""},
 	}
-	// Intentionally provide more list rows than results and point cursor out of range
-	// to exercise absIdx guard and previewItem=nil branch.
-	model.linkList.SetItems([]string{"phantom-a", "phantom-b"})
-	model.linkList.Cursor = 9
+	// With table.Model cursor is clamped to valid range, so preview is shown
+	// whenever results exist.
+	model.linkTable.SetRows([]table.Row{{"ent-1"}})
+	model.linkTable.SetCursor(0)
 
 	view := components.SanitizeText(model.renderLinkSearch())
 	assert.Contains(t, view, "1 results")
 	assert.Contains(t, view, "Name")
 	assert.Contains(t, view, "Type")
 	assert.Contains(t, view, "Status")
-	// No selected preview section because selection is out of range.
-	assert.NotContains(t, view, "Selected")
+	assert.Contains(t, view, "Selected")
 }
 
 func TestContextHandleEditKeysNavigationBranches(t *testing.T) {
@@ -419,10 +420,9 @@ func TestContextHandleEditKeysNavigationBranches(t *testing.T) {
 	assert.Equal(t, contextEditFieldScopes, updated.editFocus)
 }
 
-func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing.T) {
+func TestContextHandleLinkSearchEmptyTableAndOutOfRangeSelectionBranches(t *testing.T) {
 	model := NewContextModel(nil)
 	model.startLinkSearch()
-	model.linkList = nil
 
 	updated, cmd := model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
@@ -441,8 +441,8 @@ func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing
 	model.startLinkSearch()
 	model.linkQuery = "alpha"
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
-	model.linkList.SetItems([]string{"Alpha", "Ghost"})
-	model.linkList.Cursor = 1
+	model.linkTable.SetRows([]table.Row{{"Alpha"}, {"Ghost"}})
+	model.linkTable.SetCursor(1)
 
 	updated, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
@@ -459,8 +459,8 @@ func TestContextRenderLinkSearchSideBySidePreviewAndNarrowTableBranches(t *testi
 	model.linkResults = []api.Entity{
 		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active"},
 	}
-	model.linkList.SetItems([]string{"Alpha"})
-	model.linkList.Cursor = 0
+	model.linkTable.SetRows([]table.Row{{"Alpha"}})
+	model.linkTable.SetCursor(0)
 
 	view := components.SanitizeText(model.renderLinkSearch())
 	assert.Contains(t, view, "Selected")
