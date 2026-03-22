@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -59,7 +60,7 @@ type LogsModel struct {
 	client        *api.Client
 	items         []api.Log
 	allItems      []api.Log
-	list          *components.List
+	dataTable     table.Model
 	loading       bool
 	spinner       spinner.Model
 	view          logsView
@@ -105,10 +106,10 @@ type LogsModel struct {
 // NewLogsModel builds the logs UI model.
 func NewLogsModel(client *api.Client) LogsModel {
 	return LogsModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(12),
-		view:   logsViewList,
+		client:    client,
+		spinner:   components.NewNebulaSpinner(),
+		dataTable: components.NewNebulaTable(nil, 12),
+		view:      logsViewList,
 		addFields: []formField{
 			{label: "Type"},
 			{label: "Timestamp"},
@@ -327,7 +328,6 @@ func (m LogsModel) renderList() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.list.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -338,13 +338,9 @@ func (m LogsModel) renderList() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
+	cellPadding := 4 * 2
+	availableCols := tableWidth - cellPadding
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -361,27 +357,8 @@ func (m LogsModel) renderList() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Type", Width: typeWidth, Align: lipgloss.Left},
-		{Header: "Value", Width: valueWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Log
-	if idx := m.list.Selected(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.list.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.items) {
-			continue
-		}
-		l := m.items[absIdx]
-
+	tableRows := make([]table.Row, len(m.items))
+	for i, l := range m.items {
 		typ := strings.TrimSpace(components.SanitizeOneLine(l.LogType))
 		if typ == "" {
 			typ = "log"
@@ -402,19 +379,22 @@ func (m LogsModel) renderList() string {
 			at = l.CreatedAt
 		}
 
-		if m.list.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows[i] = table.Row{
 			components.ClampTextWidthEllipsis(typ, typeWidth),
 			components.ClampTextWidthEllipsis(value, valueWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			formatLocalTimeCompact(at),
-		})
+		}
 	}
-	if m.modeFocus {
-		activeRowRel = -1
-	}
+
+	m.dataTable.SetColumns([]table.Column{
+		{Title: "Type", Width: typeWidth},
+		{Title: "Value", Width: valueWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.dataTable.SetWidth(tableWidth)
+	m.dataTable.SetRows(tableRows)
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if strings.TrimSpace(m.searchBuf) != "" {
@@ -425,18 +405,22 @@ func (m LogsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.dataTable.View()
 	preview := ""
+	var previewItem *api.Log
+	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+		previewItem = &m.items[idx]
+	}
 	if previewItem != nil {
 		content := m.renderLogPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -494,15 +478,15 @@ func (m LogsModel) handleListKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	}
 	switch {
 	case isDown(msg):
-		m.list.Down()
+		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.list.Selected() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
-			m.list.Up()
+			m.dataTable.MoveUp(1)
 		}
 	case isEnter(msg), isSpace(msg):
-		if idx := m.list.Selected(); idx < len(m.items) {
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
 			item := m.items[idx]
 			m.detail = &item
 			m.detailRels = nil
@@ -1140,11 +1124,12 @@ func (m *LogsModel) applyLogSearch() {
 		}
 		m.items = filtered
 	}
-	labels := make([]string, len(m.items))
+	rows := make([]table.Row, len(m.items))
 	for i, l := range m.items {
-		labels[i] = formatLogLine(l)
+		rows[i] = table.Row{formatLogLine(l)}
 	}
-	m.list.SetItems(labels)
+	m.dataTable.SetRows(rows)
+	m.dataTable.SetCursor(0)
 	m.updateSearchSuggest()
 }
 

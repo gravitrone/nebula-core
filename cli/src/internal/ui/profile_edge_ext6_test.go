@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -22,12 +23,12 @@ func TestProfileUpdateDownAndPendingLimitConfigBranches(t *testing.T) {
 
 	model.section = 1
 	model.sectionFocus = false
-	model.agentList.SetItems([]string{"a1", "a2"})
-	model.agentList.Cursor = 0
+	model.agentList.SetRows([]table.Row{{"a1"}, {"a2"}})
+	model.agentList.SetCursor(0)
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.agentList.Cursor)
+	assert.Equal(t, 1, updated.agentList.Cursor())
 
 	updated.section = 0
 	updated.sectionFocus = false
@@ -54,7 +55,8 @@ func TestProfileViewSectionFocusTabBranches(t *testing.T) {
 		EntityName: &entityName,
 		CreatedAt:  now,
 	}}
-	model.keyList.SetItems([]string{"k1"})
+	model.keyList.SetRows([]table.Row{{"k1"}})
+	model.keyList.SetCursor(0)
 	model.agents = []api.Agent{{
 		ID:               "a1",
 		Name:             "agent-a",
@@ -63,9 +65,11 @@ func TestProfileViewSectionFocusTabBranches(t *testing.T) {
 		CreatedAt:        now,
 		UpdatedAt:        now,
 	}}
-	model.agentList.SetItems([]string{"a1"})
+	model.agentList.SetRows([]table.Row{{"a1"}})
+	model.agentList.SetCursor(0)
 	model.taxItems = []api.TaxonomyEntry{{ID: "scope-1", Name: "public"}}
-	model.taxList.SetItems([]string{"public"})
+	model.taxList.SetRows([]table.Row{{"public"}})
+	model.taxList.SetCursor(0)
 
 	model.section = 0
 	model.sectionFocus = true
@@ -132,8 +136,8 @@ func TestProfileRenderKeysAndAgentsNarrowFallbackBranches(t *testing.T) {
 		EntityName: &entityName,
 		CreatedAt:  now,
 	}}
-	model.keyList.SetItems([]string{"k1", "stale"})
-	model.keyList.Cursor = 0
+	model.keyList.SetRows([]table.Row{{"k1"}})
+	model.keyList.SetCursor(0)
 
 	keysOut := stripANSI(model.renderKeys())
 	_ = keysOut
@@ -148,8 +152,8 @@ func TestProfileRenderKeysAndAgentsNarrowFallbackBranches(t *testing.T) {
 		CreatedAt:        now,
 		UpdatedAt:        now,
 	}}
-	model.agentList.SetItems([]string{"a1", "stale"})
-	model.agentList.Cursor = 0
+	model.agentList.SetRows([]table.Row{{"a1"}})
+	model.agentList.SetCursor(0)
 
 	agentsOut := stripANSI(model.renderAgents())
 	_ = agentsOut

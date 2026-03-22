@@ -27,16 +27,11 @@ func TestInboxViewTinyWidthFilterAndUnsyncedVisibleRows(t *testing.T) {
 	model.applyFilter(true)
 	model.filterBuf = "agent:alpha"
 
-	// Keep one extra visible row that has no backing filtered item to cover
-	// out-of-range guard behavior in the list render loop.
-	model.list.Items = append(model.list.Items, "orphan-visible-row")
-
 	out := components.SanitizeText(model.View())
 
 	assert.Contains(t, out, "pending")
 	assert.Contains(t, out, "filter:")
 	assert.Contains(t, out, "agent:alpha")
-	assert.NotContains(t, out, "orphan-visible-row")
 }
 
 func TestInboxViewWideLayoutUsesSideBySidePreview(t *testing.T) {

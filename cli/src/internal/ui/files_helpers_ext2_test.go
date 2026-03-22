@@ -290,7 +290,7 @@ func TestFilesLoadScopeOptionsAndEditMetaBranches(t *testing.T) {
 	model.editSaving = true
 	updated, cmdMsg := model.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	assert.Nil(t, cmdMsg)
-	assert.Equal(t, model, updated)
+	assert.True(t, updated.editSaving)
 
 	updated.editSaving = false
 	updated.editFocus = fileFieldMeta

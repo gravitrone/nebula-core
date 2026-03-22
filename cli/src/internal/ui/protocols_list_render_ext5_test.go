@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,8 @@ func TestProtocolsHandleListKeysAdditionalBranches(t *testing.T) {
 		{ID: "proto-2", Name: "beta", Title: "Beta", Status: "active", CreatedAt: now},
 	}
 	model.applySearch()
-	model.list.SetItems([]string{"alpha", "beta"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
+	model.dataTable.SetCursor(0)
 
 	model.filtering = true
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -28,7 +30,8 @@ func TestProtocolsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.False(t, updated.filtering)
 
 	updated.filtering = false
-	updated.list.Cursor = 5
+	updated.items = nil
+	updated.dataTable.SetRows(nil)
 	updated.view = protocolsViewList
 	updated.detail = nil
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -71,8 +74,6 @@ func TestProtocolsRenderListFallbackAndPreviewLayout(t *testing.T) {
 			CreatedAt: now,
 		},
 	}
-	model.list.SetItems([]string{"placeholder"})
-	model.list.Cursor = -1
 	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
@@ -82,7 +83,12 @@ func TestProtocolsRenderListFallbackAndPreviewLayout(t *testing.T) {
 	assert.NotContains(t, out, "Selected")
 
 	model.width = 170 // enables side-by-side layout path.
-	model.list.Cursor = 0
+	model.modeFocus = false
+	// Set allItems with a name that matches the searchBuf query so applySearch keeps it.
+	model.allItems = []api.Protocol{
+		{ID: "proto-1", Name: "alpha", Title: "", Status: "active", CreatedAt: now},
+	}
+	model.applySearch()
 	out = components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "Name")
@@ -105,14 +111,13 @@ func TestProtocolsRenderListLoadingEmptyAndOutOfRangeSelection(t *testing.T) {
 	model.items = []api.Protocol{
 		{ID: "proto-1", Name: "alpha", Title: "Alpha", Status: "active", CreatedAt: now},
 	}
-	// Extra visible item ensures one RelToAbs path exceeds item bounds.
-	model.list.SetItems([]string{"alpha", "orphan-row"})
-	model.list.Cursor = 1 // selected index is out of range for m.items
+	// modeFocus suppresses preview.
+	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "alpha")
-	// No selected preview should render when selected index is out of range.
+	// No selected preview should render when modeFocus is true.
 	assert.NotContains(t, out, "Selected")
 }
 
@@ -120,7 +125,7 @@ func TestProtocolsRenderListTinyWidthStillRenders(t *testing.T) {
 	now := time.Now().UTC()
 	model := NewProtocolsModel(nil)
 	model.width = 32
-	model.items = []api.Protocol{
+	model.allItems = []api.Protocol{
 		{
 			ID:        "proto-1",
 			Name:      "alpha",
@@ -129,8 +134,7 @@ func TestProtocolsRenderListTinyWidthStillRenders(t *testing.T) {
 			CreatedAt: now,
 		},
 	}
-	model.list.SetItems([]string{"alpha"})
-	model.list.Cursor = 0
+	model.applySearch()
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "alpha")
@@ -144,7 +148,7 @@ func TestProtocolsHandleAddKeysAdditionalBranches(t *testing.T) {
 	model.addSaving = true
 	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.True(t, updated.addSaving)
 
 	model.addSaving = false
 	model.addMeta.Active = true

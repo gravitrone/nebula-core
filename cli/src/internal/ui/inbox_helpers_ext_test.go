@@ -3,6 +3,7 @@ package ui
 import (
 	"testing"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -131,7 +132,8 @@ func TestInboxSelectionAndSummaryHelpers(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{{ID: "ap-1"}, {ID: "ap-2"}}
 	model.filtered = []int{0, 1}
-	model.list.SetItems([]string{"a", "b"})
+	model.dataTable.SetRows([]table.Row{{"a"}, {"b"}})
+	model.dataTable.SetCursor(0)
 	model.selected = map[string]bool{"ap-2": true}
 
 	ids := model.selectedIDs()

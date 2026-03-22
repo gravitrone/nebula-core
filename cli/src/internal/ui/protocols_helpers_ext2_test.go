@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,14 +49,15 @@ func TestProtocolsLoadDetailRelationshipsSuccessAndError(t *testing.T) {
 func TestProtocolsHandleListKeysBranches(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	model.items = []api.Protocol{{ID: "proto-1", Name: "alpha", Title: "Alpha"}, {ID: "proto-2", Name: "beta", Title: "Beta"}}
-	model.list.SetItems([]string{"alpha", "beta"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
+	model.dataTable.SetCursor(0)
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.list.Selected())
+	assert.Equal(t, 1, updated.dataTable.Cursor())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, updated.list.Selected())
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, updated.modeFocus)
@@ -244,7 +246,7 @@ func TestProtocolsHandleEditKeysAdditionalBranches(t *testing.T) {
 	model.editSaving = true
 	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.True(t, updated.editSaving)
 
 	model.editSaving = false
 	model.editMeta.Active = true
@@ -305,7 +307,7 @@ func TestProtocolsSaveEditNilDetailAndMetadataError(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	updated, cmd := model.saveEdit()
 	assert.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.Nil(t, updated.detail)
 
 	content := "rules"
 	model.detail = &api.Protocol{ID: "proto-1", Name: "p1", Title: "Protocol", Content: &content, Status: "active"}

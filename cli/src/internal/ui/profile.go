@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -33,9 +34,9 @@ type ProfileModel struct {
 	sectionFocus bool
 
 	keys        []api.APIKey
-	keyList     *components.List
+	keyList     table.Model
 	agents      []api.Agent
-	agentList   *components.List
+	agentList   table.Model
 	agentDetail *api.Agent
 
 	loading          bool
@@ -52,7 +53,7 @@ type ProfileModel struct {
 	taxSearch          string
 	taxLoading         bool
 	taxItems           []api.TaxonomyEntry
-	taxList            *components.List
+	taxList            table.Model
 	taxPromptMode      taxonomyPromptMode
 	taxPromptBuf       string
 	taxPendingName     string
@@ -68,9 +69,9 @@ func NewProfileModel(client *api.Client, cfg *config.Config) ProfileModel {
 	return ProfileModel{
 		client:    client,
 		config:    cfg,
-		keyList:   components.NewList(10),
-		agentList: components.NewList(10),
-		taxList:   components.NewList(12),
+		keyList:   components.NewNebulaTable(nil, 10),
+		agentList: components.NewNebulaTable(nil, 10),
+		taxList:   components.NewNebulaTable(nil, 12),
 	}
 }
 
@@ -87,21 +88,23 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case keysLoadedMsg:
 		m.keys = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, k := range msg.items {
-			labels[i] = formatKeyLine(k)
+			rows[i] = table.Row{formatKeyLine(k)}
 		}
-		m.keyList.SetItems(labels)
+		m.keyList.SetRows(rows)
+		m.keyList.SetCursor(0)
 		m.loading = false
 		return m, nil
 
 	case agentsLoadedMsg:
 		m.agents = msg.items
-		labels := make([]string, len(msg.items))
+		rows := make([]table.Row, len(msg.items))
 		for i, a := range msg.items {
-			labels[i] = formatAgentLine(a)
+			rows[i] = table.Row{formatAgentLine(a)}
 		}
-		m.agentList.SetItems(labels)
+		m.agentList.SetRows(rows)
+		m.agentList.SetCursor(0)
 		return m, nil
 
 	case keyCreatedMsg:
@@ -184,23 +187,23 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			m.sectionFocus = true
 		case isDown(msg):
 			if m.section == 2 {
-				m.taxList.Down()
+				m.taxList.MoveDown(1)
 			} else {
-				m.activeList().Down()
+				m.activeList().MoveDown(1)
 			}
 		case isUp(msg):
 			if m.section == 2 {
-				if m.taxList == nil || m.taxList.Selected() <= 0 {
+				if m.taxList.Cursor() <= 0 {
 					m.sectionFocus = true
 				} else {
-					m.taxList.Up()
+					m.taxList.MoveUp(1)
 				}
 			} else {
 				list := m.activeList()
-				if list == nil || list.Selected() <= 0 {
+				if list.Cursor() <= 0 {
 					m.sectionFocus = true
 				} else {
-					list.Up()
+					list.MoveUp(1)
 				}
 			}
 		case isKey(msg, "n"):
@@ -236,7 +239,7 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			m.sectionFocus = false
 			switch m.section {
 			case 1:
-				if idx := m.agentList.Selected(); idx < len(m.agents) {
+				if idx := m.agentList.Cursor(); idx >= 0 && idx < len(m.agents) {
 					agent := m.agents[idx]
 					m.agentDetail = &agent
 				}
@@ -384,11 +387,11 @@ func (m ProfileModel) View() string {
 
 // --- Helpers ---
 
-func (m *ProfileModel) activeList() *components.List {
+func (m *ProfileModel) activeList() *table.Model {
 	if m.section == 0 {
-		return m.keyList
+		return &m.keyList
 	}
-	return m.agentList
+	return &m.agentList
 }
 
 // loadKeys loads load keys.
@@ -528,7 +531,7 @@ func parsePositiveInt(raw string) (int, error) {
 
 // revokeSelected handles revoke selected.
 func (m ProfileModel) revokeSelected() (ProfileModel, tea.Cmd) {
-	if idx := m.keyList.Selected(); idx < len(m.keys) {
+	if idx := m.keyList.Cursor(); idx >= 0 && idx < len(m.keys) {
 		id := m.keys[idx].ID
 		return m, func() tea.Msg {
 			err := m.client.RevokeKey(id)
@@ -543,7 +546,7 @@ func (m ProfileModel) revokeSelected() (ProfileModel, tea.Cmd) {
 
 // toggleTrust handles toggle trust.
 func (m ProfileModel) toggleTrust() (ProfileModel, tea.Cmd) {
-	if idx := m.agentList.Selected(); idx < len(m.agents) {
+	if idx := m.agentList.Cursor(); idx >= 0 && idx < len(m.agents) {
 		agent := m.agents[idx]
 		newVal := !agent.RequiresApproval
 		return m, func() tea.Msg {
@@ -566,7 +569,6 @@ func (m ProfileModel) renderKeys() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.keyList.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -577,13 +579,8 @@ func (m ProfileModel) renderKeys() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// 4 columns, 2 padding chars each = 8 padding total.
+	availableCols := tableWidth - (4 * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -600,27 +597,8 @@ func (m ProfileModel) renderKeys() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Prefix", Width: prefixWidth, Align: lipgloss.Left},
-		{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-		{Header: "Owner", Width: ownerWidth, Align: lipgloss.Left},
-		{Header: "At", Width: atWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.APIKey
-	if idx := m.keyList.Selected(); idx >= 0 && idx < len(m.keys) {
-		previewItem = &m.keys[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.keyList.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.keys) {
-			continue
-		}
-		k := m.keys[absIdx]
-
+	tableRows := make([]table.Row, 0, len(m.keys))
+	for _, k := range m.keys {
 		prefix := strings.TrimSpace(components.SanitizeOneLine(k.KeyPrefix + "..."))
 		if prefix == "..." || prefix == "" {
 			prefix = "-"
@@ -638,34 +616,42 @@ func (m ProfileModel) renderKeys() string {
 		owner = components.SanitizeOneLine(owner)
 		at := k.CreatedAt.Format("01-02")
 
-		if m.section == 0 && m.keyList.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows = append(tableRows, table.Row{
 			components.ClampTextWidthEllipsis(prefix, prefixWidth),
 			components.ClampTextWidthEllipsis(name, nameWidth),
 			components.ClampTextWidthEllipsis(owner, ownerWidth),
 			at,
 		})
 	}
-	if m.sectionFocus {
-		activeRowRel = -1
+
+	m.keyList.SetColumns([]table.Column{
+		{Title: "Prefix", Width: prefixWidth},
+		{Title: "Name", Width: nameWidth},
+		{Title: "Owner", Width: ownerWidth},
+		{Title: "At", Width: atWidth},
+	})
+	m.keyList.SetWidth(tableWidth)
+	m.keyList.SetRows(tableRows)
+
+	var previewItem *api.APIKey
+	if idx := m.keyList.Cursor(); idx >= 0 && idx < len(m.keys) {
+		previewItem = &m.keys[idx]
 	}
 
 	title := "API Keys"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d keys", len(m.keys)))
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.keyList.View()
 	preview := ""
-	if previewItem != nil {
+	if previewItem != nil && !m.sectionFocus {
 		content := m.renderKeyPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"
@@ -717,7 +703,6 @@ func (m ProfileModel) renderAgents() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.agentList.Visible()
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -728,13 +713,8 @@ func (m ProfileModel) renderAgents() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if b := lipgloss.RoundedBorder().Left; b != "" {
-		sepWidth = lipgloss.Width(b)
-	}
-
-	// 4 columns -> 3 separators.
-	availableCols := tableWidth - (3 * sepWidth)
+	// 4 columns, 2 padding chars each = 8 padding total.
+	availableCols := tableWidth - (4 * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -751,27 +731,8 @@ func (m ProfileModel) renderAgents() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-		{Header: "Trust", Width: trustWidth, Align: lipgloss.Left},
-		{Header: "Status", Width: statusWidth, Align: lipgloss.Left},
-		{Header: "Scopes", Width: scopesWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.Agent
-	if idx := m.agentList.Selected(); idx >= 0 && idx < len(m.agents) {
-		previewItem = &m.agents[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.agentList.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.agents) {
-			continue
-		}
-		a := m.agents[absIdx]
-
+	tableRows := make([]table.Row, 0, len(m.agents))
+	for _, a := range m.agents {
 		name := strings.TrimSpace(components.SanitizeOneLine(a.Name))
 		if name == "" {
 			name = "agent"
@@ -789,34 +750,42 @@ func (m ProfileModel) renderAgents() string {
 			scopes = strings.Join(a.Scopes, ", ")
 		}
 
-		if m.section == 1 && m.agentList.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows = append(tableRows, table.Row{
 			components.ClampTextWidthEllipsis(name, nameWidth),
 			components.ClampTextWidthEllipsis(trust, trustWidth),
 			components.ClampTextWidthEllipsis(status, statusWidth),
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(scopes), scopesWidth),
 		})
 	}
-	if m.sectionFocus {
-		activeRowRel = -1
+
+	m.agentList.SetColumns([]table.Column{
+		{Title: "Name", Width: nameWidth},
+		{Title: "Trust", Width: trustWidth},
+		{Title: "Status", Width: statusWidth},
+		{Title: "Scopes", Width: scopesWidth},
+	})
+	m.agentList.SetWidth(tableWidth)
+	m.agentList.SetRows(tableRows)
+
+	var previewItem *api.Agent
+	if idx := m.agentList.Cursor(); idx >= 0 && idx < len(m.agents) {
+		previewItem = &m.agents[idx]
 	}
 
 	title := "Agents"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d agents", len(m.agents)))
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.agentList.View()
 	preview := ""
-	if previewItem != nil {
+	if previewItem != nil && !m.sectionFocus {
 		content := m.renderAgentPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := countLine + "\n\n" + body + "\n"

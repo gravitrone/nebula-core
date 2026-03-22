@@ -17,7 +17,7 @@ func TestFilesHandleAddKeysExtendedBranches(t *testing.T) {
 	model.addSaving = true
 	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.True(t, updated.addSaving)
 
 	model.addSaving = false
 	model.addSaved = true
@@ -91,7 +91,7 @@ func TestFilesHandleEditKeysExtendedBranches(t *testing.T) {
 	model.editSaving = true
 	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.True(t, updated.editSaving)
 
 	model.editSaving = false
 	model.editMeta.Active = true

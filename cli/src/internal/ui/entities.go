@@ -492,7 +492,7 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 	case isDown(msg):
 		m.dataTable.MoveDown(1)
 	case isUp(msg):
-		if m.dataTable.Cursor() == 0 {
+		if m.dataTable.Cursor() <= 0 {
 			m.modeFocus = true
 		} else {
 			m.dataTable.MoveUp(1)

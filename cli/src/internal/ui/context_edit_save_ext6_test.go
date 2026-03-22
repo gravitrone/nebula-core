@@ -56,7 +56,7 @@ func TestContextSaveEditNilDetailAndUpdateErrorBranch(t *testing.T) {
 	model := NewContextModel(client)
 	updated, cmd := model.saveEdit()
 	require.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.Nil(t, updated.detail)
 
 	model.detail = &api.Context{
 		ID:         "ctx-1",

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -179,7 +180,8 @@ func TestLoadTaxonomyAndArchiveActivateErrorPaths(t *testing.T) {
 	assert.True(t, ok)
 
 	model.taxItems = []api.TaxonomyEntry{{ID: "scope-1", Name: "public"}}
-	model.taxList.SetItems([]string{"public"})
+	model.taxList.SetRows([]table.Row{{"public"}})
+	model.taxList.SetCursor(0)
 
 	updated, cmd := model.taxonomyArchiveSelected()
 	require.NotNil(t, cmd)

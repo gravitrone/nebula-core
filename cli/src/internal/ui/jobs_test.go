@@ -79,11 +79,11 @@ func TestJobsModelNavigationKeys(t *testing.T) {
 
 	// Navigate down
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	assert.Equal(t, 1, model.list.Selected())
+	assert.Equal(t, 1, model.dataTable.Cursor())
 
 	// Navigate up
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, model.list.Selected())
+	assert.Equal(t, 0, model.dataTable.Cursor())
 }
 
 // TestJobsModelEnterShowsDetail handles test jobs model enter shows detail.

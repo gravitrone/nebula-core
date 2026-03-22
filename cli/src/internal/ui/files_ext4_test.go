@@ -200,10 +200,10 @@ func TestFilesHandleListKeysSearchModeAndEnterMatrix(t *testing.T) {
 	updated.modeFocus = false
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.list.Selected())
+	assert.Equal(t, 1, updated.dataTable.Cursor())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, updated.list.Selected())
+	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	assert.Equal(t, "w", updated.searchBuf)

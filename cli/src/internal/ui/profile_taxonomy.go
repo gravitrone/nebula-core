@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -60,11 +61,12 @@ func (m ProfileModel) loadTaxonomy() tea.Msg {
 // setTaxonomyItems sets set taxonomy items.
 func (m *ProfileModel) setTaxonomyItems(items []api.TaxonomyEntry) {
 	m.taxItems = items
-	labels := make([]string, len(items))
+	rows := make([]table.Row, len(items))
 	for i, item := range items {
-		labels[i] = formatTaxonomyLine(item)
+		rows[i] = table.Row{formatTaxonomyLine(item)}
 	}
-	m.taxList.SetItems(labels)
+	m.taxList.SetRows(rows)
+	m.taxList.SetCursor(0)
 }
 
 // formatTaxonomyLine handles format taxonomy line.
@@ -85,10 +87,7 @@ func formatTaxonomyLine(item api.TaxonomyEntry) string {
 
 // selectedTaxonomy handles selected taxonomy.
 func (m ProfileModel) selectedTaxonomy() *api.TaxonomyEntry {
-	if m.taxList == nil {
-		return nil
-	}
-	idx := m.taxList.Selected()
+	idx := m.taxList.Cursor()
 	if idx < 0 || idx >= len(m.taxItems) {
 		return nil
 	}
@@ -287,7 +286,6 @@ func (m ProfileModel) renderTaxonomy() string {
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
-	visible := m.taxList.Visible()
 
 	filterText := m.taxSearch
 	if filterText == "" {
@@ -309,13 +307,8 @@ func (m ProfileModel) renderTaxonomy() string {
 		tableWidth = contentWidth - previewWidth - gap
 	}
 
-	sepWidth := 1
-	if br := lipgloss.RoundedBorder().Left; br != "" {
-		sepWidth = lipgloss.Width(br)
-	}
-
-	// 3 columns -> 2 separators.
-	availableCols := tableWidth - (2 * sepWidth)
+	// 3 columns, 2 padding chars each = 6 padding total.
+	availableCols := tableWidth - (3 * 2)
 	if availableCols < 30 {
 		availableCols = 30
 	}
@@ -331,26 +324,8 @@ func (m ProfileModel) renderTaxonomy() string {
 		}
 	}
 
-	cols := []components.TableColumn{
-		{Header: "Name", Width: nameWidth, Align: lipgloss.Left},
-		{Header: "Flags", Width: flagsWidth, Align: lipgloss.Left},
-		{Header: "Description", Width: descWidth, Align: lipgloss.Left},
-	}
-
-	tableRows := make([][]string, 0, len(visible))
-	activeRowRel := -1
-	var previewItem *api.TaxonomyEntry
-	if idx := m.taxList.Selected(); idx >= 0 && idx < len(m.taxItems) {
-		previewItem = &m.taxItems[idx]
-	}
-
-	for i := range visible {
-		absIdx := m.taxList.RelToAbs(i)
-		if absIdx < 0 || absIdx >= len(m.taxItems) {
-			continue
-		}
-		item := m.taxItems[absIdx]
-
+	tableRows := make([]table.Row, 0, len(m.taxItems))
+	for _, item := range m.taxItems {
 		name := strings.TrimSpace(components.SanitizeOneLine(item.Name))
 		if name == "" {
 			name = "-"
@@ -372,31 +347,40 @@ func (m ProfileModel) renderTaxonomy() string {
 			desc = strings.TrimSpace(*item.Description)
 		}
 
-		if m.taxList.IsSelected(absIdx) {
-			activeRowRel = len(tableRows)
-		}
-		tableRows = append(tableRows, []string{
+		tableRows = append(tableRows, table.Row{
 			components.ClampTextWidthEllipsis(name, nameWidth),
 			components.ClampTextWidthEllipsis(flagText, flagsWidth),
 			components.ClampTextWidthEllipsis(components.SanitizeOneLine(desc), descWidth),
 		})
 	}
-	if m.sectionFocus {
-		activeRowRel = -1
+
+	m.taxList.SetColumns([]table.Column{
+		{Title: "Name", Width: nameWidth},
+		{Title: "Flags", Width: flagsWidth},
+		{Title: "Description", Width: descWidth},
+	})
+	m.taxList.SetWidth(tableWidth)
+	m.taxList.SetRows(tableRows)
+
+	var previewItem *api.TaxonomyEntry
+	if !m.sectionFocus {
+		if idx := m.taxList.Cursor(); idx >= 0 && idx < len(m.taxItems) {
+			previewItem = &m.taxItems[idx]
+		}
 	}
 
-	table := components.TableGridWithActiveRow(cols, tableRows, tableWidth, activeRowRel)
+	tableView := m.taxList.View()
 	preview := ""
 	if previewItem != nil {
 		content := m.renderTaxonomyPreview(*previewItem, previewBoxContentWidth(previewWidth))
 		preview = renderPreviewBox(content, previewWidth)
 	}
 
-	body := table
+	body := tableView
 	if sideBySide && preview != "" {
-		body = lipgloss.JoinHorizontal(lipgloss.Top, table, strings.Repeat(" ", gap), preview)
+		body = lipgloss.JoinHorizontal(lipgloss.Top, tableView, strings.Repeat(" ", gap), preview)
 	} else if preview != "" {
-		body = table + "\n\n" + preview
+		body = tableView + "\n\n" + preview
 	}
 
 	content := MutedStyle.Render(info) + "\n\n" + body + "\n"

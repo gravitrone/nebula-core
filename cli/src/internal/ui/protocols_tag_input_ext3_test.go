@@ -39,10 +39,10 @@ func TestProtocolsHandleTagInputAdditionalBranchMatrix(t *testing.T) {
 	assert.Equal(t, "", updated.editTagBuf)
 
 	// non-printable/no-op branch (len(msg.String()) != 1 and not handled key)
-	before := updated
+	tagsBefore := updated.addTags
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyTab}, true)
 	require.Nil(t, cmd)
-	assert.Equal(t, before, updated)
+	assert.Equal(t, tagsBefore, updated.addTags)
 
 	// printable branch in edit mode appends rune
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: 'x', Text: "x"}, false)

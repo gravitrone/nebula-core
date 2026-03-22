@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,14 +63,15 @@ func TestJobsHandleDetailKeysMatrix(t *testing.T) {
 func TestJobsToggleSelectedAdditionalBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.items = []api.Job{{ID: ""}, {ID: "job-2"}}
-	model.list.SetItems([]string{"empty", "job-2"})
+	model.dataTable.SetRows([]table.Row{{"empty"}, {"job-2"}})
+	model.dataTable.SetCursor(0)
 
 	// Empty ID branch does nothing.
 	model.toggleSelected()
 	assert.Empty(t, model.selected)
 
 	// Invalid selected index branch (stale index after items shrink).
-	model.list.Down() // selected -> 1
+	model.dataTable.MoveDown(1) // selected -> 1
 	model.items = []api.Job{{ID: "job-1"}}
 	model.toggleSelected()
 	assert.Empty(t, model.selected)

@@ -14,11 +14,10 @@ func TestMetadataEditorHandleKeySpaceClampsNegativeCursorToFirstRow(t *testing.T
 		rows: []metadataEditorRow{
 			{path: "owner", value: "alxx"},
 		},
-		list:     components.NewList(metadataPanelPageSize(false)),
 		selected: map[int]bool{},
 	}
-	syncMetadataList(ed.list, ed.toDisplayRows(), metadataPanelPageSize(false))
-	ed.list.Cursor = -1
+	// Force cursor below valid range so syncList (called inside HandleKey) clamps it to 0.
+	ed.list.SetRows(nil)
 
 	done := ed.HandleKey(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.False(t, done)
@@ -49,10 +48,6 @@ func TestMetadataEditorRenderTableModeSkipsStaleVisibleRows(t *testing.T) {
 		rows: []metadataEditorRow{
 			{path: "owner", value: "alxx"},
 		},
-		list: &components.List{
-			Items:    []string{"owner", "stale"},
-			PageSize: metadataPanelPageSize(false),
-		},
 		selected: map[int]bool{},
 	}
 
@@ -65,10 +60,6 @@ func TestMetadataEditorRenderTableModeClampsNegativeStartIndex(t *testing.T) {
 	ed := MetadataEditor{
 		rows: []metadataEditorRow{
 			{path: "owner", value: "alxx"},
-		},
-		list: &components.List{
-			Offset:   -1,
-			PageSize: metadataPanelPageSize(false),
 		},
 		selected: map[int]bool{},
 	}

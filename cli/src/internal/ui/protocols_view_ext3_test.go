@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,8 @@ func TestProtocolsViewSwitchesAcrossListAddDetailAndEdit(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	model.width = 90
 	model.items = []api.Protocol{{ID: "proto-1", Name: "alpha", Title: "Alpha"}}
-	model.list.SetItems([]string{"alpha"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Library")
@@ -124,7 +126,8 @@ func TestProtocolsRenderDetailFallsBackToListWhenNoDetail(t *testing.T) {
 	model := NewProtocolsModel(nil)
 	model.width = 80
 	model.items = []api.Protocol{{ID: "proto-1", Name: "alpha", Title: "Alpha"}}
-	model.list.SetItems([]string{"alpha"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}})
+	model.dataTable.SetCursor(0)
 
 	out := components.SanitizeText(model.renderDetail())
 	assert.Contains(t, out, "alpha")

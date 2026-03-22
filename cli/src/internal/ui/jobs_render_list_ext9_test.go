@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,8 @@ func TestJobsRenderListLoadingEmptyAndPreviewBranches(t *testing.T) {
 		{ID: "job-1", Title: "alpha", Status: "", CreatedAt: now},
 		{ID: "job-2", Title: "beta", Status: "active", Priority: &priority, CreatedAt: now},
 	}
-	model.list.SetItems([]string{"alpha", "beta"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
+	model.dataTable.SetCursor(0)
 	model.selected = map[string]bool{"job-1": true}
 	model.searchBuf = "a"
 	model.searchSuggest = "alpha"
@@ -56,7 +58,6 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 		{ID: "job-2", Title: "beta", Status: "planning", CreatedAt: now},
 	}
 	model.applyJobSearch()
-	model.list.SetItems([]string{"alpha", "beta"})
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	require.Nil(t, cmd)
@@ -84,7 +85,8 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.searchBuf)
 
-	updated.list.Cursor = 9
+	updated.items = nil
+	updated.dataTable.SetRows(nil)
 	updated.changingSt = false
 	updated.statusTargets = nil
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
@@ -102,7 +104,7 @@ func TestJobsSaveEditNilDetailAndSuccess(t *testing.T) {
 	model := NewJobsModel(nil)
 	updated, cmd := model.saveEdit()
 	require.Nil(t, cmd)
-	assert.Equal(t, model, updated)
+	assert.Nil(t, updated.detail)
 
 	desc := "desc"
 	var seen api.UpdateJobInput

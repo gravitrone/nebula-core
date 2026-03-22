@@ -34,7 +34,8 @@ func TestTaxonomySetItemsAndSelectedBounds(t *testing.T) {
 	require.NotNil(t, selected)
 	assert.Equal(t, "scope-1", selected.ID)
 
-	model.taxList.Cursor = 5
+	// With table.Model, SetCursor is clamped; clear rows to get cursor = -1.
+	model.taxList.SetRows(nil)
 	assert.Nil(t, model.selectedTaxonomy())
 }
 

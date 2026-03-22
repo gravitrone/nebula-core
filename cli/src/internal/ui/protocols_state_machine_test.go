@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -316,7 +317,8 @@ func TestProtocolsRenderHelpersCoverListAddAndEdit(t *testing.T) {
 			UpdatedAt:    now,
 		},
 	}
-	model.list.SetItems([]string{"alpha"})
+	model.dataTable.SetRows([]table.Row{{"alpha"}})
+	model.dataTable.SetCursor(0)
 
 	modeLine := components.SanitizeText(model.renderModeLine())
 	assert.Contains(t, modeLine, "Library")

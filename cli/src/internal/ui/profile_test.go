@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,8 @@ func TestProfileAgentDetailToggle(t *testing.T) {
 			UpdatedAt:    time.Now(),
 		},
 	}
-	model.agentList.SetItems([]string{formatAgentLine(model.agents[0])})
+	model.agentList.SetRows([]table.Row{{formatAgentLine(model.agents[0])}})
+	model.agentList.SetCursor(0)
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, model.agentDetail)
@@ -236,11 +238,11 @@ func TestMaskedAPIKey(t *testing.T) {
 func TestProfileActiveListAndParsePositiveIntHelpers(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.section = 0
-	assert.Same(t, model.keyList, model.activeList())
+	assert.Equal(t, &model.keyList, model.activeList())
 	model.section = 1
-	assert.Same(t, model.agentList, model.activeList())
+	assert.Equal(t, &model.agentList, model.activeList())
 	model.section = 2
-	assert.Same(t, model.agentList, model.activeList())
+	assert.Equal(t, &model.agentList, model.activeList())
 
 	n, err := parsePositiveInt("42")
 	require.NoError(t, err)
@@ -322,7 +324,8 @@ func TestProfileUpFromTopListReturnsToSectionFocus(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.section = 0
 	model.sectionFocus = false
-	model.keyList.SetItems([]string{"one", "two"})
+	model.keyList.SetRows([]table.Row{{"one"}, {"two"}})
+	model.keyList.SetCursor(0)
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.True(t, model.sectionFocus)
