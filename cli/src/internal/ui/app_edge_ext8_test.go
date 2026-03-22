@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -9,18 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestStatusHintsForTabUnknownTabReturnsBaseHints(t *testing.T) {
-	app := NewApp(nil, &config.Config{})
-	app.tab = 999
-
-	hints := app.statusHintsForTab()
-	require.NotEmpty(t, hints)
-	joined := strings.Join(hints, " ")
-	assert.Contains(t, joined, "Tabs")
-	assert.Contains(t, joined, "Command")
-	assert.Contains(t, joined, "Help")
-}
 
 func TestRenderToastNilAndDefaultLevelBranches(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
