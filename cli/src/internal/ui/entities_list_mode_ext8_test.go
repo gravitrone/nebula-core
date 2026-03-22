@@ -77,15 +77,15 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 
 	t.Run("navigation and selection branches", func(t *testing.T) {
 		model := newBase()
-		model.list.Cursor = 0
+		model.dataTable.SetCursor(0)
 
 		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		assert.Nil(t, cmd)
-		assert.Equal(t, 1, next.list.Selected())
+		assert.Equal(t, 1, next.dataTable.Cursor())
 
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
-		assert.Equal(t, 0, next.list.Selected())
+		assert.Equal(t, 0, next.dataTable.Cursor())
 
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
@@ -141,7 +141,7 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		next.searchBuf = ""
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
-		assert.True(t, next.isBulkSelected(next.list.Selected()))
+		assert.True(t, next.isBulkSelected(next.dataTable.Cursor()))
 
 		next.searchBuf = ""
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})

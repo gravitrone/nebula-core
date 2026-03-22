@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -42,24 +43,29 @@ func TestEntitiesLoadHistoryAndHandleHistoryKeysBranches(t *testing.T) {
 			{ID: "a1", Action: "update", ChangedAt: time.Now()},
 			{ID: "a2", Action: "update", ChangedAt: time.Now()},
 		}
-		model.historyList = components.NewList(8)
-		model.historyList.SetItems([]string{"a1", "a2"})
+		model.historyTable.SetRows([]table.Row{{"a1"}, {"a2"}})
 
 		next, cmd := model.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		assert.Nil(t, cmd)
-		assert.Equal(t, 1, next.historyList.Selected())
+		assert.Equal(t, 1, next.historyTable.Cursor())
 
 		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
-		assert.Equal(t, 0, next.historyList.Selected())
+		assert.Equal(t, 0, next.historyTable.Cursor())
 
-		next.historyList.Cursor = 9
+		// table.Model clamps cursor, so SetCursor(9) on 2 rows -> cursor=1.
+		// Enter on a valid row opens the confirm flow.
+		next.historyTable.SetCursor(9)
 		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
-		assert.Equal(t, entitiesViewHistory, next.view)
-		assert.Equal(t, "", next.confirmKind)
+		assert.Equal(t, entitiesViewConfirm, next.view)
+		assert.Equal(t, "entity-revert", next.confirmKind)
+		assert.Equal(t, "a2", next.confirmAuditID)
 
-		next.historyList.Cursor = 0
+		// Reset for next assertion.
+		next.view = entitiesViewHistory
+		next.confirmKind = ""
+		next.historyTable.SetCursor(0)
 		next, cmd = next.handleHistoryKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewConfirm, next.view)
@@ -93,9 +99,8 @@ func TestEntitiesRenderHistoryBranchMatrix(t *testing.T) {
 		{ID: "a1", Action: "", ChangedAt: now, ChangedFields: nil},
 		{ID: "a2", Action: "update", ChangedAt: now, ChangedFields: []string{"name", "status"}},
 	}
-	model.historyList = components.NewList(8)
-	model.historyList.SetItems([]string{formatHistoryLine(model.history[0]), formatHistoryLine(model.history[1])})
-	model.historyList.Cursor = 0
+	model.historyTable.SetRows([]table.Row{{formatHistoryLine(model.history[0])}, {formatHistoryLine(model.history[1])}})
+	model.historyTable.SetCursor(0)
 
 	out = components.SanitizeText(model.renderHistory())
 	assert.Contains(t, out, "2 entries")
@@ -140,8 +145,7 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 	t.Run("select and type states", func(t *testing.T) {
 		m := model
 		m.relateResults = []api.Entity{{ID: "ent-2", Name: "Beta", Type: "tool", Status: "active"}}
-		m.relateList = components.NewList(8)
-		m.relateList.SetItems([]string{"Beta"})
+		m.relateTable.SetRows([]table.Row{{"Beta"}})
 		m.view = entitiesViewRelateSelect
 
 		next, cmd := m.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyDown})
@@ -149,13 +153,19 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 		assert.Nil(t, cmd)
 
-		next.relateList.Cursor = 9
+		// table.Model clamps cursor, so SetCursor(9) on 1 row -> cursor=0.
+		// Enter selects the only item.
+		next.relateTable.SetCursor(9)
 		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
-		assert.Equal(t, entitiesViewRelateSelect, next.view)
-		assert.Nil(t, next.relateTarget)
+		assert.Equal(t, entitiesViewRelateType, next.view)
+		require.NotNil(t, next.relateTarget)
+		assert.Equal(t, "ent-2", next.relateTarget.ID)
 
-		next.relateList.Cursor = 0
+		// Reset for next test path.
+		next.view = entitiesViewRelateSelect
+		next.relateTarget = nil
+		next.relateTable.SetCursor(0)
 		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateType, next.view)
@@ -211,8 +221,7 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		assert.Contains(t, out, "No matches")
 
 		m.relateResults = []api.Entity{{ID: "ent-2", Name: "Beta", Type: "", Status: "", Tags: []string{"x"}}}
-		m.relateList = components.NewList(8)
-		m.relateList.SetItems([]string{"Beta"})
+		m.relateTable.SetRows([]table.Row{{"Beta"}})
 		out = components.SanitizeText(m.renderRelate())
 		assert.Contains(t, out, "Beta")
 
@@ -227,8 +236,7 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		assert.Equal(t, "", m.renderRelateEntityPreview(api.Entity{}, 0))
 
 		m.rels = []api.Relationship{{ID: "rel-1", SourceID: "ent-1", TargetID: "ent-2", Type: "", Status: "", Properties: map[string]any{"note": "x"}}}
-		m.relList = components.NewList(8)
-		m.relList.SetItems([]string{"rel-1"})
+		m.relTable.SetRows([]table.Row{{"rel-1"}})
 		m.startRelEdit()
 		m.relEditFocus = relEditFieldStatus
 		out = components.SanitizeText(m.renderRelEdit())
@@ -285,9 +293,8 @@ func TestEntitiesRenderRelationshipsPropertiesAndCursorFallback(t *testing.T) {
 			Properties: map[string]any{"note": "hi"},
 		},
 	}
-	model.relList = components.NewList(6)
-	model.relList.SetItems([]string{"uses"})
-	model.relList.Cursor = 99 // hit out-of-range fallback -> idx=0
+	model.relTable.SetRows([]table.Row{{"uses"}})
+	model.relTable.SetCursor(99) // hit out-of-range fallback -> idx=0
 
 	out := components.SanitizeText(model.renderRelationships())
 	assert.Contains(t, out, "incoming")

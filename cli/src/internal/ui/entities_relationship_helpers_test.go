@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -61,7 +62,7 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 			CreatedAt:  now,
 		},
 	}
-	model.relList.SetItems([]string{"related-to"})
+	model.relTable.SetRows([]table.Row{{"related-to"}})
 
 	out := components.SanitizeText(model.renderRelationships())
 	assert.Contains(t, out, "Direction")
@@ -77,7 +78,7 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 			Tags:   []string{"core"},
 		},
 	}
-	model.relateList.SetItems([]string{"Beta"})
+	model.relateTable.SetRows([]table.Row{{"Beta"}})
 	out = components.SanitizeText(model.renderRelate())
 	assert.Contains(t, out, "Beta")
 

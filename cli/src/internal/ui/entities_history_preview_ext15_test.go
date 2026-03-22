@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -17,11 +18,9 @@ func TestEntitiesRenderHistoryCoversCompactWidthsAndInvalidVisibleRows(t *testin
 	model.history = []api.AuditEntry{
 		{ID: "a1", Action: "", ChangedAt: now},
 	}
-	// Include an extra list item so RelToAbs can resolve an out-of-range index.
-	model.historyList = components.NewList(8)
-	model.historyList.SetItems([]string{
-		formatHistoryLine(model.history[0]),
-		"orphan-row",
+	model.historyTable.SetRows([]table.Row{
+		{formatHistoryLine(model.history[0])},
+		{"orphan-row"},
 	})
 
 	out := components.SanitizeText(model.renderHistory())
@@ -44,8 +43,7 @@ func TestEntitiesRenderHistorySideBySideIncludesReasonPreview(t *testing.T) {
 			ChangeReason:  &reason,
 		},
 	}
-	model.historyList = components.NewList(8)
-	model.historyList.SetItems([]string{formatHistoryLine(model.history[0])})
+	model.historyTable.SetRows([]table.Row{{formatHistoryLine(model.history[0])}})
 
 	out := components.SanitizeText(model.renderHistory())
 	assert.Contains(t, out, "Reason")

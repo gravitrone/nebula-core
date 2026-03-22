@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/config"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -105,9 +106,9 @@ func TestAppTabWantsArrowsAndCanExitToTabNav(t *testing.T) {
 	app = NewApp(nil, &config.Config{})
 	app.tab = tabEntities
 	app.entities.view = entitiesViewList
-	app.entities.list.SetItems([]string{"one", "two"})
+	app.entities.dataTable.SetRows([]table.Row{{"one"}, {"two"}})
 	assert.True(t, app.canExitToTabNav())
-	app.entities.list.Down()
+	app.entities.dataTable.MoveDown(1)
 	assert.False(t, app.canExitToTabNav())
 
 	app.tab = tabHistory

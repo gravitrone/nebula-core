@@ -8,6 +8,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -206,7 +207,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 			CreatedAt:  now,
 		},
 	}
-	model.relList.SetItems([]string{"depends-on"})
+	model.relTable.SetRows([]table.Row{{"depends-on"}})
 	model.startRelEdit()
 	assert.Equal(t, "rel-1", model.relEditID)
 	assert.Equal(t, relEditFieldStatus, model.relEditFocus)
@@ -342,28 +343,31 @@ func TestEntitiesHandleRelationshipsKeysBranchMatrix(t *testing.T) {
 		{ID: "rel-1", Type: "uses", SourceID: "ent-1", TargetID: "ent-2", CreatedAt: now},
 		{ID: "rel-2", Type: "depends-on", SourceID: "ent-1", TargetID: "ent-3", CreatedAt: now},
 	}
-	model.relList.SetItems([]string{"uses", "depends-on"})
-	model.relList.Cursor = 0
+	model.relTable.SetRows([]table.Row{{"uses"}, {"depends-on"}})
+	model.relTable.SetCursor(0)
 	next, _ = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: tea.KeyDown})
-	assert.Equal(t, 1, next.relList.Selected())
+	assert.Equal(t, 1, next.relTable.Cursor())
 	next, _ = next.handleRelationshipsKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, 0, next.relList.Selected())
+	assert.Equal(t, 0, next.relTable.Cursor())
 
-	// Edit with invalid selection remains in relationships view.
+	// table.Model clamps cursor, so SetCursor(99) on 2 rows -> cursor=1.
+	// Both 'e' and 'd' should work since cursor is valid.
 	model.view = entitiesViewRelationships
-	model.relList.Cursor = 99
+	model.relTable.SetCursor(99)
 	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
-	assert.Equal(t, entitiesViewRelationships, next.view)
+	assert.Equal(t, entitiesViewRelEdit, next.view)
+	assert.Equal(t, "rel-2", next.relEditID)
 
-	// Delete with invalid selection remains in relationships view.
+	model.view = entitiesViewRelationships
 	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	require.Nil(t, cmd)
-	assert.Equal(t, entitiesViewRelationships, next.view)
-	assert.Equal(t, "", next.confirmKind)
+	assert.Equal(t, entitiesViewConfirm, next.view)
+	assert.Equal(t, "rel-2", next.confirmRelID)
 
-	// Edit with valid relationship enters edit view.
-	model.relList.Cursor = 0
+	// Edit with valid relationship at cursor=0 enters edit view.
+	model.view = entitiesViewRelationships
+	model.relTable.SetCursor(0)
 	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelEdit, next.view)

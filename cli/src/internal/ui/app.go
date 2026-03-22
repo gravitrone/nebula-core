@@ -2098,7 +2098,7 @@ func (a App) canExitToTabNav() bool {
 		if a.entities.filtering || a.entities.view != entitiesViewList {
 			return false
 		}
-		return a.entities.list == nil || a.entities.list.Selected() == 0
+		return a.entities.dataTable.Cursor() == 0
 	case tabRelations:
 		if a.rels.filtering || a.rels.view != relsViewList {
 			return false

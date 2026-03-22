@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
@@ -86,12 +87,11 @@ func TestEntitiesViewBranchMatrix(t *testing.T) {
 	base.applyEntityFilters()
 	base.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active", Tags: []string{"core"}, CreatedAt: now}
 	base.rels = []api.Relationship{{ID: "rel-1", SourceID: "ent-1", TargetID: "ent-2", TargetName: "Beta", Type: "uses", Status: "active", CreatedAt: now}}
-	base.relList.SetItems([]string{"uses"})
+	base.relTable.SetRows([]table.Row{{"uses"}})
 	base.history = []api.AuditEntry{{ID: "a1", Action: "update", ChangedAt: now}}
-	base.historyList = components.NewList(8)
-	base.historyList.SetItems([]string{formatHistoryLine(base.history[0])})
+	base.historyTable.SetRows([]table.Row{{formatHistoryLine(base.history[0])}})
 	base.relateResults = []api.Entity{{ID: "ent-2", Name: "Beta", Type: "tool", Status: "active"}}
-	base.relateList.SetItems([]string{"Beta"})
+	base.relateTable.SetRows([]table.Row{{"Beta"}})
 	base.relEditBuf = "{}"
 
 	model := base
