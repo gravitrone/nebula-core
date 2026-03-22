@@ -14,7 +14,7 @@ import (
 func TestInboxTabRendersOnStart(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -26,7 +26,7 @@ func TestInboxTabRendersOnStart(t *testing.T) {
 func TestInboxEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for the empty inbox state - approvals load quickly from the stub server.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -38,7 +38,7 @@ func TestInboxEmptyState(t *testing.T) {
 func TestInboxTableNavigation(t *testing.T) {
 	app := newTestAppWithData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for inbox to render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -61,7 +61,7 @@ func TestInboxTableNavigation(t *testing.T) {
 func TestRelationshipsTabShowsData(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -80,7 +80,7 @@ func TestRelationshipsTabShowsData(t *testing.T) {
 func TestRelationshipsEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -100,7 +100,7 @@ func TestRelationshipsEmptyState(t *testing.T) {
 func TestRelationshipsTableNavigation(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -129,7 +129,7 @@ func TestRelationshipsTableNavigation(t *testing.T) {
 func TestHistoryTabShowsData(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -148,7 +148,7 @@ func TestHistoryTabShowsData(t *testing.T) {
 func TestHistoryEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -170,7 +170,7 @@ func TestHistoryEmptyState(t *testing.T) {
 func TestScrollingWorks(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render then send scroll keys.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -192,7 +192,7 @@ func TestScrollingWorks(t *testing.T) {
 func TestImportExportOpens(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -217,7 +217,7 @@ func TestImportExportOpens(t *testing.T) {
 func TestWindowResizeHandling(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -238,7 +238,7 @@ func TestWindowResizeHandling(t *testing.T) {
 func TestRapidKeyInput(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {

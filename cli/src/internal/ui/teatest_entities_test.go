@@ -87,7 +87,7 @@ func enterEntitiesContent(tm *teatest.TestModel) {
 func TestEntitiesTabShowsLoadedData(t *testing.T) {
 	app := newTestAppWithEntityData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -107,7 +107,7 @@ func TestEntitiesTabShowsLoadedData(t *testing.T) {
 func TestEntitiesTableNavigation(t *testing.T) {
 	app := newTestAppWithEntityData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -135,7 +135,7 @@ func TestEntitiesTableNavigation(t *testing.T) {
 func TestEntitiesDetailView(t *testing.T) {
 	app := newTestAppWithEntityData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -164,7 +164,7 @@ func TestEntitiesDetailView(t *testing.T) {
 func TestEntitiesSearchFilter(t *testing.T) {
 	app := newTestAppWithEntityData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -192,7 +192,7 @@ func TestEntitiesSearchFilter(t *testing.T) {
 func TestEntitiesAddFormOpens(t *testing.T) {
 	app := newTestAppWithEntityData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -222,7 +222,7 @@ func TestEntitiesAddFormOpens(t *testing.T) {
 func TestEntitiesAddFormAbort(t *testing.T) {
 	app := newTestAppWithEntityData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -259,7 +259,7 @@ func TestEntitiesAddFormAbort(t *testing.T) {
 func TestEntitiesEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))

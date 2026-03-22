@@ -14,7 +14,7 @@ import (
 func TestProfileTabRendersSettings(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -33,7 +33,7 @@ func TestProfileTabRendersSettings(t *testing.T) {
 func TestProfileShowsAPIKeySection(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -53,7 +53,7 @@ func TestProfileShowsAPIKeySection(t *testing.T) {
 func TestProfileShowsTaxonomy(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {

@@ -289,10 +289,6 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	m.list.SetHeight(metadataPanelPageSize(false))
 	m.list.SetRows(tableRows)
 
-	cursor := m.list.Cursor()
-	if cursor < 0 {
-		cursor = 0
-	}
 	info := fmt.Sprintf("Rows 1-%d of %d", len(rows), len(rows))
 	if selectedCount > 0 {
 		info += fmt.Sprintf(" · selected %d", selectedCount)

@@ -35,8 +35,6 @@ const (
 	logsViewEdit
 )
 
-var logStatusOptions = []string{"active", "inactive"}
-
 // --- Logs Model ---
 
 type LogsModel struct {

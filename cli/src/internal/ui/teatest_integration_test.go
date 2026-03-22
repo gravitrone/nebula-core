@@ -42,7 +42,7 @@ func newTestApp(t *testing.T) App {
 func TestAppRendersOnStartup(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -53,7 +53,7 @@ func TestAppRendersOnStartup(t *testing.T) {
 func TestAppRendersNebulaBanner(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// The banner subtitle is rendered below the ASCII art.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -65,7 +65,7 @@ func TestAppRendersNebulaBanner(t *testing.T) {
 func TestTabNavigationByNumber(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -91,7 +91,7 @@ func TestTabNavigationByNumber(t *testing.T) {
 func TestTabNavigationWithArrows(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render (starts on Inbox).
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -110,7 +110,7 @@ func TestTabNavigationWithArrows(t *testing.T) {
 func TestCommandPaletteOpens(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -130,7 +130,7 @@ func TestCommandPaletteOpens(t *testing.T) {
 func TestCommandPaletteCloses(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -158,7 +158,7 @@ func TestCommandPaletteCloses(t *testing.T) {
 func TestHelpOverlayOpens(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -178,7 +178,7 @@ func TestHelpOverlayOpens(t *testing.T) {
 func TestHelpOverlayCloses(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -220,7 +220,7 @@ func TestQuitWithNoUnsavedExitsImmediately(t *testing.T) {
 func TestEmptyStateRendering(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -240,7 +240,7 @@ func TestEmptyStateRendering(t *testing.T) {
 func TestMultipleTabSwitches(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
