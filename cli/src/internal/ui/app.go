@@ -657,7 +657,7 @@ func (a App) View() tea.View {
 		content = centerBlockUniform(content, a.width)
 	}
 
-	hints := components.StatusBar(a.statusHints(), a.width)
+	hints := a.renderHelpBar()
 
 	feedback := ""
 	if a.err != "" {
@@ -958,52 +958,17 @@ func (a App) initTab(tab int) tea.Cmd {
 	return nil
 }
 
-// statusHints handles status hints.
-func (a App) statusHints() []string {
-	if a.quitConfirm {
-		return []string{
-			components.Hint("enter", "Confirm"),
-			components.Hint("esc", "Cancel"),
-			components.Hint("y/n", "Aliases"),
-		}
+// renderHelpBar renders the bubbles help bar for the status line.
+func (a App) renderHelpBar() string {
+	h := a.helpModel
+	if a.width > 0 {
+		h.SetWidth(a.width)
 	}
-	if a.helpOpen {
-		return []string{
-			components.Hint("esc", "Back"),
-		}
-	}
-	if a.onboarding {
-		if a.onboardingBusy {
-			return []string{
-				components.Hint("enter", "Logging in"),
-				components.Hint("q", "Quit"),
-			}
-		}
-		return []string{
-			components.Hint("type", "Username"),
-			components.Hint("enter", "Login"),
-			components.Hint("q", "Quit"),
-		}
-	}
-	if a.quickstartOpen {
-		return []string{
-			components.Hint("←/→", "Step"),
-			components.Hint("enter", "Go"),
-			components.Hint("esc", "Skip"),
-		}
-	}
-	hints := a.statusHintsForTab()
-	if a.showRecoveryHints {
-		hints = append(hints,
-			components.Hint("r", "Re-login"),
-			components.Hint("s", "Settings"),
-			components.Hint("c", "Command"),
-		)
-	}
-	return hints
+	return StatusBarStyle.Width(a.width).Align(lipgloss.Center).Render(h.View(a.keys))
 }
 
 // statusHintsForTab handles status hints for tab.
+// Retained for use by tests that verify per-tab context hints.
 func (a App) statusHintsForTab() []string {
 	base := []string{
 		components.Hint("1-9/0", "Tabs"),

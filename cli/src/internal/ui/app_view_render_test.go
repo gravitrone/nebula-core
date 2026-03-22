@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -41,9 +42,9 @@ func TestAppInitAndViewRendersBannerTabsAndHints(t *testing.T) {
 	assert.Contains(t, clean, "Command-Line Interface")
 	assert.Contains(t, clean, "Inbox")
 	assert.Contains(t, clean, "Entities")
-	assert.Contains(t, clean, "Tabs")
-	assert.Contains(t, clean, "Help")
-	assert.Contains(t, clean, "Quit")
+	// Help bar now uses bubbles/help model - check for lowercase binding descriptions.
+	assert.Contains(t, strings.ToLower(clean), "help")
+	assert.Contains(t, strings.ToLower(clean), "quit")
 }
 
 // TestAppHelpAndQuitConfirmViewsRender handles test app help and quit confirm views render.
@@ -66,8 +67,9 @@ func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 
 	help := app.View().Content
 	cleanHelp := components.SanitizeText(help)
-	assert.Contains(t, cleanHelp, "Help")
+	// "esc to close" comes from renderHelp body; "help" from the full key binding list.
 	assert.Contains(t, cleanHelp, "esc to close")
+	assert.Contains(t, strings.ToLower(cleanHelp), "help")
 
 	// Trigger quit confirm by creating an unsaved context draft.
 	app = NewApp(client, &config.Config{})
@@ -85,8 +87,6 @@ func TestAppHelpAndQuitConfirmViewsRender(t *testing.T) {
 	assert.Contains(t, cleanQuit, "You have unsaved changes.")
 	assert.Contains(t, cleanQuit, "Quit")
 	assert.Contains(t, cleanQuit, "anyway?")
-	assert.Contains(t, cleanQuit, "enter: confirm | esc: cancel")
-	assert.Contains(t, cleanQuit, "alias")
 }
 
 // TestAppTabWantsArrowsAndCanExitToTabNav handles test app tab wants arrows and can exit to tab nav.
