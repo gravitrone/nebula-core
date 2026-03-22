@@ -2218,7 +2218,7 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 				return m, nil
 			}
 			kind := strings.TrimSpace(m.relateType)
-			if kind == "" {
+			if kind == "" || m.detail == nil || m.relateTarget == nil {
 				return m, nil
 			}
 			m.view = entitiesViewRelationships
