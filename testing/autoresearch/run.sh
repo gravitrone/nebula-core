@@ -4,95 +4,228 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(cd ../.. && pwd)"
 
+# ── config ──────────────────────────────────────────────────────────────────
 MAX_ITERATIONS=${1:-5}
+BRANCH="feat/charm-migration"
+WORKTREE_DIR="$ROOT/.autoresearch-work"
 
-command -v gum >/dev/null 2>&1 || { echo "gum not installed: brew install gum"; exit 1; }
-command -v claude >/dev/null 2>&1 || { echo "claude not installed"; exit 1; }
+# ── nebula theme ────────────────────────────────────────────────────────────
+P="#7f57b4"   # primary (purple)
+S="#436b77"   # secondary (teal)
+A="#a7754e"   # accent (warm)
+T="#d7d9da"   # text
+M="#9ba0bf"   # muted
+OK="#3f866b"  # success (green)
+ERR="#d1606b" # error (red)
 
-# Nebula theme colors
-gum style --border double --padding "1 2" \
-  --border-foreground "#7f57b4" --foreground "#d7d9da" \
-  "Nebula Autoresearch Loop" \
-  "" \
-  "max iterations: $MAX_ITERATIONS" \
-  "mode: claude code headless + golden file analysis"
-
-for i in $(seq 1 "$MAX_ITERATIONS"); do
+# ── helpers ─────────────────────────────────────────────────────────────────
+banner() {
   echo ""
-  echo "--- iteration $i/$MAX_ITERATIONS ---" | gum style --foreground "#436b77" --bold
+  gum style --border double --padding "1 2" \
+    --border-foreground "$P" --foreground "$T" --width 60 \
+    "" \
+    "  nebula autoresearch" \
+    "  autonomous visual bug hunter" \
+    "" \
+    "  iterations   $MAX_ITERATIONS" \
+    "  branch       $BRANCH" \
+    "  isolation    git worktrees" \
+    ""
+}
 
-  # Run golden tests to check current visual state
-  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Running golden tests..." -- \
-    bash -c "cd '$ROOT/cli/src' && go test ./internal/ui/ -run TestGolden -count=1 > /tmp/golden-result.txt 2>&1" || true
+header() {
+  echo "" && echo "$1" | gum style --foreground "$S" --bold
+}
 
-  GOLDEN_RESULT=$(cat /tmp/golden-result.txt 2>/dev/null || echo "failed to run")
-  GOLDEN_PASS=$(echo "$GOLDEN_RESULT" | grep -c "PASS" || echo "0")
+info() {
+  gum log --level info "$1"
+}
 
-  gum log --level info "golden tests: $GOLDEN_PASS passing"
+success() {
+  echo "$1" | gum style --foreground "$OK" --bold
+}
 
-  # Run full test suite
-  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Running full test suite..." -- \
-    bash -c "cd '$ROOT' && make test-cli > /tmp/test-result.txt 2>&1" || true
+warn() {
+  echo "$1" | gum style --foreground "$A"
+}
 
-  TEST_RESULT=$(cat /tmp/test-result.txt 2>/dev/null || echo "failed")
-  if echo "$TEST_RESULT" | grep -q "^ok"; then
-    gum log --level info "all tests passing"
-  else
-    FAILURES=$(echo "$TEST_RESULT" | grep "FAIL" || echo "unknown")
-    gum log --level error "test failures: $FAILURES"
+fail() {
+  echo "$1" | gum style --foreground "$ERR" --bold
+}
+
+spin() {
+  gum spin --spinner dot --spinner.foreground "$P" --title "$1" -- "${@:2}"
+}
+
+# ── dependency check ────────────────────────────────────────────────────────
+for dep in gum claude jq git; do
+  command -v "$dep" >/dev/null 2>&1 || { fail "$dep not installed"; exit 1; }
+done
+
+# ── main ────────────────────────────────────────────────────────────────────
+banner
+
+TOTAL_FIXES=0
+ITERATION=0
+
+while [ $ITERATION -lt $MAX_ITERATIONS ]; do
+  ITERATION=$((ITERATION + 1))
+  header "iteration $ITERATION/$MAX_ITERATIONS"
+
+  # ── create isolated worktree ──────────────────────────────────────────────
+  ITER_BRANCH="autoresearch/iter-$ITERATION"
+  ITER_DIR="$WORKTREE_DIR/iter-$ITERATION"
+
+  # clean up any leftover worktree from previous failed run
+  if [ -d "$ITER_DIR" ]; then
+    cd "$ROOT"
+    git worktree remove --force "$ITER_DIR" 2>/dev/null || true
+    git branch -D "$ITER_BRANCH" 2>/dev/null || true
   fi
 
-  # Build fresh binary
-  gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Building nebula..." -- \
-    bash -c "cd '$ROOT' && make build 2>/dev/null"
+  cd "$ROOT"
+  git branch "$ITER_BRANCH" "$BRANCH" 2>/dev/null || {
+    git branch -D "$ITER_BRANCH" 2>/dev/null || true
+    git branch "$ITER_BRANCH" "$BRANCH"
+  }
+  git worktree add "$ITER_DIR" "$ITER_BRANCH" 2>/dev/null
+  info "worktree: $ITER_DIR"
 
-  # Launch claude code headless to analyze and fix visual bugs
-  echo "launching claude code headless to find and fix visual bugs..." | gum style --foreground "#9ba0bf"
+  # ── run tests in worktree ─────────────────────────────────────────────────
+  spin "running golden tests..." \
+    bash -c "cd '$ITER_DIR/cli/src' && go test ./internal/ui/ -run TestGolden -count=1 > /tmp/ar-golden.txt 2>&1" || true
+
+  GOLDEN_PASS=$(grep -c "PASS" /tmp/ar-golden.txt 2>/dev/null || echo "0")
+  info "golden tests: $GOLDEN_PASS passing"
+
+  spin "running full test suite..." \
+    bash -c "cd '$ITER_DIR' && make test-cli > /tmp/ar-tests.txt 2>&1" || true
+
+  if grep -q "^ok" /tmp/ar-tests.txt 2>/dev/null; then
+    info "full suite: all passing"
+  else
+    FAILS=$(grep "FAIL" /tmp/ar-tests.txt 2>/dev/null || echo "unknown")
+    warn "test issues: $FAILS"
+  fi
+
+  # ── build binary ──────────────────────────────────────────────────────────
+  spin "building nebula..." \
+    bash -c "cd '$ITER_DIR' && make build 2>/dev/null"
+
+  # ── launch claude code headless ───────────────────────────────────────────
+  echo "launching claude to analyze and fix visual bugs..." | gum style --foreground "$M"
 
   PROMPT=$(cat program.md)
+  SUITE_STATUS=$(tail -1 /tmp/ar-tests.txt 2>/dev/null || echo "unknown")
   PROMPT="$PROMPT
 
-## Current State
+## Current State (iteration $ITERATION)
 - Golden tests: $GOLDEN_PASS passing
-- Full suite: $(echo "$TEST_RESULT" | tail -1)
+- Full suite: $SUITE_STATUS
 
 ## Task
-1. Build and run the nebula CLI binary (cli/src/build/nebula) to visually inspect it
-2. Take a screenshot of the running TUI using the screenshot tool
-3. Analyze the screenshot for visual bugs from the checks in this prompt
-4. Fix any bugs you find in cli/src/internal/ui/
-5. Run make test-cli to verify no regressions
-6. Report what you fixed"
+1. Read the scenario checks from this prompt
+2. Look at the TUI source code and identify visual bugs matching the check categories
+3. Fix any bugs you find in cli/src/internal/ui/
+4. Run: make test-cli to verify no regressions
+5. Only keep changes that pass tests
+6. Be specific about what you changed and why"
 
   claude -p "$PROMPT" \
     --headless \
-    --allowedTools "Read,Edit,Write,Bash,screenshot" \
-    --max-turns 20 \
-    --cwd "$ROOT" 2>/dev/null || {
-      gum log --level warn "claude session ended"
+    --allowedTools "Read,Edit,Write,Bash" \
+    --max-turns 25 \
+    --cwd "$ITER_DIR" 2>/dev/null || {
+      warn "claude session ended"
     }
 
-  # Check if anything changed
-  if [ -n "$(cd "$ROOT" && git diff --name-only)" ]; then
-    # Verify tests pass
-    gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Verifying tests after fixes..." -- \
-      bash -c "cd '$ROOT' && make test-cli > /dev/null 2>&1" || {
-        gum log --level error "tests failed after fix, reverting"
-        cd "$ROOT" && git checkout -- cli/src/internal/ui/
-        continue
-      }
+  # ── check results ─────────────────────────────────────────────────────────
+  cd "$ITER_DIR"
+  CHANGED=$(git diff --name-only 2>/dev/null || echo "")
 
-    gum log --level info "tests pass, committing fix"
+  if [ -z "$CHANGED" ]; then
+    info "no changes this iteration"
     cd "$ROOT"
-    git add -A
-    git commit -m "fix(cli): autoresearch iteration $i visual fixes"
-    cd "$ROOT/testing/autoresearch"
-  else
-    gum log --level info "no changes made this iteration"
+    git worktree remove --force "$ITER_DIR" 2>/dev/null || true
+    git branch -D "$ITER_BRANCH" 2>/dev/null || true
+    continue
   fi
+
+  FILE_COUNT=$(echo "$CHANGED" | wc -l | tr -d ' ')
+  info "$FILE_COUNT files changed"
+
+  # ── verify tests pass ────────────────────────────────────────────────────
+  spin "verifying tests after fixes..." \
+    bash -c "cd '$ITER_DIR' && make test-cli > /dev/null 2>&1" || {
+      fail "tests failed after fix, discarding iteration"
+      cd "$ROOT"
+      git worktree remove --force "$ITER_DIR" 2>/dev/null || true
+      git branch -D "$ITER_BRANCH" 2>/dev/null || true
+      continue
+    }
+
+  # ── generate meaningful commit message ────────────────────────────────────
+  DIFF_STAT=$(cd "$ITER_DIR" && git diff --stat)
+  DIFF_SUMMARY=$(cd "$ITER_DIR" && git diff --no-color | head -200)
+
+  COMMIT_MSG=$(claude -p "Generate a conventional commit message for this diff. Format: fix(cli): one-line description. Be specific about what visual bugs were fixed. No co-author tags.
+
+Diff stat:
+$DIFF_STAT
+
+Diff preview:
+$DIFF_SUMMARY" \
+    --headless \
+    --max-turns 1 2>/dev/null || echo "fix(cli): autoresearch visual fixes (iteration $ITERATION)")
+
+  # clean up the message (remove quotes, markdown, etc)
+  COMMIT_MSG=$(echo "$COMMIT_MSG" | grep -E "^(fix|feat|refactor|chore)" | head -1 || echo "fix(cli): autoresearch visual fixes (iteration $ITERATION)")
+
+  # ── commit in worktree ────────────────────────────────────────────────────
+  cd "$ITER_DIR"
+  git add -A
+  git commit -m "$COMMIT_MSG" 2>/dev/null
+
+  info "committed: $COMMIT_MSG"
+
+  # ── merge into main branch ────────────────────────────────────────────────
+  cd "$ROOT"
+  git checkout "$BRANCH" 2>/dev/null
+  git merge "$ITER_BRANCH" --no-edit 2>/dev/null || {
+    fail "merge conflict, discarding iteration"
+    git merge --abort 2>/dev/null || true
+    git worktree remove --force "$ITER_DIR" 2>/dev/null || true
+    git branch -D "$ITER_BRANCH" 2>/dev/null || true
+    continue
+  }
+
+  success "merged iteration $ITERATION into $BRANCH"
+  TOTAL_FIXES=$((TOTAL_FIXES + 1))
+
+  # ── cleanup worktree ──────────────────────────────────────────────────────
+  git worktree remove --force "$ITER_DIR" 2>/dev/null || true
+  git branch -D "$ITER_BRANCH" 2>/dev/null || true
 done
 
+# ── summary ─────────────────────────────────────────────────────────────────
 echo ""
 gum style --border rounded --padding "1 2" \
-  --border-foreground "#3f866b" --foreground "#d7d9da" \
-  "autoresearch complete after $MAX_ITERATIONS iterations"
+  --border-foreground "$OK" --foreground "$T" --width 60 \
+  "" \
+  "  autoresearch complete" \
+  "" \
+  "  iterations    $ITERATION" \
+  "  fixes merged  $TOTAL_FIXES" \
+  "  branch        $BRANCH" \
+  ""
+
+# cleanup worktree dir if empty
+rmdir "$WORKTREE_DIR" 2>/dev/null || true
+
+# ── TODO ────────────────────────────────────────────────────────────────────
+# Phase 2: after autoresearch commits, spawn a review agent:
+#   1. claude -p "review this PR" --headless creates PR via gh
+#   2. second claude instance reviews the diff for quality/safety
+#   3. if review passes -> auto-merge
+#   4. if review flags issues -> create follow-up iteration
+#   5. full autonomous CI: fix -> commit -> PR -> review -> merge
