@@ -83,12 +83,19 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
   SCREENSHOTS_DIR="$ITER_DIR/screenshots"
   mkdir -p "$SCREENSHOTS_DIR"
 
+  # install the built binary so VHS can find it
+  cp "$ITER_DIR/cli/src/build/nebula" /usr/local/bin/nebula 2>/dev/null || {
+    # fallback: add build dir to PATH for this session
+    export PATH="$ITER_DIR/cli/src/build:$PATH"
+  }
+
   for tape in "$SCRIPT_DIR/../vhs/tapes/"*.tape; do
     tapename=$(basename "$tape" .tape)
-    gum spin --spinner dot --title "recording: $tapename" -- \
-      vhs "$tape" -o "$SCREENSHOTS_DIR/$tapename.gif" 2>/dev/null || {
-        warn "failed to record $tapename"
-      }
+    vhs "$tape" -o "$SCREENSHOTS_DIR/$tapename.gif" 2>/dev/null && {
+      info "recorded $tapename"
+    } || {
+      gum log --level warn "failed to record $tapename"
+    }
   done
 
   SCREENSHOT_COUNT=$(ls "$SCREENSHOTS_DIR"/*.gif 2>/dev/null | wc -l | tr -d ' ')
