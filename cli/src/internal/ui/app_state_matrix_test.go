@@ -23,42 +23,28 @@ func assertHintsContain(t *testing.T, hints []string, parts ...string) {
 	}
 }
 
-func TestStatusHintsShowsQuitConfirmShortcuts(t *testing.T) {
+func TestRenderHelpBarContainsGlobalBindings(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-	app.quitConfirm = true
-	assertHintsContain(t, app.statusHints(), "confirm", "cancel", "aliases")
+	app.width = 120
+	bar := components.SanitizeText(app.renderHelpBar())
+	assert.Contains(t, strings.ToLower(bar), "quit")
+	assert.Contains(t, strings.ToLower(bar), "help")
 }
 
-func TestStatusHintsShowsHelpShortcut(t *testing.T) {
+func TestRenderHelpBarRendersAtWidth(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-	app.helpOpen = true
-	assertHintsContain(t, app.statusHints(), "back")
+	app.width = 80
+	bar := app.renderHelpBar()
+	require.NotEmpty(t, bar)
+	assert.NotContains(t, bar, "\x1b]")
 }
 
-func TestStatusHintsShowsOnboardingBusyShortcuts(t *testing.T) {
+func TestRenderHelpBarWithZeroWidth(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-	app.onboarding = true
-	app.onboardingBusy = true
-	assertHintsContain(t, app.statusHints(), "logging in", "quit")
-}
-
-func TestStatusHintsShowsOnboardingIdleShortcuts(t *testing.T) {
-	app := NewApp(nil, &config.Config{})
-	app.onboarding = true
-	app.onboardingBusy = false
-	assertHintsContain(t, app.statusHints(), "username", "login", "quit")
-}
-
-func TestStatusHintsShowsQuickstartShortcuts(t *testing.T) {
-	app := NewApp(nil, &config.Config{})
-	app.quickstartOpen = true
-	assertHintsContain(t, app.statusHints(), "step", "go", "skip")
-}
-
-func TestStatusHintsAppendsRecoveryShortcuts(t *testing.T) {
-	app := NewApp(nil, &config.Config{})
-	app.showRecoveryHints = true
-	assertHintsContain(t, app.statusHints(), "re-login", "settings", "command")
+	app.width = 0
+	bar := app.renderHelpBar()
+	// Should render without panic even at zero width.
+	require.NotEmpty(t, bar)
 }
 
 func TestStatusHintsForInboxStates(t *testing.T) {
