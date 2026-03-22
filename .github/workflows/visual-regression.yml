@@ -1,0 +1,50 @@
+name: Visual Regression
+
+on:
+  schedule:
+    - cron: '0 4 * * *'  # 4am UTC daily
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  golden-tests:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'visual-regression')
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: cli/src/go.mod
+      - name: Run golden file tests
+        run: cd cli/src && go test ./internal/ui/ -run TestGolden -count=1 -v
+
+  vhs-regression:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'visual-regression')
+    needs: golden-tests
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: cli/src/go.mod
+      - name: Install VHS
+        run: go install github.com/charmbracelet/vhs@latest
+      - name: Install gum
+        run: go install github.com/charmbracelet/gum@latest
+      - name: Start postgres
+        run: |
+          docker compose up -d
+          sleep 5
+      - name: Build CLI
+        run: make build
+      - name: Run VHS tapes
+        run: cd testing/vhs && ./run.sh
+      - name: Compare baselines
+        run: cd testing/vhs && ./compare.sh
+      - name: Upload diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vhs-diffs
+          path: testing/vhs/diffs/
