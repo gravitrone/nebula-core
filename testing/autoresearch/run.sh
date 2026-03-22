@@ -19,7 +19,7 @@ gum style --border double --padding "1 2" \
 
 for i in $(seq 1 "$MAX_ITERATIONS"); do
   echo ""
-  gum style --foreground "#436b77" --bold "--- iteration $i/$MAX_ITERATIONS ---"
+  echo "--- iteration $i/$MAX_ITERATIONS ---" | gum style --foreground "#436b77" --bold
 
   # Run golden tests to check current visual state
   gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Running golden tests..." -- \
@@ -47,7 +47,7 @@ for i in $(seq 1 "$MAX_ITERATIONS"); do
     bash -c "cd '$ROOT' && make build 2>/dev/null"
 
   # Launch claude code headless to analyze and fix visual bugs
-  gum style --foreground "#9ba0bf" "launching claude code headless to find and fix visual bugs..."
+  echo "launching claude code headless to find and fix visual bugs..." | gum style --foreground "#9ba0bf"
 
   PROMPT=$(cat program.md)
   PROMPT="$PROMPT
