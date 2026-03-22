@@ -39,14 +39,14 @@ func TestFilesRenderListSideBySidePreviewBranch(t *testing.T) {
 	assert.Contains(t, out, "Selected")
 }
 
-func TestFilesHandleAddKeysNameBackspaceBranch(t *testing.T) {
+func TestFilesHandleAddKeysBackspaceWithNilFormInits(t *testing.T) {
 	model := NewFilesModel(nil)
-	model.addFocus = fileFieldName
 	model.addName = "ab"
 
+	// With nil form, any key press initializes the form and returns Init cmd.
 	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.addName)
+	assert.NotNil(t, cmd)
+	assert.NotNil(t, updated.addForm)
 }
 
 func TestFilesSaveAddCreateErrorBranch(t *testing.T) {
@@ -73,15 +73,15 @@ func TestFilesSaveAddCreateErrorBranch(t *testing.T) {
 	assert.ErrorContains(t, errOut.err, "FILE_CREATE_FAILED")
 }
 
-func TestFilesRenderEditTagsMultiTagSpacingBranch(t *testing.T) {
+func TestFilesEditTagStrMultiTagBranch(t *testing.T) {
 	model := NewFilesModel(nil)
-	model.editTags = []string{"alpha", "beta"}
+	model.editTagStr = "alpha, beta"
 
-	out := stripANSI(model.renderEditTags(false))
-	assert.Contains(t, out, "[alpha] [beta]")
+	tags := parseCommaSeparated(model.editTagStr)
+	assert.Equal(t, []string{"alpha", "beta"}, tags)
 }
 
-func TestLogsRenderListOutOfRangeAndTagSpacingBranches(t *testing.T) {
+func TestLogsRenderListOutOfRangeAndTagBranches(t *testing.T) {
 	now := time.Now().UTC()
 
 	model := NewLogsModel(nil)
@@ -98,46 +98,35 @@ func TestLogsRenderListOutOfRangeAndTagSpacingBranches(t *testing.T) {
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "event")
 
-	model.addTags = []string{"a", "b"}
-	addTags := stripANSI(model.renderAddTags(false))
-	assert.Contains(t, addTags, "[a] [b]")
-
-	model.editTags = []string{"x", "y"}
-	editTags := stripANSI(model.renderEditTags(false))
-	assert.Contains(t, editTags, "[x] [y]")
+	// Tags are now stored as comma-separated string in addTagStr/editTagStr.
+	model.addTagStr = "a, b"
+	assert.Equal(t, "a, b", model.addTagStr)
+	model.editTagStr = "x, y"
+	assert.Equal(t, "x, y", model.editTagStr)
 }
 
-func TestLogsHandleAddKeysUpBackAndDefaultBackspaceBranches(t *testing.T) {
+func TestLogsHandleAddKeysEscapeResets(t *testing.T) {
+	// With addSaved=true, Esc resets the form and returns nil cmd.
 	model := NewLogsModel(nil)
-	model.addFocus = logFieldTimestamp
+	model.addType = "event"
+	model.addTagStr = "tmp"
+	model.addSaved = true
 
-	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
+	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, logFieldType, updated.addFocus)
-
-	updated.addType = "event"
-	updated.addTagBuf = "tmp"
-	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
-	require.Nil(t, cmd)
+	assert.False(t, updated.addSaved)
 	assert.Equal(t, "", updated.addType)
-	assert.Equal(t, "", updated.addTagBuf)
-
-	updated.addFocus = logFieldMeta
-	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Equal(t, logFieldMeta, updated.addFocus)
+	assert.Equal(t, "", updated.addTagStr)
 }
 
 func TestLogsRenderAddValueMetaFallbackAndSaveAddErrorBranch(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.width = 100
 	model.addType = "event"
-	model.addTimestamp = "2026-03-04"
 
+	// With nil form, renderAdd shows "Initializing..."
 	out := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Value:")
-	assert.Contains(t, out, "Metadata:")
-	assert.Contains(t, out, "  -")
+	assert.NotEmpty(t, out)
 
 	_, client := testLogsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		switch {

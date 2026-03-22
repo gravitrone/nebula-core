@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -36,18 +37,6 @@ const (
 	filesViewEdit
 )
 
-const (
-	fileFieldName = iota
-	fileFieldPath
-	fileFieldMime
-	fileFieldSize
-	fileFieldChecksum
-	fileFieldStatus
-	fileFieldTags
-	fileFieldMeta
-	fileFieldCount
-)
-
 var fileStatusOptions = []string{"active", "inactive"}
 
 // --- Files Model ---
@@ -72,34 +61,31 @@ type FilesModel struct {
 	height        int
 	scopeOptions  []string
 
-	// add
-	addFields    []formField
-	addFocus     int
-	addStatusIdx int
-	addTags      []string
-	addTagBuf    string
-	addName      string
-	addPath      string
-	addMime      string
-	addSize      string
-	addChecksum  string
-	addMeta      MetadataEditor
-	addSaving    bool
-	addSaved     bool
-	addErr       string
+	// add (huh form)
+	addForm     *huh.Form
+	addStatus   string
+	addTagStr   string
+	addName     string
+	addPath     string
+	addMime     string
+	addSize     string
+	addChecksum string
+	addMeta     MetadataEditor
+	addSaving   bool
+	addSaved    bool
+	addErr      string
 
-	// edit
-	editFocus     int
-	editStatusIdx int
-	editTags      []string
-	editTagBuf    string
-	editName      string
-	editPath      string
-	editMime      string
-	editSize      string
-	editChecksum  string
-	editMeta      MetadataEditor
-	editSaving    bool
+	// edit (huh form)
+	editForm     *huh.Form
+	editStatus   string
+	editTagStr   string
+	editName     string
+	editPath     string
+	editMime     string
+	editSize     string
+	editChecksum string
+	editMeta     MetadataEditor
+	editSaving   bool
 }
 
 // NewFilesModel builds the files UI model.
@@ -109,16 +95,7 @@ func NewFilesModel(client *api.Client) FilesModel {
 		spinner:   components.NewNebulaSpinner(),
 		dataTable: components.NewNebulaTable(nil, 12),
 		view:      filesViewList,
-		addFields: []formField{
-			{label: "Filename"},
-			{label: "File Path"},
-			{label: "MIME Type"},
-			{label: "Size (bytes)"},
-			{label: "Checksum"},
-			{label: "Status"},
-			{label: "Tags"},
-			{label: "Metadata"},
-		},
+		addStatus: "active",
 	}
 }
 
@@ -134,10 +111,9 @@ func (m FilesModel) Init() tea.Cmd {
 	m.detailRels = nil
 	m.errText = ""
 	m.metaExpanded = false
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(fileStatusOptions, "active")
-	m.addTags = nil
-	m.addTagBuf = ""
+	m.addStatus = "active"
+	m.addTagStr = ""
+	m.addForm = nil
 	m.addName = ""
 	m.addPath = ""
 	m.addMime = ""
@@ -147,10 +123,9 @@ func (m FilesModel) Init() tea.Cmd {
 	m.addSaving = false
 	m.addSaved = false
 	m.addErr = ""
-	m.editFocus = 0
-	m.editStatusIdx = statusIndex(fileStatusOptions, "active")
-	m.editTags = nil
-	m.editTagBuf = ""
+	m.editStatus = "active"
+	m.editTagStr = ""
+	m.editForm = nil
 	m.editName = ""
 	m.editPath = ""
 	m.editMime = ""
@@ -619,6 +594,22 @@ func (m FilesModel) loadDetailRelationships(fileID string) tea.Cmd {
 
 // --- Add View ---
 
+// initAddForm initializes the huh add form.
+func (m *FilesModel) initAddForm() {
+	m.addForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Filename").Value(&m.addName),
+			huh.NewInput().Title("URI / Path").Value(&m.addPath),
+			huh.NewInput().Title("MIME Type").Value(&m.addMime),
+			huh.NewInput().Title("Tags").Description("Comma-separated").Value(&m.addTagStr),
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.addStatus),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
+}
+
 func (m FilesModel) handleAddKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	if m.addSaving {
 		return m, nil
@@ -629,124 +620,46 @@ func (m FilesModel) handleAddKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if m.addMeta.Active {
-		if m.addMeta.HandleKey(msg) {
-			m.addMeta.Active = false
-		}
+	if m.addForm == nil {
+		m.initAddForm()
+		return m, m.addForm.Init()
+	}
+	var formCmd tea.Cmd
+	_, formCmd = m.addForm.Update(msg)
+	if m.addForm.State == huh.StateCompleted {
+		return m.saveAdd()
+	}
+	if m.addForm.State == huh.StateAborted {
+		m.resetAddForm()
 		return m, nil
 	}
-	if m.modeFocus {
-		return m.handleModeKeys(msg)
-	}
-	if m.addFocus == fileFieldStatus {
-		switch {
-		case isKey(msg, "left"):
-			m.addStatusIdx = (m.addStatusIdx - 1 + len(fileStatusOptions)) % len(fileStatusOptions)
-			return m, nil
-		case isKey(msg, "right"), isSpace(msg):
-			m.addStatusIdx = (m.addStatusIdx + 1) % len(fileStatusOptions)
-			return m, nil
-		}
-	}
-	switch {
-	case isDown(msg):
-		m.addFocus = (m.addFocus + 1) % fileFieldCount
-	case isUp(msg):
-		if m.addFocus == 0 {
-			m.modeFocus = true
-			return m, nil
-		}
-		m.addFocus = (m.addFocus - 1 + fileFieldCount) % fileFieldCount
-	case isKey(msg, "ctrl+s"):
-		return m.saveAdd()
-	case isBack(msg):
-		m.resetAddForm()
-	case isKey(msg, "backspace", "delete"):
-		switch m.addFocus {
-		case fileFieldTags:
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			} else if len(m.addTags) > 0 {
-				m.addTags = m.addTags[:len(m.addTags)-1]
-			}
-		case fileFieldName:
-			m.addName = dropLastRune(m.addName)
-		case fileFieldPath:
-			m.addPath = dropLastRune(m.addPath)
-		case fileFieldMime:
-			m.addMime = dropLastRune(m.addMime)
-		case fileFieldSize:
-			m.addSize = dropLastRune(m.addSize)
-		case fileFieldChecksum:
-			m.addChecksum = dropLastRune(m.addChecksum)
-		default:
-			return m, nil
-		}
-	default:
-		switch m.addFocus {
-		case fileFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitAddTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.addTagBuf += ch
-				}
-			}
-		case fileFieldName:
-			appendChar(&m.addName, msg)
-		case fileFieldPath:
-			appendChar(&m.addPath, msg)
-		case fileFieldMime:
-			appendChar(&m.addMime, msg)
-		case fileFieldSize:
-			appendChar(&m.addSize, msg)
-		case fileFieldChecksum:
-			appendChar(&m.addChecksum, msg)
-		case fileFieldMeta:
-			if isEnter(msg) {
-				m.addMeta.Active = true
-			}
-		}
-	}
-	return m, nil
+	return m, formCmd
 }
 
 // renderAdd renders render add.
 func (m FilesModel) renderAdd() string {
-	rows := make([][2]string, 0, len(m.addFields))
-	for i := range m.addFields {
-		label := m.addFields[i].label
-		value := "-"
-		switch i {
-		case fileFieldName:
-			value = formatFormValue(m.addName, i == m.addFocus)
-		case fileFieldPath:
-			value = formatFormValue(m.addPath, i == m.addFocus)
-		case fileFieldMime:
-			value = formatFormValue(m.addMime, i == m.addFocus)
-		case fileFieldSize:
-			value = formatFormValue(m.addSize, i == m.addFocus)
-		case fileFieldChecksum:
-			value = formatFormValue(m.addChecksum, i == m.addFocus)
-		case fileFieldStatus:
-			value = fileStatusOptions[m.addStatusIdx]
-		case fileFieldTags:
-			value = m.renderAddTags(i == m.addFocus)
-		case fileFieldMeta:
-			value = renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-		}
-		rows = append(rows, [2]string{label, value})
-	}
-	body := renderFormGrid("Add File", rows, m.addFocus, m.width)
-	if m.addErr != "" {
-		body += "\n\n" + ErrorStyle.Render(m.addErr)
+	if m.addSaving {
+		return components.Indent(MutedStyle.Render("Saving..."), 1)
 	}
 	if m.addSaved {
-		body += "\n\n" + SuccessStyle.Render("Saved.")
+		var b strings.Builder
+		b.WriteString(SuccessStyle.Render("File saved!"))
+		b.WriteString("\n\n" + MutedStyle.Render("Press Esc to add another."))
+		return components.Indent(b.String(), 1)
 	}
-	return body
+	if m.addForm == nil {
+		return components.Indent(MutedStyle.Render("Initializing..."), 1)
+	}
+	var b strings.Builder
+	b.WriteString(m.addForm.View())
+	metaPreview := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
+	if metaPreview != "" {
+		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	}
+	if m.addErr != "" {
+		b.WriteString("\n\n" + ErrorStyle.Render(m.addErr))
+	}
+	return components.Indent(b.String(), 1)
 }
 
 // saveAdd handles save add.
@@ -772,6 +685,7 @@ func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
 		return m, nil
 	}
 	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
+	tags := parseCommaSeparated(m.addTagStr)
 
 	input := api.CreateFileInput{
 		Filename:  name,
@@ -779,8 +693,8 @@ func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
 		MimeType:  strings.TrimSpace(m.addMime),
 		SizeBytes: size,
 		Checksum:  strings.TrimSpace(m.addChecksum),
-		Status:    fileStatusOptions[m.addStatusIdx],
-		Tags:      m.addTags,
+		Status:    m.addStatus,
+		Tags:      tags,
 		Metadata:  meta,
 	}
 	m.addSaving = true
@@ -798,67 +712,15 @@ func (m *FilesModel) resetAddForm() {
 	m.addSaved = false
 	m.addSaving = false
 	m.addErr = ""
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(fileStatusOptions, "active")
-	m.addTags = nil
-	m.addTagBuf = ""
+	m.addStatus = "active"
+	m.addTagStr = ""
+	m.addForm = nil
 	m.addName = ""
 	m.addPath = ""
 	m.addMime = ""
 	m.addSize = ""
 	m.addChecksum = ""
 	m.addMeta.Reset()
-}
-
-// commitAddTag handles commit add tag.
-func (m *FilesModel) commitAddTag() {
-	raw := strings.TrimSpace(m.addTagBuf)
-	if raw == "" {
-		m.addTagBuf = ""
-		return
-	}
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.addTagBuf = ""
-		return
-	}
-	for _, t := range m.addTags {
-		if t == tag {
-			m.addTagBuf = ""
-			return
-		}
-	}
-	m.addTags = append(m.addTags, tag)
-	m.addTagBuf = ""
-}
-
-// renderAddTags renders render add tags.
-func (m FilesModel) renderAddTags(focused bool) string {
-	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
-		return "-"
-	}
-	var b strings.Builder
-	for i, t := range m.addTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.addTagBuf != "" {
-			b.WriteString(m.addTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.addTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.addTagBuf))
-	}
-	return b.String()
 }
 
 // --- Edit View ---
@@ -868,10 +730,11 @@ func (m *FilesModel) startEdit() {
 		return
 	}
 	f := m.detail
-	m.editFocus = 0
-	m.editStatusIdx = statusIndex(fileStatusOptions, f.Status)
-	m.editTags = append([]string{}, f.Tags...)
-	m.editTagBuf = ""
+	m.editStatus = f.Status
+	if m.editStatus == "" {
+		m.editStatus = "active"
+	}
+	m.editTagStr = strings.Join(f.Tags, ", ")
 	m.editName = f.Filename
 	m.editPath = f.FilePath
 	if f.MimeType != nil {
@@ -891,6 +754,23 @@ func (m *FilesModel) startEdit() {
 	}
 	m.editMeta.Load(map[string]any(f.Metadata))
 	m.editSaving = false
+	m.initEditForm()
+}
+
+// initEditForm initializes the huh edit form.
+func (m *FilesModel) initEditForm() {
+	m.editForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Filename").Value(&m.editName),
+			huh.NewInput().Title("URI / Path").Value(&m.editPath),
+			huh.NewInput().Title("MIME Type").Value(&m.editMime),
+			huh.NewInput().Title("Tags").Description("Comma-separated").Value(&m.editTagStr),
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.editStatus),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
 }
 
 // handleEditKeys handles handle edit keys.
@@ -898,110 +778,44 @@ func (m FilesModel) handleEditKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
-	if m.editMeta.Active {
-		if m.editMeta.HandleKey(msg) {
-			m.editMeta.Active = false
-		}
+	if isBack(msg) {
+		m.view = filesViewDetail
 		return m, nil
 	}
-	if m.editFocus == fileFieldStatus {
-		switch {
-		case isKey(msg, "left"):
-			m.editStatusIdx = (m.editStatusIdx - 1 + len(fileStatusOptions)) % len(fileStatusOptions)
-			return m, nil
-		case isKey(msg, "right"), isSpace(msg):
-			m.editStatusIdx = (m.editStatusIdx + 1) % len(fileStatusOptions)
-			return m, nil
-		}
+	if m.editForm == nil {
+		m.initEditForm()
+		return m, m.editForm.Init()
 	}
-	switch {
-	case isDown(msg):
-		m.editFocus = (m.editFocus + 1) % fileFieldCount
-	case isUp(msg):
-		if m.editFocus > 0 {
-			m.editFocus = (m.editFocus - 1 + fileFieldCount) % fileFieldCount
-		}
-	case isBack(msg):
-		m.view = filesViewDetail
-	case isKey(msg, "ctrl+s"):
+	var formCmd tea.Cmd
+	_, formCmd = m.editForm.Update(msg)
+	if m.editForm.State == huh.StateCompleted {
 		return m.saveEdit()
-	case isKey(msg, "backspace", "delete"):
-		switch m.editFocus {
-		case fileFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
-				m.editTags = m.editTags[:len(m.editTags)-1]
-			}
-		case fileFieldName:
-			m.editName = dropLastRune(m.editName)
-		case fileFieldPath:
-			m.editPath = dropLastRune(m.editPath)
-		case fileFieldMime:
-			m.editMime = dropLastRune(m.editMime)
-		case fileFieldSize:
-			m.editSize = dropLastRune(m.editSize)
-		case fileFieldChecksum:
-			m.editChecksum = dropLastRune(m.editChecksum)
-		}
-	default:
-		switch m.editFocus {
-		case fileFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitEditTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
-			}
-		case fileFieldName:
-			appendChar(&m.editName, msg)
-		case fileFieldPath:
-			appendChar(&m.editPath, msg)
-		case fileFieldMime:
-			appendChar(&m.editMime, msg)
-		case fileFieldSize:
-			appendChar(&m.editSize, msg)
-		case fileFieldChecksum:
-			appendChar(&m.editChecksum, msg)
-		case fileFieldMeta:
-			if isEnter(msg) {
-				m.editMeta.Active = true
-			}
-		}
 	}
-	return m, nil
+	if m.editForm.State == huh.StateAborted {
+		m.view = filesViewDetail
+		return m, nil
+	}
+	return m, formCmd
 }
 
 // renderEdit renders render edit.
 func (m FilesModel) renderEdit() string {
-	fields := []string{"Filename", "File Path", "MIME Type", "Size (bytes)", "Checksum", "Status", "Tags", "Metadata"}
-	rows := make([][2]string, 0, len(fields))
-	for i, label := range fields {
-		value := "-"
-		switch i {
-		case fileFieldName:
-			value = formatFormValue(m.editName, i == m.editFocus)
-		case fileFieldPath:
-			value = formatFormValue(m.editPath, i == m.editFocus)
-		case fileFieldMime:
-			value = formatFormValue(m.editMime, i == m.editFocus)
-		case fileFieldSize:
-			value = formatFormValue(m.editSize, i == m.editFocus)
-		case fileFieldChecksum:
-			value = formatFormValue(m.editChecksum, i == m.editFocus)
-		case fileFieldStatus:
-			value = fileStatusOptions[m.editStatusIdx]
-		case fileFieldTags:
-			value = m.renderEditTags(i == m.editFocus)
-		case fileFieldMeta:
-			value = renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-		}
-		rows = append(rows, [2]string{label, value})
+	if m.editSaving {
+		return components.Indent(MutedStyle.Render("Saving..."), 1)
 	}
-	return renderFormGrid("Edit File", rows, m.editFocus, m.width)
+	if m.editForm == nil {
+		return components.Indent(MutedStyle.Render("Initializing..."), 1)
+	}
+	var b strings.Builder
+	b.WriteString(m.editForm.View())
+	metaPreview := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
+	if metaPreview != "" {
+		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	}
+	if m.errText != "" {
+		b.WriteString("\n\n" + ErrorStyle.Render(m.errText))
+	}
+	return components.Indent(b.String(), 1)
 }
 
 // saveEdit handles save edit.
@@ -1017,13 +831,12 @@ func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
 		return m, nil
 	}
 	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
-
-	status := fileStatusOptions[m.editStatusIdx]
+	tags := parseCommaSeparated(m.editTagStr)
 
 	input := api.UpdateFileInput{
 		Metadata: meta,
-		Status:   &status,
-		Tags:     &m.editTags,
+		Status:   &m.editStatus,
+		Tags:     &tags,
 	}
 	if strings.TrimSpace(m.editName) != "" {
 		input.Filename = stringPtr(strings.TrimSpace(m.editName))
@@ -1049,57 +862,6 @@ func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
 		}
 		return fileUpdatedMsg{}
 	}
-}
-
-// commitEditTag handles commit edit tag.
-func (m *FilesModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
-	if raw == "" {
-		m.editTagBuf = ""
-		return
-	}
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.editTagBuf = ""
-		return
-	}
-	for _, t := range m.editTags {
-		if t == tag {
-			m.editTagBuf = ""
-			return
-		}
-	}
-	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
-}
-
-// renderEditTags renders render edit tags.
-func (m FilesModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
-		return "-"
-	}
-	var b strings.Builder
-	for i, t := range m.editTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
-	}
-	return b.String()
 }
 
 // --- Data ---

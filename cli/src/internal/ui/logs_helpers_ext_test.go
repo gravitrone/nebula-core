@@ -215,52 +215,17 @@ func TestLogsHandleListKeysSearchAndFilterMatrix(t *testing.T) {
 	assert.Equal(t, "", updated.searchBuf)
 }
 
-func TestLogsHandleAddKeysStatusAndBackspaceMatrix(t *testing.T) {
-	model := NewLogsModel(nil)
-	model.view = logsViewAdd
-	model.addFocus = logFieldStatus
-
-	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.addStatusIdx)
-
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-	assert.Equal(t, 0, updated.addStatusIdx)
-
-	updated.addFocus = logFieldTags
-	updated.addTags = []string{"alpha"}
-	updated.addTagBuf = "x"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.addTagBuf)
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Empty(t, updated.addTags)
-
-	updated.addFocus = logFieldType
-	updated.addType = "work"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "wor", updated.addType)
-
-	updated.addFocus = logFieldTimestamp
-	updated.addTimestamp = "2026-02-27"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "2026-02-2", updated.addTimestamp)
-
-	updated.addSaved = true
-	updated.addType = "workout"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
-	assert.False(t, updated.addSaved)
-	assert.Equal(t, "", updated.addType)
-}
-
-func TestLogsHandleAddKeysAdditionalBranches(t *testing.T) {
+func TestLogsHandleAddKeysSavingAndSavedBranchesHelper(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.view = logsViewAdd
 
+	// addSaving blocks key input.
 	model.addSaving = true
 	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
 	assert.True(t, updated.addSaving)
 
+	// addSaved + non-Esc is no-op.
 	model.addSaving = false
 	model.addSaved = true
 	model.addType = "kept"
@@ -269,146 +234,83 @@ func TestLogsHandleAddKeysAdditionalBranches(t *testing.T) {
 	assert.True(t, updated.addSaved)
 	assert.Equal(t, "kept", updated.addType)
 
+	// addSaved + Esc resets form.
+	updated.addSaved = true
+	updated.addType = "workout"
+	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
+	assert.False(t, updated.addSaved)
+	assert.Equal(t, "", updated.addType)
+}
+
+func TestLogsHandleAddKeysModeToggleHelper(t *testing.T) {
+	model := NewLogsModel(nil)
+	model.view = logsViewAdd
 	model.addSaved = false
 	model.modeFocus = true
-	updated, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
+
+	// modeFocus + right goes through Update (which checks modeFocus before dispatching to handleAddKeys).
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	require.Nil(t, cmd)
 	assert.Equal(t, logsViewList, updated.view)
 
-	updated.view = logsViewAdd
-	updated.modeFocus = false
-	updated.addFocus = logFieldType
-	updated.addType = ""
-	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	require.Nil(t, cmd)
-	assert.Equal(t, "e", updated.addType)
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "e ", updated.addType)
-
-	updated.addFocus = logFieldTimestamp
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '0', Text: "0"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '6', Text: "6"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '-', Text: "-"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '0', Text: "0"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '-', Text: "-"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '2', Text: "2"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '7', Text: "7"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'T', Text: "T"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '1', Text: "1"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '3', Text: "3"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: ':', Text: ":"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '4', Text: "4"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '5', Text: "5"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: 'Z', Text: "Z"})
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: '+', Text: "+"})
-	beforeTS := updated.addTimestamp
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, beforeTS, updated.addTimestamp)
-
-	updated.addFocus = logFieldValue
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.True(t, updated.addValue.Active)
-	updated.addValue.Active = false
-
-	updated.addFocus = logFieldMeta
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.True(t, updated.addMeta.Active)
-	updated.addMeta.Active = false
-
-	updated.addFocus = 0
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.True(t, updated.modeFocus)
+	// Nil form initializes on first key and returns non-nil cmd.
+	model2 := NewLogsModel(nil)
+	model2.view = logsViewAdd
+	model2.addForm = nil
+	_, cmd2 := model2.handleAddKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
+	assert.NotNil(t, cmd2)
 }
 
-func TestLogsRenderAddBranchMatrix(t *testing.T) {
+func TestLogsRenderAddBranchMatrixHelper(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.width = 96
 
-	model.addFocus = logFieldType
-	model.addType = "event"
+	// nil form -> Initializing.
 	out := stripANSI(model.renderAdd())
-	assert.Contains(t, out, "Type:")
-	assert.Contains(t, out, "event")
+	assert.Contains(t, out, "Initializing")
 
-	model.addFocus = logFieldTimestamp
-	model.addTimestamp = "2026-03-01T12:45Z"
+	// saving -> Saving.
+	model.addSaving = true
 	out = stripANSI(model.renderAdd())
-	assert.Contains(t, out, "Timestamp:")
-	assert.Contains(t, out, "2026-03-01T12:45Z")
+	assert.Contains(t, out, "Saving")
 
-	model.addFocus = logFieldStatus
-	model.addStatusIdx = 1
-	out = stripANSI(model.renderAdd())
-	assert.Contains(t, out, "Status:")
-	assert.Contains(t, out, logStatusOptions[1])
-
-	model.addFocus = logFieldTags
-	model.addTags = []string{"alpha"}
-	model.addTagBuf = "beta"
-	out = stripANSI(model.renderAdd())
-	assert.Contains(t, out, "[alpha]")
-	assert.Contains(t, out, "beta")
-
-	model.addFocus = logFieldValue
-	model.addValue.Buffer = "group | field | value"
-	out = stripANSI(model.renderAdd())
-	assert.Contains(t, out, "group | field | value")
-
-	model.addFocus = logFieldMeta
-	model.addMeta.Buffer = "meta | key | value"
-	out = stripANSI(model.renderAdd())
-	assert.Contains(t, out, "meta | key | value")
-
-	model.addErr = "bad metadata"
+	// saved -> Log saved.
+	model.addSaving = false
 	model.addSaved = true
 	out = stripANSI(model.renderAdd())
-	assert.Contains(t, out, "bad metadata")
-	assert.Contains(t, out, "Saved.")
+	assert.Contains(t, out, "Log saved")
 
-	empty := NewLogsModel(nil)
-	empty.width = 80
-	empty.addFocus = logFieldMeta
-	out = stripANSI(empty.renderAdd())
-	assert.Contains(t, out, "Type:")
-	assert.Contains(t, out, "Timestamp:")
-	assert.Contains(t, out, "Metadata:")
-	assert.Contains(t, out, "  -")
+	// with form + metadata buffers.
+	model.addSaved = false
+	model.addForm = nil
+	model.initAddForm()
+	model.addValue.Buffer = "group | field | value"
+	model.addMeta.Buffer = "meta | key | value"
+	model.addErr = "bad metadata"
+	out = stripANSI(model.renderAdd())
+	assert.Contains(t, out, "group | field | value")
+	assert.Contains(t, out, "meta | key | value")
+	assert.Contains(t, out, "bad metadata")
 }
 
-func TestLogsHandleEditKeysStatusAndTagMatrix(t *testing.T) {
+func TestLogsHandleEditKeysStatusAndTagMatrixHelper(t *testing.T) {
 	model := NewLogsModel(nil)
 	model.view = logsViewEdit
 	model.detail = &api.Log{ID: "log-1", LogType: "event", Status: "active", Timestamp: time.Now()}
 	model.startEdit()
-	model.editFocus = logEditFieldStatus
 
-	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	require.Nil(t, cmd)
-	assert.Equal(t, 1, updated.editStatusIdx)
+	assert.Equal(t, "active", model.editStatus)
+	assert.NotNil(t, model.editForm)
 
-	updated.editFocus = logEditFieldTags
-	updated.editTags = []string{"alpha"}
-	updated.editTagBuf = "x"
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.editTagBuf)
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Empty(t, updated.editTags)
-
-	updated.editFocus = logEditFieldValue
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.True(t, updated.editValue.Active)
-	updated.editValue.Active = false
-
-	updated.editFocus = logEditFieldMeta
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.True(t, updated.editMeta.Active)
-	updated.editMeta.Active = false
-
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
+	// Esc exits to detail.
+	updated, _ := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, logsViewDetail, updated.view)
+
+	// editSaving blocks.
+	model.editSaving = true
+	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
+	require.Nil(t, cmd)
+	assert.True(t, updated.editSaving)
 }
 
 func TestLogsSaveAddAndEditValidationBranches(t *testing.T) {
