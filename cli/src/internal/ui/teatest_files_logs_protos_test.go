@@ -14,7 +14,7 @@ import (
 func TestFilesTabShowsData(t *testing.T) {
 	app := newTestAppWithData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -34,7 +34,7 @@ func TestFilesTabShowsData(t *testing.T) {
 func TestFilesAddForm(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -54,7 +54,7 @@ func TestFilesAddForm(t *testing.T) {
 func TestFilesEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -83,7 +83,7 @@ func TestFilesEmptyState(t *testing.T) {
 func TestLogsTabShowsData(t *testing.T) {
 	app := newTestAppWithData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -103,7 +103,7 @@ func TestLogsTabShowsData(t *testing.T) {
 func TestLogsAddForm(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -123,7 +123,7 @@ func TestLogsAddForm(t *testing.T) {
 func TestLogsEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -152,7 +152,7 @@ func TestLogsEmptyState(t *testing.T) {
 func TestProtocolsTabShowsData(t *testing.T) {
 	app := newTestAppWithData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -172,7 +172,7 @@ func TestProtocolsTabShowsData(t *testing.T) {
 func TestProtocolsAddForm(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
@@ -192,7 +192,7 @@ func TestProtocolsAddForm(t *testing.T) {
 func TestProtocolsEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {

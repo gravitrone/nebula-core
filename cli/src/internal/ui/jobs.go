@@ -40,21 +40,6 @@ const (
 	jobsViewEdit
 )
 
-const (
-	jobFieldTitle = iota
-	jobFieldDescription
-	jobFieldStatus
-	jobFieldPriority
-	jobFieldCount
-)
-
-const (
-	jobEditFieldStatus = iota
-	jobEditFieldDescription
-	jobEditFieldPriority
-	jobEditFieldCount
-)
-
 var jobStatusOptions = []string{"pending", "active", "completed", "failed"}
 var jobPriorityOptions = []string{"", "low", "medium", "high"}
 

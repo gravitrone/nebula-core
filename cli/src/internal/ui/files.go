@@ -37,8 +37,6 @@ const (
 	filesViewEdit
 )
 
-var fileStatusOptions = []string{"active", "inactive"}
-
 // --- Files Model ---
 
 type FilesModel struct {

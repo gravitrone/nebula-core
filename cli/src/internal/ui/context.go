@@ -44,8 +44,6 @@ var contextTypes = []string{
 	"thread",
 }
 
-var contextStatusOptions = []string{"active", "inactive"}
-
 type contextView int
 
 const (

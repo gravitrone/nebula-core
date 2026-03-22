@@ -86,7 +86,7 @@ func enterJobsContent(tm *teatest.TestModel) {
 func TestJobsTabShowsLoadedData(t *testing.T) {
 	app := newTestAppWithJobData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -104,7 +104,7 @@ func TestJobsTabShowsLoadedData(t *testing.T) {
 func TestJobsTableNavigation(t *testing.T) {
 	app := newTestAppWithJobData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -132,7 +132,7 @@ func TestJobsTableNavigation(t *testing.T) {
 func TestJobsDetailView(t *testing.T) {
 	app := newTestAppWithJobData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -160,7 +160,7 @@ func TestJobsDetailView(t *testing.T) {
 func TestJobsAddFormOpens(t *testing.T) {
 	app := newTestAppWithJobData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -198,7 +198,7 @@ func TestJobsAddFormOpens(t *testing.T) {
 func TestJobsFilterFlow(t *testing.T) {
 	app := newTestAppWithJobData(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))
@@ -229,7 +229,7 @@ func TestJobsFilterFlow(t *testing.T) {
 func TestJobsEmptyState(t *testing.T) {
 	app := newTestApp(t)
 	tm := teatest.NewTestModel(t, app, teatest.WithInitialTermSize(120, 40))
-	t.Cleanup(func() { tm.Quit() })
+	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return bytes.Contains(out, []byte("Inbox"))

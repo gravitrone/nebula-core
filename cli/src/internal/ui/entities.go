@@ -58,28 +58,11 @@ const (
 )
 
 const (
-	addFieldName = iota
-	addFieldType
-	addFieldStatus
-	addFieldTags
-	addFieldScopes
-	addFieldCount
-)
-
-const (
-	editFieldTags = iota
-	editFieldStatus
-	editFieldScopes
-	editFieldCount
-)
-
-const (
 	relEditFieldStatus = iota
 	relEditFieldProperties
 	relEditFieldCount
 )
 
-var entityStatusOptions = []string{"active", "inactive"}
 var relationshipStatusOptions = []string{"active", "inactive"}
 
 type bulkTarget int
