@@ -127,7 +127,8 @@ $SCREENSHOT_INSTRUCTIONS
 3. Fix any bugs you find in cli/src/internal/ui/
 4. Run: make test-cli to verify no regressions
 5. Only keep changes that pass tests
-6. Be specific about what you SAW in the screenshots and what you fixed"
+6. Be specific about what you SAW in the screenshots and what you fixed
+7. When done fixing, use /commit-forge to commit your changes with a proper conventional commit message"
 
   (cd "$ITER_DIR" && echo "$PROMPT" | claude \
     --model opus \
@@ -136,67 +137,55 @@ $SCREENSHOT_INSTRUCTIONS
       warn "claude session ended"
     }
 
-  # ── check results ─────────────────────────────────────────────────────────
+  # ── check if claude committed ───────────────────────────────────────────
   cd "$ITER_DIR"
-  CHANGED=$(git diff --name-only 2>/dev/null || echo "")
+  COMMITS_AHEAD=$(git log "$BRANCH..$ITER_BRANCH" --oneline 2>/dev/null | wc -l | tr -d ' ')
 
-  if [ -z "$CHANGED" ]; then
-    info "no changes this iteration"
-    cd "$ROOT"
-    git worktree remove --force "$ITER_DIR" 2>/dev/null || true
-    git branch -D "$ITER_BRANCH" 2>/dev/null || true
-    continue
-  fi
-
-  FILE_COUNT=$(echo "$CHANGED" | wc -l | tr -d ' ')
-  info "$FILE_COUNT files changed"
-
-  # ── verify tests pass ────────────────────────────────────────────────────
-  gum spin --spinner dot --title "verifying tests after fixes..." -- \
-    bash -c "cd '$ITER_DIR' && make test-cli > /dev/null 2>&1" || {
-      fail "tests failed after fix, discarding iteration"
+  if [ "$COMMITS_AHEAD" -eq 0 ]; then
+    # claude didn't commit - check for uncommitted changes
+    CHANGED=$(git diff --name-only 2>/dev/null || echo "")
+    if [ -n "$CHANGED" ]; then
+      # save work so it's not lost
+      info "claude didn't commit, saving uncommitted changes..."
+      git add -A
+      git commit -m "fix(cli): autoresearch visual fixes (iteration $ITERATION)" 2>/dev/null
+      COMMITS_AHEAD=1
+    else
+      info "no changes this iteration"
       cd "$ROOT"
       git worktree remove --force "$ITER_DIR" 2>/dev/null || true
       git branch -D "$ITER_BRANCH" 2>/dev/null || true
       continue
+    fi
+  fi
+
+  info "$COMMITS_AHEAD commit(s) from claude"
+
+  # ── verify tests pass ────────────────────────────────────────────────────
+  gum spin --spinner dot --title "verifying tests after fixes..." -- \
+    bash -c "cd '$ITER_DIR' && make test-cli > /dev/null 2>&1" || {
+      fail "tests failed after fix, keeping branch for review: $ITER_BRANCH"
+      cd "$ROOT"
+      git worktree remove --force "$ITER_DIR" 2>/dev/null || true
+      # keep the branch so changes aren't lost
+      continue
     }
-
-  # ── generate commit message ──────────────────────────────────────────────
-  DIFF_STAT=$(cd "$ITER_DIR" && git diff --stat)
-  DIFF_SUMMARY=$(cd "$ITER_DIR" && git diff --no-color | head -200)
-
-  COMMIT_MSG=$(echo "Generate a conventional commit message for this diff. Format: fix(cli): one-line description. Be specific about what visual bugs were fixed. No co-author tags. Output ONLY the commit message, nothing else.
-
-Diff stat:
-$DIFF_STAT
-
-Diff preview:
-$DIFF_SUMMARY" | claude --model haiku --max-turns 1 2>/dev/null || echo "fix(cli): autoresearch visual fixes (iteration $ITERATION)")
-
-  COMMIT_MSG=$(echo "$COMMIT_MSG" | grep -E "^(fix|feat|refactor|chore)" | head -1 || echo "fix(cli): autoresearch visual fixes (iteration $ITERATION)")
-
-  # ── commit in worktree ────────────────────────────────────────────────────
-  cd "$ITER_DIR"
-  git add -A
-  git commit -m "$COMMIT_MSG" 2>/dev/null
-
-  info "committed: $COMMIT_MSG"
 
   # ── merge into main branch ────────────────────────────────────────────────
   cd "$ROOT"
   git checkout "$BRANCH" 2>/dev/null
   git merge "$ITER_BRANCH" --no-edit 2>/dev/null || {
-    fail "merge conflict, discarding iteration"
+    fail "merge conflict, keeping branch for review: $ITER_BRANCH"
     git merge --abort 2>/dev/null || true
     git worktree remove --force "$ITER_DIR" 2>/dev/null || true
-    git branch -D "$ITER_BRANCH" 2>/dev/null || true
+    # keep the branch so changes aren't lost
     continue
   }
 
   info "merged iteration $ITERATION into $BRANCH"
   TOTAL_FIXES=$((TOTAL_FIXES + 1))
 
-  # ── cleanup worktree ──────────────────────────────────────────────────────
+  # ── cleanup worktree (only after successful merge) ──────────────────────
   git worktree remove --force "$ITER_DIR" 2>/dev/null || true
   git branch -D "$ITER_BRANCH" 2>/dev/null || true
 done
