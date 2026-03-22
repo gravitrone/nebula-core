@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/harmonica"
@@ -138,7 +139,7 @@ type App struct {
 	toast           *appToast
 
 	paletteOpen          bool
-	paletteQuery         string
+	paletteTextInput     textinput.Model
 	paletteIndex         int
 	paletteActions       []paletteAction
 	paletteFiltered      []paletteAction
@@ -205,7 +206,8 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 			Auth:     "checking",
 			Taxonomy: "checking",
 		},
-		paletteActions: defaultPaletteActions(),
+		paletteTextInput: newPaletteTextInput(),
+		paletteActions:   defaultPaletteActions(),
 		inbox:          inbox,
 		entities:       NewEntitiesModel(client),
 		rels:           NewRelationshipsModel(client),
@@ -562,6 +564,15 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return a, nil
 				}
 			}
+		}
+	}
+
+	// Forward non-key messages to the palette textinput when open (e.g. cursor blink).
+	if a.paletteOpen {
+		var tiCmd tea.Cmd
+		a.paletteTextInput, tiCmd = a.paletteTextInput.Update(msg)
+		if tiCmd != nil {
+			return a, tiCmd
 		}
 	}
 
@@ -1525,11 +1536,19 @@ func startupStatusColor(status string) string {
 	}
 }
 
+// newPaletteTextInput creates a textinput for the command palette.
+func newPaletteTextInput() textinput.Model {
+	ti := components.NewNebulaTextInput("Search or /command...")
+	ti.Prompt = ""
+	return ti
+}
+
 // openPaletteCommand handles open palette command.
 func (a *App) openPaletteCommand() {
 	a.paletteOpen = true
 	// Open in explicit command mode. Users can backspace this to switch to search mode.
-	a.paletteQuery = "/"
+	a.paletteTextInput.SetValue("/")
+	a.paletteTextInput.Focus()
 	a.paletteIndex = 0
 	a.paletteSearchQuery = ""
 	a.paletteSearchLoading = false
@@ -1539,7 +1558,7 @@ func (a *App) openPaletteCommand() {
 
 // paletteCommandMode handles palette command mode.
 func (a App) paletteCommandMode() bool {
-	query := strings.TrimSpace(a.paletteQuery)
+	query := strings.TrimSpace(a.paletteTextInput.Value())
 	return strings.HasPrefix(query, "/")
 }
 
@@ -1553,19 +1572,8 @@ func (a App) renderPalette() string {
 		prompt = "Command"
 	}
 
-	query := components.SanitizeOneLine(a.paletteQuery)
-	if commandMode {
-		query = strings.TrimLeft(query, "/")
-	}
-
 	var b strings.Builder
-	queryWidth := components.BoxContentWidth(a.width) - 10
-	if queryWidth < 10 {
-		queryWidth = 10
-	}
-	query = components.ClampTextWidthEllipsis(query, queryWidth)
-	b.WriteString(MetaKeyStyle.Render(prompt) + MetaPunctStyle.Render(": ") + SelectedStyle.Render(query))
-	b.WriteString(AccentStyle.Render("█"))
+	b.WriteString(MetaKeyStyle.Render(prompt) + MetaPunctStyle.Render(": ") + a.paletteTextInput.View())
 	b.WriteString("\n\n")
 
 	items := a.paletteFiltered
@@ -1574,7 +1582,7 @@ func (a App) renderPalette() string {
 	} else if len(items) == 0 {
 		if commandMode {
 			b.WriteString(MutedStyle.Render("No matching actions."))
-		} else if strings.TrimSpace(a.paletteQuery) == "" {
+		} else if strings.TrimSpace(a.paletteTextInput.Value()) == "" {
 			b.WriteString(MutedStyle.Render("Type to search, or prefix with / for commands."))
 		} else {
 			b.WriteString(MutedStyle.Render("No search results."))
@@ -1631,10 +1639,8 @@ func (a App) renderPalette() string {
 
 // refreshPaletteFiltered handles refresh palette filtered.
 func (a *App) refreshPaletteFiltered() tea.Cmd {
-	a.paletteQuery = components.SanitizeOneLine(a.paletteQuery)
-
 	if a.paletteCommandMode() {
-		query := strings.TrimSpace(strings.TrimLeft(a.paletteQuery, "/"))
+		query := strings.TrimSpace(strings.TrimLeft(a.paletteTextInput.Value(), "/"))
 		a.paletteSearchQuery = ""
 		a.paletteSearchLoading = false
 		a.paletteSelections = nil
@@ -1645,7 +1651,7 @@ func (a *App) refreshPaletteFiltered() tea.Cmd {
 		return nil
 	}
 
-	query := strings.TrimSpace(a.paletteQuery)
+	query := strings.TrimSpace(a.paletteTextInput.Value())
 	if query == "" {
 		a.paletteSearchQuery = ""
 		a.paletteSearchLoading = false
@@ -1789,6 +1795,7 @@ func (a App) handlePaletteKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		a.paletteOpen = false
+		a.paletteTextInput.Blur()
 		return a, nil
 	case isEnter(msg):
 		if len(a.paletteFiltered) == 0 {
@@ -1796,29 +1803,29 @@ func (a App) handlePaletteKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		action := a.paletteFiltered[a.paletteIndex]
 		a.paletteOpen = false
-		a.paletteQuery = ""
+		a.paletteTextInput.Reset()
+		a.paletteTextInput.Blur()
 		return a.runPaletteAction(action)
 	case isUp(msg):
 		if a.paletteIndex > 0 {
 			a.paletteIndex--
 		}
+		return a, nil
 	case isDown(msg):
 		if a.paletteIndex < len(a.paletteFiltered)-1 {
 			a.paletteIndex++
 		}
-	case isKey(msg, "backspace"):
-		if len(a.paletteQuery) > 0 {
-			r := []rune(a.paletteQuery)
-			a.paletteQuery = string(r[:len(r)-1])
-			return a, a.refreshPaletteFiltered()
-		}
-	default:
-		if ch := keyText(msg); ch != "" {
-			a.paletteQuery += ch
-			return a, a.refreshPaletteFiltered()
-		}
+		return a, nil
 	}
-	return a, nil
+
+	// Delegate text editing to the textinput.
+	prevValue := a.paletteTextInput.Value()
+	var tiCmd tea.Cmd
+	a.paletteTextInput, tiCmd = a.paletteTextInput.Update(msg)
+	if a.paletteTextInput.Value() != prevValue {
+		return a, tea.Batch(tiCmd, a.refreshPaletteFiltered())
+	}
+	return a, tiCmd
 }
 
 // runPaletteAction runs run palette action.

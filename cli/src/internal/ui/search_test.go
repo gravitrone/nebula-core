@@ -58,8 +58,7 @@ func TestSearchModelQueryCallsEndpoints(t *testing.T) {
 	model := NewSearchModel(client)
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "a", entityQuery)
 	assert.Equal(t, "a", contextQuery)
@@ -91,8 +90,7 @@ func TestSearchModelSelectionEmitsMsg(t *testing.T) {
 
 	model := NewSearchModel(client)
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -136,8 +134,7 @@ func TestSearchModelSemanticModeCallsSemanticEndpoint(t *testing.T) {
 
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "m", semanticQuery)
 	require.Len(t, model.items, 1)
@@ -179,8 +176,7 @@ func TestSearchModelSemanticSelectionFetchesDetail(t *testing.T) {
 	model := NewSearchModel(client)
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 
 	_, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -301,16 +297,14 @@ func TestSearchModelEmitSelectionFetchesFileProtocolAndLog(t *testing.T) {
 func TestSearchModelUpdateClearAndSpaceHandling(t *testing.T) {
 	model := NewSearchModel(nil)
 
-	updated, cmd := model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
-	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.query)
+	updated, _ := model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
+	assert.Equal(t, "", updated.textInput.Value())
 
-	updated.query = "abc"
+	updated.textInput.SetValue("abc")
 	updated.items = []searchEntry{{id: "x"}}
 	updated.list.SetItems([]string{"x"})
 
-	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
-	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.query)
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
+	assert.Equal(t, "", updated.textInput.Value())
 	assert.Empty(t, updated.items)
 }

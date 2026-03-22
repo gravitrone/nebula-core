@@ -97,9 +97,8 @@ func TestAppPaletteTextSearchLoadsAndJumpsToDetail(t *testing.T) {
 	model, cmd := app.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	app = model.(App)
 	require.NotNil(t, cmd)
-	msg := cmd()
 
-	model, _ = app.Update(msg)
+	model, _ = app.Update(runCmdFirst(cmd))
 	app = model.(App)
 
 	assert.Equal(t, "a", gotQuery)
