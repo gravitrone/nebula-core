@@ -19,7 +19,7 @@ gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Building nebula..
 
 # Run VHS tapes to capture screenshots
 gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Capturing screenshots..." -- \
-  bash -c "cd '$ROOT/testing/vhs' && ./run.sh 2>/dev/null"
+  bash -c "cd '$ROOT/experiments/vhs' && ./run.sh 2>/dev/null"
 
 # Load scenarios
 SCENARIOS=$(cat scenarios.json)

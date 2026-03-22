@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 # Check dependencies
 command -v gum >/dev/null 2>&1 || { echo "gum not installed: brew install gum"; exit 1; }
@@ -23,7 +24,8 @@ for tape in tapes/*.tape; do
   name=$(basename "$tape" .tape)
   TOTAL=$((TOTAL + 1))
 
-  if gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Recording: $name" -- vhs "$tape" 2>/dev/null; then
+  if gum spin --spinner dot --spinner.foreground "#7f57b4" --title "Recording: $name" -- \
+    vhs "$tape" -o "$SCRIPT_DIR/baselines/$name.gif" 2>/dev/null; then
     PASS=$((PASS + 1))
     gum log --level info "  $name recorded"
   else
