@@ -207,11 +207,9 @@ done
 
 # ── summary ─────────────────────────────────────────────────────────────────
 echo ""
-DONE_TITLE=$(gum style --bold --foreground "$OK" "◆ Autoresearch Complete")
-DONE_SEP=$(gum style --foreground "$S" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-DONE_INFO=$(printf "  Iterations    %s\n  Fixes Merged  %s\n  Branch        %s" "$ITERATION" "$TOTAL_FIXES" "$BRANCH")
-printf "%s\n%s\n%s" "$DONE_TITLE" "$DONE_SEP" "$DONE_INFO" \
-  | gum style --border rounded --border-foreground "$OK" --padding "1 2"
+printf "◆ Autoresearch Complete\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n  Iterations    %s\n  Fixes Merged  %s\n  Branch        %s" \
+  "$ITERATION" "$TOTAL_FIXES" "$BRANCH" \
+  | gum style --border rounded --border-foreground "$OK" --foreground "$T" --padding "1 2"
 
 # cleanup worktree dir if empty
 rmdir "$WORKTREE_DIR" 2>/dev/null || true
