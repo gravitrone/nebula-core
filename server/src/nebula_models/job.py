@@ -33,6 +33,8 @@ class Job(Base, TimestampMixin):
     privacy_scope_ids: Mapped[list[uuid.UUID]] = mapped_column(
         ARRAY(UUID(as_uuid=True)), server_default=text("'{}'"), nullable=False
     )
+    status_reason: Mapped[str | None] = mapped_column(Text)
+    status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # No metadata column - replaced by context-of relationships (migration 021)
 
     status = relationship("Status", lazy="joined")

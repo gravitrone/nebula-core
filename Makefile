@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: help lint format deps test build install setup db-up db-down db-reset migrate migrate-alembic dev
+.PHONY: help lint format deps test build install setup db-up db-down db-reset migrate migrate-sql dev
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -54,19 +54,21 @@ db-up: ## Start postgres container
 db-down: ## Stop all containers
 	docker compose down
 
-db-reset: ## Full database reset (destroy + recreate)
+db-reset: ## Full database reset (destroy + recreate + migrate)
 	docker compose down
 	rm -rf database/data
 	docker compose up -d postgres
-	@echo "waiting for postgres..."
-	@sleep 3
+	@echo "waiting for postgres to be healthy..."
+	@until docker compose exec postgres pg_isready -U $${POSTGRES_USER:-nebula} -d $${POSTGRES_DB:-nebula} > /dev/null 2>&1; do sleep 1; done
+	@sleep 2
+	$(MAKE) migrate
 	@echo "db reset complete"
 
-migrate: ## Run database migrations
-	./scripts/migrate.sh
+migrate: ## Run alembic migrations
+	set -a && [ -f .env ] && . ./.env; cd server && PYTHONPATH=./src uv run alembic upgrade head
 
-migrate-alembic: ## Run alembic migrations
-	cd server && PYTHONPATH=./src uv run alembic upgrade head
+migrate-sql: ## Run legacy SQL migrations (escape hatch)
+	./scripts/migrate.sh
 
 # --- Dev ---
 
