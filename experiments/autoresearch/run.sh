@@ -78,22 +78,23 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
   gum spin --spinner dot --title "building nebula..." -- \
     bash -c "cd '$ITER_DIR' && make build 2>/dev/null"
 
-  # ── capture screenshots via tmux + freeze ─────────────────────────────────
-  info "capturing TUI screenshots..."
-  SCREENSHOTS_DIR="$ITER_DIR/screenshots"
+  # ── capture TUI state via tmux ─────────────────────────────────────────────
+  info "capturing TUI terminal output..."
+  CAPTURES_DIR="$ITER_DIR/captures"
   NEBULA_BIN="$ITER_DIR/cli/src/build/nebula"
 
-  "$SCRIPT_DIR/capture.sh" "$SCREENSHOTS_DIR" "$NEBULA_BIN"
+  "$SCRIPT_DIR/capture.sh" "$CAPTURES_DIR" "$NEBULA_BIN"
 
-  SCREENSHOT_COUNT=$(ls "$SCREENSHOTS_DIR"/*.png 2>/dev/null | wc -l | tr -d ' ')
-  info "captured $SCREENSHOT_COUNT screenshots"
+  CAPTURE_COUNT=$(ls "$CAPTURES_DIR"/*.ans 2>/dev/null | wc -l | tr -d ' ')
+  info "captured $CAPTURE_COUNT terminal snapshots"
 
-  # ── build screenshot file list for prompt ────────────────────────────────
-  SCREENSHOT_INSTRUCTIONS=""
-  for png in "$SCREENSHOTS_DIR"/*.png; do
-    [ -f "$png" ] || continue
-    SCREENSHOT_INSTRUCTIONS="$SCREENSHOT_INSTRUCTIONS
-- Read the image file at $png using the Read tool and analyze it visually"
+  # ── build capture file list for prompt ───────────────────────────────────
+  CAPTURE_INSTRUCTIONS=""
+  for ans in "$CAPTURES_DIR"/*.ans; do
+    [ -f "$ans" ] || continue
+    name=$(basename "$ans" .ans)
+    CAPTURE_INSTRUCTIONS="$CAPTURE_INSTRUCTIONS
+- Read $ans to see the $name tab's rendered terminal output"
   done
 
   # ── launch claude ─────────────────────────────────────────────────────────
@@ -107,22 +108,24 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
 - Golden tests: $GOLDEN_PASS passing
 - Full suite: $SUITE_STATUS
 
-## CRITICAL: You MUST look at actual screenshots before making any changes
+## CRITICAL: You MUST read the captured terminal output before making any changes
 
-Screenshots have been captured at: $SCREENSHOTS_DIR/
+Terminal snapshots of every tab have been captured at: $CAPTURES_DIR/
+These are raw ANSI terminal output files showing exactly what the user sees.
 
-Your FIRST action must be to Read each screenshot file listed below using the Read tool.
-The Read tool can display images visually. Look at each one and identify visual bugs.
-$SCREENSHOT_INSTRUCTIONS
+Your FIRST action must be to Read each .ans file listed below.
+Each file contains the full rendered terminal output with ANSI escape codes.
+Analyze the layout, spacing, alignment, borders, and content.
+$CAPTURE_INSTRUCTIONS
 
 ## Task
-1. FIRST: Read each screenshot GIF file listed above using the Read tool - actually LOOK at the rendered TUI
-2. Identify visual bugs you can SEE in the screenshots (alignment, overflow, spacing, missing elements)
+1. FIRST: Read each .ans capture file listed above - these show the ACTUAL rendered TUI output
+2. Analyze the terminal output for visual bugs (broken borders, misaligned columns, overflow, missing content, spacing issues)
 3. Fix any bugs you find in cli/src/internal/ui/
 4. Run: make test-cli to verify no regressions
 5. Only keep changes that pass tests
-6. Be specific about what you SAW in the screenshots and what you fixed
-7. When done fixing, use /commit-forge to commit your changes with a proper conventional commit message"
+6. Be specific about what you saw in the captures and what you fixed
+7. When done fixing, use /commit-forge to commit your changes"
 
   (cd "$ITER_DIR" && echo "$PROMPT" | claude \
     --model opus \
