@@ -58,46 +58,21 @@ func TestContextCommitTagAndToggleModeAdditionalBranches(t *testing.T) {
 }
 
 func TestEntityAndFileTagScopeCommitAdditionalBranches(t *testing.T) {
-	entities := NewEntitiesModel(nil)
-	entities.addTags = []string{"alpha-tag"}
-	entities.addTagBuf = "#"
-	entities.commitAddTag()
-	assert.Equal(t, []string{"alpha-tag"}, entities.addTags)
-	assert.Equal(t, "", entities.addTagBuf)
+	// Entities now use huh forms with comma-separated string inputs.
+	// Tag normalization and dedup happen in saveAdd/saveEdit via parseCommaSeparated + normalizeTag + dedup.
+	tags := parseCommaSeparated("#, Beta Tag")
+	for i, tag := range tags {
+		tags[i] = normalizeTag(tag)
+	}
+	tags = dedup(tags)
+	assert.Equal(t, []string{"beta-tag"}, tags)
 
-	entities.addTagBuf = "Beta Tag"
-	entities.commitAddTag()
-	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, entities.addTags)
-	assert.Equal(t, "", entities.addTagBuf)
-
-	entities.addScopes = []string{"public"}
-	entities.addScopeBuf = "#"
-	entities.commitAddScope()
-	assert.Equal(t, []string{"public"}, entities.addScopes)
-	assert.Equal(t, "", entities.addScopeBuf)
-
-	entities.addScopeBuf = "Team Scope"
-	entities.commitAddScope()
-	assert.Equal(t, []string{"public", "team-scope"}, entities.addScopes)
-	assert.Equal(t, "", entities.addScopeBuf)
-
-	entities.editTags = []string{"alpha-tag"}
-	entities.editTagBuf = "#"
-	entities.commitEditTag()
-	assert.Equal(t, []string{"alpha-tag"}, entities.editTags)
-	assert.Equal(t, "", entities.editTagBuf)
-
-	entities.editScopeBuf = "#"
-	entities.editScopes = []string{"private"}
-	entities.editScopesDirty = false
-	entities.commitEditScope()
-	assert.Equal(t, []string{"private"}, entities.editScopes)
-	assert.False(t, entities.editScopesDirty)
-
-	entities.editScopeBuf = "Admin Team"
-	entities.commitEditScope()
-	assert.Equal(t, []string{"private", "admin-team"}, entities.editScopes)
-	assert.True(t, entities.editScopesDirty)
+	scopes := parseCommaSeparated("#, Team Scope")
+	for i, s := range scopes {
+		scopes[i] = normalizeScope(s)
+	}
+	scopes = normalizeScopeList(scopes)
+	assert.Contains(t, scopes, "team-scope")
 
 	files := NewFilesModel(nil)
 	files.addTags = []string{"alpha-tag"}

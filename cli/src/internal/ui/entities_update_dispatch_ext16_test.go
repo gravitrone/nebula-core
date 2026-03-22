@@ -77,6 +77,9 @@ func TestEntitiesUpdateKeyDispatchWithEditView(t *testing.T) {
 	updated.view = entitiesViewEdit
 	updated.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Status: "active", Type: "person"}
 	updated.startEdit()
+	// The form is now initialized. Simulate abort via Esc.
+	// But since huh handles the key, we need to set state directly for unit test.
+	updated.editForm.State = 2 // StateAborted
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewDetail, updated.view)

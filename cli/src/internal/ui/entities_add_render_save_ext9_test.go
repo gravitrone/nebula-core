@@ -11,54 +11,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEntitiesRenderAddBranchMatrix(t *testing.T) {
+func TestEntitiesRenderAddShowsFormView(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.width = 90
-	model.scopeOptions = []string{"public", "private"}
-	model.addStatusIdx = 1
-	model.addTags = []string{"alpha"}
-	model.addScopes = []string{"public"}
-	model.addFields[addFieldName].value = "Alpha"
-	model.addFields[addFieldType].value = "person"
+	model.initAddForm()
+	_ = model.addForm.Init()
 
-	// Focus each branch at least once so renderAdd executes all switch paths.
-	model.addFocus = addFieldStatus
 	out := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Status:")
-	assert.Contains(t, out, "inactive")
+	assert.Contains(t, out, "Name")
+	assert.Contains(t, out, "Type")
+	assert.Contains(t, out, "Status")
+	assert.Contains(t, out, "Tags")
+	assert.Contains(t, out, "Scopes")
+}
 
-	model.addFocus = addFieldTags
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Tags:")
-	assert.Contains(t, out, "alpha")
+func TestEntitiesRenderAddNilFormShowsInitializing(t *testing.T) {
+	model := NewEntitiesModel(nil)
+	model.width = 90
+	model.addForm = nil
 
-	model.addFocus = addFieldScopes
-	model.addScopeSelecting = true
-	model.addScopeIdx = 0
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Scopes:")
-	assert.Contains(t, out, "public")
-	model.addScopeSelecting = false
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Scopes:")
-	assert.Contains(t, out, "public")
-
-	model.addFocus = addFieldName
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Name:")
-	assert.Contains(t, out, "Alpha")
-
-	// Unfocused default field with empty value should show "-".
-	model.addFocus = addFieldType
-	model.addFields[addFieldName].value = ""
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Name:")
-	assert.Contains(t, out, "-")
-
-	model.errText = "boom"
-	out = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, out, "Error")
-	assert.Contains(t, out, "boom")
+	out := components.SanitizeText(model.renderAdd())
+	assert.Contains(t, out, "Initializing")
 }
 
 func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
@@ -69,15 +42,13 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 		assert.Nil(t, cmd)
 		assert.Equal(t, "Name is required", next.errText)
 
-		model.addFields[addFieldName].value = "Alpha"
+		model.addName = "Alpha"
 		next, cmd = model.saveAdd()
 		assert.Nil(t, cmd)
 		assert.Equal(t, "Type is required", next.errText)
-
-		model.addFields[addFieldType].value = "person"
 	})
 
-	t.Run("successful save defaults scopes and commits tag buffer", func(t *testing.T) {
+	t.Run("successful save defaults scopes and parses comma tags", func(t *testing.T) {
 		var captured api.CreateEntityInput
 		_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/entities" && r.Method == http.MethodPost {
@@ -97,11 +68,11 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 		})
 
 		model := NewEntitiesModel(client)
-		model.addFields[addFieldName].value = "Alpha"
-		model.addFields[addFieldType].value = "person"
-		model.addStatusIdx = 1
-		model.addTagBuf = "alpha"
-		model.addScopes = nil
+		model.addName = "Alpha"
+		model.addType = "person"
+		model.addStatus = "inactive"
+		model.addTagStr = "alpha"
+		model.addScopeStr = ""
 
 		next, cmd := model.saveAdd()
 		require.NotNil(t, cmd)
@@ -132,8 +103,8 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 		})
 
 		model := NewEntitiesModel(client)
-		model.addFields[addFieldName].value = "Alpha"
-		model.addFields[addFieldType].value = "person"
+		model.addName = "Alpha"
+		model.addType = "person"
 
 		next, cmd := model.saveAdd()
 		require.NotNil(t, cmd)
@@ -145,11 +116,13 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 	})
 }
 
-func TestEntitiesRenderAddTagsMultipleUnfocusedSpacing(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.addTags = []string{"alpha", "beta"}
+func TestParseCommaSeparatedAndDedup(t *testing.T) {
+	assert.Equal(t, []string{"alpha", "beta"}, parseCommaSeparated("alpha, beta"))
+	assert.Nil(t, parseCommaSeparated(""))
+	assert.Nil(t, parseCommaSeparated("  ,  ,  "))
+	assert.Equal(t, []string{"a"}, parseCommaSeparated("a"))
 
-	rendered := components.SanitizeText(model.renderAddTags(false))
-	assert.Contains(t, rendered, "alpha")
-	assert.Contains(t, rendered, "beta")
+	assert.Equal(t, []string{"a", "b"}, dedup([]string{"a", "b", "a"}))
+	assert.Nil(t, dedup(nil))
+	assert.Nil(t, dedup([]string{"", ""}))
 }

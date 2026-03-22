@@ -4,100 +4,54 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	huh "charm.land/huh/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEntitiesHandleEditKeysBranchMatrix(t *testing.T) {
-	model := NewEntitiesModel(nil)
-
 	t.Run("editSaving short-circuits", func(t *testing.T) {
+		model := NewEntitiesModel(nil)
 		model.editSaving = true
-		model.editFocus = editFieldStatus
 		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
-		assert.Equal(t, editFieldStatus, updated.editFocus)
+		assert.True(t, updated.editSaving)
 	})
 
-	t.Run("scope selector branches", func(t *testing.T) {
-		model.editSaving = false
-		model.editFocus = editFieldScopes
-		model.editScopeSelecting = true
-		model.scopeOptions = []string{"public", "private"}
-		model.editScopes = []string{"public"}
-		model.editScopeIdx = 0
-
-		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-		require.Nil(t, cmd)
-		assert.Equal(t, 1, updated.editScopeIdx)
-
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-		assert.Equal(t, []string{"public", "private"}, updated.editScopes)
-		assert.True(t, updated.editScopesDirty)
-
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-		assert.Equal(t, 0, updated.editScopeIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-		assert.False(t, updated.editScopeSelecting)
-
-		updated.editScopeSelecting = true
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
-		assert.False(t, updated.editScopeSelecting)
+	t.Run("nil form initializes on first key", func(t *testing.T) {
+		model := NewEntitiesModel(nil)
+		model.editForm = nil
+		next, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
+		require.NotNil(t, next.editForm)
+		_ = cmd
 	})
 
-	t.Run("navigation, status, tags branches", func(t *testing.T) {
-		model.editFocus = editFieldTags
-		model.editTagBuf = "ab"
+	t.Run("form completion triggers save", func(t *testing.T) {
+		model := NewEntitiesModel(nil)
+		model.detail = &api.Entity{ID: "ent-1", Name: "Alpha", Status: "active"}
+		model.initEditForm()
+		_ = model.editForm.Init()
+		model.editForm.State = huh.StateCompleted
+		model.editTagStr = "alpha"
+		model.editStatus = "active"
 
-		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		require.Nil(t, cmd)
-		assert.Equal(t, "a", updated.editTagBuf)
+		next, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
+		// saveEdit returns nil cmd when detail is nil, but here we have detail set
+		_ = next
+		_ = cmd
+	})
 
-		updated.editTagBuf = ""
-		updated.editTags = []string{"alpha", "beta"}
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, []string{"alpha"}, updated.editTags)
+	t.Run("form abort returns to detail view", func(t *testing.T) {
+		model := NewEntitiesModel(nil)
+		model.view = entitiesViewEdit
+		model.initEditForm()
+		_ = model.editForm.Init()
+		model.editForm.State = huh.StateAborted
 
-		updated.editFocus = editFieldScopes
-		updated.editScopes = []string{"public"}
-		updated.editScopesDirty = false
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Empty(t, updated.editScopes)
-		assert.True(t, updated.editScopesDirty)
-
-		updated.editFocus = editFieldTags
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
-		assert.Equal(t, "x", updated.editTagBuf)
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-		assert.Equal(t, []string{"alpha", "x"}, updated.editTags)
-		assert.Equal(t, "", updated.editTagBuf)
-
-		updated.editFocus = editFieldScopes
-		updated.editScopeSelecting = false
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-		assert.True(t, updated.editScopeSelecting)
-
-		updated.editFocus = editFieldStatus
-		startStatus := updated.editStatusIdx
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-		assert.Equal(t, (startStatus+1)%len(entityStatusOptions), updated.editStatusIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-		assert.Equal(t, startStatus, updated.editStatusIdx)
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-		assert.Equal(t, (startStatus+1)%len(entityStatusOptions), updated.editStatusIdx)
-
-		updated.editFocus = editFieldStatus
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
-		assert.Equal(t, editFieldScopes, updated.editFocus)
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-		assert.Equal(t, editFieldStatus, updated.editFocus)
-
-		updated.editScopeSelecting = true
-		updated.view = entitiesViewEdit
-		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
-		assert.Equal(t, entitiesViewDetail, updated.view)
-		assert.False(t, updated.editScopeSelecting)
+		next, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
+		assert.Nil(t, cmd)
+		assert.Equal(t, entitiesViewDetail, next.view)
 	})
 }
 

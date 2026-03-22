@@ -50,11 +50,10 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 
 		model := NewEntitiesModel(client)
 		model.detail = &api.Entity{ID: "ent-1", Status: "active"}
-		model.editStatusIdx = 0
-		model.editTags = []string{"alpha"}
-		model.editTagBuf = "Beta Tag"
-		model.editScopesDirty = true
-		model.editScopes = []string{"Public Scope"}
+		model.editStatus = "active"
+		model.editTagStr = "alpha, Beta Tag"
+		model.editScopeStr = "Public Scope"
+		// Scopes differ from original (empty), so editScopesDirty will be set.
 
 		updated, cmd := model.saveEdit()
 		require.NotNil(t, cmd)
@@ -69,7 +68,7 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 		assert.Equal(t, []string{"alpha", "beta-tag"}, *updateInput.Tags)
 
 		assert.Equal(t, []string{"ent-1"}, bulkInput.EntityIDs)
-		assert.Equal(t, []string{"public scope"}, bulkInput.Scopes)
+		assert.Equal(t, []string{"public-scope"}, bulkInput.Scopes)
 		assert.Equal(t, "set", bulkInput.Op)
 	})
 
@@ -84,9 +83,9 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 
 		model := NewEntitiesModel(client)
 		model.detail = &api.Entity{ID: "ent-1", Status: "active"}
-		model.editStatusIdx = 0
-		model.editTags = []string{"alpha"}
-		model.editScopesDirty = false
+		model.editStatus = "active"
+		model.editTagStr = "alpha"
+		model.editScopeStr = ""
 
 		updated, cmd := model.saveEdit()
 		require.NotNil(t, cmd)
@@ -128,10 +127,10 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 
 		model := NewEntitiesModel(client)
 		model.detail = &api.Entity{ID: "ent-1", Status: "active"}
-		model.editStatusIdx = 0
-		model.editTags = []string{"alpha"}
-		model.editScopesDirty = true
-		model.editScopes = []string{"public"}
+		model.editStatus = "active"
+		model.editTagStr = "alpha"
+		model.editScopeStr = "public"
+		// Scopes differ from original (empty), so editScopesDirty will be set.
 
 		updated, cmd := model.saveEdit()
 		require.NotNil(t, cmd)

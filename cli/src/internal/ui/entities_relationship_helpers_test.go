@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -16,25 +15,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestEntitiesHandleEditScopesHelpers handles test entities handle edit scopes helpers.
-func TestEntitiesHandleEditScopesHelpers(t *testing.T) {
+// TestEntitiesEditFormInitializesWithCurrentValues tests that startEdit populates form fields.
+func TestEntitiesEditFormInitializesWithCurrentValues(t *testing.T) {
 	model := NewEntitiesModel(nil)
-	model.scopeOptions = []string{"public", "private"}
-	model.editFocus = editFieldScopes
-	model.editScopeSelecting = true
-	model.editScopeIdx = 0
-	model.editScopes = []string{"public"}
+	model.scopeNames = map[string]string{"scope-1": "public"}
+	model.detail = &api.Entity{
+		ID:              "ent-1",
+		Name:            "Alpha",
+		Status:          "active",
+		Tags:            []string{"alpha", "beta"},
+		PrivacyScopeIDs: []string{"scope-1"},
+	}
 
-	updated, _ := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-	assert.Equal(t, 1, updated.editScopeIdx)
+	model.startEdit()
 
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-	assert.True(t, updated.editScopesDirty)
-	assert.Contains(t, updated.editScopes, "private")
-
-	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.False(t, updated.editScopeSelecting)
-
+	assert.Equal(t, "alpha, beta", model.editTagStr)
+	assert.Equal(t, "active", model.editStatus)
+	assert.Equal(t, "public", model.editScopeStr)
+	assert.NotNil(t, model.editForm)
+	assert.False(t, model.editScopesDirty)
 }
 
 // TestEntitiesRelationshipRenderAndEditHelpers handles test entities relationship render and edit helpers.

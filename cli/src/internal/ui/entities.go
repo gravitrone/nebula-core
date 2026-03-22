@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -138,29 +139,22 @@ type EntitiesModel struct {
 	contextCreateBuf string
 
 	// add
-	addFields         []formField
-	addFocus          int
-	addStatusIdx      int
-	addTags           []string
-	addTagBuf         string
-	addScopes         []string
-	addScopeBuf       string
-	addScopeIdx       int
-	addScopeSelecting bool
-	addSaving         bool
-	addSaved          bool
+	addForm     *huh.Form
+	addName     string
+	addType     string
+	addStatus   string
+	addTagStr   string
+	addScopeStr string
+	addSaving   bool
+	addSaved    bool
 
 	// edit
-	editFocus          int
-	editTags           []string
-	editTagBuf         string
-	editStatusIdx      int
-	editScopes         []string
-	editScopeBuf       string
-	editScopeIdx       int
-	editScopeSelecting bool
-	editScopesDirty    bool
-	editSaving         bool
+	editForm       *huh.Form
+	editTagStr     string
+	editStatus     string
+	editScopeStr   string
+	editScopesDirty bool
+	editSaving     bool
 
 	// confirm
 	confirmKind    string
@@ -207,16 +201,10 @@ type EntitiesModel struct {
 // NewEntitiesModel builds the entities UI model.
 func NewEntitiesModel(client *api.Client) EntitiesModel {
 	return EntitiesModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
+		client:    client,
+		spinner:   components.NewNebulaSpinner(),
 		dataTable: components.NewNebulaTable(nil, 15),
-		addFields: []formField{
-			{label: "Name"},
-			{label: "Type"},
-			{label: "Status"},
-			{label: "Tags"},
-			{label: "Scopes"},
-		},
+		addStatus: "active",
 		relTable:     components.NewNebulaTable(nil, 8),
 		relateTable:  components.NewNebulaTable(nil, 8),
 		historyTable: components.NewNebulaTable(nil, 8),
@@ -252,14 +240,12 @@ func (m EntitiesModel) Init() tea.Cmd {
 	m.contextLinkBuf = ""
 	m.contextCreating = false
 	m.contextCreateBuf = ""
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(entityStatusOptions, "active")
-	m.addTags = nil
-	m.addTagBuf = ""
-	m.addScopes = nil
-	m.addScopeBuf = ""
-	m.addScopeIdx = 0
-	m.addScopeSelecting = false
+	m.addForm = nil
+	m.addName = ""
+	m.addType = ""
+	m.addStatus = "active"
+	m.addTagStr = ""
+	m.addScopeStr = ""
 	m.addSaving = false
 	m.addSaved = false
 	return tea.Batch(
@@ -412,6 +398,17 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 		default:
 			return m.handleListKeys(msg)
 		}
+
+	default:
+		// Forward non-key messages to active huh forms (cursor blinks, etc).
+		if m.view == entitiesViewAdd && m.addForm != nil && !m.addSaving && !m.addSaved {
+			_, cmd := m.addForm.Update(msg)
+			return m, cmd
+		}
+		if m.view == entitiesViewEdit && m.editForm != nil && !m.editSaving {
+			_, cmd := m.editForm.Update(msg)
+			return m, cmd
+		}
 	}
 	return m, nil
 }
@@ -436,13 +433,20 @@ func (m EntitiesModel) View() string {
 		if modeLine != "" {
 			body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 		}
+		if m.errText != "" {
+			body += "\n\n" + components.ErrorBox("Error", m.errText, m.width)
+		}
 		return components.Indent(body, 1)
 	}
 	switch m.view {
 	case entitiesViewSearch:
 		return components.Indent(components.InputDialog("Search Entities", m.searchBuf), 1)
 	case entitiesViewEdit:
-		return m.renderEdit()
+		body := m.renderEdit()
+		if m.errText != "" {
+			body += "\n\n" + components.ErrorBox("Error", m.errText, m.width)
+		}
+		return body
 	case entitiesViewConfirm:
 		return m.renderConfirm()
 	case entitiesViewRelationships:
@@ -942,9 +946,6 @@ func (m EntitiesModel) handleModeKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
-		if m.view == entitiesViewAdd {
-			m.addFocus = 0
-		}
 	case isUp(msg):
 		m.modeFocus = false
 	case isKey(msg, "left"), isKey(msg, "right"), isSpace(msg), isEnter(msg):
@@ -964,7 +965,9 @@ func (m EntitiesModel) toggleMode() (EntitiesModel, tea.Cmd) {
 	}
 	m.view = entitiesViewAdd
 	m.addSaved = false
-	return m, nil
+	m.initAddForm()
+	cmd := m.addForm.Init()
+	return m, cmd
 }
 
 // --- Add View ---
@@ -983,189 +986,62 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cm
 		return m.handleModeKeys(msg)
 	}
 
-	if m.addFocus == addFieldStatus {
-		switch {
-		case isKey(msg, "left"):
-			m.addStatusIdx = (m.addStatusIdx - 1 + len(entityStatusOptions)) % len(entityStatusOptions)
-			return m, nil
-		case isKey(msg, "right"), isSpace(msg):
-			m.addStatusIdx = (m.addStatusIdx + 1) % len(entityStatusOptions)
-			return m, nil
-		}
-	}
-	if m.addFocus == addFieldScopes && m.addScopeSelecting {
-		switch {
-		case isKey(msg, "left"):
-			if len(m.scopeOptions) > 0 {
-				m.addScopeIdx = (m.addScopeIdx - 1 + len(m.scopeOptions)) % len(m.scopeOptions)
-			}
-			return m, nil
-		case isKey(msg, "right"):
-			if len(m.scopeOptions) > 0 {
-				m.addScopeIdx = (m.addScopeIdx + 1) % len(m.scopeOptions)
-			}
-			return m, nil
-		case isSpace(msg):
-			if len(m.scopeOptions) > 0 {
-				scope := m.scopeOptions[m.addScopeIdx]
-				m.addScopes = toggleScope(m.addScopes, scope)
-			}
-			return m, nil
-		case isEnter(msg), isBack(msg):
-			m.addScopeSelecting = false
-			return m, nil
-		}
+	if m.addForm == nil {
+		m.initAddForm()
+		cmd := m.addForm.Init()
+		return m, cmd
 	}
 
-	switch {
-	case isDown(msg):
-		m.addScopeSelecting = false
-		m.addFocus = (m.addFocus + 1) % addFieldCount
-	case isUp(msg):
-		if m.addFocus == 0 {
-			m.addScopeSelecting = false
-			m.modeFocus = true
-			return m, nil
-		}
-		m.addScopeSelecting = false
-		m.addFocus = (m.addFocus - 1 + addFieldCount) % addFieldCount
-	case isKey(msg, "ctrl+s"):
+	_, cmd := m.addForm.Update(msg)
+
+	switch m.addForm.State {
+	case huh.StateCompleted:
 		return m.saveAdd()
-	case isBack(msg):
+	case huh.StateAborted:
 		m.resetAddForm()
-	case isKey(msg, "backspace", "delete"):
-		switch m.addFocus {
-		case addFieldTags:
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			} else if len(m.addTags) > 0 {
-				m.addTags = m.addTags[:len(m.addTags)-1]
-			}
-		case addFieldScopes:
-			if len(m.addScopes) > 0 {
-				m.addScopes = m.addScopes[:len(m.addScopes)-1]
-			}
-		default:
-			if m.addFocus < len(m.addFields) {
-				f := &m.addFields[m.addFocus]
-				if len(f.value) > 0 {
-					f.value = f.value[:len(f.value)-1]
-				}
-			}
-		}
-	default:
-		switch m.addFocus {
-		case addFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitAddTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.addTagBuf += ch
-				}
-			}
-		case addFieldScopes:
-			if isSpace(msg) {
-				m.addScopeSelecting = true
-			}
-		default:
-			ch := keyText(msg)
-			if ch != "" {
-				m.addFields[m.addFocus].value += ch
-			}
-		}
+		return m, nil
 	}
-	return m, nil
+
+	return m, cmd
 }
 
-// renderAdd renders render add.
+// renderAdd renders the add entity form.
 func (m EntitiesModel) renderAdd() string {
-	var b strings.Builder
-	for i, f := range m.addFields {
-		label := f.label
-		switch i {
-		case addFieldStatus:
-			status := entityStatusOptions[m.addStatusIdx]
-			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + status))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + status))
-			}
-		case addFieldTags:
-			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderAddTags(false)))
-			}
-		case addFieldScopes:
-			if m.addFocus == i && m.addScopeSelecting {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + renderScopeOptions(m.addScopes, m.scopeOptions, m.addScopeIdx)))
-			} else if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderAddScopes(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderAddScopes(false)))
-			}
-		default:
-			if m.addFocus == i {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + f.value))
-				b.WriteString(AccentStyle.Render("█"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				val := f.value
-				if val == "" {
-					val = "-"
-				}
-				b.WriteString(NormalStyle.Render("  " + val))
-			}
-		}
-		if i < addFieldCount-1 {
-			b.WriteString("\n\n")
-		}
+	if m.addForm == nil {
+		return components.TitledBox("Add Entity", MutedStyle.Render("  Initializing..."), m.width)
 	}
-
-	if m.errText != "" {
-		b.WriteString("\n\n")
-		b.WriteString(components.ErrorBox("Error", m.errText, m.width))
-	}
-
-	return components.TitledBox("Add Entity", b.String(), m.width)
+	return components.TitledBox("Add Entity", m.addForm.View(), m.width)
 }
 
 // saveAdd handles save add.
 func (m EntitiesModel) saveAdd() (EntitiesModel, tea.Cmd) {
-	name := strings.TrimSpace(m.addFields[addFieldName].value)
+	name := strings.TrimSpace(m.addName)
 	if name == "" {
 		m.errText = "Name is required"
 		return m, nil
 	}
-	typ := strings.TrimSpace(m.addFields[addFieldType].value)
+	typ := strings.TrimSpace(m.addType)
 	if typ == "" {
 		m.errText = "Type is required"
 		return m, nil
 	}
 
-	m.commitAddTag()
+	status := m.addStatus
+	if status == "" {
+		status = "active"
+	}
 
-	status := entityStatusOptions[m.addStatusIdx]
-	scopes := normalizeScopeList(m.addScopes)
+	tags := parseCommaSeparated(m.addTagStr)
+	for i, t := range tags {
+		tags[i] = normalizeTag(t)
+	}
+	tags = dedup(tags)
+
+	scopes := parseCommaSeparated(m.addScopeStr)
+	for i, s := range scopes {
+		scopes[i] = normalizeScope(s)
+	}
+	scopes = normalizeScopeList(scopes)
 	if len(scopes) == 0 {
 		scopes = []string{"private"}
 	}
@@ -1175,7 +1051,7 @@ func (m EntitiesModel) saveAdd() (EntitiesModel, tea.Cmd) {
 		Name:   name,
 		Type:   typ,
 		Status: status,
-		Tags:   append([]string{}, m.addTags...),
+		Tags:   tags,
 	}
 
 	m.addSaving = true
@@ -1193,95 +1069,54 @@ func (m *EntitiesModel) resetAddForm() {
 	m.addSaved = false
 	m.errText = ""
 	m.modeFocus = false
-	m.addFocus = 0
-	m.addStatusIdx = statusIndex(entityStatusOptions, "active")
-	m.addTags = nil
-	m.addTagBuf = ""
-	m.addScopes = nil
-	m.addScopeBuf = ""
-	m.addScopeIdx = 0
-	m.addScopeSelecting = false
-	for i := range m.addFields {
-		m.addFields[i].value = ""
-	}
+	m.addName = ""
+	m.addType = ""
+	m.addStatus = "active"
+	m.addTagStr = ""
+	m.addScopeStr = ""
+	m.initAddForm()
 }
 
-// renderAddTags renders render add tags.
-func (m *EntitiesModel) renderAddTags(focused bool) string {
-	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
-		return "-"
-	}
-	var b strings.Builder
-	for i, t := range m.addTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.addTagBuf != "" {
-			b.WriteString(m.addTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.addTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.addTagBuf))
-	}
-	return b.String()
+// initAddForm creates a new huh form for the add entity flow.
+func (m *EntitiesModel) initAddForm() {
+	m.addForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Name").Value(&m.addName),
+			huh.NewInput().Title("Type").Value(&m.addType),
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.addStatus),
+			huh.NewInput().Title("Tags (comma-separated)").Value(&m.addTagStr),
+			huh.NewInput().Title("Scopes (comma-separated)").Value(&m.addScopeStr),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
 }
 
-// renderAddScopes renders render add scopes.
-func (m *EntitiesModel) renderAddScopes(focused bool) string {
-	return renderScopePills(m.addScopes, focused)
-}
-
-// commitAddTag handles commit add tag.
-func (m *EntitiesModel) commitAddTag() {
-	raw := strings.TrimSpace(m.addTagBuf)
-	if raw == "" {
-		m.addTagBuf = ""
-		return
-	}
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.addTagBuf = ""
-		return
-	}
-	for _, t := range m.addTags {
-		if t == tag {
-			m.addTagBuf = ""
-			return
+// parseCommaSeparated splits a comma-separated string into trimmed non-empty parts.
+func parseCommaSeparated(s string) []string {
+	parts := strings.Split(s, ",")
+	var result []string
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
 		}
 	}
-	m.addTags = append(m.addTags, tag)
-	m.addTagBuf = ""
+	return result
 }
 
-// commitAddScope handles commit add scope.
-func (m *EntitiesModel) commitAddScope() {
-	raw := strings.TrimSpace(m.addScopeBuf)
-	if raw == "" {
-		m.addScopeBuf = ""
-		return
-	}
-	scope := normalizeScope(raw)
-	if scope == "" {
-		m.addScopeBuf = ""
-		return
-	}
-	for _, s := range m.addScopes {
-		if s == scope {
-			m.addScopeBuf = ""
-			return
+// dedup removes duplicate strings from a slice preserving order.
+func dedup(ss []string) []string {
+	seen := map[string]bool{}
+	var result []string
+	for _, s := range ss {
+		if s != "" && !seen[s] {
+			seen[s] = true
+			result = append(result, s)
 		}
 	}
-	m.addScopes = append(m.addScopes, scope)
-	m.addScopeBuf = ""
+	return result
 }
 
 // renderList renders render list.
@@ -1662,6 +1497,10 @@ func (m EntitiesModel) handleDetailKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 	case isKey(msg, "e"):
 		m.startEdit()
 		m.view = entitiesViewEdit
+		if m.editForm != nil {
+			cmd := m.editForm.Init()
+			return m, cmd
+		}
 	case isKey(msg, "r"):
 		m.view = entitiesViewRelationships
 		m.relLoading = true
@@ -1966,104 +1805,43 @@ func (m *EntitiesModel) startEdit() {
 	if m.detail == nil {
 		return
 	}
-	m.editFocus = editFieldTags
-	m.editTags = append([]string{}, m.detail.Tags...)
-	m.editTagBuf = ""
-	m.editStatusIdx = statusIndex(entityStatusOptions, m.detail.Status)
-	m.editScopes = m.scopeNamesFromIDs(m.detail.PrivacyScopeIDs)
-	m.editScopeBuf = ""
-	m.editScopeIdx = 0
-	m.editScopeSelecting = false
+	m.editTagStr = strings.Join(m.detail.Tags, ", ")
+	m.editStatus = m.detail.Status
+	if m.editStatus == "" {
+		m.editStatus = "active"
+	}
+	m.editScopeStr = strings.Join(m.scopeNamesFromIDs(m.detail.PrivacyScopeIDs), ", ")
 	m.editScopesDirty = false
 	m.editSaving = false
+	m.initEditForm()
 }
 
-// handleEditKeys handles handle edit keys.
+// handleEditKeys handles edit key events by forwarding to the huh form.
 func (m EntitiesModel) handleEditKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cmd) {
 	if m.editSaving {
 		return m, nil
 	}
-	if m.editFocus == editFieldScopes && m.editScopeSelecting {
-		switch {
-		case isKey(msg, "left"):
-			if len(m.scopeOptions) > 0 {
-				m.editScopeIdx = (m.editScopeIdx - 1 + len(m.scopeOptions)) % len(m.scopeOptions)
-			}
-			return m, nil
-		case isKey(msg, "right"):
-			if len(m.scopeOptions) > 0 {
-				m.editScopeIdx = (m.editScopeIdx + 1) % len(m.scopeOptions)
-			}
-			return m, nil
-		case isSpace(msg):
-			if len(m.scopeOptions) > 0 {
-				scope := m.scopeOptions[m.editScopeIdx]
-				m.editScopes = toggleScope(m.editScopes, scope)
-				m.editScopesDirty = true
-			}
-			return m, nil
-		case isEnter(msg), isBack(msg):
-			m.editScopeSelecting = false
-			return m, nil
-		}
+
+	if m.editForm == nil {
+		m.initEditForm()
+		cmd := m.editForm.Init()
+		return m, cmd
 	}
-	switch {
-	case isDown(msg):
-		m.editScopeSelecting = false
-		m.editFocus = (m.editFocus + 1) % editFieldCount
-	case isUp(msg):
-		m.editScopeSelecting = false
-		if m.editFocus > 0 {
-			m.editFocus = (m.editFocus - 1 + editFieldCount) % editFieldCount
-		}
-	case isKey(msg, "ctrl+s"):
+
+	_, cmd := m.editForm.Update(msg)
+
+	switch m.editForm.State {
+	case huh.StateCompleted:
 		return m.saveEdit()
-	case isBack(msg):
-		m.editScopeSelecting = false
+	case huh.StateAborted:
 		m.view = entitiesViewDetail
-	case isKey(msg, "backspace"):
-		switch m.editFocus {
-		case editFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
-				m.editTags = m.editTags[:len(m.editTags)-1]
-			}
-		case editFieldScopes:
-			if len(m.editScopes) > 0 {
-				m.editScopes = m.editScopes[:len(m.editScopes)-1]
-				m.editScopesDirty = true
-			}
-		}
-	default:
-		switch m.editFocus {
-		case editFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitEditTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
-			}
-		case editFieldScopes:
-			if isSpace(msg) {
-				m.editScopeSelecting = true
-			}
-		case editFieldStatus:
-			switch {
-			case isKey(msg, "left"):
-				m.editStatusIdx = (m.editStatusIdx - 1 + len(entityStatusOptions)) % len(entityStatusOptions)
-			case isKey(msg, "right"), isSpace(msg):
-				m.editStatusIdx = (m.editStatusIdx + 1) % len(entityStatusOptions)
-			}
-		}
+		return m, nil
 	}
-	return m, nil
+
+	return m, cmd
 }
 
-// renderEdit renders render edit.
+// renderEdit renders the edit entity form.
 func (m EntitiesModel) renderEdit() string {
 	if m.detail == nil {
 		return m.renderList()
@@ -2073,49 +1851,9 @@ func (m EntitiesModel) renderEdit() string {
 	b.WriteString(MutedStyle.Render("Entity: " + components.SanitizeOneLine(m.detail.Name)))
 	b.WriteString("\n\n")
 
-	// Tags
-	if m.editFocus == editFieldTags {
-		b.WriteString(SelectedStyle.Render("  Tags:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.renderEditTags(true)))
-	} else {
-		b.WriteString(MutedStyle.Render("  Tags:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.renderEditTags(false)))
+	if m.editForm != nil {
+		b.WriteString(m.editForm.View())
 	}
-
-	b.WriteString("\n\n")
-
-	// Status
-	status := entityStatusOptions[m.editStatusIdx]
-	if m.editFocus == editFieldStatus {
-		b.WriteString(SelectedStyle.Render("  Status:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + status))
-	} else {
-		b.WriteString(MutedStyle.Render("  Status:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + status))
-	}
-
-	b.WriteString("\n\n")
-
-	// Scopes
-	if m.editFocus == editFieldScopes && m.editScopeSelecting {
-		b.WriteString(SelectedStyle.Render("  Scopes:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + renderScopeOptions(m.editScopes, m.scopeOptions, m.editScopeIdx)))
-	} else if m.editFocus == editFieldScopes {
-		b.WriteString(SelectedStyle.Render("  Scopes:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.renderEditScopes(true)))
-	} else {
-		b.WriteString(MutedStyle.Render("  Scopes:"))
-		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.renderEditScopes(false)))
-	}
-
-	b.WriteString("\n\n")
 
 	if m.editSaving {
 		b.WriteString("\n\n" + MutedStyle.Render("Saving..."))
@@ -2129,14 +1867,30 @@ func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
 	}
-	m.commitEditTag()
 
-	status := entityStatusOptions[m.editStatusIdx]
-	tags := append([]string{}, m.editTags...)
+	status := m.editStatus
+	if status == "" {
+		status = "active"
+	}
+
+	tags := parseCommaSeparated(m.editTagStr)
+	for i, t := range tags {
+		tags[i] = normalizeTag(t)
+	}
+	tags = dedup(tags)
+
 	input := api.UpdateEntityInput{
 		Status: &status,
 		Tags:   &tags,
 	}
+
+	// Determine if scopes changed from original.
+	newScopes := parseCommaSeparated(m.editScopeStr)
+	for i, s := range newScopes {
+		newScopes[i] = normalizeScope(s)
+	}
+	origScopes := m.scopeNamesFromIDs(m.detail.PrivacyScopeIDs)
+	m.editScopesDirty = !stringSlicesEqual(newScopes, origScopes)
 
 	m.editSaving = true
 	return m, func() tea.Msg {
@@ -2147,7 +1901,7 @@ func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 		if m.editScopesDirty {
 			scopeInput := api.BulkUpdateEntityScopesInput{
 				EntityIDs: []string{m.detail.ID},
-				Scopes:    normalizeBulkScopes(m.editScopes),
+				Scopes:    normalizeBulkScopes(newScopes),
 				Op:        "set",
 			}
 			if _, err := m.client.BulkUpdateEntityScopes(scopeInput); err != nil {
@@ -2162,85 +1916,31 @@ func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 	}
 }
 
-// commitEditTag handles commit edit tag.
-func (m *EntitiesModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
-	if raw == "" {
-		m.editTagBuf = ""
-		return
-	}
-
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.editTagBuf = ""
-		return
-	}
-	for _, t := range m.editTags {
-		if t == tag {
-			m.editTagBuf = ""
-			return
-		}
-	}
-	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
+// initEditForm creates a new huh form for the edit entity flow.
+func (m *EntitiesModel) initEditForm() {
+	m.editForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Tags (comma-separated)").Value(&m.editTagStr),
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.editStatus),
+			huh.NewInput().Title("Scopes (comma-separated)").Value(&m.editScopeStr),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
 }
 
-// commitEditScope handles commit edit scope.
-func (m *EntitiesModel) commitEditScope() {
-	raw := strings.TrimSpace(m.editScopeBuf)
-	if raw == "" {
-		m.editScopeBuf = ""
-		return
+// stringSlicesEqual reports whether two string slices contain the same elements.
+func stringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
 	}
-	scope := normalizeScope(raw)
-	if scope == "" {
-		m.editScopeBuf = ""
-		return
-	}
-	for _, s := range m.editScopes {
-		if s == scope {
-			m.editScopeBuf = ""
-			return
+	for i := range a {
+		if a[i] != b[i] {
+			return false
 		}
 	}
-	m.editScopes = append(m.editScopes, scope)
-	m.editScopeBuf = ""
-	m.editScopesDirty = true
-}
-
-// renderEditScopes renders render edit scopes.
-func (m EntitiesModel) renderEditScopes(focused bool) string {
-	return renderScopePills(m.editScopes, focused)
-}
-
-// renderEditTags renders render edit tags.
-func (m EntitiesModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
-		return "-"
-	}
-
-	var b strings.Builder
-	for i, t := range m.editTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
-	}
-	return b.String()
+	return true
 }
 
 // --- Confirm ---

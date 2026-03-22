@@ -69,10 +69,10 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 	t.Run("mode focus delegates to mode handler", func(t *testing.T) {
 		model := newBase()
 		model.modeFocus = true
-		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-		assert.Nil(t, cmd)
+		next, _ := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyRight})
 		assert.Equal(t, entitiesViewAdd, next.view)
 		assert.False(t, next.modeFocus)
+		assert.NotNil(t, next.addForm)
 	})
 
 	t.Run("navigation and selection branches", func(t *testing.T) {

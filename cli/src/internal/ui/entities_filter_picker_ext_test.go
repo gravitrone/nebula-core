@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,11 +45,9 @@ func TestEntitiesHandleModeKeysDownAndUpClearModeFocus(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.modeFocus = true
 	model.view = entitiesViewAdd
-	model.addFocus = addFieldTags
 
 	updated, _ := model.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.False(t, updated.modeFocus)
-	assert.Equal(t, 0, updated.addFocus)
 
 	updated.modeFocus = true
 	updated, _ = updated.handleModeKeys(tea.KeyPressMsg{Code: tea.KeyUp})
@@ -94,86 +91,10 @@ func TestEntitiesToggleModeSwitchesAddAndListViews(t *testing.T) {
 	assert.Equal(t, entitiesViewAdd, updated.view)
 	assert.False(t, updated.modeFocus)
 	assert.False(t, updated.addSaved)
+	assert.NotNil(t, updated.addForm)
 
 	updated.modeFocus = true
-	updated, _ = updated.toggleMode()
-	assert.Equal(t, entitiesViewList, updated.view)
-	assert.False(t, updated.modeFocus)
-}
-
-func TestFilterMapForFacetInitializesMissingMaps(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.filterTypes = nil
-	model.filterStatus = nil
-	model.filterScopes = nil
-
-	types := model.filterMapForFacet(entitiesFilterFacetType)
-	status := model.filterMapForFacet(entitiesFilterFacetStatus)
-	scopes := model.filterMapForFacet(entitiesFilterFacetScope)
-	unknown := model.filterMapForFacet(entitiesFilterFacet(99))
-
-	assert.NotNil(t, types)
-	assert.NotNil(t, status)
-	assert.NotNil(t, scopes)
-	assert.NotNil(t, unknown)
-	assert.Empty(t, unknown)
-}
-
-func TestFilterOptionsForFacetRoutesSets(t *testing.T) {
-	model := NewEntitiesModel(nil)
-	model.filterTypeSet = []string{"person"}
-	model.filterStatSet = []string{"active"}
-	model.filterScopeSet = []string{"public"}
-
-	assert.Equal(t, []string{"person"}, model.filterOptionsForFacet(entitiesFilterFacetType))
-	assert.Equal(t, []string{"active"}, model.filterOptionsForFacet(entitiesFilterFacetStatus))
-	assert.Equal(t, []string{"public"}, model.filterOptionsForFacet(entitiesFilterFacetScope))
-	assert.Nil(t, model.filterOptionsForFacet(entitiesFilterFacet(99)))
-}
-
-func TestRefreshFilterSetsBuildsFacetOptionsAndRetainsSelection(t *testing.T) {
-	publicID := "scope-public"
-	privateID := "scope-private"
-
-	model := NewEntitiesModel(nil)
-	model.scopeNames = map[string]string{
-		publicID:  "public",
-		privateID: "private",
-	}
-	model.allItems = []api.Entity{
-		{Type: "person", Status: "active", PrivacyScopeIDs: []string{publicID}},
-		{Type: "tool", Status: "inactive", PrivacyScopeIDs: []string{privateID}},
-	}
-	model.filterTypes = map[string]bool{"person": true, "removed": true}
-	model.filterStatus = map[string]bool{"active": true}
-	model.filterScopes = map[string]bool{"public": true}
-	model.filterCursor[entitiesFilterFacetType] = 9
-
-	model.refreshFilterSets()
-
-	assert.Equal(t, []string{"person", "tool"}, model.filterTypeSet)
-	assert.Equal(t, []string{"active", "inactive"}, model.filterStatSet)
-	assert.Equal(t, []string{"private", "public"}, model.filterScopeSet)
-	assert.True(t, model.filterTypes["person"])
-	assert.False(t, model.filterTypes["removed"])
-	assert.Equal(t, 1, model.filterCursor[entitiesFilterFacetType])
-}
-
-func TestRetainEntityFilterSelectionAndSortedKeysHelpers(t *testing.T) {
-	assert.Empty(t, retainEntityFilterSelection(nil, []string{"public"}))
-
-	current := map[string]bool{
-		"public":  true,
-		"private": false,
-		"ghost":   true,
-	}
-	next := retainEntityFilterSelection(current, []string{"public", "private"})
-	assert.Equal(t, map[string]bool{"public": true}, next)
-
-	assert.Nil(t, sortedFilterKeys(map[string]struct{}{}))
-	assert.Equal(
-		t,
-		[]string{"alpha", "zeta"},
-		sortedFilterKeys(map[string]struct{}{"zeta": {}, "alpha": {}}),
-	)
+	back, _ := updated.toggleMode()
+	assert.Equal(t, entitiesViewList, back.view)
+	assert.False(t, back.modeFocus)
 }

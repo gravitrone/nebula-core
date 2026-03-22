@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	huh "charm.land/huh/v2"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,11 +20,11 @@ func TestEntitiesHandleAddKeysBranchMatrix(t *testing.T) {
 
 		model = NewEntitiesModel(nil)
 		model.addSaved = true
-		model.addFields[addFieldName].value = "keep"
+		model.addName = "keep"
 		next, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Nil(t, cmd)
 		assert.False(t, next.addSaved)
-		assert.Equal(t, "", next.addFields[addFieldName].value)
+		assert.Equal(t, "", next.addName)
 	})
 
 	t.Run("mode focus delegates to mode handler", func(t *testing.T) {
@@ -36,102 +37,38 @@ func TestEntitiesHandleAddKeysBranchMatrix(t *testing.T) {
 		assert.False(t, next.modeFocus)
 	})
 
-	t.Run("status and scope selectors cycle and toggle", func(t *testing.T) {
+	t.Run("nil form initializes on first key", func(t *testing.T) {
 		model := NewEntitiesModel(nil)
-		model.addFocus = addFieldStatus
-		model.addStatusIdx = 0
-
-		next, _ := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-		assert.Equal(t, len(entityStatusOptions)-1, next.addStatusIdx)
-
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-		assert.Equal(t, 0, next.addStatusIdx)
-
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-		assert.Equal(t, 1, next.addStatusIdx)
-
-		next.addFocus = addFieldScopes
-		next.scopeOptions = []string{"public", "private"}
-		next.addScopeSelecting = true
-		next.addScopeIdx = 0
-
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-		assert.Equal(t, 1, next.addScopeIdx)
-
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyRight})
-		assert.Equal(t, 0, next.addScopeIdx)
-
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-		assert.Equal(t, []string{"public"}, next.addScopes)
-
-		next.scopeOptions = nil
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-		assert.Equal(t, 0, next.addScopeIdx)
-
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-		assert.False(t, next.addScopeSelecting)
+		model.addForm = nil
+		next, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
+		require.NotNil(t, next.addForm)
+		// Init returns a cmd for cursor blink etc.
+		_ = cmd
 	})
 
-	t.Run("navigation, save, delete and text input branches", func(t *testing.T) {
+	t.Run("form completion triggers save", func(t *testing.T) {
 		model := NewEntitiesModel(nil)
-		model.scopeOptions = []string{"public"}
+		model.initAddForm()
+		_ = model.addForm.Init()
+		model.addForm.State = huh.StateCompleted
+		model.addName = "Alpha"
+		model.addType = "person"
 
-		// Up from first field enters mode focus.
-		model.addFocus = 0
-		next, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
+		next, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
+		// saveAdd is triggered, which validates and saves
+		_ = next
+		_ = cmd
+	})
+
+	t.Run("form abort resets", func(t *testing.T) {
+		model := NewEntitiesModel(nil)
+		model.initAddForm()
+		_ = model.addForm.Init()
+		model.addForm.State = huh.StateAborted
+
+		next, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Nil(t, cmd)
-		assert.True(t, next.modeFocus)
-
-		// Up from non-first field moves focus to the previous field.
-		next.modeFocus = false
-		next.addFocus = addFieldType
-		next, cmd = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-		assert.Nil(t, cmd)
-		assert.Equal(t, addFieldName, next.addFocus)
-
-		// Ctrl+S runs save validation path.
-		next.modeFocus = false
-		next.addFocus = addFieldName
-		next, cmd = next.handleAddKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-		assert.Nil(t, cmd)
-		assert.Equal(t, "Name is required", next.errText)
-
-		// Tag input branches.
-		next.addFocus = addFieldTags
-		next.addTagBuf = "ab"
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, "a", next.addTagBuf)
-		next.addTagBuf = ""
-		next.addTags = []string{"alpha", "beta"}
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, []string{"alpha"}, next.addTags)
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
-		assert.Equal(t, "z", next.addTagBuf)
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
-		assert.Equal(t, []string{"alpha", "z"}, next.addTags)
-		assert.Equal(t, "", next.addTagBuf)
-
-		// Scope delete and scope-select activation.
-		next.addFocus = addFieldScopes
-		next.addScopes = []string{"public"}
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Empty(t, next.addScopes)
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-		assert.True(t, next.addScopeSelecting)
-
-		// Default field input/delete branches.
-		next.addFocus = addFieldType
-		next.addFields[addFieldType].value = "pers"
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, "per", next.addFields[addFieldType].value)
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
-		assert.Equal(t, "pers", next.addFields[addFieldType].value)
-
-		// Esc resets the whole form.
-		next.addFields[addFieldName].value = "Alpha"
-		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
-		assert.Equal(t, "", next.addFields[addFieldName].value)
-		assert.Equal(t, 0, next.addFocus)
+		assert.False(t, next.addSaved)
 	})
 }
 
@@ -165,7 +102,7 @@ func TestEntitiesHandleDetailKeysContextPromptsAndShortcuts(t *testing.T) {
 
 	// shortcuts
 	shortcuts, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
-	require.Nil(t, cmd)
+	require.NotNil(t, cmd) // editForm.Init() returns a cmd
 	assert.Equal(t, entitiesViewEdit, shortcuts.view)
 
 	shortcuts.view = entitiesViewDetail

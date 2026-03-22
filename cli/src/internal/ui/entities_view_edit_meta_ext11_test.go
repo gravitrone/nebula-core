@@ -10,29 +10,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEntitiesRenderEditTagsAndRenderEditBranches(t *testing.T) {
-	model := NewEntitiesModel(nil)
-
-	assert.Equal(t, "-", model.renderEditTags(false))
-
-	model.editTags = []string{"alpha"}
-	model.editTagBuf = "beta"
-	out := components.SanitizeText(model.renderEditTags(false))
-	assert.Contains(t, out, "alpha")
-	assert.Contains(t, out, "beta")
-
-	out = components.SanitizeText(model.renderEditTags(true))
-	assert.Contains(t, out, "alpha")
-	assert.Contains(t, out, "beta")
-	assert.Contains(t, out, "█")
-
+func TestEntitiesRenderEditShowsFormAndSaving(t *testing.T) {
 	// nil detail branch falls back to list rendering.
-	model = NewEntitiesModel(nil)
+	model := NewEntitiesModel(nil)
 	model.width = 80
-	out = components.SanitizeText(model.renderEdit())
+	out := components.SanitizeText(model.renderEdit())
 	assert.Contains(t, out, "No entities found")
 
-	// detail matrix across focus branches.
+	// detail with form renders entity name and form fields.
 	model = NewEntitiesModel(nil)
 	model.width = 90
 	model.detail = &api.Entity{
@@ -44,31 +29,17 @@ func TestEntitiesRenderEditTagsAndRenderEditBranches(t *testing.T) {
 	}
 	model.scopeNames = map[string]string{"scope-1": "public"}
 	model.scopeOptions = []string{"public", "private"}
-	model.editTags = []string{"alpha"}
-	model.editScopes = []string{"public"}
-	model.editStatusIdx = 1
+	model.editTagStr = "alpha"
+	model.editStatus = "inactive"
+	model.editScopeStr = "public"
+	model.initEditForm()
+	_ = model.editForm.Init()
 
-	model.editFocus = editFieldTags
 	out = components.SanitizeText(model.renderEdit())
 	assert.Contains(t, out, "Entity: Alpha")
-	assert.Contains(t, out, "Tags:")
-
-	model.editFocus = editFieldStatus
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Status:")
-	assert.Contains(t, out, "inactive")
-
-	model.editFocus = editFieldScopes
-	model.editScopeSelecting = true
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Scopes:")
-	assert.Contains(t, out, "public")
-
-	model.editScopeSelecting = false
-	model.editFocus = editFieldScopes
-	out = components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Scopes:")
-	assert.Contains(t, out, "public")
+	assert.Contains(t, out, "Tags")
+	assert.Contains(t, out, "Status")
+	assert.Contains(t, out, "Scopes")
 
 	model.editSaving = true
 	out = components.SanitizeText(model.renderEdit())

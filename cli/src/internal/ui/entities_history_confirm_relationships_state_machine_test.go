@@ -188,8 +188,7 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 	model.scopeOptions = []string{"public", "private"}
 
 	model.startEdit()
-	model.editScopeBuf = "private"
-	model.commitEditScope()
+	model.editScopeStr = "public, private"
 
 	_, cmd := model.saveEdit()
 	require.NotNil(t, cmd)

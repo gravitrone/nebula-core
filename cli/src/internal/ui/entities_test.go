@@ -59,8 +59,8 @@ func TestEntitiesSaveEditCallsUpdate(t *testing.T) {
 
 	model := NewEntitiesModel(client)
 	model.detail = &api.Entity{ID: "ent-1", Status: "active"}
-	model.editTags = []string{"alpha"}
-	model.editStatusIdx = 1
+	model.editTagStr = "alpha"
+	model.editStatus = "inactive"
 
 	_, cmd := model.saveEdit()
 	require.NotNil(t, cmd)
