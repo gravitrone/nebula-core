@@ -10,7 +10,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/table"
 	"github.com/gravitrone/nebula-core/cli/internal/api"
-	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -270,45 +269,11 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	assert.Equal(t, entitiesViewRelationships, updated.view)
 }
 
-func TestEntitiesCommitEditTagScopeAndRenderEditTagsBranches(t *testing.T) {
-	model := NewEntitiesModel(nil)
-
-	model.editTagBuf = "  "
-	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
-
-	model.editTags = []string{"alpha"}
-	model.editTagBuf = "ALPHA"
-	model.commitEditTag()
-	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
-
-	model.editTagBuf = "beta"
-	model.commitEditTag()
-	assert.Equal(t, []string{"alpha", "beta"}, model.editTags)
-
-	model.editScopeBuf = "  "
-	model.commitEditScope()
-	assert.Equal(t, "", model.editScopeBuf)
-	assert.False(t, model.editScopesDirty)
-
-	model.editScopes = []string{"public"}
-	model.editScopeBuf = " PUBLIC "
-	model.commitEditScope()
-	assert.Equal(t, []string{"public"}, model.editScopes)
-	assert.False(t, model.editScopesDirty)
-
-	model.editScopeBuf = "private"
-	model.commitEditScope()
-	assert.Equal(t, []string{"public", "private"}, model.editScopes)
-	assert.True(t, model.editScopesDirty)
-
-	empty := model.renderEditTags(false)
-	assert.NotEqual(t, "-", empty)
-	model.editTags = nil
-	model.editTagBuf = ""
-	assert.Equal(t, "-", model.renderEditTags(false))
-	assert.Contains(t, components.SanitizeText(model.renderEditTags(true)), "█")
+func TestEntitiesStringSlicesEqual(t *testing.T) {
+	assert.True(t, stringSlicesEqual([]string{"a", "b"}, []string{"a", "b"}))
+	assert.False(t, stringSlicesEqual([]string{"a"}, []string{"a", "b"}))
+	assert.False(t, stringSlicesEqual([]string{"a", "c"}, []string{"a", "b"}))
+	assert.True(t, stringSlicesEqual(nil, nil))
 }
 
 func TestEntitiesHandleRelationshipsKeysBranchMatrix(t *testing.T) {

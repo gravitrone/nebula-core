@@ -57,23 +57,13 @@ func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	model := NewEntitiesModel(client)
 	model.width = 80
 
-	// Enter add view.
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.Equal(t, entitiesViewAdd, model.view)
-
-	// Name.
-	for _, r := range "Alpha" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	// Type.
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	for _, r := range "person" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
+	// Directly populate and save (huh form handles actual input).
+	model.view = entitiesViewAdd
+	model.addName = "Alpha"
+	model.addType = "person"
 
 	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, cmd = model.saveAdd()
 	require.NotNil(t, cmd)
 	msg := cmd()
 	model, _ = model.Update(msg)
@@ -84,8 +74,8 @@ func TestEntitiesViewAddSavedResetsOnEsc(t *testing.T) {
 	// Esc should clear addSaved and reset fields.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.addSaved)
-	assert.Empty(t, model.addFields[addFieldName].value)
-	assert.Empty(t, model.addFields[addFieldType].value)
+	assert.Empty(t, model.addName)
+	assert.Empty(t, model.addType)
 }
 
 // TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer handles test entities search input enter triggers query and resets buffer.
@@ -109,8 +99,7 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.Equal(t, "a", model.searchBuf)
 
-	var cmd tea.Cmd
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	model, _ = model.Update(runCmdFirst(cmd))
 

@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestEntitiesAddFlowSavesEntityAndDedupsTags handles test entities add flow saves entity and dedups tags.
-func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
+// TestEntitiesAddFlowSavesEntityViaHuhForm verifies the add flow with huh form integration.
+func TestEntitiesAddFlowSavesEntityViaHuhForm(t *testing.T) {
 	var captured api.CreateEntityInput
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/entities" && r.Method == http.MethodPost {
@@ -33,64 +33,56 @@ func TestEntitiesAddFlowSavesEntityAndDedupsTags(t *testing.T) {
 	model := NewEntitiesModel(client)
 	model.width = 60
 
-	// Move focus to mode line and toggle to Add view.
-	var cmd tea.Cmd
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.True(t, model.modeFocus)
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.Equal(t, entitiesViewAdd, model.view)
+	// Directly set form values and call saveAdd (huh form handles input internally).
+	model.addName = "Alpha"
+	model.addType = "person"
+	model.addStatus = "active"
+	model.addTagStr = "alpha"
+	model.addScopeStr = "private"
 
-	// Populate scope options via the same message path the model uses.
-	model, _ = model.Update(
-		entityScopesLoadedMsg{names: map[string]string{"s1": "public", "s2": "private"}},
-	)
-
-	// Name field (focus 0).
-	for _, r := range "Alpha" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-
-	// Type field (focus 1).
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	for _, r := range "person" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-
-	// Tags field (focus 3).
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // status
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown}) // tags
-	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // commit
-
-	// Re-add same tag, should dedup.
-	for _, r := range "alpha" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // commit
-	assert.Equal(t, []string{"alpha"}, model.addTags)
-
-	// Scopes field (focus 4): enter selecting mode and select first option.
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // enter selecting
-	assert.True(t, model.addScopeSelecting)
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // toggle selected
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // exit selecting
-	assert.False(t, model.addScopeSelecting)
-	assert.Contains(t, model.addScopes, "private")
-
-	// Save.
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	next, cmd := model.saveAdd()
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	assert.True(t, next.addSaving)
 
-	assert.True(t, model.addSaved)
+	msg := cmd()
+	next, _ = next.Update(msg)
+
+	assert.True(t, next.addSaved)
 	assert.Equal(t, "Alpha", captured.Name)
 	assert.Equal(t, "person", captured.Type)
 	assert.Equal(t, []string{"alpha"}, captured.Tags)
 	assert.Equal(t, []string{"private"}, captured.Scopes)
+}
+
+// TestEntitiesAddFlowDedupsTags verifies tag deduplication in saveAdd.
+func TestEntitiesAddFlowDedupsTags(t *testing.T) {
+	var captured api.CreateEntityInput
+	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/entities" && r.Method == http.MethodPost {
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&captured))
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": map[string]any{
+					"id":   "ent-1",
+					"name": captured.Name,
+					"tags": captured.Tags,
+				},
+			}))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	})
+
+	model := NewEntitiesModel(client)
+	model.addName = "Alpha"
+	model.addType = "person"
+	model.addTagStr = "alpha, alpha, beta"
+
+	_, cmd := model.saveAdd()
+	require.NotNil(t, cmd)
+	msg := cmd()
+	_, ok := msg.(entityCreatedMsg)
+	require.True(t, ok)
+	assert.Equal(t, []string{"alpha", "beta"}, captured.Tags)
 }
 
 // TestEntitiesBulkUpdateTagsCallsEndpoint handles test entities bulk update tags calls endpoint.

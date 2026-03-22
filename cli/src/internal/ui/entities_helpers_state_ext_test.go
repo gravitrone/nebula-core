@@ -9,42 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEntitiesAddTagScopeHelpersBranchMatrix(t *testing.T) {
-	model := NewEntitiesModel(nil)
+func TestEntitiesParseCommaSeparatedHelpers(t *testing.T) {
+	// Tag normalization is tested via normalizeTag in helpers.
+	tags := parseCommaSeparated("alpha, BETA, gamma_tag")
+	assert.Equal(t, []string{"alpha", "BETA", "gamma_tag"}, tags)
 
-	assert.Equal(t, "-", model.renderAddTags(false))
-	assert.Contains(t, stripANSI(model.renderAddTags(true)), "█")
+	tags = parseCommaSeparated("")
+	assert.Nil(t, tags)
 
-	model.addTags = []string{"alpha"}
-	model.addTagBuf = "beta"
-	assert.Contains(t, stripANSI(model.renderAddTags(false)), "alpha")
-	assert.Contains(t, stripANSI(model.renderAddTags(false)), "beta")
-	assert.Contains(t, stripANSI(model.renderAddTags(true)), "█")
+	tags = parseCommaSeparated("  ,  ,  ")
+	assert.Nil(t, tags)
 
-	model.addTagBuf = "   "
-	model.commitAddTag()
-	assert.Equal(t, "", model.addTagBuf)
-
-	model.addTagBuf = "ALPHA"
-	model.commitAddTag()
-	assert.Equal(t, []string{"alpha"}, model.addTags)
-
-	model.addTagBuf = "gamma_tag"
-	model.commitAddTag()
-	assert.Equal(t, []string{"alpha", "gamma-tag"}, model.addTags)
-
-	model.addScopeBuf = "  "
-	model.commitAddScope()
-	assert.Equal(t, "", model.addScopeBuf)
-
-	model.addScopes = []string{"public"}
-	model.addScopeBuf = " PUBLIC "
-	model.commitAddScope()
-	assert.Equal(t, []string{"public"}, model.addScopes)
-
-	model.addScopeBuf = "sensitive"
-	model.commitAddScope()
-	assert.Equal(t, []string{"public", "sensitive"}, model.addScopes)
+	// Dedup preserves order and removes empty.
+	assert.Equal(t, []string{"alpha"}, dedup([]string{"alpha", "alpha"}))
+	assert.Equal(t, []string{"a", "b"}, dedup([]string{"a", "b", "a"}))
 }
 
 func TestEntitiesSearchInputAndBulkSelectionBranchMatrix(t *testing.T) {
