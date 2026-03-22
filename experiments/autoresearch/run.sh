@@ -22,7 +22,7 @@ done
 
 # ── banner ──────────────────────────────────────────────────────────────────
 echo ""
-gum format -- "# ◆ Nebula Autoresearch" \
+gum format -- "# Nebula Autoresearch" \
   "*Autonomous Visual Bug Hunter*" \
   "" \
   "- **Iterations** $MAX_ITERATIONS" \
@@ -171,7 +171,7 @@ done
 
 # ── summary ─────────────────────────────────────────────────────────────────
 echo ""
-gum format -- "# ◆ Autoresearch Complete" \
+gum format -- "# Autoresearch Complete" \
   "" \
   "- **Iterations** $ITERATION" \
   "- **Fixes Merged** $TOTAL_FIXES" \
