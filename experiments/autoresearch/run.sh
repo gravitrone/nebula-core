@@ -22,12 +22,12 @@ done
 
 # ── banner ──────────────────────────────────────────────────────────────────
 echo ""
-gum format -- "# Nebula Autoresearch" \
-  "*Autonomous Visual Bug Hunter*" \
-  "" \
-  "- **Iterations** $MAX_ITERATIONS" \
-  "- **Branch** $BRANCH" \
-  "- **Isolation** Git Worktrees"
+echo "# Nebula Autoresearch
+*Autonomous Visual Bug Hunter*
+
+- **Iterations** $MAX_ITERATIONS
+- **Branch** $BRANCH
+- **Isolation** Git Worktrees" | gum format
 echo ""
 
 # ── main ────────────────────────────────────────────────────────────────────
@@ -171,11 +171,11 @@ done
 
 # ── summary ─────────────────────────────────────────────────────────────────
 echo ""
-gum format -- "# Autoresearch Complete" \
-  "" \
-  "- **Iterations** $ITERATION" \
-  "- **Fixes Merged** $TOTAL_FIXES" \
-  "- **Branch** $BRANCH"
+echo "# Autoresearch Complete
+
+- **Iterations** $ITERATION
+- **Fixes Merged** $TOTAL_FIXES
+- **Branch** $BRANCH" | gum format
 
 # cleanup worktree dir if empty
 rmdir "$WORKTREE_DIR" 2>/dev/null || true
