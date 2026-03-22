@@ -100,7 +100,7 @@ func TestEntitiesSaveAddValidationAndDefaults(t *testing.T) {
 		model.addFields[addFieldName].value = "Alpha"
 		model.addFields[addFieldType].value = "person"
 		model.addStatusIdx = 1
-		model.addTagBuf = "alpha"
+		model.addTagInput.SetValue("alpha")
 		model.addScopes = nil
 
 		next, cmd := model.saveAdd()

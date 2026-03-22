@@ -176,11 +176,11 @@ func TestHandleOnboardingKeysQuitBusyAndEnterBranches(t *testing.T) {
 	assert.True(t, ok)
 
 	app.onboardingBusy = true
-	app.onboardingName = "alxx"
+	app.onboardingInput.SetValue("alxx")
 	model, cmd = app.handleOnboardingKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
 	updated := model.(App)
-	assert.Equal(t, "alxx", updated.onboardingName)
+	assert.Equal(t, "alxx", updated.onboardingInput.Value())
 
 	app.onboardingBusy = false
 	model, cmd = app.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -197,7 +197,7 @@ func TestRefreshPaletteFilteredBranches(t *testing.T) {
 		{ID: "tab:jobs", Label: "Jobs", Desc: "tasks"},
 	}
 
-	app.paletteQuery = "/job"
+	app.paletteInput.SetValue("/job")
 	app.paletteSearchQuery = "old"
 	app.paletteSearchLoading = true
 	app.paletteSelections = map[string]paletteSelection{"x": {}}
@@ -211,7 +211,7 @@ func TestRefreshPaletteFilteredBranches(t *testing.T) {
 	assert.Equal(t, "tab:jobs", app.paletteFiltered[0].ID)
 	assert.Equal(t, 0, app.paletteIndex)
 
-	app.paletteQuery = "   "
+	app.paletteInput.SetValue("   ")
 	app.paletteFiltered = []paletteAction{{ID: "tab:inbox"}}
 	app.paletteSelections = map[string]paletteSelection{"x": {}}
 	app.paletteSearchQuery = "stale"
@@ -225,7 +225,7 @@ func TestRefreshPaletteFilteredBranches(t *testing.T) {
 	assert.Nil(t, app.paletteFiltered)
 	assert.Equal(t, 0, app.paletteIndex)
 
-	app.paletteQuery = "alpha"
+	app.paletteInput.SetValue("alpha")
 	app.paletteSearchQuery = "alpha"
 	app.paletteFiltered = []paletteAction{{ID: "a"}}
 	app.paletteIndex = 5
@@ -236,7 +236,7 @@ func TestRefreshPaletteFilteredBranches(t *testing.T) {
 
 func TestRefreshPaletteFilteredTriggersSearchLoading(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
-	app.paletteQuery = "alpha"
+	app.paletteInput.SetValue("alpha")
 	app.paletteSearchQuery = "beta"
 	app.paletteFiltered = []paletteAction{{ID: "old"}}
 	app.paletteSelections = map[string]paletteSelection{"old": {}}

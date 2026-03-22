@@ -143,9 +143,9 @@ func TestFilesHandleAddKeysStatusTagsAndSavedBranches(t *testing.T) {
 
 	updated.addFocus = fileFieldTags
 	updated.addTags = []string{"alpha"}
-	updated.addTagBuf = "z"
+	updated.addTagInput.SetValue("z")
 	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.addTagBuf)
+	assert.Equal(t, "", updated.addTagInput.Value())
 	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.addTags)
 
@@ -172,9 +172,9 @@ func TestFilesHandleEditKeysStatusTagsAndBackBranches(t *testing.T) {
 
 	updated.editFocus = fileFieldTags
 	updated.editTags = []string{"alpha"}
-	updated.editTagBuf = "z"
+	updated.editTagInput.SetValue("z")
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.editTagBuf)
+	assert.Equal(t, "", updated.editTagInput.Value())
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.editTags)
 

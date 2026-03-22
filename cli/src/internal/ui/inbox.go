@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -35,14 +36,14 @@ type InboxModel struct {
 	spinner       spinner.Model
 	detail        *api.Approval
 	filtering     bool
-	filterBuf     string
+	filterInput   textinput.Model
 	filtered      []int
 	selected      map[string]bool
 	confirming    bool
 	confirmBulk   bool
 	rejecting     bool
 	rejectPreview bool
-	rejectBuf     string
+	rejectInput   textinput.Model
 	grantEditing  bool
 	grantApproval string
 	grantScopes   string
@@ -58,6 +59,8 @@ func NewInboxModel(client *api.Client) InboxModel {
 	return InboxModel{
 		client:       client,
 		spinner:      components.NewNebulaSpinner(),
+		filterInput:  components.NewNebulaTextInput("Filter approvals..."),
+		rejectInput:  components.NewNebulaTextInput("Enter review notes..."),
 		list:         components.NewList(15),
 		selected:     make(map[string]bool),
 		pendingLimit: 500,
@@ -88,7 +91,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 		m.detail = nil
 		m.rejecting = false
 		m.rejectPreview = false
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
 		m.bulkRejectIDs = nil
 		m.confirming = false
 		m.selected = make(map[string]bool)
@@ -160,6 +163,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 			return m.startReject()
 		case isKey(msg, "f"):
 			m.filtering = true
+			m.filterInput.Focus()
 		case isKey(msg, "b"):
 			m.toggleSelectAll()
 		case isBack(msg):
@@ -186,11 +190,11 @@ func (m InboxModel) View() string {
 		summary := []components.TableRow{
 			{Label: "Action", Value: "Reject"},
 			{Label: "Requests", Value: fmt.Sprintf("%d", len(m.bulkRejectIDs))},
-			{Label: "Notes", Value: formatAny(strings.TrimSpace(m.rejectBuf))},
+			{Label: "Notes", Value: formatAny(strings.TrimSpace(m.rejectInput.Value()))},
 		}
 		diffs := []components.DiffRow{
 			{Label: "Status", From: "Pending", To: "Rejected"},
-			{Label: "Review Notes", From: "None", To: formatAny(strings.TrimSpace(m.rejectBuf))},
+			{Label: "Review Notes", From: "None", To: formatAny(strings.TrimSpace(m.rejectInput.Value()))},
 		}
 		return components.Indent(components.ConfirmPreviewDialog("Reject Requests", summary, diffs, m.width), 1)
 	}
@@ -200,11 +204,11 @@ func (m InboxModel) View() string {
 	}
 
 	if m.rejecting && m.detail != nil {
-		return components.Indent(components.InputDialog("Reject: Enter Review Notes", m.rejectBuf), 1)
+		return components.Indent(components.TextInputDialog("Reject: Enter Review Notes", m.rejectInput.View()), 1)
 	}
 
 	if m.filtering {
-		return components.Indent(components.InputDialog("Filter Approvals", m.filterBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Approvals", m.filterInput.View()), 1)
 	}
 
 	if m.detail != nil {
@@ -303,8 +307,8 @@ func (m InboxModel) View() string {
 
 	title := "Inbox"
 	countLine := fmt.Sprintf("%d pending", len(m.items))
-	if m.filterBuf != "" {
-		countLine = fmt.Sprintf("%s · filter: %s", countLine, m.filterBuf)
+	if m.filterInput.Value() != "" {
+		countLine = fmt.Sprintf("%s · filter: %s", countLine, m.filterInput.Value())
 	}
 	if count := m.selectedCount(); count > 0 {
 		countLine = fmt.Sprintf("%s · selected: %d", countLine, count)
@@ -424,7 +428,8 @@ func (m InboxModel) handleDetailKeys(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) 
 		return m.beginApproveFlow()
 	case isKey(msg, "r"):
 		m.rejecting = true
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
+		m.rejectInput.Focus()
 	}
 	return m, nil
 }
@@ -504,7 +509,8 @@ func (m InboxModel) renderGrantEditor() string {
 func (m InboxModel) handleRejectInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd) {
 	if m.detail == nil {
 		m.rejecting = false
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
+		m.rejectInput.Blur()
 		m.bulkRejectIDs = nil
 		return m, nil
 	}
@@ -514,7 +520,8 @@ func (m InboxModel) handleRejectInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd)
 			m.detail = nil
 		}
 		m.rejecting = false
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
+		m.rejectInput.Blur()
 		m.bulkRejectIDs = nil
 	case isEnter(msg):
 		ids := m.bulkRejectIDs
@@ -523,16 +530,13 @@ func (m InboxModel) handleRejectInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd)
 		}
 		m.rejecting = false
 		m.rejectPreview = true
+		m.rejectInput.Blur()
 		m.bulkRejectIDs = ids
 		return m, nil
-	case isKey(msg, "backspace"):
-		if len(m.rejectBuf) > 0 {
-			m.rejectBuf = m.rejectBuf[:len(m.rejectBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.rejectBuf += ch
-		}
+		var cmd tea.Cmd
+		m.rejectInput, cmd = m.rejectInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -982,7 +986,7 @@ func (m *InboxModel) applyFilter(resetSelection bool) {
 	}
 	m.filtered = m.filtered[:0]
 	labels := make([]string, 0, len(m.items))
-	filter := parseApprovalFilter(m.filterBuf)
+	filter := parseApprovalFilter(m.filterInput.Value())
 	for i, a := range m.items {
 		if matchesApprovalFilter(a, filter) {
 			m.filtered = append(m.filtered, i)
@@ -1081,7 +1085,8 @@ func (m *InboxModel) startReject() (InboxModel, tea.Cmd) {
 		m.bulkRejectIDs = ids
 		m.rejecting = true
 		m.rejectPreview = false
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
+		m.rejectInput.Focus()
 		m.detail = &api.Approval{ID: ids[0]}
 		return *m, nil
 	}
@@ -1089,7 +1094,8 @@ func (m *InboxModel) startReject() (InboxModel, tea.Cmd) {
 		m.detail = &item
 		m.rejecting = true
 		m.rejectPreview = false
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
+		m.rejectInput.Focus()
 		return *m, nil
 	}
 	return *m, nil
@@ -1100,9 +1106,9 @@ func (m InboxModel) handleRejectPreview(msg tea.KeyPressMsg) (InboxModel, tea.Cm
 	switch {
 	case isKey(msg, "y"), isEnter(msg):
 		ids := append([]string(nil), m.bulkRejectIDs...)
-		notes := m.rejectBuf
+		notes := m.rejectInput.Value()
 		m.rejectPreview = false
-		m.rejectBuf = ""
+		m.rejectInput.Reset()
 		m.detail = nil
 		m.bulkRejectIDs = nil
 		return m, func() tea.Msg {
@@ -1335,21 +1341,21 @@ func (m InboxModel) handleFilterInput(msg tea.KeyPressMsg) (InboxModel, tea.Cmd)
 	switch {
 	case isBack(msg):
 		m.filtering = false
-		m.filterBuf = ""
+		m.filterInput.Reset()
+		m.filterInput.Blur()
 		m.applyFilter(true)
 	case isEnter(msg):
 		m.filtering = false
+		m.filterInput.Blur()
 		m.applyFilter(true)
-	case isKey(msg, "backspace"):
-		if len(m.filterBuf) > 0 {
-			m.filterBuf = m.filterBuf[:len(m.filterBuf)-1]
-			m.applyFilter(true)
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.filterBuf += ch
+		prev := m.filterInput.Value()
+		var cmd tea.Cmd
+		m.filterInput, cmd = m.filterInput.Update(msg)
+		if m.filterInput.Value() != prev {
 			m.applyFilter(true)
 		}
+		return m, cmd
 	}
 	return m, nil
 }

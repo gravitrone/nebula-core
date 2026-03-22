@@ -188,7 +188,7 @@ func TestEntitiesEditScopesDirtyTriggersBulkScopesAndRefresh(t *testing.T) {
 	model.scopeOptions = []string{"public", "private"}
 
 	model.startEdit()
-	model.editScopeBuf = "private"
+	model.editScopeInput.SetValue("private")
 	model.commitEditScope()
 
 	_, cmd := model.saveEdit()
@@ -324,7 +324,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 	model.view = entitiesViewRelationships
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, entitiesViewRelEdit, model.view)
-	model.relEditBuf = "{"
+	model.relEditInput.SetValue("{")
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	assert.NotEmpty(t, model.errText)
 }

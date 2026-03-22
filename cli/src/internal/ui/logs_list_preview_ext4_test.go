@@ -64,11 +64,11 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.False(t, updated.filtering)
 
 	updated.filtering = false
-	updated.searchBuf = "workout"
+	updated.searchInput.SetValue("workout")
 	updated.searchSuggest = "workout"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.Equal(t, "", updated.searchSuggest)
 
 	updated.list.Cursor = 8
@@ -98,34 +98,34 @@ func TestLogsHandleListKeysAdditionalBranches(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Equal(t, 1, updated.list.Cursor)
 
-	updated.searchBuf = "wo"
+	updated.searchInput.SetValue("wo")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "w", updated.searchBuf)
+	assert.Equal(t, "w", updated.searchInput.Value())
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.filtering)
 	updated.filtering = false
 
-	updated.searchBuf = ""
+	updated.searchInput.SetValue("")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
-	updated.searchBuf = ""
+	updated.searchInput.SetValue("")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "w", updated.searchBuf)
+	assert.Equal(t, "w", updated.searchInput.Value())
 
-	updated.searchBuf = ""
+	updated.searchInput.SetValue("")
 	updated.list.Cursor = 0
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.NotNil(t, cmd)

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -88,12 +89,12 @@ type ContextModel struct {
 	view                contextView
 	errText             string
 	tags                []string
-	tagBuf              string
+	tagInput            textinput.Model
 	scopes              []string
-	scopeBuf            string
+	scopeInput          textinput.Model
 	linkSearching       bool
 	linkLoading         bool
-	linkQuery           string
+	linkQueryInput      textinput.Model
 	linkResults         []api.Entity
 	linkList            *components.List
 	linkEntities        []api.Entity
@@ -101,7 +102,7 @@ type ContextModel struct {
 	allItems            []api.Context
 	items               []api.Context
 	filtering           bool
-	filterBuf           string
+	filterInput         textinput.Model
 	loadingList         bool
 	spinner             spinner.Model
 	detail              *api.Context
@@ -113,9 +114,9 @@ type ContextModel struct {
 	editScopeSelecting  bool
 	editStatusIdx       int
 	editTags            []string
-	editTagBuf          string
+	editTagInput        textinput.Model
 	editScopes          []string
-	editScopeBuf        string
+	editScopeInput      textinput.Model
 	editSaving          bool
 	contentExpanded     bool
 	sourcePathExpanded  bool
@@ -132,8 +133,14 @@ type formField struct {
 // NewContextModel builds the context UI model.
 func NewContextModel(client *api.Client) ContextModel {
 	return ContextModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
+		client:         client,
+		spinner:        components.NewNebulaSpinner(),
+		tagInput:       components.NewNebulaTextInput("Add tag..."),
+		scopeInput:     components.NewNebulaTextInput("Add scope..."),
+		linkQueryInput: components.NewNebulaTextInput("Search entities..."),
+		filterInput:    components.NewNebulaTextInput("Filter context..."),
+		editTagInput:   components.NewNebulaTextInput("Edit tag..."),
+		editScopeInput: components.NewNebulaTextInput("Edit scope..."),
 		fields: []formField{
 			{label: "Title"},
 			{label: "URL"},
@@ -169,17 +176,17 @@ func (m ContextModel) Init() tea.Cmd {
 	m.scopeSelecting = false
 	m.view = contextViewAdd
 	m.tags = nil
-	m.tagBuf = ""
+	m.tagInput.Reset()
 	m.scopes = nil
-	m.scopeBuf = ""
+	m.scopeInput.Reset()
 	m.linkSearching = false
 	m.linkLoading = false
-	m.linkQuery = ""
+	m.linkQueryInput.Reset()
 	m.linkResults = nil
 	m.linkEntities = nil
 	m.allItems = nil
 	m.filtering = false
-	m.filterBuf = ""
+	m.filterInput.Reset()
 	m.detail = nil
 	m.loadingList = false
 	m.editFocus = 0
@@ -188,9 +195,9 @@ func (m ContextModel) Init() tea.Cmd {
 	m.editScopeSelecting = false
 	m.editStatusIdx = statusIndex(contextStatusOptions, "active")
 	m.editTags = nil
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editScopes = nil
-	m.editScopeBuf = ""
+	m.editScopeInput.Reset()
 	m.editSaving = false
 	m.contentExpanded = false
 	m.sourcePathExpanded = false
@@ -344,10 +351,10 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 		case isKey(msg, "backspace"):
 			switch m.focus {
 			case fieldTags:
-				if len(m.tagBuf) > 0 {
-					m.tagBuf = m.tagBuf[:len(m.tagBuf)-1]
-				} else if len(m.tags) > 0 {
+				if m.tagInput.Value() == "" && len(m.tags) > 0 {
 					m.tags = m.tags[:len(m.tags)-1]
+				} else {
+					m.tagInput, _ = m.tagInput.Update(msg)
 				}
 			case fieldScopes:
 				if len(m.scopes) > 0 {
@@ -371,10 +378,7 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 				case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 					m.commitTag()
 				default:
-					ch := keyText(msg)
-					if ch != "" && ch != "," {
-						m.tagBuf += ch
-					}
+					m.tagInput, _ = m.tagInput.Update(msg)
 				}
 			} else if m.focus == fieldScopes {
 				if isSpace(msg) {
@@ -395,7 +399,7 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 			ch := keyText(msg)
 			if ch != "" {
 				m.startLinkSearch()
-				m.linkQuery += ch
+				m.linkQueryInput, _ = m.linkQueryInput.Update(msg)
 				return m, m.updateLinkSearch()
 			}
 		}
@@ -417,7 +421,7 @@ func (m ContextModel) View() string {
 		return m.renderLinkSearch()
 	}
 	if m.filtering && m.view == contextViewList {
-		return components.Indent(components.InputDialog("Filter Context", m.filterBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Context", m.filterInput.View()), 1)
 	}
 
 	modeLine := m.renderModeLine()
@@ -719,6 +723,7 @@ func (m ContextModel) handleListKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.filterInput.Focus()
 		return m, nil
 	case isBack(msg):
 		m.view = contextViewAdd
@@ -731,24 +736,20 @@ func (m ContextModel) handleFilterInput(msg tea.KeyPressMsg) (ContextModel, tea.
 	switch {
 	case isEnter(msg):
 		m.filtering = false
+		m.filterInput.Blur()
 	case isBack(msg):
 		m.filtering = false
-		m.filterBuf = ""
+		m.filterInput.Reset()
+		m.filterInput.Blur()
 		m.applyContextFilter()
-	case isKey(msg, "backspace", "delete"):
-		if len(m.filterBuf) > 0 {
-			m.filterBuf = m.filterBuf[:len(m.filterBuf)-1]
-			m.applyContextFilter()
-		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if ch == " " && m.filterBuf == "" {
-				return m, nil
-			}
-			m.filterBuf += ch
+		prev := m.filterInput.Value()
+		var cmd tea.Cmd
+		m.filterInput, cmd = m.filterInput.Update(msg)
+		if m.filterInput.Value() != prev {
 			m.applyContextFilter()
 		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -856,10 +857,10 @@ func (m ContextModel) handleEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 	case isKey(msg, "backspace"):
 		switch m.editFocus {
 		case contextEditFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
+			if m.editTagInput.Value() == "" && len(m.editTags) > 0 {
 				m.editTags = m.editTags[:len(m.editTags)-1]
+			} else {
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case contextEditFieldScopes:
 			if len(m.editScopes) > 0 {
@@ -880,10 +881,7 @@ func (m ContextModel) handleEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case contextEditFieldScopes:
 			if isSpace(msg) {
@@ -997,7 +995,7 @@ func (m ContextModel) renderList() string {
 	}
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
-	if query := strings.TrimSpace(m.filterBuf); query != "" {
+	if query := strings.TrimSpace(m.filterInput.Value()); query != "" {
 		countLine = fmt.Sprintf("%s · filter: %s", countLine, query)
 	}
 	countLine = MutedStyle.Render(countLine)
@@ -1155,9 +1153,9 @@ func (m *ContextModel) startEdit() {
 	m.editTypeIdx = statusIndex(contextTypes, k.SourceType)
 	m.editStatusIdx = statusIndex(contextStatusOptions, k.Status)
 	m.editTags = append([]string{}, k.Tags...)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editScopes = m.scopeNamesFromIDs(k.PrivacyScopeIDs)
-	m.editScopeBuf = ""
+	m.editScopeInput.Reset()
 	m.editScopeSelecting = false
 	m.scopeIdx = 0
 	m.editSaving = false
@@ -1212,7 +1210,7 @@ func (m ContextModel) loadContextList() tea.Cmd {
 
 // applyContextFilter handles apply context filter.
 func (m *ContextModel) applyContextFilter() {
-	query := strings.ToLower(strings.TrimSpace(m.filterBuf))
+	query := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
 	if query == "" {
 		m.items = append([]api.Context{}, m.allItems...)
 	} else {
@@ -1379,12 +1377,12 @@ func (m *ContextModel) resetForm() {
 	m.scopeIdx = 0
 	m.scopeSelecting = false
 	m.tags = nil
-	m.tagBuf = ""
+	m.tagInput.Reset()
 	m.scopes = nil
-	m.scopeBuf = ""
+	m.scopeInput.Reset()
 	m.linkSearching = false
 	m.linkLoading = false
-	m.linkQuery = ""
+	m.linkQueryInput.Reset()
 	m.linkResults = nil
 	m.linkEntities = nil
 	if m.linkList != nil {
@@ -1448,7 +1446,7 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 
 // renderTags renders render tags.
 func (m *ContextModel) renderTags(focused bool) string {
-	if len(m.tags) == 0 && m.tagBuf == "" && !focused {
+	if len(m.tags) == 0 && m.tagInput.Value() == "" && !focused {
 		return "-"
 	}
 
@@ -1463,22 +1461,22 @@ func (m *ContextModel) renderTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.tagBuf != "" {
-			b.WriteString(m.tagBuf)
+		if m.tagInput.Value() != "" {
+			b.WriteString(m.tagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.tagBuf != "" {
+	} else if m.tagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.tagBuf))
+		b.WriteString(MutedStyle.Render(m.tagInput.Value()))
 	}
 	return b.String()
 }
 
 // renderEditTags renders render edit tags.
 func (m *ContextModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
+	if len(m.editTags) == 0 && m.editTagInput.Value() == "" && !focused {
 		return "-"
 	}
 
@@ -1493,15 +1491,15 @@ func (m *ContextModel) renderEditTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
+		if m.editTagInput.Value() != "" {
+			b.WriteString(m.editTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
+	} else if m.editTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
+		b.WriteString(MutedStyle.Render(m.editTagInput.Value()))
 	}
 	return b.String()
 }
@@ -1539,7 +1537,8 @@ func (m *ContextModel) renderLinkedEntities(focused bool) string {
 func (m *ContextModel) startLinkSearch() {
 	m.linkSearching = true
 	m.linkLoading = false
-	m.linkQuery = ""
+	m.linkQueryInput.Focus()
+	m.linkQueryInput.Reset()
 	m.linkResults = nil
 	if m.linkList != nil {
 		m.linkList.SetItems(nil)
@@ -1552,7 +1551,7 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyPressMsg) (ContextModel, tea.C
 	case isBack(msg):
 		m.linkSearching = false
 		m.linkLoading = false
-		m.linkQuery = ""
+		m.linkQueryInput.Reset()
 		m.linkResults = nil
 		if m.linkList != nil {
 			m.linkList.SetItems(nil)
@@ -1573,34 +1572,19 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyPressMsg) (ContextModel, tea.C
 		}
 		m.linkSearching = false
 		m.linkLoading = false
-		m.linkQuery = ""
+		m.linkQueryInput.Reset()
 		m.linkResults = nil
 		if m.linkList != nil {
 			m.linkList.SetItems(nil)
 		}
-	case isKey(msg, "backspace"):
-		if len(m.linkQuery) > 0 {
-			m.linkQuery = m.linkQuery[:len(m.linkQuery)-1]
-			return m, m.updateLinkSearch()
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-		if m.linkQuery != "" {
-			m.linkQuery = ""
+	default:
+		prev := m.linkQueryInput.Value()
+		m.linkQueryInput, _ = m.linkQueryInput.Update(msg)
+		if m.linkQueryInput.Value() != prev {
 			m.linkResults = nil
 			if m.linkList != nil {
 				m.linkList.SetItems(nil)
 			}
-			return m, nil
-		}
-	default:
-		if ch := keyText(msg); ch != "" {
-			if len(m.linkResults) > 0 {
-				m.linkResults = nil
-				if m.linkList != nil {
-					m.linkList.SetItems(nil)
-				}
-			}
-			m.linkQuery += ch
 			return m, m.updateLinkSearch()
 		}
 	}
@@ -1610,12 +1594,11 @@ func (m ContextModel) handleLinkSearch(msg tea.KeyPressMsg) (ContextModel, tea.C
 // renderLinkSearch renders render link search.
 func (m ContextModel) renderLinkSearch() string {
 	var b strings.Builder
-	b.WriteString(MetaKeyStyle.Render("Search") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(components.SanitizeText(m.linkQuery)))
-	b.WriteString(AccentStyle.Render("█"))
+	b.WriteString(m.linkQueryInput.View())
 	b.WriteString("\n\n")
 	if m.linkLoading {
 		b.WriteString(MutedStyle.Render("Searching..."))
-	} else if strings.TrimSpace(m.linkQuery) == "" {
+	} else if strings.TrimSpace(m.linkQueryInput.Value()) == "" {
 		b.WriteString(MutedStyle.Render("Type to search."))
 	} else if len(m.linkResults) == 0 {
 		b.WriteString(MutedStyle.Render("No matches."))
@@ -1767,7 +1750,7 @@ func (m ContextModel) searchLinkEntities(query string) tea.Cmd {
 
 // updateLinkSearch updates update link search.
 func (m *ContextModel) updateLinkSearch() tea.Cmd {
-	query := strings.TrimSpace(m.linkQuery)
+	query := strings.TrimSpace(m.linkQueryInput.Value())
 	if query == "" {
 		m.linkLoading = false
 		m.linkResults = nil
@@ -1792,98 +1775,98 @@ func (m *ContextModel) addLinkedEntity(entity api.Entity) {
 
 // commitTag handles commit tag.
 func (m *ContextModel) commitTag() {
-	raw := strings.TrimSpace(m.tagBuf)
+	raw := strings.TrimSpace(m.tagInput.Value())
 	if raw == "" {
-		m.tagBuf = ""
+		m.tagInput.Reset()
 		return
 	}
 
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.tagBuf = ""
+		m.tagInput.Reset()
 		return
 	}
 
 	for _, t := range m.tags {
 		if t == tag {
-			m.tagBuf = ""
+			m.tagInput.Reset()
 			return
 		}
 	}
 	m.tags = append(m.tags, tag)
-	m.tagBuf = ""
+	m.tagInput.Reset()
 }
 
 // commitScope handles commit scope.
 func (m *ContextModel) commitScope() {
-	raw := strings.TrimSpace(m.scopeBuf)
+	raw := strings.TrimSpace(m.scopeInput.Value())
 	if raw == "" {
-		m.scopeBuf = ""
+		m.scopeInput.Reset()
 		return
 	}
 
 	scope := normalizeScope(raw)
 	if scope == "" {
-		m.scopeBuf = ""
+		m.scopeInput.Reset()
 		return
 	}
 
 	for _, s := range m.scopes {
 		if s == scope {
-			m.scopeBuf = ""
+			m.scopeInput.Reset()
 			return
 		}
 	}
 	m.scopes = append(m.scopes, scope)
-	m.scopeBuf = ""
+	m.scopeInput.Reset()
 }
 
 // commitEditTag handles commit edit tag.
 func (m *ContextModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
+	raw := strings.TrimSpace(m.editTagInput.Value())
 	if raw == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 
 	for _, t := range m.editTags {
 		if t == tag {
-			m.editTagBuf = ""
+			m.editTagInput.Reset()
 			return
 		}
 	}
 	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 }
 
 // commitEditScope handles commit edit scope.
 func (m *ContextModel) commitEditScope() {
-	raw := strings.TrimSpace(m.editScopeBuf)
+	raw := strings.TrimSpace(m.editScopeInput.Value())
 	if raw == "" {
-		m.editScopeBuf = ""
+		m.editScopeInput.Reset()
 		return
 	}
 
 	scope := normalizeScope(raw)
 	if scope == "" {
-		m.editScopeBuf = ""
+		m.editScopeInput.Reset()
 		return
 	}
 
 	for _, s := range m.editScopes {
 		if s == scope {
-			m.editScopeBuf = ""
+			m.editScopeInput.Reset()
 			return
 		}
 	}
 	m.editScopes = append(m.editScopes, scope)
-	m.editScopeBuf = ""
+	m.editScopeInput.Reset()
 }
 
 // normalizeTag handles normalize tag.

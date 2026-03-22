@@ -28,12 +28,12 @@ func TestImportExportResources(t *testing.T) {
 // TestImportExportStartResets handles test import export start resets.
 func TestImportExportStartResets(t *testing.T) {
 	model := NewImportExportModel(&api.Client{})
-	model.path = "tmp"
+	model.pathInput.SetValue("tmp")
 	model.summary = "old"
 	model.Start(importMode)
 
 	assert.Equal(t, stepResource, model.step)
-	assert.Equal(t, "", model.path)
+	assert.Equal(t, "", model.pathInput.Value())
 	assert.Equal(t, "", model.summary)
 	assert.False(t, model.closed)
 }

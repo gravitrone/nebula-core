@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -61,7 +62,7 @@ type FilesModel struct {
 	view          filesView
 	modeFocus     bool
 	filtering     bool
-	searchBuf     string
+	searchInput   textinput.Model
 	searchSuggest string
 	detail        *api.File
 	detailRels    []api.Relationship
@@ -76,7 +77,7 @@ type FilesModel struct {
 	addFocus     int
 	addStatusIdx int
 	addTags      []string
-	addTagBuf    string
+	addTagInput  textinput.Model
 	addName      string
 	addPath      string
 	addMime      string
@@ -91,7 +92,7 @@ type FilesModel struct {
 	editFocus     int
 	editStatusIdx int
 	editTags      []string
-	editTagBuf    string
+	editTagInput  textinput.Model
 	editName      string
 	editPath      string
 	editMime      string
@@ -104,9 +105,12 @@ type FilesModel struct {
 // NewFilesModel builds the files UI model.
 func NewFilesModel(client *api.Client) FilesModel {
 	return FilesModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(12),
+		client:       client,
+		spinner:      components.NewNebulaSpinner(),
+		searchInput:  components.NewNebulaTextInput("Filter files..."),
+		addTagInput:  components.NewNebulaTextInput("Add tag..."),
+		editTagInput: components.NewNebulaTextInput("Edit tag..."),
+		list:         components.NewList(12),
 		view:   filesViewList,
 		addFields: []formField{
 			{label: "Filename"},
@@ -127,7 +131,7 @@ func (m FilesModel) Init() tea.Cmd {
 	m.view = filesViewList
 	m.modeFocus = false
 	m.filtering = false
-	m.searchBuf = ""
+	m.searchInput.Reset()
 	m.searchSuggest = ""
 	m.detail = nil
 	m.detailRels = nil
@@ -136,7 +140,7 @@ func (m FilesModel) Init() tea.Cmd {
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(fileStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addName = ""
 	m.addPath = ""
 	m.addMime = ""
@@ -149,7 +153,7 @@ func (m FilesModel) Init() tea.Cmd {
 	m.editFocus = 0
 	m.editStatusIdx = statusIndex(fileStatusOptions, "active")
 	m.editTags = nil
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editName = ""
 	m.editPath = ""
 	m.editMime = ""
@@ -235,7 +239,7 @@ func (m FilesModel) View() string {
 		return m.editMeta.Render(m.width)
 	}
 	if m.filtering && m.view == filesViewList {
-		return components.Indent(components.InputDialog("Filter Files", m.searchBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Files", m.searchInput.View()), 1)
 	}
 	modeLine := m.renderModeLine()
 	var body string
@@ -396,9 +400,9 @@ func (m FilesModel) renderList() string {
 	}
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
-	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
+	if strings.TrimSpace(m.searchInput.Value()) != "" {
+		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchInput.Value()))
+		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchInput.Value()), strings.TrimSpace(m.searchSuggest)) {
 			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
 		}
 	}
@@ -498,33 +502,23 @@ func (m FilesModel) handleListKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.searchInput.Focus()
 		return m, nil
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applyFileSearch()
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
-			m.searchSuggest = ""
-			m.applyFileSearch()
-		}
 	case isBack(msg):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
+		if m.searchInput.Value() != "" {
+			m.searchInput.Reset()
 			m.searchSuggest = ""
 			m.applyFileSearch()
 		}
 	case isKey(msg, "tab"):
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
-			m.searchBuf = m.searchSuggest
+		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchInput.Value()), strings.TrimSpace(m.searchSuggest)) {
+			m.searchInput.SetValue(m.searchSuggest)
 			m.applyFileSearch()
 		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		m.searchInput, _ = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applyFileSearch()
 		}
 	}
@@ -536,25 +530,21 @@ func (m FilesModel) handleFilterInput(msg tea.KeyPressMsg) (FilesModel, tea.Cmd)
 	switch {
 	case isEnter(msg):
 		m.filtering = false
+		m.searchInput.Blur()
 	case isBack(msg):
 		m.filtering = false
-		m.searchBuf = ""
+		m.searchInput.Reset()
+		m.searchInput.Blur()
 		m.searchSuggest = ""
 		m.applyFileSearch()
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applyFileSearch()
-		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if ch == " " && m.searchBuf == "" {
-				return m, nil
-			}
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applyFileSearch()
 		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -678,10 +668,10 @@ func (m FilesModel) handleAddKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	case isKey(msg, "backspace", "delete"):
 		switch m.addFocus {
 		case fileFieldTags:
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			} else if len(m.addTags) > 0 {
+			if m.addTagInput.Value() == "" && len(m.addTags) > 0 {
 				m.addTags = m.addTags[:len(m.addTags)-1]
+			} else {
+				m.addTagInput, _ = m.addTagInput.Update(msg)
 			}
 		case fileFieldName:
 			m.addName = dropLastRune(m.addName)
@@ -703,10 +693,7 @@ func (m FilesModel) handleAddKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitAddTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.addTagBuf += ch
-				}
+				m.addTagInput, _ = m.addTagInput.Update(msg)
 			}
 		case fileFieldName:
 			appendChar(&m.addName, msg)
@@ -815,7 +802,7 @@ func (m *FilesModel) resetAddForm() {
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(fileStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addName = ""
 	m.addPath = ""
 	m.addMime = ""
@@ -826,29 +813,29 @@ func (m *FilesModel) resetAddForm() {
 
 // commitAddTag handles commit add tag.
 func (m *FilesModel) commitAddTag() {
-	raw := strings.TrimSpace(m.addTagBuf)
+	raw := strings.TrimSpace(m.addTagInput.Value())
 	if raw == "" {
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 		return
 	}
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 		return
 	}
 	for _, t := range m.addTags {
 		if t == tag {
-			m.addTagBuf = ""
+			m.addTagInput.Reset()
 			return
 		}
 	}
 	m.addTags = append(m.addTags, tag)
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 }
 
 // renderAddTags renders render add tags.
 func (m FilesModel) renderAddTags(focused bool) string {
-	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
+	if len(m.addTags) == 0 && m.addTagInput.Value() == "" && !focused {
 		return "-"
 	}
 	var b strings.Builder
@@ -862,15 +849,15 @@ func (m FilesModel) renderAddTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.addTagBuf != "" {
-			b.WriteString(m.addTagBuf)
+		if m.addTagInput.Value() != "" {
+			b.WriteString(m.addTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.addTagBuf != "" {
+	} else if m.addTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.addTagBuf))
+		b.WriteString(MutedStyle.Render(m.addTagInput.Value()))
 	}
 	return b.String()
 }
@@ -885,7 +872,7 @@ func (m *FilesModel) startEdit() {
 	m.editFocus = 0
 	m.editStatusIdx = statusIndex(fileStatusOptions, f.Status)
 	m.editTags = append([]string{}, f.Tags...)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editName = f.Filename
 	m.editPath = f.FilePath
 	if f.MimeType != nil {
@@ -942,10 +929,10 @@ func (m FilesModel) handleEditKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 	case isKey(msg, "backspace", "delete"):
 		switch m.editFocus {
 		case fileFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
+			if m.editTagInput.Value() == "" && len(m.editTags) > 0 {
 				m.editTags = m.editTags[:len(m.editTags)-1]
+			} else {
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case fileFieldName:
 			m.editName = dropLastRune(m.editName)
@@ -965,10 +952,7 @@ func (m FilesModel) handleEditKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case fileFieldName:
 			appendChar(&m.editName, msg)
@@ -1067,29 +1051,29 @@ func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
 
 // commitEditTag handles commit edit tag.
 func (m *FilesModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
+	raw := strings.TrimSpace(m.editTagInput.Value())
 	if raw == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 	for _, t := range m.editTags {
 		if t == tag {
-			m.editTagBuf = ""
+			m.editTagInput.Reset()
 			return
 		}
 	}
 	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 }
 
 // renderEditTags renders render edit tags.
 func (m FilesModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
+	if len(m.editTags) == 0 && m.editTagInput.Value() == "" && !focused {
 		return "-"
 	}
 	var b strings.Builder
@@ -1103,15 +1087,15 @@ func (m FilesModel) renderEditTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
+		if m.editTagInput.Value() != "" {
+			b.WriteString(m.editTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
+	} else if m.editTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
+		b.WriteString(MutedStyle.Render(m.editTagInput.Value()))
 	}
 	return b.String()
 }
@@ -1148,7 +1132,7 @@ func (m FilesModel) loadScopeOptions() tea.Cmd {
 
 // applyFileSearch handles apply file search.
 func (m *FilesModel) applyFileSearch() {
-	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
+	query := strings.TrimSpace(strings.ToLower(m.searchInput.Value()))
 	if query == "" {
 		m.items = m.all
 	} else {
@@ -1172,7 +1156,7 @@ func (m *FilesModel) applyFileSearch() {
 // updateSearchSuggest updates update search suggest.
 func (m *FilesModel) updateSearchSuggest() {
 	m.searchSuggest = ""
-	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
+	query := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
 	if query == "" {
 		return
 	}

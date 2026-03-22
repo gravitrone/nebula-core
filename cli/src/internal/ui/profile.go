@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -40,12 +41,12 @@ type ProfileModel struct {
 
 	loading          bool
 	creating         bool
-	createBuf        string
+	createInput      textinput.Model
 	createdKey       string
 	editAPIKey       bool
-	apiKeyBuf        string
+	apiKeyInput      textinput.Model
 	editPendingLimit bool
-	pendingLimitBuf  string
+	pendingLimitInput textinput.Model
 
 	taxKind            int
 	taxIncludeInactive bool
@@ -54,7 +55,7 @@ type ProfileModel struct {
 	taxItems           []api.TaxonomyEntry
 	taxList            *components.List
 	taxPromptMode      taxonomyPromptMode
-	taxPromptBuf       string
+	taxPromptInput     textinput.Model
 	taxPendingName     string
 	taxPendingDesc     string
 	taxEditID          string
@@ -66,11 +67,15 @@ type ProfileModel struct {
 // NewProfileModel builds the profile UI model.
 func NewProfileModel(client *api.Client, cfg *config.Config) ProfileModel {
 	return ProfileModel{
-		client:    client,
-		config:    cfg,
-		keyList:   components.NewList(10),
-		agentList: components.NewList(10),
-		taxList:   components.NewList(12),
+		client:            client,
+		config:            cfg,
+		createInput:       components.NewNebulaTextInput("Key name..."),
+		apiKeyInput:       components.NewNebulaTextInput("API key..."),
+		pendingLimitInput: components.NewNebulaTextInput("Pending limit..."),
+		taxPromptInput:    components.NewNebulaTextInput(""),
+		keyList:           components.NewList(10),
+		agentList:         components.NewList(10),
+		taxList:           components.NewList(12),
 	}
 }
 
@@ -106,7 +111,7 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 
 	case keyCreatedMsg:
 		m.creating = false
-		m.createBuf = ""
+		m.createInput.Reset()
 		m.createdKey = msg.resp.APIKey
 		return m, m.loadKeys
 
@@ -118,11 +123,11 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 
 	case apiKeySavedMsg:
 		m.editAPIKey = false
-		m.apiKeyBuf = ""
+		m.apiKeyInput.Reset()
 		return m, nil
 	case pendingLimitSavedMsg:
 		m.editPendingLimit = false
-		m.pendingLimitBuf = ""
+		m.pendingLimitInput.Reset()
 		return m, nil
 
 	case taxonomyLoadedMsg:
@@ -208,14 +213,16 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			switch m.section {
 			case 0:
 				m.creating = true
-				m.createBuf = ""
+				m.createInput.Reset()
+				m.createInput.Focus()
 			case 2:
 				m.openTaxPrompt(taxPromptCreateName, "")
 			}
 		case isKey(msg, "k"):
 			m.sectionFocus = false
 			m.editAPIKey = true
-			m.apiKeyBuf = m.config.APIKey
+			m.apiKeyInput.SetValue(m.config.APIKey)
+			m.apiKeyInput.Focus()
 		case isKey(msg, "p"):
 			m.sectionFocus = false
 			m.editPendingLimit = true
@@ -223,7 +230,8 @@ func (m ProfileModel) Update(msg tea.Msg) (ProfileModel, tea.Cmd) {
 			if m.config != nil && m.config.PendingLimit > 0 {
 				limit = m.config.PendingLimit
 			}
-			m.pendingLimitBuf = fmt.Sprintf("%d", limit)
+			m.pendingLimitInput.SetValue(fmt.Sprintf("%d", limit))
+			m.pendingLimitInput.Focus()
 		case isKey(msg, "r"):
 			if m.section == 0 {
 				return m.revokeSelected()
@@ -307,14 +315,14 @@ func (m ProfileModel) View() string {
 	}
 
 	if m.editAPIKey {
-		return components.Indent(components.InputDialog("Set API Key", m.apiKeyBuf), 1)
+		return components.Indent(components.TextInputDialog("Set API Key", m.apiKeyInput.View()), 1)
 	}
 	if m.editPendingLimit {
-		return components.Indent(components.InputDialog("Pending Queue Limit", m.pendingLimitBuf), 1)
+		return components.Indent(components.TextInputDialog("Pending Queue Limit", m.pendingLimitInput.View()), 1)
 	}
 
 	if m.creating {
-		return components.Indent(components.InputDialog("New Key Name", m.createBuf), 1)
+		return components.Indent(components.TextInputDialog("New Key Name", m.createInput.View()), 1)
 	}
 
 	if m.createdKey != "" {
@@ -414,11 +422,13 @@ func (m ProfileModel) handleCreateInput(msg tea.KeyPressMsg) (ProfileModel, tea.
 	switch {
 	case isBack(msg):
 		m.creating = false
-		m.createBuf = ""
+		m.createInput.Reset()
+		m.createInput.Blur()
 	case isEnter(msg):
-		name := m.createBuf
+		name := m.createInput.Value()
 		m.creating = false
-		m.createBuf = ""
+		m.createInput.Reset()
+		m.createInput.Blur()
 		return m, func() tea.Msg {
 			resp, err := m.client.CreateKey(name)
 			if err != nil {
@@ -426,14 +436,10 @@ func (m ProfileModel) handleCreateInput(msg tea.KeyPressMsg) (ProfileModel, tea.
 			}
 			return keyCreatedMsg{resp}
 		}
-	case isKey(msg, "backspace"):
-		if len(m.createBuf) > 0 {
-			m.createBuf = m.createBuf[:len(m.createBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.createBuf += ch
-		}
+		var cmd tea.Cmd
+		m.createInput, cmd = m.createInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -443,15 +449,17 @@ func (m ProfileModel) handleAPIKeyInput(msg tea.KeyPressMsg) (ProfileModel, tea.
 	switch {
 	case isBack(msg):
 		m.editAPIKey = false
-		m.apiKeyBuf = ""
+		m.apiKeyInput.Reset()
+		m.apiKeyInput.Blur()
 		return m, nil
 	case isEnter(msg):
-		key := strings.TrimSpace(m.apiKeyBuf)
+		key := strings.TrimSpace(m.apiKeyInput.Value())
 		if key == "" {
 			return m, func() tea.Msg {
 				return errMsg{fmt.Errorf("api key cannot be empty")}
 			}
 		}
+		m.apiKeyInput.Blur()
 		return m, func() tea.Msg {
 			m.config.APIKey = key
 			if err := m.config.Save(); err != nil {
@@ -462,17 +470,11 @@ func (m ProfileModel) handleAPIKeyInput(msg tea.KeyPressMsg) (ProfileModel, tea.
 			}
 			return apiKeySavedMsg{}
 		}
-	case isKey(msg, "backspace", "delete"):
-		if len(m.apiKeyBuf) > 0 {
-			m.apiKeyBuf = m.apiKeyBuf[:len(m.apiKeyBuf)-1]
-		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			m.apiKeyBuf += ch
-		}
+		var cmd tea.Cmd
+		m.apiKeyInput, cmd = m.apiKeyInput.Update(msg)
+		return m, cmd
 	}
-	return m, nil
 }
 
 // handlePendingLimitInput handles handle pending limit input.
@@ -480,10 +482,11 @@ func (m ProfileModel) handlePendingLimitInput(msg tea.KeyPressMsg) (ProfileModel
 	switch {
 	case isBack(msg):
 		m.editPendingLimit = false
-		m.pendingLimitBuf = ""
+		m.pendingLimitInput.Reset()
+		m.pendingLimitInput.Blur()
 		return m, nil
 	case isEnter(msg):
-		raw := strings.TrimSpace(m.pendingLimitBuf)
+		raw := strings.TrimSpace(m.pendingLimitInput.Value())
 		if raw == "" {
 			return m, func() tea.Msg { return errMsg{fmt.Errorf("pending limit cannot be empty")} }
 		}
@@ -494,6 +497,7 @@ func (m ProfileModel) handlePendingLimitInput(msg tea.KeyPressMsg) (ProfileModel
 		if limit > 5000 {
 			limit = 5000
 		}
+		m.pendingLimitInput.Blur()
 		return m, func() tea.Msg {
 			m.config.PendingLimit = limit
 			if err := m.config.Save(); err != nil {
@@ -501,17 +505,11 @@ func (m ProfileModel) handlePendingLimitInput(msg tea.KeyPressMsg) (ProfileModel
 			}
 			return pendingLimitSavedMsg{limit: limit}
 		}
-	case isKey(msg, "backspace", "delete"):
-		if len(m.pendingLimitBuf) > 0 {
-			m.pendingLimitBuf = m.pendingLimitBuf[:len(m.pendingLimitBuf)-1]
-		}
 	default:
-		ch := keyText(msg)
-		if len(ch) == 1 && ch[0] >= '0' && ch[0] <= '9' {
-			m.pendingLimitBuf += ch
-		}
+		var cmd tea.Cmd
+		m.pendingLimitInput, cmd = m.pendingLimitInput.Update(msg)
+		return m, cmd
 	}
-	return m, nil
 }
 
 // parsePositiveInt parses parse positive int.

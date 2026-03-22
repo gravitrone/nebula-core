@@ -138,19 +138,19 @@ func TestContextCommitEditTagBranches(t *testing.T) {
 	model := NewContextModel(nil)
 	model.editTags = []string{"alpha-tag"}
 
-	model.editTagBuf = "   "
+	model.editTagInput.SetValue("   ")
 	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 	assert.Equal(t, []string{"alpha-tag"}, model.editTags)
 
-	model.editTagBuf = "#Alpha Tag"
+	model.editTagInput.SetValue("#Alpha Tag")
 	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 	assert.Equal(t, []string{"alpha-tag"}, model.editTags)
 
-	model.editTagBuf = "Beta_Tag"
+	model.editTagInput.SetValue("Beta_Tag")
 	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 	assert.Equal(t, []string{"alpha-tag", "beta-tag"}, model.editTags)
 }
 

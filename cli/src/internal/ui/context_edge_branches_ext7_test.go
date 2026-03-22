@@ -15,11 +15,11 @@ func TestContextUpdateBackspaceTagBufferBeforeRemovingTags(t *testing.T) {
 	model := NewContextModel(nil)
 	model.focus = fieldTags
 	model.tags = []string{"alpha"}
-	model.tagBuf = "xy"
+	model.tagInput.SetValue("xy")
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "x", updated.tagBuf)
+	assert.Equal(t, "x", updated.tagInput.Value())
 	assert.Equal(t, []string{"alpha"}, updated.tags)
 }
 

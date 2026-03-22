@@ -47,39 +47,39 @@ func TestJobsHandleFilterInputBranchMatrix(t *testing.T) {
 
 	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.searchBuf)
+	assert.Equal(t, "a", updated.searchInput.Value())
 	require.NotEmpty(t, updated.items)
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
-	updated.searchBuf = "alpha"
+	updated.searchInput.SetValue("alpha")
 	updated.searchSuggest = "alpha"
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.Equal(t, "", updated.searchSuggest)
 
 	updated.filtering = true
-	updated.searchBuf = "x"
+	updated.searchInput.SetValue("x")
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "x", updated.searchBuf)
+	assert.Equal(t, "x", updated.searchInput.Value())
 }
 
 func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
@@ -92,35 +92,35 @@ func TestJobsHandleListKeysStatusAndSearchBranches(t *testing.T) {
 	model.applyJobSearch()
 	model.list.SetItems([]string{"alpha", "beta"})
 
-	model.searchBuf = "alp"
+	model.searchInput.SetValue("alp")
 	model.searchSuggest = "alpha"
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "alpha", updated.searchBuf)
+	assert.Equal(t, "alpha", updated.searchInput.Value())
 
-	updated.searchBuf = "alpha"
+	updated.searchInput.SetValue("alpha")
 	updated.searchSuggest = "alpha"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "alpha", updated.searchBuf)
+	assert.Equal(t, "alpha", updated.searchInput.Value())
 
-	updated.searchBuf = "alpha"
+	updated.searchInput.SetValue("alpha")
 	updated.searchSuggest = "alpha"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.Equal(t, "", updated.searchSuggest)
 
-	updated.searchBuf = "ab"
+	updated.searchInput.SetValue("ab")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.searchBuf)
+	assert.Equal(t, "a", updated.searchInput.Value())
 
 	updated.view = jobsViewList
 	updated.items = append([]api.Job{}, updated.allItems...)
 	updated.list.SetItems([]string{"alpha", "beta"})
 	updated.list.Cursor = 0
-	updated.searchBuf = ""
+	updated.searchInput.SetValue("")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	_ = cmd
 	assert.Equal(t, jobsViewDetail, updated.view)

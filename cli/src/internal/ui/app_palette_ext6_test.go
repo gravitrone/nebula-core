@@ -15,20 +15,20 @@ func TestRenderPaletteStateAndFallbackBranches(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.width = 18
 
-	app.paletteQuery = "/"
+	app.paletteInput.SetValue("/")
 	app.paletteFiltered = nil
 	app.paletteSearchLoading = false
 	out := components.SanitizeText(app.renderPalette())
 	assert.Contains(t, out, "Command")
 	assert.Contains(t, out, "matching")
 
-	app.paletteQuery = ""
+	app.paletteInput.SetValue("")
 	out = components.SanitizeText(app.renderPalette())
 	assert.Contains(t, out, "Search")
 	assert.Contains(t, out, "Type")
 	assert.Contains(t, out, "search")
 
-	app.paletteQuery = "abc"
+	app.paletteInput.SetValue("abc")
 	out = components.SanitizeText(app.renderPalette())
 	assert.Contains(t, out, "search")
 	assert.Contains(t, out, "results")
@@ -41,7 +41,7 @@ func TestRenderPaletteStateAndFallbackBranches(t *testing.T) {
 func TestRenderPaletteTableBranchesOnSmallWidth(t *testing.T) {
 	app := NewApp(nil, &config.Config{})
 	app.width = 22
-	app.paletteQuery = "plain"
+	app.paletteInput.SetValue("plain")
 	app.paletteFiltered = []paletteAction{
 		{ID: "x", Label: "", Desc: ""},
 	}
@@ -94,10 +94,10 @@ func TestHandlePaletteKeysEdgeBranches(t *testing.T) {
 	assert.Nil(t, cmd)
 
 	updated.paletteOpen = true
-	updated.paletteQuery = "/x"
+	updated.paletteInput.SetValue("/x")
 	model, cmd = updated.handlePaletteKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	updated = model.(App)
-	assert.Equal(t, "/", updated.paletteQuery)
+	assert.Equal(t, "/", updated.paletteInput.Value())
 	assert.Nil(t, cmd)
 }
 

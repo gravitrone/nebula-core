@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -73,19 +74,19 @@ type ProtocolsModel struct {
 	detail     *api.Protocol
 	detailRels []api.Relationship
 	modeFocus  bool
-	filtering  bool
-	searchBuf  string
-	width      int
+	filtering   bool
+	searchInput textinput.Model
+	width       int
 	height     int
 
 	// add
 	addFields    []formField
 	addFocus     int
 	addStatusIdx int
-	addTags      []string
-	addTagBuf    string
-	addApplies   []string
-	addApplyBuf  string
+	addTags       []string
+	addTagInput   textinput.Model
+	addApplies    []string
+	addApplyInput textinput.Model
 	addMeta      MetadataEditor
 	addSaving    bool
 	addErr       string
@@ -94,10 +95,10 @@ type ProtocolsModel struct {
 	editFields    []formField
 	editFocus     int
 	editStatusIdx int
-	editTags      []string
-	editTagBuf    string
-	editApplies   []string
-	editApplyBuf  string
+	editTags       []string
+	editTagInput   textinput.Model
+	editApplies    []string
+	editApplyInput textinput.Model
 	editMeta      MetadataEditor
 	editSaving    bool
 }
@@ -105,9 +106,14 @@ type ProtocolsModel struct {
 // NewProtocolsModel builds the protocols UI model.
 func NewProtocolsModel(client *api.Client) ProtocolsModel {
 	return ProtocolsModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(12),
+		client:         client,
+		spinner:        components.NewNebulaSpinner(),
+		searchInput:    components.NewNebulaTextInput("Filter protocols..."),
+		addTagInput:    components.NewNebulaTextInput("Add tag..."),
+		addApplyInput:  components.NewNebulaTextInput("Applies to..."),
+		editTagInput:   components.NewNebulaTextInput("Edit tag..."),
+		editApplyInput: components.NewNebulaTextInput("Applies to..."),
+		list:           components.NewList(12),
 		view:   protocolsViewList,
 		addFields: []formField{
 			{label: "Name"},
@@ -142,23 +148,23 @@ func (m ProtocolsModel) Init() tea.Cmd {
 	m.detail = nil
 	m.detailRels = nil
 	m.filtering = false
-	m.searchBuf = ""
+	m.searchInput.Reset()
 	m.modeFocus = false
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(protocolStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addApplies = nil
-	m.addApplyBuf = ""
+	m.addApplyInput.Reset()
 	m.addMeta.Reset()
 	m.addSaving = false
 	m.addErr = ""
 	m.editFocus = 0
 	m.editStatusIdx = statusIndex(protocolStatusOptions, "active")
 	m.editTags = nil
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editApplies = nil
-	m.editApplyBuf = ""
+	m.editApplyInput.Reset()
 	m.editMeta.Reset()
 	m.editSaving = false
 	return tea.Batch(m.loadProtocols, m.spinner.Tick)
@@ -228,7 +234,7 @@ func (m ProtocolsModel) View() string {
 		return m.editMeta.Render(m.width)
 	}
 	if m.filtering && m.view == protocolsViewList {
-		return components.Indent(components.InputDialog("Filter Protocols", m.searchBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Protocols", m.searchInput.View()), 1)
 	}
 	switch m.view {
 	case protocolsViewAdd:
@@ -269,7 +275,7 @@ func (m ProtocolsModel) loadProtocols() tea.Msg {
 
 // applySearch handles apply search.
 func (m *ProtocolsModel) applySearch() {
-	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
+	query := strings.TrimSpace(strings.ToLower(m.searchInput.Value()))
 	if query == "" {
 		m.items = append([]api.Protocol{}, m.allItems...)
 	} else {
@@ -374,15 +380,12 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.searchInput.Focus()
 		return m, nil
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applySearch()
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		m.searchInput, _ = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applySearch()
 		}
 	}
@@ -394,20 +397,20 @@ func (m ProtocolsModel) handleFilterInput(msg tea.KeyPressMsg) (ProtocolsModel, 
 	switch {
 	case isEnter(msg):
 		m.filtering = false
+		m.searchInput.Blur()
 	case isBack(msg):
 		m.filtering = false
-		m.searchBuf = ""
+		m.searchInput.Reset()
+		m.searchInput.Blur()
 		m.applySearch()
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applySearch()
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applySearch()
 		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -515,8 +518,8 @@ func (m ProtocolsModel) renderList() string {
 
 	title := "Protocols"
 	countLine := fmt.Sprintf("%d total", len(m.items))
-	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
+	if strings.TrimSpace(m.searchInput.Value()) != "" {
+		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchInput.Value()))
 	}
 	countLine = MutedStyle.Render(countLine)
 
@@ -741,9 +744,9 @@ func (m ProtocolsModel) renderAdd() string {
 		case protoFieldStatus:
 			value = protocolStatusOptions[m.addStatusIdx]
 		case protoFieldTags:
-			value = m.renderTags(m.addTags, m.addTagBuf)
+			value = m.renderTags(m.addTags, m.addTagInput.Value())
 		case protoFieldApplies:
-			value = m.renderApplies(m.addApplies, m.addApplyBuf)
+			value = m.renderApplies(m.addApplies, m.addApplyInput.Value())
 		case protoFieldMetadata:
 			value = renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
 		default:
@@ -905,9 +908,9 @@ func (m ProtocolsModel) renderEdit() string {
 		case protoEditFieldStatus:
 			value = protocolStatusOptions[m.editStatusIdx]
 		case protoEditFieldTags:
-			value = m.renderTags(m.editTags, m.editTagBuf)
+			value = m.renderTags(m.editTags, m.editTagInput.Value())
 		case protoEditFieldApplies:
-			value = m.renderApplies(m.editApplies, m.editApplyBuf)
+			value = m.renderApplies(m.editApplies, m.editApplyInput.Value())
 		case protoEditFieldMetadata:
 			value = renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
 		default:
@@ -975,9 +978,9 @@ func (m ProtocolsModel) renderApplies(items []string, buf string) string {
 
 // commitTag handles commit tag.
 func (m *ProtocolsModel) commitTag(addMode bool) {
-	buf := strings.TrimSpace(m.addTagBuf)
+	buf := strings.TrimSpace(m.addTagInput.Value())
 	if !addMode {
-		buf = strings.TrimSpace(m.editTagBuf)
+		buf = strings.TrimSpace(m.editTagInput.Value())
 	}
 	if buf == "" {
 		return
@@ -985,26 +988,26 @@ func (m *ProtocolsModel) commitTag(addMode bool) {
 	tag := normalizeTag(buf)
 	if tag == "" {
 		if addMode {
-			m.addTagBuf = ""
+			m.addTagInput.Reset()
 		} else {
-			m.editTagBuf = ""
+			m.editTagInput.Reset()
 		}
 		return
 	}
 	if addMode {
 		m.addTags = append(m.addTags, tag)
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 	} else {
 		m.editTags = append(m.editTags, tag)
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 	}
 }
 
 // commitApply handles commit apply.
 func (m *ProtocolsModel) commitApply(addMode bool) {
-	buf := strings.TrimSpace(m.addApplyBuf)
+	buf := strings.TrimSpace(m.addApplyInput.Value())
 	if !addMode {
-		buf = strings.TrimSpace(m.editApplyBuf)
+		buf = strings.TrimSpace(m.editApplyInput.Value())
 	}
 	if buf == "" {
 		return
@@ -1012,65 +1015,37 @@ func (m *ProtocolsModel) commitApply(addMode bool) {
 	item := strings.TrimSpace(buf)
 	if addMode {
 		m.addApplies = append(m.addApplies, item)
-		m.addApplyBuf = ""
+		m.addApplyInput.Reset()
 	} else {
 		m.editApplies = append(m.editApplies, item)
-		m.editApplyBuf = ""
+		m.editApplyInput.Reset()
 	}
 }
 
 // handleTagInput handles handle tag input.
 func (m ProtocolsModel) handleTagInput(msg tea.KeyPressMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
-	if isKey(msg, "backspace", "delete") {
-		if addMode {
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			}
-		} else {
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			}
-		}
-		return m, nil
-	}
 	if isKey(msg, "enter", ",", " ", "space") {
 		m.commitTag(addMode)
 		return m, nil
 	}
-	if ch := keyText(msg); ch != "" {
-		if addMode {
-			m.addTagBuf += ch
-		} else {
-			m.editTagBuf += ch
-		}
+	if addMode {
+		m.addTagInput, _ = m.addTagInput.Update(msg)
+	} else {
+		m.editTagInput, _ = m.editTagInput.Update(msg)
 	}
 	return m, nil
 }
 
 // handleApplyInput handles handle apply input.
 func (m ProtocolsModel) handleApplyInput(msg tea.KeyPressMsg, addMode bool) (ProtocolsModel, tea.Cmd) {
-	if isKey(msg, "backspace", "delete") {
-		if addMode {
-			if len(m.addApplyBuf) > 0 {
-				m.addApplyBuf = m.addApplyBuf[:len(m.addApplyBuf)-1]
-			}
-		} else {
-			if len(m.editApplyBuf) > 0 {
-				m.editApplyBuf = m.editApplyBuf[:len(m.editApplyBuf)-1]
-			}
-		}
-		return m, nil
-	}
 	if isKey(msg, "enter", ",", " ", "space") {
 		m.commitApply(addMode)
 		return m, nil
 	}
-	if ch := keyText(msg); ch != "" {
-		if addMode {
-			m.addApplyBuf += ch
-		} else {
-			m.editApplyBuf += ch
-		}
+	if addMode {
+		m.addApplyInput, _ = m.addApplyInput.Update(msg)
+	} else {
+		m.editApplyInput, _ = m.editApplyInput.Update(msg)
 	}
 	return m, nil
 }

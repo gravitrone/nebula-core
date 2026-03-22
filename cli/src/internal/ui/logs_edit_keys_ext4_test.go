@@ -50,9 +50,9 @@ func TestLogsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 	// tags rune append + commit via comma branch.
 	updated.editFocus = logEditFieldTags
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
-	assert.Equal(t, "x", updated.editTagBuf)
+	assert.Equal(t, "x", updated.editTagInput.Value())
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: ',', Text: ","})
-	assert.Empty(t, updated.editTagBuf)
+	assert.Empty(t, updated.editTagInput.Value())
 	assert.Contains(t, updated.editTags, "x")
 
 	// back key branch exits edit view.

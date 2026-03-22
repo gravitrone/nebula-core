@@ -85,7 +85,7 @@ func TestLogsViewCoversEditorAndFilterBranches(t *testing.T) {
 	model.editMeta.Active = false
 
 	model.filtering = true
-	model.searchBuf = "type:workout"
+	model.searchInput.SetValue("type:workout")
 	assert.Contains(t, components.SanitizeText(model.View()), "Filter Logs")
 	assert.Contains(t, components.SanitizeText(model.View()), "type:workout")
 
@@ -198,54 +198,54 @@ func TestLogsHandleFilterInputCoversSpaceBackspaceEnterAndBack(t *testing.T) {
 
 	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 'w', Text: "w"})
-	assert.Equal(t, "w", updated.searchBuf)
+	assert.Equal(t, "w", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
 
 	updated.filtering = true
-	updated.searchBuf = "x"
+	updated.searchInput.SetValue("x")
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.Equal(t, "", updated.searchSuggest)
 }
 
 func TestLogsCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
 	model := NewLogsModel(nil)
 
-	model.addTagBuf = "   "
+	model.addTagInput.SetValue("   ")
 	model.commitAddTag()
 	assert.Empty(t, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.addTagBuf = "#"
+	model.addTagInput.SetValue("#")
 	model.commitAddTag()
 	assert.Empty(t, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.addTagBuf = "alpha"
+	model.addTagInput.SetValue("alpha")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha"}, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.addTagBuf = "alpha"
+	model.addTagInput.SetValue("alpha")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha"}, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.addTagBuf = "beta tag"
+	model.addTagInput.SetValue("beta tag")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha", "beta-tag"}, model.addTags)
 
 	model.addTags = nil
-	model.addTagBuf = ""
+	model.addTagInput.SetValue("")
 	assert.Equal(t, "-", model.renderAddTags(false))
 
 	model.addTags = []string{"alpha"}
@@ -253,7 +253,7 @@ func TestLogsCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
 	assert.Contains(t, out, "[alpha]")
 	assert.NotContains(t, out, "█")
 
-	model.addTagBuf = "beta"
+	model.addTagInput.SetValue("beta")
 	out = stripANSI(model.renderAddTags(false))
 	assert.Contains(t, out, "[alpha]")
 	assert.Contains(t, out, "beta")

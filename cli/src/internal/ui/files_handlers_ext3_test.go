@@ -129,7 +129,7 @@ func TestFilesHandleEditKeysExtendedBranches(t *testing.T) {
 	assert.Equal(t, "abc", updated.editChecksum)
 
 	updated.editFocus = fileFieldTags
-	updated.editTagBuf = "Z"
+	updated.editTagInput.SetValue("Z")
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, []string{"z"}, updated.editTags)
 

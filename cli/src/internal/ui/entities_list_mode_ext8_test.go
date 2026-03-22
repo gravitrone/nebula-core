@@ -54,10 +54,10 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 	t.Run("delegates to bulk prompt and filter handlers", func(t *testing.T) {
 		model := newBase()
 		model.bulkPrompt = "Bulk Tags (add:tag1,tag2)"
-		model.bulkBuf = "abc"
+		model.bulkInput.SetValue("abc")
 		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Nil(t, cmd)
-		assert.Equal(t, "ab", next.bulkBuf)
+		assert.Equal(t, "ab", next.bulkInput.Value())
 
 		model = newBase()
 		model.filtering = true
@@ -92,7 +92,7 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		assert.True(t, next.modeFocus)
 
 		next.modeFocus = false
-		next.searchBuf = ""
+		next.searchInput.SetValue("")
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
 		assert.True(t, next.isBulkSelected(0))
@@ -106,47 +106,47 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 
 	t.Run("search input and command-return branches", func(t *testing.T) {
 		model := newBase()
-		model.searchBuf = "al"
+		model.searchInput.SetValue("al")
 		model.searchSuggest = "alpha"
 
 		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 		require.NotNil(t, cmd)
 		assert.True(t, next.loading)
-		assert.Equal(t, "alpha", next.searchBuf)
+		assert.Equal(t, "alpha", next.searchInput.Value())
 
-		next.searchBuf = "alp"
+		next.searchInput.SetValue("alp")
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.NotNil(t, cmd)
-		assert.Equal(t, "al", next.searchBuf)
+		assert.Equal(t, "al", next.searchInput.Value())
 
-		next.searchBuf = "alpha"
+		next.searchInput.SetValue("alpha")
 		next.searchSuggest = "alpha"
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		require.NotNil(t, cmd)
-		assert.Equal(t, "", next.searchBuf)
+		assert.Equal(t, "", next.searchInput.Value())
 		assert.Equal(t, "", next.searchSuggest)
 
-		next.searchBuf = "x"
+		next.searchInput.SetValue("x")
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		require.NotNil(t, cmd)
-		assert.Equal(t, "x ", next.searchBuf)
+		assert.Equal(t, "x ", next.searchInput.Value())
 
-		next.searchBuf = "query"
+		next.searchInput.SetValue("query")
 		next.searchSuggest = "query-suggest"
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 		require.NotNil(t, cmd)
-		assert.Equal(t, "", next.searchBuf)
+		assert.Equal(t, "", next.searchInput.Value())
 		assert.Equal(t, "", next.searchSuggest)
 
-		next.searchBuf = ""
+		next.searchInput.SetValue("")
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
 		assert.True(t, next.isBulkSelected(next.list.Selected()))
 
-		next.searchBuf = ""
+		next.searchInput.SetValue("")
 		next, cmd = next.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 		assert.Nil(t, cmd)
-		assert.Equal(t, "", next.searchBuf)
+		assert.Equal(t, "", next.searchInput.Value())
 	})
 
 	t.Run("bulk action prompt and clear branches", func(t *testing.T) {
@@ -175,11 +175,11 @@ func TestEntitiesHandleListKeysBranchMatrix(t *testing.T) {
 		model := newBase()
 		next, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 		assert.Nil(t, cmd)
-		assert.Equal(t, "", next.searchBuf)
+		assert.Equal(t, "", next.searchInput.Value())
 
 		next, cmd = model.handleListKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
 		require.NotNil(t, cmd)
 		assert.True(t, next.loading)
-		assert.Equal(t, "z", next.searchBuf)
+		assert.Equal(t, "z", next.searchInput.Value())
 	})
 }

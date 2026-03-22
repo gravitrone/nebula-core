@@ -10,25 +10,25 @@ func TestLogsCommitEditTagBranchMatrix(t *testing.T) {
 	model := NewLogsModel(nil)
 
 	model.editTags = []string{"alpha"}
-	model.editTagBuf = "   "
+	model.editTagInput.SetValue("   ")
 	model.commitEditTag()
 	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
-	model.editTagBuf = "#"
+	model.editTagInput.SetValue("#")
 	model.commitEditTag()
 	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
-	model.editTagBuf = "alpha"
+	model.editTagInput.SetValue("alpha")
 	model.commitEditTag()
 	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
-	model.editTagBuf = "beta tag"
+	model.editTagInput.SetValue("beta tag")
 	model.commitEditTag()
 	assert.Equal(t, []string{"alpha", "beta-tag"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 }
 
 func TestLogsRenderEditTagsBranchMatrix(t *testing.T) {
@@ -41,7 +41,7 @@ func TestLogsRenderEditTagsBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "[alpha]")
 	assert.NotContains(t, out, "█")
 
-	model.editTagBuf = "beta"
+	model.editTagInput.SetValue("beta")
 	out = stripANSI(model.renderEditTags(false))
 	assert.Contains(t, out, "[alpha]")
 	assert.Contains(t, out, "beta")
@@ -52,7 +52,7 @@ func TestLogsRenderEditTagsBranchMatrix(t *testing.T) {
 	assert.Contains(t, out, "beta")
 	assert.Contains(t, out, "█")
 
-	model.editTagBuf = ""
+	model.editTagInput.SetValue("")
 	out = stripANSI(model.renderEditTags(true))
 	assert.Contains(t, out, "[alpha]")
 	assert.Contains(t, out, "█")

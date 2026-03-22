@@ -96,15 +96,15 @@ func TestHistoryConfirmRevertReturnsErrMsgOnAPIError(t *testing.T) {
 func TestHistoryHandleFilterKeysBranchMatrix(t *testing.T) {
 	model := NewHistoryModel(nil)
 	model.filtering = true
-	model.filterBuf = "table:entities"
+	model.filterInput.SetValue("table:entities")
 
 	updated, cmd := model.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Nil(t, cmd)
-	assert.Equal(t, "table:entitie", updated.filterBuf)
+	assert.Equal(t, "table:entitie", updated.filterInput.Value())
 
 	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: 's', Text: "s"})
 	assert.Nil(t, cmd)
-	assert.Equal(t, "table:entities", updated.filterBuf)
+	assert.Equal(t, "table:entities", updated.filterInput.Value())
 
 	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -113,20 +113,20 @@ func TestHistoryHandleFilterKeysBranchMatrix(t *testing.T) {
 	assert.True(t, updated.loading)
 
 	updated.filtering = true
-	updated.filterBuf = "actor:alxx"
+	updated.filterInput.SetValue("actor:alxx")
 	updated.filter = auditFilter{tableName: "entities"}
 	updated.loading = false
 	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.filterBuf)
+	assert.Equal(t, "", updated.filterInput.Value())
 	assert.Equal(t, auditFilter{}, updated.filter)
 	assert.True(t, updated.loading)
 
-	updated.filterBuf = ""
+	updated.filterInput.SetValue("")
 	updated, cmd = updated.handleFilterKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Nil(t, cmd)
-	assert.Equal(t, "", updated.filterBuf)
+	assert.Equal(t, "", updated.filterInput.Value())
 }
 
 func TestHistoryHandleScopeAndActorKeysBranchMatrix(t *testing.T) {

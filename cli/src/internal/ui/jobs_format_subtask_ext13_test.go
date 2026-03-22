@@ -32,24 +32,24 @@ func TestJobsHandleSubtaskInputTypingBackspaceAndEmptyEnter(t *testing.T) {
 
 	updated, cmd := model.handleSubtaskInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.subtaskBuf)
+	assert.Equal(t, "a", updated.subtaskInput.Value())
 
 	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a ", updated.subtaskBuf)
+	assert.Equal(t, "a ", updated.subtaskInput.Value())
 
 	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.subtaskBuf)
+	assert.Equal(t, "a", updated.subtaskInput.Value())
 
 	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.subtaskBuf)
+	assert.Equal(t, "", updated.subtaskInput.Value())
 
 	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.True(t, updated.creatingSubtask)
-	assert.Equal(t, "", updated.subtaskBuf)
+	assert.Equal(t, "", updated.subtaskInput.Value())
 }
 
 func TestFormatJobLineIncludesPriority(t *testing.T) {
@@ -71,20 +71,20 @@ func TestJobsHandleLinkInputTypingBackspaceAndBack(t *testing.T) {
 
 	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "e", updated.linkBuf)
+	assert.Equal(t, "e", updated.linkInput.Value())
 
 	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "e ", updated.linkBuf)
+	assert.Equal(t, "e ", updated.linkInput.Value())
 
 	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "e", updated.linkBuf)
+	assert.Equal(t, "e", updated.linkInput.Value())
 
 	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkBuf)
+	assert.Equal(t, "", updated.linkInput.Value())
 }
 
 func TestJobsToggleSelectAllNoItemsNoop(t *testing.T) {
@@ -97,28 +97,28 @@ func TestJobsToggleSelectAllNoItemsNoop(t *testing.T) {
 func TestJobsHandleSubtaskInputBackAndNoopKey(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.creatingSubtask = true
-	model.subtaskBuf = "child"
+	model.subtaskInput.SetValue("child")
 
 	updated, cmd := model.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.creatingSubtask)
-	assert.Equal(t, "", updated.subtaskBuf)
+	assert.Equal(t, "", updated.subtaskInput.Value())
 
 	updated.creatingSubtask = true
-	updated.subtaskBuf = "x"
+	updated.subtaskInput.SetValue("x")
 	updated, cmd = updated.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.True(t, updated.creatingSubtask)
-	assert.Equal(t, "x", updated.subtaskBuf)
+	assert.Equal(t, "x", updated.subtaskInput.Value())
 }
 
 func TestJobsHandleLinkInputNoopKeyKeepsBuffer(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.linkingRel = true
-	model.linkBuf = "entity ent-1 owns"
+	model.linkInput.SetValue("entity ent-1 owns")
 
 	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkingRel)
-	assert.Equal(t, "entity ent-1 owns", updated.linkBuf)
+	assert.Equal(t, "entity ent-1 owns", updated.linkInput.Value())
 }

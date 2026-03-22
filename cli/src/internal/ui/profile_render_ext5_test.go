@@ -14,7 +14,7 @@ import (
 func TestProfileUpdateRoutesPendingLimitInputFromMainUpdate(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.editPendingLimit = true
-	model.pendingLimitBuf = ""
+	model.pendingLimitInput.SetValue("")
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -63,7 +63,7 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editPendingLimit)
-	assert.Equal(t, "500", updated.pendingLimitBuf)
+	assert.Equal(t, "500", updated.pendingLimitInput.Value())
 
 	desc := "scope desc"
 	updated.section = 2
@@ -93,7 +93,7 @@ func TestProfileUpdateNavigationAndTaxonomyAdditionalBranches(t *testing.T) {
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptFilter, updated.taxPromptMode)
-	assert.Equal(t, "pub", updated.taxPromptBuf)
+	assert.Equal(t, "pub", updated.taxPromptInput.Value())
 }
 
 func TestProfileViewAndRenderKeysAdditionalBranches(t *testing.T) {

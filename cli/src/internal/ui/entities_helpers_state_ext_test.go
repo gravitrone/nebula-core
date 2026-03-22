@@ -16,33 +16,33 @@ func TestEntitiesAddTagScopeHelpersBranchMatrix(t *testing.T) {
 	assert.Contains(t, stripANSI(model.renderAddTags(true)), "█")
 
 	model.addTags = []string{"alpha"}
-	model.addTagBuf = "beta"
+	model.addTagInput.SetValue("beta")
 	assert.Contains(t, stripANSI(model.renderAddTags(false)), "alpha")
 	assert.Contains(t, stripANSI(model.renderAddTags(false)), "beta")
 	assert.Contains(t, stripANSI(model.renderAddTags(true)), "█")
 
-	model.addTagBuf = "   "
+	model.addTagInput.SetValue("   ")
 	model.commitAddTag()
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.addTagBuf = "ALPHA"
+	model.addTagInput.SetValue("ALPHA")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha"}, model.addTags)
 
-	model.addTagBuf = "gamma_tag"
+	model.addTagInput.SetValue("gamma_tag")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha", "gamma-tag"}, model.addTags)
 
-	model.addScopeBuf = "  "
+	model.addScopeInput.SetValue("  ")
 	model.commitAddScope()
-	assert.Equal(t, "", model.addScopeBuf)
+	assert.Equal(t, "", model.addScopeInput.Value())
 
 	model.addScopes = []string{"public"}
-	model.addScopeBuf = " PUBLIC "
+	model.addScopeInput.SetValue(" PUBLIC ")
 	model.commitAddScope()
 	assert.Equal(t, []string{"public"}, model.addScopes)
 
-	model.addScopeBuf = "sensitive"
+	model.addScopeInput.SetValue("sensitive")
 	model.commitAddScope()
 	assert.Equal(t, []string{"public", "sensitive"}, model.addScopes)
 }
@@ -53,24 +53,24 @@ func TestEntitiesSearchInputAndBulkSelectionBranchMatrix(t *testing.T) {
 
 	updated, cmd := model.handleSearchInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.searchBuf)
+	assert.Equal(t, "a", updated.searchInput.Value())
 
 	updated, _ = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "a ", updated.searchBuf)
+	assert.Equal(t, "a ", updated.searchInput.Value())
 
 	updated, _ = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "a", updated.searchBuf)
+	assert.Equal(t, "a", updated.searchInput.Value())
 
 	updated, _ = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, entitiesViewList, updated.view)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated.view = entitiesViewSearch
-	updated.searchBuf = "  alpha "
+	updated.searchInput.SetValue("  alpha ")
 	updated, cmd = updated.handleSearchInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, entitiesViewList, updated.view)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.True(t, updated.loading)
 
 	updated.items = []api.Entity{

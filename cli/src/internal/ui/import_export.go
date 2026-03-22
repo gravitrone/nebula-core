@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -56,7 +57,7 @@ type ImportExportModel struct {
 
 	resourceIndex int
 	formatIndex   int
-	path          string
+	pathInput     textinput.Model
 	summary       string
 	details       []string
 	errText       string
@@ -69,8 +70,9 @@ type ImportExportModel struct {
 // NewImportExportModel handles new import export model.
 func NewImportExportModel(client *api.Client) ImportExportModel {
 	return ImportExportModel{
-		client:  client,
-		formats: []string{"json", "csv"},
+		client:    client,
+		pathInput: components.NewNebulaTextInput("Enter file path..."),
+		formats:   []string{"json", "csv"},
 	}
 }
 
@@ -80,7 +82,7 @@ func (m *ImportExportModel) Start(mode importExportMode) {
 	m.step = stepResource
 	m.resourceIndex = 0
 	m.formatIndex = 0
-	m.path = ""
+	m.pathInput.Reset()
 	m.summary = ""
 	m.details = nil
 	m.errText = ""
@@ -131,7 +133,7 @@ func (m ImportExportModel) View() string {
 		if m.mode == exportMode {
 			title = "Export file path"
 		}
-		return components.InputDialog(title, m.path)
+		return components.TextInputDialog(title, m.pathInput.View())
 	case stepRunning:
 		label := "Importing..."
 		if m.mode == exportMode {
@@ -232,6 +234,7 @@ func (m ImportExportModel) handleFormatKeys(msg tea.KeyPressMsg) (ImportExportMo
 		}
 	case isEnter(msg):
 		m.step = stepPath
+		m.pathInput.Focus()
 	case isBack(msg):
 		m.step = stepResource
 	}
@@ -243,20 +246,20 @@ func (m ImportExportModel) handlePathKeys(msg tea.KeyPressMsg) (ImportExportMode
 	switch {
 	case isBack(msg):
 		m.step = stepFormat
+		m.pathInput.Blur()
+		return m, nil
 	case isEnter(msg):
-		if strings.TrimSpace(m.path) == "" {
+		if strings.TrimSpace(m.pathInput.Value()) == "" {
 			return m, nil
 		}
 		m.step = stepRunning
+		m.pathInput.Blur()
 		return m, m.run()
-	case isKey(msg, "backspace"):
-		if len(m.path) > 0 {
-			m.path = m.path[:len(m.path)-1]
-		}
-	case msg.Text != "":
-		m.path += msg.Text
+	default:
+		var cmd tea.Cmd
+		m.pathInput, cmd = m.pathInput.Update(msg)
+		return m, cmd
 	}
-	return m, nil
 }
 
 // run runs run.
@@ -264,7 +267,7 @@ func (m ImportExportModel) run() tea.Cmd {
 	mode := m.mode
 	resource := m.resources[m.resourceIndex].value
 	format := m.formats[m.formatIndex]
-	path := m.path
+	path := m.pathInput.Value()
 	client := m.client
 
 	return func() tea.Msg {

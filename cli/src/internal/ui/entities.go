@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -113,7 +114,7 @@ type EntitiesModel struct {
 	view           entitiesView
 	modeFocus      bool
 	filtering      bool
-	searchBuf      string
+	searchInput    textinput.Model
 	searchSuggest  string
 	filterFacet    entitiesFilterFacet
 	filterCursor   [entitiesFilterFacetCount]int
@@ -131,19 +132,19 @@ type EntitiesModel struct {
 	errText          string
 	detailContext    []api.Context
 	contextLoading   bool
-	contextLinking   bool
-	contextLinkBuf   string
-	contextCreating  bool
-	contextCreateBuf string
+	contextLinking     bool
+	contextLinkInput   textinput.Model
+	contextCreating    bool
+	contextCreateInput textinput.Model
 
 	// add
 	addFields         []formField
 	addFocus          int
 	addStatusIdx      int
 	addTags           []string
-	addTagBuf         string
+	addTagInput       textinput.Model
 	addScopes         []string
-	addScopeBuf       string
+	addScopeInput     textinput.Model
 	addScopeIdx       int
 	addScopeSelecting bool
 	addSaving         bool
@@ -152,10 +153,10 @@ type EntitiesModel struct {
 	// edit
 	editFocus          int
 	editTags           []string
-	editTagBuf         string
+	editTagInput       textinput.Model
 	editStatusIdx      int
 	editScopes         []string
-	editScopeBuf       string
+	editScopeInput     textinput.Model
 	editScopeIdx       int
 	editScopeSelecting bool
 	editScopesDirty    bool
@@ -182,23 +183,23 @@ type EntitiesModel struct {
 	historyLoading bool
 
 	// relate flow
-	relateQuery   string
+	relateQueryInput textinput.Model
 	relateResults []api.Entity
 	relateList    *components.List
 	relateTarget  *api.Entity
-	relateType    string
+	relateTypeInput textinput.Model
 	relateLoading bool
 
 	// relationship edit
 	relEditFocus     int
 	relEditStatusIdx int
-	relEditBuf       string
+	relEditInput     textinput.Model
 	relEditID        string
 
 	// bulk operations
 	bulkSelected map[string]bool
 	bulkPrompt   string
-	bulkBuf      string
+	bulkInput    textinput.Model
 	bulkRunning  bool
 	bulkTarget   bulkTarget
 }
@@ -206,9 +207,20 @@ type EntitiesModel struct {
 // NewEntitiesModel builds the entities UI model.
 func NewEntitiesModel(client *api.Client) EntitiesModel {
 	return EntitiesModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(15),
+		client:             client,
+		spinner:            components.NewNebulaSpinner(),
+		searchInput:        components.NewNebulaTextInput("Search entities..."),
+		addTagInput:        components.NewNebulaTextInput("Add tag..."),
+		addScopeInput:      components.NewNebulaTextInput("Add scope..."),
+		editTagInput:       components.NewNebulaTextInput("Edit tag..."),
+		editScopeInput:     components.NewNebulaTextInput("Edit scope..."),
+		relateQueryInput:   components.NewNebulaTextInput("Search entity..."),
+		relateTypeInput:    components.NewNebulaTextInput("Relationship type..."),
+		relEditInput:       components.NewNebulaTextInput("Properties JSON..."),
+		bulkInput:          components.NewNebulaTextInput("Values..."),
+		contextLinkInput:   components.NewNebulaTextInput("Context ID..."),
+		contextCreateInput: components.NewNebulaTextInput("Context title..."),
+		list:               components.NewList(15),
 		addFields: []formField{
 			{label: "Name"},
 			{label: "Type"},
@@ -234,7 +246,7 @@ func (m EntitiesModel) Init() tea.Cmd {
 	m.view = entitiesViewList
 	m.modeFocus = false
 	m.filtering = false
-	m.searchBuf = ""
+	m.searchInput.Reset()
 	m.searchSuggest = ""
 	m.filterFacet = entitiesFilterFacetType
 	m.filterCursor = [entitiesFilterFacetCount]int{}
@@ -248,15 +260,15 @@ func (m EntitiesModel) Init() tea.Cmd {
 	m.detailContext = nil
 	m.contextLoading = false
 	m.contextLinking = false
-	m.contextLinkBuf = ""
+	m.contextLinkInput.Reset()
 	m.contextCreating = false
-	m.contextCreateBuf = ""
+	m.contextCreateInput.Reset()
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(entityStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addScopes = nil
-	m.addScopeBuf = ""
+	m.addScopeInput.Reset()
 	m.addScopeIdx = 0
 	m.addScopeSelecting = false
 	m.addSaving = false
@@ -358,7 +370,7 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 		m.bulkRunning = false
 		m.clearBulkSelection()
 		m.loading = true
-		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
+		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchInput.Value())), m.spinner.Tick)
 	case entityScopesLoadedMsg:
 		if m.scopeNames == nil {
 			m.scopeNames = map[string]string{}
@@ -415,7 +427,7 @@ func (m EntitiesModel) Update(msg tea.Msg) (EntitiesModel, tea.Cmd) {
 // View handles view.
 func (m EntitiesModel) View() string {
 	if m.view == entitiesViewList && m.bulkPrompt != "" {
-		return components.Indent(components.InputDialog(m.bulkPrompt, m.bulkBuf), 1)
+		return components.Indent(components.InputDialog(m.bulkPrompt, m.bulkInput.Value()), 1)
 	}
 	if m.view == entitiesViewList && m.filtering {
 		return components.Indent(m.renderFilterPicker(), 1)
@@ -436,7 +448,7 @@ func (m EntitiesModel) View() string {
 	}
 	switch m.view {
 	case entitiesViewSearch:
-		return components.Indent(components.InputDialog("Search Entities", m.searchBuf), 1)
+		return components.Indent(components.TextInputDialog("Search Entities", m.searchInput.View()), 1)
 	case entitiesViewEdit:
 		return m.renderEdit()
 	case entitiesViewConfirm:
@@ -449,10 +461,10 @@ func (m EntitiesModel) View() string {
 		return m.renderRelEdit()
 	case entitiesViewDetail:
 		if m.contextLinking {
-			return components.Indent(components.InputDialog("Link context id", m.contextLinkBuf), 1)
+			return components.Indent(components.TextInputDialog("Link context id", m.contextLinkInput.View()), 1)
 		}
 		if m.contextCreating {
-			return components.Indent(components.InputDialog("New context title", m.contextCreateBuf), 1)
+			return components.Indent(components.TextInputDialog("New context title", m.contextCreateInput.View()), 1)
 		}
 		body := m.renderDetail()
 		modeLine := m.renderModeLine()
@@ -494,13 +506,13 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 			m.list.Up()
 		}
 	case isSpace(msg):
-		if m.searchBuf == "" {
+		if m.searchInput.Value() == "" {
 			m.toggleBulkSelection(m.list.Selected())
 			return m, nil
 		}
-		m.searchBuf += " "
+		m.searchInput, _ = m.searchInput.Update(msg)
 		m.loading = true
-		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
+		return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchInput.Value())), m.spinner.Tick)
 	case isEnter(msg):
 		if idx := m.list.Selected(); idx < len(m.items) {
 			item := m.items[idx]
@@ -519,27 +531,14 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 		m.refreshFilterSets()
 		return m, nil
 	case isKey(msg, "tab"):
-		if m.searchSuggest != "" && strings.TrimSpace(m.searchBuf) != strings.TrimSpace(m.searchSuggest) {
-			m.searchBuf = m.searchSuggest
+		if m.searchSuggest != "" && strings.TrimSpace(m.searchInput.Value()) != strings.TrimSpace(m.searchSuggest) {
+			m.searchInput.SetValue(m.searchSuggest)
 			m.loading = true
-			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
-		}
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.loading = true
-			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
-			m.searchSuggest = ""
-			m.loading = true
-			return m, tea.Batch(m.loadEntities(""), m.spinner.Tick)
+			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchInput.Value())), m.spinner.Tick)
 		}
 	case isBack(msg):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
+		if m.searchInput.Value() != "" {
+			m.searchInput.Reset()
 			m.searchSuggest = ""
 			m.loading = true
 			return m, tea.Batch(m.loadEntities(""), m.spinner.Tick)
@@ -547,14 +546,16 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 	case isKey(msg, "t"):
 		if m.bulkCount() > 0 {
 			m.bulkPrompt = "Bulk Tags (add:tag1,tag2)"
-			m.bulkBuf = ""
+			m.bulkInput.Reset()
+			m.bulkInput.Focus()
 			m.bulkTarget = bulkTargetTags
 			return m, nil
 		}
 	case isKey(msg, "p"):
 		if m.bulkCount() > 0 {
 			m.bulkPrompt = "Bulk Scopes (add:scope1,scope2)"
-			m.bulkBuf = ""
+			m.bulkInput.Reset()
+			m.bulkInput.Focus()
 			m.bulkTarget = bulkTargetScopes
 			return m, nil
 		}
@@ -564,11 +565,11 @@ func (m EntitiesModel) handleListKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 			return m, nil
 		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		m.searchInput, _ = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.loading = true
-			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchBuf)), m.spinner.Tick)
+			return m, tea.Batch(m.loadEntities(strings.TrimSpace(m.searchInput.Value())), m.spinner.Tick)
 		}
 	}
 	return m, nil
@@ -1031,10 +1032,10 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cm
 	case isKey(msg, "backspace", "delete"):
 		switch m.addFocus {
 		case addFieldTags:
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			} else if len(m.addTags) > 0 {
+			if m.addTagInput.Value() == "" && len(m.addTags) > 0 {
 				m.addTags = m.addTags[:len(m.addTags)-1]
+			} else {
+				m.addTagInput, _ = m.addTagInput.Update(msg)
 			}
 		case addFieldScopes:
 			if len(m.addScopes) > 0 {
@@ -1055,10 +1056,7 @@ func (m EntitiesModel) handleAddKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.Cm
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitAddTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.addTagBuf += ch
-				}
+				m.addTagInput, _ = m.addTagInput.Update(msg)
 			}
 		case addFieldScopes:
 			if isSpace(msg) {
@@ -1191,9 +1189,9 @@ func (m *EntitiesModel) resetAddForm() {
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(entityStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addScopes = nil
-	m.addScopeBuf = ""
+	m.addScopeInput.Reset()
 	m.addScopeIdx = 0
 	m.addScopeSelecting = false
 	for i := range m.addFields {
@@ -1203,7 +1201,7 @@ func (m *EntitiesModel) resetAddForm() {
 
 // renderAddTags renders render add tags.
 func (m *EntitiesModel) renderAddTags(focused bool) string {
-	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
+	if len(m.addTags) == 0 && m.addTagInput.Value() == "" && !focused {
 		return "-"
 	}
 	var b strings.Builder
@@ -1217,15 +1215,15 @@ func (m *EntitiesModel) renderAddTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.addTagBuf != "" {
-			b.WriteString(m.addTagBuf)
+		if m.addTagInput.Value() != "" {
+			b.WriteString(m.addTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.addTagBuf != "" {
+	} else if m.addTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.addTagBuf))
+		b.WriteString(MutedStyle.Render(m.addTagInput.Value()))
 	}
 	return b.String()
 }
@@ -1237,46 +1235,46 @@ func (m *EntitiesModel) renderAddScopes(focused bool) string {
 
 // commitAddTag handles commit add tag.
 func (m *EntitiesModel) commitAddTag() {
-	raw := strings.TrimSpace(m.addTagBuf)
+	raw := strings.TrimSpace(m.addTagInput.Value())
 	if raw == "" {
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 		return
 	}
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 		return
 	}
 	for _, t := range m.addTags {
 		if t == tag {
-			m.addTagBuf = ""
+			m.addTagInput.Reset()
 			return
 		}
 	}
 	m.addTags = append(m.addTags, tag)
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 }
 
 // commitAddScope handles commit add scope.
 func (m *EntitiesModel) commitAddScope() {
-	raw := strings.TrimSpace(m.addScopeBuf)
+	raw := strings.TrimSpace(m.addScopeInput.Value())
 	if raw == "" {
-		m.addScopeBuf = ""
+		m.addScopeInput.Reset()
 		return
 	}
 	scope := normalizeScope(raw)
 	if scope == "" {
-		m.addScopeBuf = ""
+		m.addScopeInput.Reset()
 		return
 	}
 	for _, s := range m.addScopes {
 		if s == scope {
-			m.addScopeBuf = ""
+			m.addScopeInput.Reset()
 			return
 		}
 	}
 	m.addScopes = append(m.addScopes, scope)
-	m.addScopeBuf = ""
+	m.addScopeInput.Reset()
 }
 
 // renderList renders render list.
@@ -1388,8 +1386,8 @@ func (m EntitiesModel) renderList() string {
 	if selected := m.bulkCount(); selected > 0 {
 		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
 	}
-	if strings.TrimSpace(m.searchBuf) != "" {
-		query := strings.TrimSpace(m.searchBuf)
+	if strings.TrimSpace(m.searchInput.Value()) != "" {
+		query := strings.TrimSpace(m.searchInput.Value())
 		countLine = fmt.Sprintf("%s · search: %s", countLine, query)
 		if m.searchSuggest != "" && !strings.EqualFold(query, strings.TrimSpace(m.searchSuggest)) {
 			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
@@ -1470,7 +1468,7 @@ func (m EntitiesModel) renderEntityPreview(e api.Entity, width int) string {
 // updateSearchSuggest updates update search suggest.
 func (m *EntitiesModel) updateSearchSuggest() {
 	m.searchSuggest = ""
-	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
+	query := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
 	if query == "" {
 		return
 	}
@@ -1542,15 +1540,15 @@ func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyPressMsg) (EntitiesModel,
 	switch {
 	case isBack(msg):
 		m.bulkPrompt = ""
-		m.bulkBuf = ""
+		m.bulkInput.Reset()
 		return m, nil
 	case isKey(msg, "enter"):
-		spec, err := parseBulkInput(m.bulkBuf)
+		spec, err := parseBulkInput(m.bulkInput.Value())
 		if err != nil {
 			return m, func() tea.Msg { return errMsg{err} }
 		}
 		m.bulkPrompt = ""
-		m.bulkBuf = ""
+		m.bulkInput.Reset()
 		m.bulkRunning = true
 		switch m.bulkTarget {
 		case bulkTargetScopes:
@@ -1558,17 +1556,8 @@ func (m EntitiesModel) handleBulkPromptKeys(msg tea.KeyPressMsg) (EntitiesModel,
 		default:
 			return m, m.bulkUpdateTags(spec)
 		}
-	case isKey(msg, "backspace", "delete"):
-		if len(m.bulkBuf) > 0 {
-			m.bulkBuf = m.bulkBuf[:len(m.bulkBuf)-1]
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-		m.bulkBuf = ""
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			m.bulkBuf += ch
-		}
+		m.bulkInput, _ = m.bulkInput.Update(msg)
 	}
 	return m, nil
 }
@@ -1631,21 +1620,15 @@ func (m EntitiesModel) handleSearchInput(msg tea.KeyPressMsg) (EntitiesModel, te
 	switch {
 	case isBack(msg):
 		m.view = entitiesViewList
-		m.searchBuf = ""
+		m.searchInput.Reset()
 	case isEnter(msg):
-		query := strings.TrimSpace(m.searchBuf)
-		m.searchBuf = ""
+		query := strings.TrimSpace(m.searchInput.Value())
+		m.searchInput.Reset()
 		m.loading = true
 		m.view = entitiesViewList
 		return m, tea.Batch(m.loadEntities(query), m.spinner.Tick)
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.searchBuf += ch
-		}
+		m.searchInput, _ = m.searchInput.Update(msg)
 	}
 	return m, nil
 }
@@ -1664,9 +1647,9 @@ func (m EntitiesModel) handleDetailKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 		m.detailContext = nil
 		m.contextLoading = false
 		m.contextLinking = false
-		m.contextLinkBuf = ""
+		m.contextLinkInput.Reset()
 		m.contextCreating = false
-		m.contextCreateBuf = ""
+		m.contextCreateInput.Reset()
 		m.view = entitiesViewList
 	case isKey(msg, "e"):
 		m.startEdit()
@@ -1681,10 +1664,10 @@ func (m EntitiesModel) handleDetailKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 		return m, m.loadHistory()
 	case isKey(msg, "a"):
 		m.contextCreating = true
-		m.contextCreateBuf = ""
+		m.contextCreateInput.Reset()
 	case isKey(msg, "l"):
 		m.contextLinking = true
-		m.contextLinkBuf = ""
+		m.contextLinkInput.Reset()
 	case isKey(msg, "d"):
 		m.confirmKind = "entity-archive"
 		m.confirmReturn = entitiesViewDetail
@@ -1697,54 +1680,37 @@ func (m EntitiesModel) handleContextPromptKeys(msg tea.KeyPressMsg) (EntitiesMod
 	switch {
 	case isBack(msg):
 		m.contextLinking = false
-		m.contextLinkBuf = ""
+		m.contextLinkInput.Reset()
 		m.contextCreating = false
-		m.contextCreateBuf = ""
+		m.contextCreateInput.Reset()
 		return m, nil
 	case isKey(msg, "enter"):
 		if m.contextLinking {
-			value := strings.TrimSpace(m.contextLinkBuf)
+			value := strings.TrimSpace(m.contextLinkInput.Value())
 			if value == "" {
 				return m, func() tea.Msg { return errMsg{fmt.Errorf("context id is required")} }
 			}
 			m.contextLinking = false
-			m.contextLinkBuf = ""
+			m.contextLinkInput.Reset()
 			m.contextLoading = true
 			return m, m.linkContextToEntity(value)
 		}
 		if m.contextCreating {
-			title := strings.TrimSpace(m.contextCreateBuf)
+			title := strings.TrimSpace(m.contextCreateInput.Value())
 			if title == "" {
 				return m, func() tea.Msg { return errMsg{fmt.Errorf("context title is required")} }
 			}
 			m.contextCreating = false
-			m.contextCreateBuf = ""
+			m.contextCreateInput.Reset()
 			m.contextLoading = true
 			return m, m.createContextForEntity(title)
 		}
-	case isKey(msg, "backspace", "delete"):
-		if m.contextLinking && len(m.contextLinkBuf) > 0 {
-			m.contextLinkBuf = m.contextLinkBuf[:len(m.contextLinkBuf)-1]
-		}
-		if m.contextCreating && len(m.contextCreateBuf) > 0 {
-			m.contextCreateBuf = m.contextCreateBuf[:len(m.contextCreateBuf)-1]
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
+	default:
 		if m.contextLinking {
-			m.contextLinkBuf = ""
+			m.contextLinkInput, _ = m.contextLinkInput.Update(msg)
 		}
 		if m.contextCreating {
-			m.contextCreateBuf = ""
-		}
-	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if m.contextLinking {
-				m.contextLinkBuf += ch
-			}
-			if m.contextCreating {
-				m.contextCreateBuf += ch
-			}
+			m.contextCreateInput, _ = m.contextCreateInput.Update(msg)
 		}
 	}
 	return m, nil
@@ -1992,10 +1958,10 @@ func (m *EntitiesModel) startEdit() {
 	}
 	m.editFocus = editFieldTags
 	m.editTags = append([]string{}, m.detail.Tags...)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editStatusIdx = statusIndex(entityStatusOptions, m.detail.Status)
 	m.editScopes = m.scopeNamesFromIDs(m.detail.PrivacyScopeIDs)
-	m.editScopeBuf = ""
+	m.editScopeInput.Reset()
 	m.editScopeIdx = 0
 	m.editScopeSelecting = false
 	m.editScopesDirty = false
@@ -2048,10 +2014,10 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 	case isKey(msg, "backspace"):
 		switch m.editFocus {
 		case editFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
+			if m.editTagInput.Value() == "" && len(m.editTags) > 0 {
 				m.editTags = m.editTags[:len(m.editTags)-1]
+			} else {
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case editFieldScopes:
 			if len(m.editScopes) > 0 {
@@ -2066,10 +2032,7 @@ func (m EntitiesModel) handleEditKeys(msg tea.KeyPressMsg) (EntitiesModel, tea.C
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case editFieldScopes:
 			if isSpace(msg) {
@@ -2188,47 +2151,47 @@ func (m EntitiesModel) saveEdit() (EntitiesModel, tea.Cmd) {
 
 // commitEditTag handles commit edit tag.
 func (m *EntitiesModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
+	raw := strings.TrimSpace(m.editTagInput.Value())
 	if raw == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 	for _, t := range m.editTags {
 		if t == tag {
-			m.editTagBuf = ""
+			m.editTagInput.Reset()
 			return
 		}
 	}
 	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 }
 
 // commitEditScope handles commit edit scope.
 func (m *EntitiesModel) commitEditScope() {
-	raw := strings.TrimSpace(m.editScopeBuf)
+	raw := strings.TrimSpace(m.editScopeInput.Value())
 	if raw == "" {
-		m.editScopeBuf = ""
+		m.editScopeInput.Reset()
 		return
 	}
 	scope := normalizeScope(raw)
 	if scope == "" {
-		m.editScopeBuf = ""
+		m.editScopeInput.Reset()
 		return
 	}
 	for _, s := range m.editScopes {
 		if s == scope {
-			m.editScopeBuf = ""
+			m.editScopeInput.Reset()
 			return
 		}
 	}
 	m.editScopes = append(m.editScopes, scope)
-	m.editScopeBuf = ""
+	m.editScopeInput.Reset()
 	m.editScopesDirty = true
 }
 
@@ -2239,7 +2202,7 @@ func (m EntitiesModel) renderEditScopes(focused bool) string {
 
 // renderEditTags renders render edit tags.
 func (m EntitiesModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
+	if len(m.editTags) == 0 && m.editTagInput.Value() == "" && !focused {
 		return "-"
 	}
 
@@ -2254,15 +2217,15 @@ func (m EntitiesModel) renderEditTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
+		if m.editTagInput.Value() != "" {
+			b.WriteString(m.editTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
+	} else if m.editTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
+		b.WriteString(MutedStyle.Render(m.editTagInput.Value()))
 	}
 	return b.String()
 }
@@ -2501,11 +2464,11 @@ func (m EntitiesModel) renderRelationships() string {
 // --- Relate Flow ---
 
 func (m *EntitiesModel) startRelate() {
-	m.relateQuery = ""
+	m.relateQueryInput.Reset()
 	m.relateResults = nil
 	m.relateList.SetItems(nil)
 	m.relateTarget = nil
-	m.relateType = ""
+	m.relateTypeInput.Reset()
 	m.relateLoading = false
 }
 
@@ -2517,21 +2480,15 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 		case isBack(msg):
 			m.view = entitiesViewRelationships
 		case isEnter(msg):
-			query := strings.TrimSpace(m.relateQuery)
+			query := strings.TrimSpace(m.relateQueryInput.Value())
 			if query == "" {
 				return m, nil
 			}
 			m.relateLoading = true
 			m.view = entitiesViewRelateSelect
 			return m, m.loadRelateResults(query)
-		case isKey(msg, "backspace"):
-			if len(m.relateQuery) > 0 {
-				m.relateQuery = m.relateQuery[:len(m.relateQuery)-1]
-			}
 		default:
-			if ch := keyText(msg); ch != "" {
-				m.relateQuery += ch
-			}
+			m.relateQueryInput, _ = m.relateQueryInput.Update(msg)
 		}
 	case entitiesViewRelateSelect:
 		switch {
@@ -2545,7 +2502,7 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 			if idx := m.relateList.Selected(); idx < len(m.relateResults) {
 				item := m.relateResults[idx]
 				m.relateTarget = &item
-				m.relateType = ""
+				m.relateTypeInput.Reset()
 				m.view = entitiesViewRelateType
 			}
 		}
@@ -2557,21 +2514,15 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 			if m.relateTarget == nil {
 				return m, nil
 			}
-			kind := strings.TrimSpace(m.relateType)
+			kind := strings.TrimSpace(m.relateTypeInput.Value())
 			if kind == "" {
 				return m, nil
 			}
 			m.view = entitiesViewRelationships
 			m.relLoading = true
 			return m, m.createRelationship(*m.detail, *m.relateTarget, kind)
-		case isKey(msg, "backspace"):
-			if len(m.relateType) > 0 {
-				m.relateType = m.relateType[:len(m.relateType)-1]
-			}
 		default:
-			if ch := keyText(msg); ch != "" {
-				m.relateType += ch
-			}
+			m.relateTypeInput, _ = m.relateTypeInput.Update(msg)
 		}
 	}
 	return m, nil
@@ -2581,7 +2532,7 @@ func (m EntitiesModel) handleRelateKeys(msg tea.KeyPressMsg) (EntitiesModel, tea
 func (m EntitiesModel) renderRelate() string {
 	switch m.view {
 	case entitiesViewRelateSearch:
-		return components.Indent(components.InputDialog("Search Entity", m.relateQuery), 1)
+		return components.Indent(components.TextInputDialog("Search Entity", m.relateQueryInput.View()), 1)
 	case entitiesViewRelateSelect:
 		if m.relateLoading {
 			return "  " + MutedStyle.Render("Searching...")
@@ -2676,7 +2627,7 @@ func (m EntitiesModel) renderRelate() string {
 		content := countLine + "\n\n" + body + "\n"
 		return components.Indent(components.TitledBox("Select Entity", content, m.width), 1)
 	case entitiesViewRelateType:
-		return components.Indent(components.InputDialog("Relationship Type", m.relateType), 1)
+		return components.Indent(components.TextInputDialog("Relationship Type", m.relateTypeInput.View()), 1)
 	}
 	return ""
 }
@@ -2726,7 +2677,7 @@ func (m *EntitiesModel) startRelEdit() {
 	m.relEditID = rel.ID
 	m.relEditFocus = relEditFieldStatus
 	m.relEditStatusIdx = statusIndex(relationshipStatusOptions, rel.Status)
-	m.relEditBuf = compactJSON(map[string]any(rel.Properties))
+	m.relEditInput.SetValue(compactJSON(map[string]any(rel.Properties)))
 }
 
 // handleRelEditKeys handles handle rel edit keys.
@@ -2742,10 +2693,6 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyPressMsg) (EntitiesModel, te
 		m.view = entitiesViewRelationships
 	case isKey(msg, "ctrl+s"):
 		return m.saveRelEdit()
-	case isKey(msg, "backspace"):
-		if m.relEditFocus == relEditFieldProperties && len(m.relEditBuf) > 0 {
-			m.relEditBuf = m.relEditBuf[:len(m.relEditBuf)-1]
-		}
 	default:
 		switch m.relEditFocus {
 		case relEditFieldStatus:
@@ -2756,10 +2703,7 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyPressMsg) (EntitiesModel, te
 				m.relEditStatusIdx = (m.relEditStatusIdx + 1) % len(relationshipStatusOptions)
 			}
 		case relEditFieldProperties:
-			ch := keyText(msg)
-			if ch != "" {
-				m.relEditBuf += ch
-			}
+			m.relEditInput, _ = m.relEditInput.Update(msg)
 		}
 	}
 	return m, nil
@@ -2785,12 +2729,12 @@ func (m EntitiesModel) renderRelEdit() string {
 	if m.relEditFocus == relEditFieldProperties {
 		b.WriteString(SelectedStyle.Render("  Properties (JSON):"))
 		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.relEditBuf))
+		b.WriteString(NormalStyle.Render("  " + m.relEditInput.Value()))
 		b.WriteString(AccentStyle.Render("█"))
 	} else {
 		b.WriteString(MutedStyle.Render("  Properties (JSON):"))
 		b.WriteString("\n")
-		b.WriteString(NormalStyle.Render("  " + m.relEditBuf))
+		b.WriteString(NormalStyle.Render("  " + m.relEditInput.Value()))
 	}
 
 	return components.Indent(components.TitledBox("Edit Relationship", b.String(), m.width), 1)
@@ -2800,8 +2744,8 @@ func (m EntitiesModel) renderRelEdit() string {
 func (m EntitiesModel) saveRelEdit() (EntitiesModel, tea.Cmd) {
 	status := relationshipStatusOptions[m.relEditStatusIdx]
 	input := api.UpdateRelationshipInput{Status: &status}
-	if strings.TrimSpace(m.relEditBuf) != "" {
-		props, err := parseJSONMap(m.relEditBuf)
+	if strings.TrimSpace(m.relEditInput.Value()) != "" {
+		props, err := parseJSONMap(m.relEditInput.Value())
 		if err != nil {
 			m.errText = err.Error()
 			return m, nil

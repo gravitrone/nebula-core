@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -67,26 +68,26 @@ type JobsModel struct {
 	spinner          spinner.Model
 	detail           *api.Job
 	detailRels       []api.Relationship
-	filtering        bool
-	searchBuf        string
-	searchSuggest    string
-	view             jobsView
-	modeFocus        bool
-	changingSt       bool
-	statusBuf        string
-	statusTargets    []string
-	creatingSubtask  bool
-	subtaskBuf       string
-	linkingRel       bool
-	linkBuf          string
-	unlinkingRel     bool
-	unlinkBuf        string
-	detailContext    []api.Context
-	contextLoading   bool
-	contextLinking   bool
-	contextLinkBuf   string
-	contextCreating  bool
-	contextCreateBuf string
+	filtering          bool
+	searchInput        textinput.Model
+	searchSuggest      string
+	view               jobsView
+	modeFocus          bool
+	changingSt         bool
+	statusInput        textinput.Model
+	statusTargets      []string
+	creatingSubtask    bool
+	subtaskInput       textinput.Model
+	linkingRel         bool
+	linkInput          textinput.Model
+	unlinkingRel       bool
+	unlinkInput        textinput.Model
+	detailContext      []api.Context
+	contextLoading     bool
+	contextLinking     bool
+	contextLinkInput   textinput.Model
+	contextCreating    bool
+	contextCreateInput textinput.Model
 	width            int
 	height           int
 
@@ -110,11 +111,18 @@ type JobsModel struct {
 // NewJobsModel builds the jobs UI model.
 func NewJobsModel(client *api.Client) JobsModel {
 	return JobsModel{
-		client:   client,
-		spinner:  components.NewNebulaSpinner(),
-		list:     components.NewList(15),
-		selected: map[string]bool{},
-		view:     jobsViewList,
+		client:             client,
+		spinner:            components.NewNebulaSpinner(),
+		searchInput:        components.NewNebulaTextInput("Filter jobs..."),
+		statusInput:        components.NewNebulaTextInput("New status..."),
+		subtaskInput:       components.NewNebulaTextInput("Subtask title..."),
+		linkInput:          components.NewNebulaTextInput("Link target..."),
+		unlinkInput:        components.NewNebulaTextInput("Unlink target..."),
+		contextLinkInput:   components.NewNebulaTextInput("Context ID..."),
+		contextCreateInput: components.NewNebulaTextInput("Context title..."),
+		list:               components.NewList(15),
+		selected:           map[string]bool{},
+		view:               jobsViewList,
 		addFields: []formField{
 			{label: "Title"},
 			{label: "Description"},
@@ -136,7 +144,7 @@ func (m JobsModel) Init() tea.Cmd {
 	m.addSaved = false
 	m.addErr = ""
 	m.filtering = false
-	m.searchBuf = ""
+	m.searchInput.Reset()
 	m.searchSuggest = ""
 	m.selected = map[string]bool{}
 	m.statusTargets = nil
@@ -144,9 +152,9 @@ func (m JobsModel) Init() tea.Cmd {
 	m.detailContext = nil
 	m.contextLoading = false
 	m.contextLinking = false
-	m.contextLinkBuf = ""
+	m.contextLinkInput.Reset()
 	m.contextCreating = false
-	m.contextCreateBuf = ""
+	m.contextCreateInput.Reset()
 	return tea.Batch(m.loadJobs, m.spinner.Tick)
 }
 
@@ -185,7 +193,7 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.detailContext = nil
 		m.contextLoading = false
 		m.changingSt = false
-		m.statusBuf = ""
+		m.statusInput.Reset()
 		m.statusTargets = nil
 		m.loading = true
 		return m, tea.Batch(m.loadJobs, m.spinner.Tick)
@@ -194,7 +202,7 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 		m.detailContext = nil
 		m.contextLoading = false
 		m.creatingSubtask = false
-		m.subtaskBuf = ""
+		m.subtaskInput.Reset()
 		m.loading = true
 		return m, tea.Batch(m.loadJobs, m.spinner.Tick)
 	case jobCreatedMsg:
@@ -250,32 +258,32 @@ func (m JobsModel) Update(msg tea.Msg) (JobsModel, tea.Cmd) {
 // View handles view.
 func (m JobsModel) View() string {
 	if m.contextLinking && m.detail != nil {
-		return components.Indent(components.InputDialog("Link context id", m.contextLinkBuf), 1)
+		return components.Indent(components.TextInputDialog("Link context id", m.contextLinkInput.View()), 1)
 	}
 	if m.contextCreating && m.detail != nil {
-		return components.Indent(components.InputDialog("New context title", m.contextCreateBuf), 1)
+		return components.Indent(components.TextInputDialog("New context title", m.contextCreateInput.View()), 1)
 	}
 	if m.creatingSubtask && m.detail != nil {
-		return components.Indent(components.InputDialog("New Subtask Title", m.subtaskBuf), 1)
+		return components.Indent(components.TextInputDialog("New Subtask Title", m.subtaskInput.View()), 1)
 	}
 	if m.linkingRel && m.detail != nil {
 		return components.Indent(
-			components.InputDialog("Link Job (target_type target_id relationship_type)", m.linkBuf),
+			components.TextInputDialog("Link Job (target_type target_id relationship_type)", m.linkInput.View()),
 			1,
 		)
 	}
 	if m.unlinkingRel && m.detail != nil {
 		return components.Indent(
-			components.InputDialog("Unlink Job (relationship id or row #)", m.unlinkBuf),
+			components.TextInputDialog("Unlink Job (relationship id or row #)", m.unlinkInput.View()),
 			1,
 		)
 	}
 
 	if m.changingSt {
-		return components.Indent(components.InputDialog("New Status (pending/active/completed/failed)", m.statusBuf), 1)
+		return components.Indent(components.TextInputDialog("New Status (pending/active/completed/failed)", m.statusInput.View()), 1)
 	}
 	if m.filtering && m.view == jobsViewList {
-		return components.Indent(components.InputDialog("Filter Jobs", m.searchBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Jobs", m.searchInput.View()), 1)
 	}
 	modeLine := m.renderModeLine()
 	var body string
@@ -448,9 +456,9 @@ func (m JobsModel) renderList() string {
 	if selected := m.selectedCount(); selected > 0 {
 		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
 	}
-	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
+	if strings.TrimSpace(m.searchInput.Value()) != "" {
+		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchInput.Value()))
+		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchInput.Value()), strings.TrimSpace(m.searchSuggest)) {
 			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
 		}
 	}
@@ -556,34 +564,25 @@ func (m JobsModel) handleListKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 		m.toggleSelectAll()
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.searchInput.Focus()
 		return m, nil
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applyJobSearch()
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
-			m.searchSuggest = ""
-			m.applyJobSearch()
-		}
 	case isBack(msg):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
+		if m.searchInput.Value() != "" {
+			m.searchInput.Reset()
 			m.searchSuggest = ""
 			m.applyJobSearch()
 		}
 	case isKey(msg, "tab"):
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
-			m.searchBuf = m.searchSuggest
+		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchInput.Value()), strings.TrimSpace(m.searchSuggest)) {
+			m.searchInput.SetValue(m.searchSuggest)
 			m.applyJobSearch()
 		}
 	case isKey(msg, "s"):
 		targets := m.selectedIDs()
 		if len(targets) > 0 {
 			m.changingSt = true
-			m.statusBuf = ""
+			m.statusInput.Reset()
+			m.statusInput.Focus()
 			m.statusTargets = targets
 			return m, nil
 		}
@@ -592,14 +591,9 @@ func (m JobsModel) handleListKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 			m.detail = &item
 			m.view = jobsViewDetail
 			m.changingSt = true
-			m.statusBuf = ""
+			m.statusInput.Reset()
+			m.statusInput.Focus()
 			m.statusTargets = []string{item.ID}
-		}
-	default:
-		ch := keyText(msg)
-		if ch != "" {
-			m.searchBuf += ch
-			m.applyJobSearch()
 		}
 	}
 	return m, nil
@@ -610,25 +604,21 @@ func (m JobsModel) handleFilterInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
+		m.searchInput.Blur()
 	case isBack(msg):
 		m.filtering = false
-		m.searchBuf = ""
+		m.searchInput.Reset()
+		m.searchInput.Blur()
 		m.searchSuggest = ""
 		m.applyJobSearch()
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applyJobSearch()
-		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if ch == " " && m.searchBuf == "" {
-				return m, nil
-			}
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applyJobSearch()
 		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -956,7 +946,7 @@ func (m JobsModel) loadJobs() tea.Msg {
 
 // applyJobSearch handles apply job search.
 func (m *JobsModel) applyJobSearch() {
-	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
+	query := strings.TrimSpace(strings.ToLower(m.searchInput.Value()))
 	if query == "" {
 		m.items = m.allItems
 	} else {
@@ -1057,7 +1047,7 @@ func (m JobsModel) selectedCount() int {
 // updateSearchSuggest updates update search suggest.
 func (m *JobsModel) updateSearchSuggest() {
 	m.searchSuggest = ""
-	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
+	query := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
 	if query == "" {
 		return
 	}
@@ -1084,29 +1074,29 @@ func (m JobsModel) handleDetailKeys(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 		m.detailContext = nil
 		m.contextLoading = false
 		m.contextLinking = false
-		m.contextLinkBuf = ""
+		m.contextLinkInput.Reset()
 		m.contextCreating = false
-		m.contextCreateBuf = ""
+		m.contextCreateInput.Reset()
 		m.view = jobsViewList
 	case isKey(msg, "s"):
 		m.changingSt = true
-		m.statusBuf = ""
+		m.statusInput.Reset()
 		m.statusTargets = []string{m.detail.ID}
 	case isKey(msg, "n"):
 		m.creatingSubtask = true
-		m.subtaskBuf = ""
+		m.subtaskInput.Reset()
 	case isKey(msg, "a"):
 		m.contextCreating = true
-		m.contextCreateBuf = ""
+		m.contextCreateInput.Reset()
 	case isKey(msg, "c"):
 		m.contextLinking = true
-		m.contextLinkBuf = ""
+		m.contextLinkInput.Reset()
 	case isKey(msg, "l"):
 		m.linkingRel = true
-		m.linkBuf = ""
+		m.linkInput.Reset()
 	case isKey(msg, "u"):
 		m.unlinkingRel = true
-		m.unlinkBuf = ""
+		m.unlinkInput.Reset()
 	case isKey(msg, "e"):
 		m.startEdit()
 		m.view = jobsViewEdit
@@ -1118,54 +1108,40 @@ func (m JobsModel) handleContextPromptKeys(msg tea.KeyPressMsg) (JobsModel, tea.
 	switch {
 	case isBack(msg):
 		m.contextLinking = false
-		m.contextLinkBuf = ""
+		m.contextLinkInput.Reset()
 		m.contextCreating = false
-		m.contextCreateBuf = ""
+		m.contextCreateInput.Reset()
 		return m, nil
 	case isKey(msg, "enter"):
 		if m.contextLinking {
-			value := strings.TrimSpace(m.contextLinkBuf)
+			value := strings.TrimSpace(m.contextLinkInput.Value())
 			if value == "" {
 				return m, func() tea.Msg { return errMsg{fmt.Errorf("context id is required")} }
 			}
 			m.contextLinking = false
-			m.contextLinkBuf = ""
+			m.contextLinkInput.Reset()
 			m.contextLoading = true
 			return m, m.linkContextToJob(value)
 		}
 		if m.contextCreating {
-			title := strings.TrimSpace(m.contextCreateBuf)
+			title := strings.TrimSpace(m.contextCreateInput.Value())
 			if title == "" {
 				return m, func() tea.Msg { return errMsg{fmt.Errorf("context title is required")} }
 			}
 			m.contextCreating = false
-			m.contextCreateBuf = ""
+			m.contextCreateInput.Reset()
 			m.contextLoading = true
 			return m, m.createContextForJob(title)
 		}
 	case isKey(msg, "backspace", "delete"):
-		if m.contextLinking && len(m.contextLinkBuf) > 0 {
-			m.contextLinkBuf = m.contextLinkBuf[:len(m.contextLinkBuf)-1]
-		}
-		if m.contextCreating && len(m.contextCreateBuf) > 0 {
-			m.contextCreateBuf = m.contextCreateBuf[:len(m.contextCreateBuf)-1]
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
+		// handled by textinput
+		fallthrough
+	default:
 		if m.contextLinking {
-			m.contextLinkBuf = ""
+			m.contextLinkInput, _ = m.contextLinkInput.Update(msg)
 		}
 		if m.contextCreating {
-			m.contextCreateBuf = ""
-		}
-	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if m.contextLinking {
-				m.contextLinkBuf += ch
-			}
-			if m.contextCreating {
-				m.contextCreateBuf += ch
-			}
+			m.contextCreateInput, _ = m.contextCreateInput.Update(msg)
 		}
 	}
 	return m, nil
@@ -1176,22 +1152,22 @@ func (m JobsModel) handleStatusInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.changingSt = false
-		m.statusBuf = ""
+		m.statusInput.Reset()
 		m.statusTargets = nil
 	case isEnter(msg):
 		ids := append([]string(nil), m.statusTargets...)
 		if len(ids) == 0 && m.detail != nil {
 			ids = []string{m.detail.ID}
 		}
-		status := strings.TrimSpace(m.statusBuf)
+		status := strings.TrimSpace(m.statusInput.Value())
 		if len(ids) == 0 || status == "" {
 			m.changingSt = false
-			m.statusBuf = ""
+			m.statusInput.Reset()
 			m.statusTargets = nil
 			return m, nil
 		}
 		m.changingSt = false
-		m.statusBuf = ""
+		m.statusInput.Reset()
 		m.statusTargets = nil
 		m.selected = map[string]bool{}
 		return m, func() tea.Msg {
@@ -1202,14 +1178,10 @@ func (m JobsModel) handleStatusInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 			}
 			return jobStatusUpdatedMsg{}
 		}
-	case isKey(msg, "backspace"):
-		if len(m.statusBuf) > 0 {
-			m.statusBuf = m.statusBuf[:len(m.statusBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.statusBuf += ch
-		}
+		var cmd tea.Cmd
+		m.statusInput, cmd = m.statusInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -1219,20 +1191,20 @@ func (m JobsModel) handleSubtaskInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) 
 	switch {
 	case isBack(msg):
 		m.creatingSubtask = false
-		m.subtaskBuf = ""
+		m.subtaskInput.Reset()
 	case isEnter(msg):
-		title := strings.TrimSpace(m.subtaskBuf)
+		title := strings.TrimSpace(m.subtaskInput.Value())
 		if title == "" {
 			return m, nil
 		}
 		if m.detail == nil {
 			m.creatingSubtask = false
-			m.subtaskBuf = ""
+			m.subtaskInput.Reset()
 			return m, nil
 		}
 		id := m.detail.ID
 		m.creatingSubtask = false
-		m.subtaskBuf = ""
+		m.subtaskInput.Reset()
 		return m, func() tea.Msg {
 			_, err := m.client.CreateSubtask(id, map[string]string{"title": title})
 			if err != nil {
@@ -1240,14 +1212,10 @@ func (m JobsModel) handleSubtaskInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) 
 			}
 			return subtaskCreatedMsg{}
 		}
-	case isKey(msg, "backspace"):
-		if len(m.subtaskBuf) > 0 {
-			m.subtaskBuf = m.subtaskBuf[:len(m.subtaskBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.subtaskBuf += ch
-		}
+		var cmd tea.Cmd
+		m.subtaskInput, cmd = m.subtaskInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -1257,17 +1225,17 @@ func (m JobsModel) handleLinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.linkingRel = false
-		m.linkBuf = ""
+		m.linkInput.Reset()
 	case isEnter(msg):
 		if m.detail == nil {
 			m.linkingRel = false
-			m.linkBuf = ""
+			m.linkInput.Reset()
 			return m, nil
 		}
-		parts := strings.Fields(strings.TrimSpace(m.linkBuf))
+		parts := strings.Fields(strings.TrimSpace(m.linkInput.Value()))
 		if len(parts) < 3 {
 			m.linkingRel = false
-			m.linkBuf = ""
+			m.linkInput.Reset()
 			return m, func() tea.Msg {
 				return errMsg{err: fmt.Errorf("link format: target_type target_id relationship_type")}
 			}
@@ -1277,7 +1245,7 @@ func (m JobsModel) handleLinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 		relType := strings.TrimSpace(strings.Join(parts[2:], " "))
 		jobID := m.detail.ID
 		m.linkingRel = false
-		m.linkBuf = ""
+		m.linkInput.Reset()
 		return m, func() tea.Msg {
 			_, err := m.client.CreateRelationship(api.CreateRelationshipInput{
 				SourceType: "job",
@@ -1291,14 +1259,10 @@ func (m JobsModel) handleLinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 			}
 			return jobRelationshipChangedMsg{}
 		}
-	case isKey(msg, "backspace"):
-		if len(m.linkBuf) > 0 {
-			m.linkBuf = m.linkBuf[:len(m.linkBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.linkBuf += ch
-		}
+		var cmd tea.Cmd
+		m.linkInput, cmd = m.linkInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }
@@ -1308,17 +1272,17 @@ func (m JobsModel) handleUnlinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 	switch {
 	case isBack(msg):
 		m.unlinkingRel = false
-		m.unlinkBuf = ""
+		m.unlinkInput.Reset()
 	case isEnter(msg):
 		if m.detail == nil {
 			m.unlinkingRel = false
-			m.unlinkBuf = ""
+			m.unlinkInput.Reset()
 			return m, nil
 		}
-		value := strings.TrimSpace(m.unlinkBuf)
+		value := strings.TrimSpace(m.unlinkInput.Value())
 		if value == "" {
 			m.unlinkingRel = false
-			m.unlinkBuf = ""
+			m.unlinkInput.Reset()
 			return m, nil
 		}
 		relID := value
@@ -1327,7 +1291,7 @@ func (m JobsModel) handleUnlinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 		}
 		status := "archived"
 		m.unlinkingRel = false
-		m.unlinkBuf = ""
+		m.unlinkInput.Reset()
 		return m, func() tea.Msg {
 			_, err := m.client.UpdateRelationship(relID, api.UpdateRelationshipInput{Status: &status})
 			if err != nil {
@@ -1335,14 +1299,10 @@ func (m JobsModel) handleUnlinkInput(msg tea.KeyPressMsg) (JobsModel, tea.Cmd) {
 			}
 			return jobRelationshipChangedMsg{}
 		}
-	case isKey(msg, "backspace"):
-		if len(m.unlinkBuf) > 0 {
-			m.unlinkBuf = m.unlinkBuf[:len(m.unlinkBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.unlinkBuf += ch
-		}
+		var cmd tea.Cmd
+		m.unlinkInput, cmd = m.unlinkInput.Update(msg)
+		return m, cmd
 	}
 	return m, nil
 }

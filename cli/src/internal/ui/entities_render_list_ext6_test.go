@@ -48,7 +48,7 @@ func TestEntitiesRenderListCountLineSelectionAndPreviewBranches(t *testing.T) {
 	}
 	model.list.SetItems([]string{"row-1", "row-2", "phantom-row"})
 	model.list.Cursor = 0
-	model.searchBuf = "alpha"
+	model.searchInput.SetValue("alpha")
 	model.searchSuggest = "alphabet"
 	model.filterTypes = map[string]bool{"person": true}
 	model.bulkSelected = map[string]bool{"ent-1": true}

@@ -48,7 +48,7 @@ func TestProtocolsUpdateMessageMatrix(t *testing.T) {
 	model.width = 88
 	model.list.SetItems([]string{"stale"})
 	model.loading = true
-	model.searchBuf = "ops"
+	model.searchInput.SetValue("ops")
 
 	model, cmd := model.Update(protocolsLoadedMsg{items: []api.Protocol{
 		{ID: "proto-1", Name: "ops-checklist", Title: "daily ops", Status: "active"},

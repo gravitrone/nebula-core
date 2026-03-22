@@ -390,7 +390,7 @@ func TestLogsRenderAddEditAndTagHelpers(t *testing.T) {
 	model.width = 96
 
 	model.addFocus = logFieldTags
-	model.addTagBuf = "alpha"
+	model.addTagInput.SetValue("alpha")
 	model.commitAddTag()
 	addTags := components.SanitizeText(model.renderAddTags(true))
 	assert.Contains(t, addTags, "[alpha]")
@@ -420,7 +420,7 @@ func TestLogsRenderAddEditAndTagHelpers(t *testing.T) {
 	}
 	model.startEdit()
 	model.editFocus = logEditFieldTags
-	model.editTagBuf = "beta"
+	model.editTagInput.SetValue("beta")
 	model.commitEditTag()
 
 	editTags := components.SanitizeText(model.renderEditTags(true))

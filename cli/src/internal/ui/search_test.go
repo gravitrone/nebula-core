@@ -303,14 +303,14 @@ func TestSearchModelUpdateClearAndSpaceHandling(t *testing.T) {
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.query)
+	assert.Equal(t, "", updated.queryInput.Value())
 
-	updated.query = "abc"
+	updated.queryInput.SetValue("abc")
 	updated.items = []searchEntry{{id: "x"}}
 	updated.list.SetItems([]string{"x"})
 
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.query)
+	assert.Equal(t, "", updated.queryInput.Value())
 	assert.Empty(t, updated.items)
 }

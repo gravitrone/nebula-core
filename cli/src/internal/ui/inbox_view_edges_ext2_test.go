@@ -25,7 +25,7 @@ func TestInboxViewTinyWidthFilterAndUnsyncedVisibleRows(t *testing.T) {
 		},
 	}
 	model.applyFilter(true)
-	model.filterBuf = "agent:alpha"
+	model.filterInput.SetValue("agent:alpha")
 
 	// Keep one extra visible row that has no backing filtered item to cover
 	// out-of-range guard behavior in the list render loop.

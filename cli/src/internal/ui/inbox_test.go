@@ -271,16 +271,16 @@ func TestInboxModelRejectInputHandling(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Text: "s"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
-	assert.Equal(t, "test", model.rejectBuf)
+	assert.Equal(t, "test", model.rejectInput.Value())
 
 	// Backspace once
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "tes", model.rejectBuf)
+	assert.Equal(t, "tes", model.rejectInput.Value())
 
 	// Escape to cancel
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.rejecting)
-	assert.Equal(t, "", model.rejectBuf)
+	assert.Equal(t, "", model.rejectInput.Value())
 }
 
 // TestInboxToggleSelectAll handles test inbox toggle select all.
@@ -398,7 +398,7 @@ func TestInboxFilterByAgentAndType(t *testing.T) {
 		{ID: "ap-1", Status: "pending", RequestType: "create_entity", AgentName: "alpha", CreatedAt: time.Now()},
 		{ID: "ap-2", Status: "pending", RequestType: "update_entity", AgentName: "beta", CreatedAt: time.Now()},
 	}
-	model.filterBuf = "agent:alpha type:create"
+	model.filterInput.SetValue("agent:alpha type:create")
 	model.applyFilter(true)
 
 	assert.Len(t, model.list.Items, 1)
@@ -412,7 +412,7 @@ func TestInboxFilterByTerm(t *testing.T) {
 		{ID: "ap-1", Status: "pending", RequestType: "create_entity", AgentName: "alpha", ChangeDetails: api.JSONMap{"name": "Foo"}, CreatedAt: time.Now()},
 		{ID: "ap-2", Status: "pending", RequestType: "create_entity", AgentName: "beta", ChangeDetails: api.JSONMap{"name": "Bar"}, CreatedAt: time.Now()},
 	}
-	model.filterBuf = "foo"
+	model.filterInput.SetValue("foo")
 	model.applyFilter(true)
 
 	assert.Len(t, model.list.Items, 1)

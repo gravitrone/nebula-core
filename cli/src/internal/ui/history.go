@@ -9,6 +9,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -53,8 +54,8 @@ type HistoryModel struct {
 	height    int
 	view      historyView
 	detail    *api.AuditEntry
-	filtering bool
-	filterBuf string
+	filtering   bool
+	filterInput textinput.Model
 	filter    auditFilter
 	errText   string
 	scopes    []api.AuditScope
@@ -67,9 +68,10 @@ type HistoryModel struct {
 // NewHistoryModel builds the audit history UI model.
 func NewHistoryModel(client *api.Client) HistoryModel {
 	return HistoryModel{
-		client:    client,
-		spinner:   components.NewNebulaSpinner(),
-		list:      components.NewList(10),
+		client:      client,
+		spinner:     components.NewNebulaSpinner(),
+		filterInput: components.NewNebulaTextInput("Filter audit log..."),
+		list:        components.NewList(10),
 		scopeList: components.NewList(10),
 		actorList: components.NewList(10),
 		view:      historyViewList,
@@ -171,7 +173,7 @@ func (m HistoryModel) Update(msg tea.Msg) (HistoryModel, tea.Cmd) {
 // View handles view.
 func (m HistoryModel) View() string {
 	if m.filtering {
-		return components.Indent(components.InputDialog("Filter Audit Log", m.filterBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Audit Log", m.filterInput.View()), 1)
 	}
 	if m.loading {
 		label := "Loading history..."
@@ -263,6 +265,7 @@ func (m HistoryModel) handleListKeys(msg tea.KeyPressMsg) (HistoryModel, tea.Cmd
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.filterInput.Focus()
 	case isKey(msg, "s"):
 		m.view = historyViewScopes
 		m.loading = true
@@ -280,23 +283,17 @@ func (m HistoryModel) handleFilterKeys(msg tea.KeyPressMsg) (HistoryModel, tea.C
 	switch {
 	case isEnter(msg):
 		m.filtering = false
-		m.filter = parseAuditFilter(m.filterBuf)
+		m.filter = parseAuditFilter(m.filterInput.Value())
 		m.loading = true
 		return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
 	case isBack(msg):
 		m.filtering = false
-		m.filterBuf = ""
+		m.filterInput.Reset()
 		m.filter = auditFilter{}
 		m.loading = true
 		return m, tea.Batch(m.loadHistory(), m.spinner.Tick)
-	case isKey(msg, "backspace"):
-		if len(m.filterBuf) > 0 {
-			m.filterBuf = m.filterBuf[:len(m.filterBuf)-1]
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			m.filterBuf += ch
-		}
+		m.filterInput, _ = m.filterInput.Update(msg)
 	}
 	return m, nil
 }

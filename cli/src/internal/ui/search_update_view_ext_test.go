@@ -12,7 +12,7 @@ import (
 
 func TestSearchUpdateIgnoresStaleAndModeMismatchResults(t *testing.T) {
 	model := NewSearchModel(nil)
-	model.query = "alpha"
+	model.queryInput.SetValue("alpha")
 	model.mode = searchModeText
 	model.loading = true
 
@@ -39,21 +39,21 @@ func TestSearchUpdateIgnoresStaleAndModeMismatchResults(t *testing.T) {
 
 func TestSearchUpdateBackspaceAndDeleteSearchBranches(t *testing.T) {
 	model := NewSearchModel(nil)
-	model.query = "ab"
+	model.queryInput.SetValue("ab")
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.NotNil(t, cmd)
-	assert.Equal(t, "a", updated.query)
+	assert.Equal(t, "a", updated.queryInput.Value())
 	assert.True(t, updated.loading)
 
-	updated.query = "a"
+	updated.queryInput.SetValue("a")
 	updated.loading = true
 	updated.items = []searchEntry{{id: "ent-1"}}
 	updated.list.SetItems([]string{"ent-1"})
 
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.query)
+	assert.Equal(t, "", updated.queryInput.Value())
 	assert.False(t, updated.loading)
 	assert.Empty(t, updated.items)
 	assert.Empty(t, updated.list.Items)
@@ -73,7 +73,7 @@ func TestSearchUpdateTabTogglePaths(t *testing.T) {
 	assert.Empty(t, updated.items)
 	assert.Empty(t, updated.list.Items)
 
-	updated.query = "alpha"
+	updated.queryInput.SetValue("alpha")
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.NotNil(t, cmd)
 	assert.Equal(t, searchModeText, updated.mode)
@@ -107,7 +107,7 @@ func TestSearchUpdateArrowNavigation(t *testing.T) {
 func TestSearchViewLoadingAndNoMatchStates(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.width = 90
-	model.query = "alpha"
+	model.queryInput.SetValue("alpha")
 	model.loading = true
 
 	out := components.SanitizeText(model.View())
@@ -123,7 +123,7 @@ func TestSearchViewLoadingAndNoMatchStates(t *testing.T) {
 func TestSearchViewRendersPreviewWhenSelectionExists(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.width = 130
-	model.query = "alpha"
+	model.queryInput.SetValue("alpha")
 	model.items = []searchEntry{
 		{
 			kind:  "entity",

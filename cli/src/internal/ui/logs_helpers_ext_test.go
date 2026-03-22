@@ -190,18 +190,18 @@ func TestLogsHandleListKeysSearchAndFilterMatrix(t *testing.T) {
 	updated := model
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
-	assert.Equal(t, "w", updated.searchBuf)
+	assert.Equal(t, "w", updated.searchInput.Value())
 	assert.Equal(t, "workout", updated.searchSuggest)
 	require.Len(t, updated.items, 1)
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, "workout", updated.searchBuf)
+	assert.Equal(t, "workout", updated.searchInput.Value())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "workou", updated.searchBuf)
+	assert.Equal(t, "workou", updated.searchInput.Value())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	require.Len(t, updated.items, 2)
 
 	updated, cmd := updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
@@ -209,10 +209,10 @@ func TestLogsHandleListKeysSearchAndFilterMatrix(t *testing.T) {
 	assert.True(t, updated.filtering)
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 's', Text: "s"})
-	assert.Equal(t, "s", updated.searchBuf)
+	assert.Equal(t, "s", updated.searchInput.Value())
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 }
 
 func TestLogsHandleAddKeysStatusAndBackspaceMatrix(t *testing.T) {
@@ -229,9 +229,9 @@ func TestLogsHandleAddKeysStatusAndBackspaceMatrix(t *testing.T) {
 
 	updated.addFocus = logFieldTags
 	updated.addTags = []string{"alpha"}
-	updated.addTagBuf = "x"
+	updated.addTagInput.SetValue("x")
 	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.addTagBuf)
+	assert.Equal(t, "", updated.addTagInput.Value())
 	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.addTags)
 
@@ -347,7 +347,7 @@ func TestLogsRenderAddBranchMatrix(t *testing.T) {
 
 	model.addFocus = logFieldTags
 	model.addTags = []string{"alpha"}
-	model.addTagBuf = "beta"
+	model.addTagInput.SetValue("beta")
 	out = stripANSI(model.renderAdd())
 	assert.Contains(t, out, "[alpha]")
 	assert.Contains(t, out, "beta")
@@ -391,9 +391,9 @@ func TestLogsHandleEditKeysStatusAndTagMatrix(t *testing.T) {
 
 	updated.editFocus = logEditFieldTags
 	updated.editTags = []string{"alpha"}
-	updated.editTagBuf = "x"
+	updated.editTagInput.SetValue("x")
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.editTagBuf)
+	assert.Equal(t, "", updated.editTagInput.Value())
 	updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Empty(t, updated.editTags)
 
@@ -482,12 +482,12 @@ func TestLogsSearchHelpersAndFormatLine(t *testing.T) {
 		{ID: "log-2", LogType: "study", Status: "inactive", Timestamp: time.Date(2026, 2, 28, 0, 0, 0, 0, time.UTC)},
 	}
 
-	model.searchBuf = "work"
+	model.searchInput.SetValue("work")
 	model.applyLogSearch()
 	require.Len(t, model.items, 1)
 	assert.Equal(t, "workout", model.searchSuggest)
 
-	model.searchBuf = "zzz"
+	model.searchInput.SetValue("zzz")
 	model.applyLogSearch()
 	assert.Empty(t, model.items)
 

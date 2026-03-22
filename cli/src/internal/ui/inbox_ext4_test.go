@@ -115,11 +115,11 @@ func TestInboxHandleDetailAndGrantInputBranches(t *testing.T) {
 	assert.Equal(t, "public", updated.grantScopes)
 	assert.False(t, updated.grantTrusted)
 
-	updated.rejectBuf = "stale"
+	updated.rejectInput.SetValue("stale")
 	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.rejecting)
-	assert.Equal(t, "", updated.rejectBuf)
+	assert.Equal(t, "", updated.rejectInput.Value())
 
 	updated, cmd = updated.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)

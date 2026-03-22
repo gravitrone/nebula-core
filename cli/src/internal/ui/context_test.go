@@ -77,7 +77,7 @@ func TestContextLinkSearchCommand(t *testing.T) {
 
 	model := NewContextModel(client)
 	model.linkSearching = true
-	model.linkQuery = ""
+	model.linkQueryInput.SetValue("")
 
 	model, cmd := model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.NotNil(t, cmd)
@@ -105,7 +105,7 @@ func TestNormalizeScope(t *testing.T) {
 func TestCommitTagDedupes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.tags = []string{"alpha"}
-	model.tagBuf = "ALPHA"
+	model.tagInput.SetValue("ALPHA")
 	model.commitTag()
 	assert.Equal(t, []string{"alpha"}, model.tags)
 }
@@ -114,7 +114,7 @@ func TestCommitTagDedupes(t *testing.T) {
 func TestCommitScopeDedupes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.scopes = []string{"public"}
-	model.scopeBuf = " Public "
+	model.scopeInput.SetValue(" Public ")
 	model.commitScope()
 	assert.Equal(t, []string{"public"}, model.scopes)
 }
@@ -123,7 +123,7 @@ func TestCommitScopeDedupes(t *testing.T) {
 func TestCommitEditScopeDedupes(t *testing.T) {
 	model := NewContextModel(nil)
 	model.editScopes = []string{"public"}
-	model.editScopeBuf = " PUBLIC "
+	model.editScopeInput.SetValue(" PUBLIC ")
 	model.commitEditScope()
 	assert.Equal(t, []string{"public"}, model.editScopes)
 }

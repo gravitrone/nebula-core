@@ -15,14 +15,14 @@ import (
 
 func TestSearchUpdateBackClearsActiveQueryState(t *testing.T) {
 	model := NewSearchModel(nil)
-	model.query = "alpha"
+	model.queryInput.SetValue("alpha")
 	model.items = []searchEntry{{id: "ent-1"}}
 	model.list.SetItems([]string{"ent-1"})
 	model.loading = true
 
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.query)
+	assert.Equal(t, "", updated.queryInput.Value())
 	assert.Empty(t, updated.items)
 	assert.Empty(t, updated.list.Items)
 	assert.False(t, updated.loading)
@@ -31,7 +31,7 @@ func TestSearchUpdateBackClearsActiveQueryState(t *testing.T) {
 func TestSearchViewCoversTinyWidthAndRowFallbacks(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.width = 0
-	model.query = "x"
+	model.queryInput.SetValue("x")
 	model.items = []searchEntry{
 		{kind: "", id: "ent-1", label: "", desc: ""},
 	}
@@ -46,7 +46,7 @@ func TestSearchViewCoversTinyWidthAndRowFallbacks(t *testing.T) {
 func TestSearchViewUsesSideBySidePreviewWhenWide(t *testing.T) {
 	model := NewSearchModel(nil)
 	model.width = 220
-	model.query = "alpha"
+	model.queryInput.SetValue("alpha")
 	model.items = []searchEntry{
 		{
 			kind:  "entity",

@@ -23,7 +23,7 @@ func TestSearchViewRendersEmptyAndPopulatedStates(t *testing.T) {
 	assert.Contains(t, out, "Type to search.")
 
 	// Inject a results message directly to avoid needing a live client.
-	model.query = "a"
+	model.queryInput.SetValue("a")
 	model.mode = searchModeText
 	model, _ = model.Update(searchResultsMsg{
 		query:    "a",

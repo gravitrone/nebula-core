@@ -128,7 +128,7 @@ func TestContextHasInputMatrix(t *testing.T) {
 	assert.True(t, contextHasInput(model))
 
 	model = NewContextModel(nil)
-	model.tagBuf = "tag-1"
+	model.tagInput.SetValue("tag-1")
 	assert.True(t, contextHasInput(model))
 
 	model = NewContextModel(nil)

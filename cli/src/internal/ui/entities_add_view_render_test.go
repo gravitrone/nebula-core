@@ -36,13 +36,13 @@ func TestEntitiesAddViewRendersTagsAndScopes(t *testing.T) {
 func TestEntitiesCommitAddScopeNormalizesAndDedupes(t *testing.T) {
 	model := NewEntitiesModel(nil)
 
-	model.addScopeBuf = " Public "
+	model.addScopeInput.SetValue(" Public ")
 	model.commitAddScope()
 	assert.Equal(t, []string{"public"}, model.addScopes)
-	assert.Equal(t, "", model.addScopeBuf)
+	assert.Equal(t, "", model.addScopeInput.Value())
 
 	// Duplicate should be ignored.
-	model.addScopeBuf = "public"
+	model.addScopeInput.SetValue("public")
 	model.commitAddScope()
 	assert.Equal(t, []string{"public"}, model.addScopes)
 }

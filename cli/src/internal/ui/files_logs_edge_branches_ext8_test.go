@@ -115,11 +115,11 @@ func TestLogsHandleAddKeysUpBackAndDefaultBackspaceBranches(t *testing.T) {
 	assert.Equal(t, logFieldType, updated.addFocus)
 
 	updated.addType = "event"
-	updated.addTagBuf = "tmp"
+	updated.addTagInput.SetValue("tmp")
 	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.addType)
-	assert.Equal(t, "", updated.addTagBuf)
+	assert.Equal(t, "", updated.addTagInput.Value())
 
 	updated.addFocus = logFieldMeta
 	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})

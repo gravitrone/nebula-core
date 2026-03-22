@@ -70,7 +70,7 @@ func TestFilesRenderEditTagsFocusedAndBufferBranches(t *testing.T) {
 	assert.Contains(t, focused, "one")
 	assert.Contains(t, focused, "█")
 
-	model.editTagBuf = "tmp"
+	model.editTagInput.SetValue("tmp")
 	focusedWithBuf := components.SanitizeText(model.renderEditTags(true))
 	assert.Contains(t, focusedWithBuf, "tmp")
 	assert.Contains(t, focusedWithBuf, "█")

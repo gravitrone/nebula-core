@@ -107,7 +107,7 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 	model.view = entitiesViewSearch
 
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	assert.Equal(t, "a", model.searchBuf)
+	assert.Equal(t, "a", model.searchInput.Value())
 
 	var cmd tea.Cmd
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -116,7 +116,7 @@ func TestEntitiesSearchInputEnterTriggersQueryAndResetsBuffer(t *testing.T) {
 
 	assert.Equal(t, "a", searchText)
 	assert.Equal(t, entitiesViewList, model.view)
-	assert.Empty(t, model.searchBuf)
+	assert.Empty(t, model.searchInput.Value())
 }
 
 // TestEntitiesDetailViewRendersContextSummary handles test entities detail view renders context summary.

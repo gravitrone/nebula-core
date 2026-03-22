@@ -76,7 +76,7 @@ func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
 		model := NewContextModel(client)
 		model.fields[fieldTitle].value = "Alpha"
 		model.fields[fieldNotes].value = "Notes"
-		model.tagBuf = "Core Tag"
+		model.tagInput.SetValue("Core Tag")
 		model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
 
 		updated, cmd := model.save()

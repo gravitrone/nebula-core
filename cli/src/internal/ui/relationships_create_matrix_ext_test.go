@@ -15,7 +15,7 @@ import (
 func TestRelationshipsHandleCreateKeysSourceSearchClearAndExit(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateSourceSearch
-	model.createQuery = "alpha"
+	model.createQueryInput.SetValue("alpha")
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
 	model.createList.SetItems([]string{"ent-1"})
 	model.createLoading = true
@@ -23,7 +23,7 @@ func TestRelationshipsHandleCreateKeysSourceSearchClearAndExit(t *testing.T) {
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 	assert.Empty(t, updated.createResults)
 	assert.Empty(t, updated.createList.Items)
 	assert.False(t, updated.createLoading)
@@ -36,14 +36,14 @@ func TestRelationshipsHandleCreateKeysSourceSearchClearAndExit(t *testing.T) {
 func TestRelationshipsHandleCreateKeysSourceSearchBackspaceUsesCache(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateSourceSearch
-	model.createQuery = "be"
+	model.createQueryInput.SetValue("be")
 	model.entityCache = []api.Entity{{ID: "ent-1", Name: "beta", Type: "person", Status: "active"}}
 	model.contextCache = []api.Context{{ID: "ctx-1", Title: "runbook", SourceType: "note", Status: "active"}}
 	model.jobCache = []api.Job{{ID: "job-1", Title: "beta task", Status: "active"}}
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "b", updated.createQuery)
+	assert.Equal(t, "b", updated.createQueryInput.Value())
 	assert.False(t, updated.createLoading)
 	require.NotEmpty(t, updated.createResults)
 	require.NotEmpty(t, updated.createList.Items)
@@ -60,7 +60,7 @@ func TestRelationshipsHandleCreateKeysSourceSearchEnterAdvancesToTarget(t *testi
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
 	require.NotNil(t, updated.createSource)
 	assert.Equal(t, "ent-1", updated.createSource.ID)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 	assert.Empty(t, updated.createResults)
 }
 
@@ -94,14 +94,14 @@ func TestRelationshipsHandleCreateKeysSourceSearchAdditionalBranches(t *testing.
 
 	// Query-present ctrl-u clears search state.
 	updated.view = relsViewCreateSourceSearch
-	updated.createQuery = "abc"
+	updated.createQueryInput.SetValue("abc")
 	updated.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
 	updated.createLoading = true
 	updated.createList.SetItems([]string{"ent-1"})
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 	assert.Empty(t, updated.createResults)
 	assert.Empty(t, updated.createList.Items)
 	assert.False(t, updated.createLoading)
@@ -124,10 +124,10 @@ func TestRelationshipsHandleCreateKeysSourceSearchAdditionalBranches(t *testing.
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
 
 	// Backspace with empty query should no-op.
-	updated.createQuery = ""
+	updated.createQueryInput.SetValue("")
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 }
 
 func TestRelationshipsHandleCreateKeysSelectViewNavigationBranches(t *testing.T) {
@@ -174,7 +174,7 @@ func TestRelationshipsHandleCreateKeysSelectViewNavigationBranches(t *testing.T)
 func TestRelationshipsHandleCreateKeysTargetSearchClearAndBack(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateTargetSearch
-	model.createQuery = "gamma"
+	model.createQueryInput.SetValue("gamma")
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-3"}}
 	model.createList.SetItems([]string{"ent-3"})
 	model.createLoading = true
@@ -182,7 +182,7 @@ func TestRelationshipsHandleCreateKeysTargetSearchClearAndBack(t *testing.T) {
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 	assert.Empty(t, updated.createResults)
 	assert.Empty(t, updated.createList.Items)
 	assert.False(t, updated.createLoading)
@@ -203,14 +203,14 @@ func TestRelationshipsHandleCreateKeysTargetSearchAdditionalBranches(t *testing.
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
 
 	updated.view = relsViewCreateTargetSearch
-	updated.createQuery = "abc"
+	updated.createQueryInput.SetValue("abc")
 	updated.createResults = []relationshipCreateCandidate{{ID: "ent-2"}}
 	updated.createLoading = true
 	updated.createList.SetItems([]string{"ent-2"})
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 	assert.Empty(t, updated.createResults)
 	assert.Empty(t, updated.createList.Items)
 	assert.False(t, updated.createLoading)
@@ -265,10 +265,10 @@ func TestRelationshipsHandleCreateKeysTypeNavigationAndShortcuts(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.True(t, updated.createTypeNav)
 
-	updated.createType = "dep"
+	updated.createTypeInput.SetValue("dep")
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.createType)
+	assert.Equal(t, "", updated.createTypeInput.Value())
 	assert.False(t, updated.createTypeNav)
 
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
@@ -284,15 +284,15 @@ func TestRelationshipsHandleCreateKeysTypeInputBranches(t *testing.T) {
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.createType)
+	assert.Equal(t, "", updated.createTypeInput.Value())
 
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.createType)
+	assert.Equal(t, "", updated.createTypeInput.Value())
 
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: 'd', Text: "d"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "d", updated.createType)
+	assert.Equal(t, "d", updated.createTypeInput.Value())
 	assert.False(t, updated.createTypeNav)
 	require.NotEmpty(t, updated.createTypeResults)
 
@@ -308,7 +308,7 @@ func TestRelationshipsHandleCreateKeysTypeInputBranches(t *testing.T) {
 func TestRelationshipsHandleCreateKeysTypeEnterRequiresState(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.view = relsViewCreateType
-	model.createType = ""
+	model.createTypeInput.SetValue("")
 	model.createTypeResults = []string{"depends-on"}
 	model.createTypeList.SetItems(model.createTypeResults)
 	model.createTypeNav = true
@@ -343,11 +343,11 @@ func TestRelationshipsRenderCreateSearchStateMessages(t *testing.T) {
 	assert.Contains(t, out, "Searching...")
 
 	model.createLoading = false
-	model.createQuery = ""
+	model.createQueryInput.SetValue("")
 	out = components.SanitizeText(model.renderCreateSearch("Source Node"))
 	assert.Contains(t, out, "Type to search.")
 
-	model.createQuery = "x"
+	model.createQueryInput.SetValue("x")
 	model.createResults = nil
 	model.createList.SetItems(nil)
 	out = components.SanitizeText(model.renderCreateSearch("Source Node"))
@@ -357,7 +357,7 @@ func TestRelationshipsRenderCreateSearchStateMessages(t *testing.T) {
 func TestRelationshipsRenderCreateSearchTableFallbacks(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 92
-	model.createQuery = "a"
+	model.createQueryInput.SetValue("a")
 	model.createResults = []relationshipCreateCandidate{
 		{ID: "ent-1", NodeType: "entity", Name: "", Kind: "", Status: ""},
 		{ID: "ctx-1", NodeType: "context", Name: "alpha note", Kind: "context/note", Status: "active"},
@@ -376,13 +376,13 @@ func TestRelationshipsRenderCreateTypeStateMessages(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 92
 
-	model.createType = ""
+	model.createTypeInput.SetValue("")
 	model.typeOptions = nil
 	model.createTypeResults = nil
 	out := components.SanitizeText(model.renderCreateType())
 	assert.Contains(t, out, "Type a relationship type.")
 
-	model.createType = "dep"
+	model.createTypeInput.SetValue("dep")
 	model.createTypeResults = nil
 	out = components.SanitizeText(model.renderCreateType())
 	assert.Contains(t, out, "No suggestions.")
@@ -404,12 +404,12 @@ func TestRelationshipsApplyListFilterAndSelectionHelpers(t *testing.T) {
 	}
 	model.list.SetItems([]string{"x", "y"})
 
-	model.filterBuf = "depends"
+	model.filterInput.SetValue("depends")
 	model.applyListFilter()
 	require.Len(t, model.items, 1)
 	assert.Equal(t, "rel-1", model.items[0].ID)
 
-	model.filterBuf = ""
+	model.filterInput.SetValue("")
 	model.applyListFilter()
 	require.Len(t, model.items, 2)
 
@@ -609,7 +609,7 @@ func TestRelationshipsSearchCreateNodesErrorBranches(t *testing.T) {
 func TestRelationshipsUpdateCreateSearchBranchMatrix(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 
-	model.createQuery = "   "
+	model.createQueryInput.SetValue("   ")
 	model.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
 	model.createList.SetItems([]string{"ent-1"})
 	model.createLoading = true
@@ -622,7 +622,7 @@ func TestRelationshipsUpdateCreateSearchBranchMatrix(t *testing.T) {
 	model.entityCache = []api.Entity{{ID: "ent-1", Name: "alpha", Type: "person", Status: "active"}}
 	model.contextCache = []api.Context{{ID: "ctx-1", Title: "alpha context", SourceType: "note", Status: "active"}}
 	model.jobCache = []api.Job{{ID: "job-1", Title: "alpha job", Status: "active"}}
-	model.createQuery = "alpha"
+	model.createQueryInput.SetValue("alpha")
 	cmd = model.updateCreateSearch()
 	assert.Nil(t, cmd)
 	assert.False(t, model.createLoading)
@@ -630,7 +630,7 @@ func TestRelationshipsUpdateCreateSearchBranchMatrix(t *testing.T) {
 	require.NotEmpty(t, model.createList.Items)
 
 	model = NewRelationshipsModel(nil)
-	model.createQuery = "alpha"
+	model.createQueryInput.SetValue("alpha")
 	cmd = model.updateCreateSearch()
 	require.NotNil(t, cmd)
 	assert.True(t, model.createLoading)
@@ -658,7 +658,7 @@ func TestRelationshipsUpdateCreateSearchRemoteCmdResult(t *testing.T) {
 	})
 
 	model := NewRelationshipsModel(client)
-	model.createQuery = "alpha"
+	model.createQueryInput.SetValue("alpha")
 	cmd := model.updateCreateSearch()
 	require.NotNil(t, cmd)
 	msg := cmd()

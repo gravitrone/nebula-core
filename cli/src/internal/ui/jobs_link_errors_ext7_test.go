@@ -23,18 +23,18 @@ func TestJobsHandleLinkInputNilDetailAndAPIError(t *testing.T) {
 
 	model := NewJobsModel(client)
 	model.linkingRel = true
-	model.linkBuf = "entity ent-1 owns"
+	model.linkInput.SetValue("entity ent-1 owns")
 
 	// Detail nil branch should close input with no command.
 	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkBuf)
+	assert.Equal(t, "", updated.linkInput.Value())
 
 	// API error branch should surface errMsg.
 	model.detail = &api.Job{ID: "job-1"}
 	model.linkingRel = true
-	model.linkBuf = "entity ent-1 owns"
+	model.linkInput.SetValue("entity ent-1 owns")
 	updated, cmd = model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -42,7 +42,7 @@ func TestJobsHandleLinkInputNilDetailAndAPIError(t *testing.T) {
 	require.True(t, ok)
 	assert.ErrorContains(t, errOut.err, "REL_CREATE_FAILED")
 	assert.False(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkBuf)
+	assert.Equal(t, "", updated.linkInput.Value())
 }
 
 func TestJobsHandleUnlinkInputTypingAndAPIError(t *testing.T) {
@@ -63,13 +63,13 @@ func TestJobsHandleUnlinkInputTypingAndAPIError(t *testing.T) {
 	// Default typing branch appends chars and spaces.
 	updated, cmd := model.handleUnlinkInput(tea.KeyPressMsg{Code: 'r', Text: "r"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "r", updated.unlinkBuf)
+	assert.Equal(t, "r", updated.unlinkInput.Value())
 	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "r ", updated.unlinkBuf)
+	assert.Equal(t, "r ", updated.unlinkInput.Value())
 
 	// API error path on submit.
-	updated.unlinkBuf = "rel-1"
+	updated.unlinkInput.SetValue("rel-1")
 	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -78,7 +78,7 @@ func TestJobsHandleUnlinkInputTypingAndAPIError(t *testing.T) {
 	assert.ErrorContains(t, errOut.err, "REL_UPDATE_FAILED")
 	assert.Equal(t, "/api/relationships/rel-1", calledPath)
 	assert.False(t, updated.unlinkingRel)
-	assert.Equal(t, "", updated.unlinkBuf)
+	assert.Equal(t, "", updated.unlinkInput.Value())
 }
 
 func TestJobsHandleStatusAndSubtaskInputErrorPaths(t *testing.T) {
@@ -99,7 +99,7 @@ func TestJobsHandleStatusAndSubtaskInputErrorPaths(t *testing.T) {
 	model := NewJobsModel(client)
 	model.detail = &api.Job{ID: "job-1"}
 	model.changingSt = true
-	model.statusBuf = "active"
+	model.statusInput.SetValue("active")
 	model.statusTargets = []string{"job-1"}
 
 	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -113,7 +113,7 @@ func TestJobsHandleStatusAndSubtaskInputErrorPaths(t *testing.T) {
 	assert.False(t, updated.changingSt)
 
 	model.creatingSubtask = true
-	model.subtaskBuf = "child task"
+	model.subtaskInput.SetValue("child task")
 	updated, cmd = model.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
@@ -122,7 +122,7 @@ func TestJobsHandleStatusAndSubtaskInputErrorPaths(t *testing.T) {
 	assert.ErrorContains(t, errOut.err, "SUBTASK_FAILED")
 	assert.Equal(t, 1, seen["subtasks"])
 	assert.False(t, updated.creatingSubtask)
-	assert.Equal(t, "", updated.subtaskBuf)
+	assert.Equal(t, "", updated.subtaskInput.Value())
 }
 
 func TestJobsHandleStatusInputAddsSpaceAndCharacters(t *testing.T) {
@@ -131,11 +131,11 @@ func TestJobsHandleStatusInputAddsSpaceAndCharacters(t *testing.T) {
 
 	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.statusBuf)
+	assert.Equal(t, "a", updated.statusInput.Value())
 
 	updated, cmd = updated.handleStatusInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a ", updated.statusBuf)
+	assert.Equal(t, "a ", updated.statusInput.Value())
 }
 
 func TestJobsHandleLinkInputAcceptsMultiWordRelationshipType(t *testing.T) {
@@ -153,7 +153,7 @@ func TestJobsHandleLinkInputAcceptsMultiWordRelationshipType(t *testing.T) {
 	model := NewJobsModel(client)
 	model.detail = &api.Job{ID: "job-1"}
 	model.linkingRel = true
-	model.linkBuf = "entity ent-1 assigned to"
+	model.linkInput.SetValue("entity ent-1 assigned to")
 
 	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -162,5 +162,5 @@ func TestJobsHandleLinkInputAcceptsMultiWordRelationshipType(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "assigned to", payload["relationship_type"])
 	assert.False(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkBuf)
+	assert.Equal(t, "", updated.linkInput.Value())
 }

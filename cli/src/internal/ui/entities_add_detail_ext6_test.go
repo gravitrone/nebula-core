@@ -98,18 +98,18 @@ func TestEntitiesHandleAddKeysBranchMatrix(t *testing.T) {
 
 		// Tag input branches.
 		next.addFocus = addFieldTags
-		next.addTagBuf = "ab"
+		next.addTagInput.SetValue("ab")
 		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, "a", next.addTagBuf)
-		next.addTagBuf = ""
+		assert.Equal(t, "a", next.addTagInput.Value())
+		next.addTagInput.SetValue("")
 		next.addTags = []string{"alpha", "beta"}
 		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, []string{"alpha"}, next.addTags)
 		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
-		assert.Equal(t, "z", next.addTagBuf)
+		assert.Equal(t, "z", next.addTagInput.Value())
 		next, _ = next.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Equal(t, []string{"alpha", "z"}, next.addTags)
-		assert.Equal(t, "", next.addTagBuf)
+		assert.Equal(t, "", next.addTagInput.Value())
 
 		// Scope delete and scope-select activation.
 		next.addFocus = addFieldScopes
@@ -146,22 +146,22 @@ func TestEntitiesHandleDetailKeysContextPromptsAndShortcuts(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.True(t, linked.contextLinking)
 	linked, _ = linked.handleDetailKeys(tea.KeyPressMsg{Code: 'c', Text: "c"})
-	assert.Equal(t, "c", linked.contextLinkBuf)
+	assert.Equal(t, "c", linked.contextLinkInput.Value())
 	linked, _ = linked.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, linked.contextLinking)
-	assert.Equal(t, "", linked.contextLinkBuf)
+	assert.Equal(t, "", linked.contextLinkInput.Value())
 
 	// create prompt
 	created, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
 	assert.True(t, created.contextCreating)
 	created, _ = created.handleDetailKeys(tea.KeyPressMsg{Code: 'N', Text: "N"})
-	assert.Equal(t, "N", created.contextCreateBuf)
+	assert.Equal(t, "N", created.contextCreateInput.Value())
 	created, _ = created.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", created.contextCreateBuf)
+	assert.Equal(t, "", created.contextCreateInput.Value())
 	created, _ = created.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, created.contextCreating)
-	assert.Equal(t, "", created.contextCreateBuf)
+	assert.Equal(t, "", created.contextCreateInput.Value())
 
 	// shortcuts
 	shortcuts, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})

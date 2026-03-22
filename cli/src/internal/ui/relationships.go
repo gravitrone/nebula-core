@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -70,10 +71,10 @@ type RelationshipsModel struct {
 	loading   bool
 	spinner   spinner.Model
 	view      relationshipsView
-	modeFocus bool
-	filtering bool
-	filterBuf string
-	width     int
+	modeFocus   bool
+	filtering   bool
+	filterInput textinput.Model
+	width       int
 	height    int
 
 	names        map[string]string
@@ -92,12 +93,12 @@ type RelationshipsModel struct {
 	confirmKind string
 
 	// create flow
-	createQuery       string
+	createQueryInput  textinput.Model
 	createResults     []relationshipCreateCandidate
 	createList        *components.List
 	createSource      *relationshipCreateCandidate
 	createTarget      *relationshipCreateCandidate
-	createType        string
+	createTypeInput   textinput.Model
 	createTypeResults []string
 	createTypeList    *components.List
 	createTypeNav     bool
@@ -109,13 +110,16 @@ type RelationshipsModel struct {
 // NewRelationshipsModel builds the relationships UI model.
 func NewRelationshipsModel(client *api.Client) RelationshipsModel {
 	return RelationshipsModel{
-		client:         client,
-		spinner:        components.NewNebulaSpinner(),
-		list:           components.NewList(12),
-		createList:     components.NewList(8),
-		createTypeList: components.NewList(6),
-		view:           relsViewList,
-		names:          map[string]string{},
+		client:           client,
+		spinner:          components.NewNebulaSpinner(),
+		filterInput:      components.NewNebulaTextInput("Filter relationships..."),
+		createQueryInput: components.NewNebulaTextInput("Search nodes..."),
+		createTypeInput:  components.NewNebulaTextInput("Relationship type..."),
+		list:             components.NewList(12),
+		createList:       components.NewList(8),
+		createTypeList:   components.NewList(6),
+		view:             relsViewList,
+		names:            map[string]string{},
 	}
 }
 
@@ -125,7 +129,7 @@ func (m RelationshipsModel) Init() tea.Cmd {
 	m.loading = true
 	m.modeFocus = false
 	m.filtering = false
-	m.filterBuf = ""
+	m.filterInput.Reset()
 	m.metaExpanded = false
 	m.editMeta.Reset()
 	return tea.Batch(
@@ -177,7 +181,7 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 		return m, nil
 
 	case relTabResultsMsg:
-		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.createQuery) {
+		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.createQueryInput.Value()) {
 			return m, nil
 		}
 		m.createLoading = false
@@ -231,7 +235,7 @@ func (m RelationshipsModel) View() string {
 		return m.editMeta.Render(m.width)
 	}
 	if m.filtering && m.view == relsViewList {
-		return components.Indent(components.InputDialog("Filter Relationships", m.filterBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Relationships", m.filterInput.View()), 1)
 	}
 
 	modeLine := m.renderModeLine()
@@ -276,6 +280,7 @@ func (m RelationshipsModel) handleListKeys(msg tea.KeyPressMsg) (RelationshipsMo
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.filterInput.Focus()
 		return m, nil
 	case isKey(msg, "n"):
 		m.startCreate()
@@ -289,24 +294,20 @@ func (m RelationshipsModel) handleFilterInput(msg tea.KeyPressMsg) (Relationship
 	switch {
 	case isEnter(msg):
 		m.filtering = false
+		m.filterInput.Blur()
 	case isBack(msg):
 		m.filtering = false
-		m.filterBuf = ""
+		m.filterInput.Reset()
+		m.filterInput.Blur()
 		m.applyListFilter()
-	case isKey(msg, "backspace", "delete"):
-		if len(m.filterBuf) > 0 {
-			m.filterBuf = m.filterBuf[:len(m.filterBuf)-1]
-			m.applyListFilter()
-		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if ch == " " && m.filterBuf == "" {
-				return m, nil
-			}
-			m.filterBuf += ch
+		prev := m.filterInput.Value()
+		var cmd tea.Cmd
+		m.filterInput, cmd = m.filterInput.Update(msg)
+		if m.filterInput.Value() != prev {
 			m.applyListFilter()
 		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -461,7 +462,7 @@ func (m RelationshipsModel) renderList() string {
 
 	title := "Relationships"
 	count := fmt.Sprintf("%d total", len(m.items))
-	if query := strings.TrimSpace(m.filterBuf); query != "" {
+	if query := strings.TrimSpace(m.filterInput.Value()); query != "" {
 		count = fmt.Sprintf("%s · filter: %s", count, query)
 	}
 	countLine := MutedStyle.Render(count)
@@ -721,12 +722,13 @@ func (m RelationshipsModel) renderConfirm() string {
 // --- Create ---
 
 func (m *RelationshipsModel) startCreate() {
-	m.createQuery = ""
+	m.createQueryInput.Reset()
+	m.createQueryInput.Focus()
 	m.createResults = nil
 	m.createList.SetItems(nil)
 	m.createSource = nil
 	m.createTarget = nil
-	m.createType = ""
+	m.createTypeInput.Reset()
 	m.createTypeResults = nil
 	m.createTypeList.SetItems(nil)
 	m.createTypeNav = false
@@ -739,22 +741,14 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 	case relsViewCreateSourceSearch:
 		switch {
 		case isBack(msg):
-			if m.createQuery != "" {
-				m.createQuery = ""
+			if m.createQueryInput.Value() != "" {
+				m.createQueryInput.Reset()
 				m.createResults = nil
 				m.createList.SetItems(nil)
 				m.createLoading = false
 				return m, nil
 			}
-			m.view = relsViewList
-		case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-			if m.createQuery != "" {
-				m.createQuery = ""
-				m.createResults = nil
-				m.createList.SetItems(nil)
-				m.createLoading = false
-				return m, nil
-			}
+			m.createQueryInput.Blur()
 			m.view = relsViewList
 		case isDown(msg):
 			m.createList.Down()
@@ -764,25 +758,19 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if idx := m.createList.Selected(); idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createSource = &item
-				m.createQuery = ""
+				m.createQueryInput.Reset()
 				m.createResults = nil
 				m.createList.SetItems(nil)
 				m.view = relsViewCreateTargetSearch
 			}
-		case isKey(msg, "backspace", "delete"):
-			if len(m.createQuery) > 0 {
-				m.createQuery = m.createQuery[:len(m.createQuery)-1]
-				return m, m.updateCreateSearch()
-			}
 		default:
-			ch := keyText(msg)
-			if ch != "" {
-				if ch == " " && m.createQuery == "" {
-					return m, nil
-				}
-				m.createQuery += ch
-				return m, m.updateCreateSearch()
+			prev := m.createQueryInput.Value()
+			var cmd tea.Cmd
+			m.createQueryInput, cmd = m.createQueryInput.Update(msg)
+			if m.createQueryInput.Value() != prev {
+				return m, tea.Batch(cmd, m.updateCreateSearch())
 			}
+			return m, cmd
 		}
 	case relsViewCreateSourceSelect:
 		switch {
@@ -796,7 +784,7 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if idx := m.createList.Selected(); idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createSource = &item
-				m.createQuery = ""
+				m.createQueryInput.Reset()
 				m.createResults = nil
 				m.createList.SetItems(nil)
 				m.view = relsViewCreateTargetSearch
@@ -805,17 +793,8 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 	case relsViewCreateTargetSearch:
 		switch {
 		case isBack(msg):
-			if m.createQuery != "" {
-				m.createQuery = ""
-				m.createResults = nil
-				m.createList.SetItems(nil)
-				m.createLoading = false
-				return m, nil
-			}
-			m.view = relsViewCreateSourceSearch
-		case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-			if m.createQuery != "" {
-				m.createQuery = ""
+			if m.createQueryInput.Value() != "" {
+				m.createQueryInput.Reset()
 				m.createResults = nil
 				m.createList.SetItems(nil)
 				m.createLoading = false
@@ -830,26 +809,22 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if idx := m.createList.Selected(); idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createTarget = &item
-				m.createQuery = ""
+				m.createQueryInput.Reset()
+				m.createQueryInput.Blur()
 				m.createResults = nil
 				m.createList.SetItems(nil)
 				m.view = relsViewCreateType
+				m.createTypeInput.Focus()
 				m.resetTypeSuggestions()
 			}
-		case isKey(msg, "backspace", "delete"):
-			if len(m.createQuery) > 0 {
-				m.createQuery = m.createQuery[:len(m.createQuery)-1]
-				return m, m.updateCreateSearch()
-			}
 		default:
-			ch := keyText(msg)
-			if ch != "" {
-				if ch == " " && m.createQuery == "" {
-					return m, nil
-				}
-				m.createQuery += ch
-				return m, m.updateCreateSearch()
+			prev := m.createQueryInput.Value()
+			var cmd tea.Cmd
+			m.createQueryInput, cmd = m.createQueryInput.Update(msg)
+			if m.createQueryInput.Value() != prev {
+				return m, tea.Batch(cmd, m.updateCreateSearch())
 			}
+			return m, cmd
 		}
 	case relsViewCreateTargetSelect:
 		switch {
@@ -863,17 +838,21 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if idx := m.createList.Selected(); idx < len(m.createResults) {
 				item := m.createResults[idx]
 				m.createTarget = &item
-				m.createQuery = ""
+				m.createQueryInput.Reset()
+				m.createQueryInput.Blur()
 				m.createResults = nil
 				m.createList.SetItems(nil)
 				m.view = relsViewCreateType
+				m.createTypeInput.Focus()
 				m.resetTypeSuggestions()
 			}
 		}
 	case relsViewCreateType:
 		switch {
 		case isBack(msg):
+			m.createTypeInput.Blur()
 			m.view = relsViewCreateTargetSearch
+			m.createQueryInput.Focus()
 		case isDown(msg):
 			if len(m.createTypeResults) > 0 {
 				m.createTypeNav = true
@@ -885,7 +864,7 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 				m.createTypeList.Up()
 			}
 		case isEnter(msg):
-			kind := strings.TrimSpace(m.createType)
+			kind := strings.TrimSpace(m.createTypeInput.Value())
 			if m.createTypeNav && len(m.createTypeResults) > 0 {
 				if idx := m.createTypeList.Selected(); idx < len(m.createTypeResults) {
 					kind = m.createTypeResults[idx]
@@ -894,33 +873,19 @@ func (m RelationshipsModel) handleCreateKeys(msg tea.KeyPressMsg) (Relationships
 			if kind == "" || m.createSource == nil || m.createTarget == nil {
 				return m, nil
 			}
+			m.createTypeInput.Blur()
 			m.view = relsViewList
 			m.loading = true
 			return m, tea.Batch(m.createRelationship(*m.createSource, *m.createTarget, kind), m.spinner.Tick)
-		case isKey(msg, "backspace", "delete"):
-			if len(m.createType) > 0 {
-				m.createType = m.createType[:len(m.createType)-1]
-				m.createTypeNav = false
-				m.updateTypeSuggestions()
-			}
-		case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-			if m.createType != "" {
-				m.createType = ""
-				m.createTypeNav = false
-				m.updateTypeSuggestions()
-				return m, nil
-			}
-			m.view = relsViewCreateTargetSearch
 		default:
-			ch := keyText(msg)
-			if ch != "" {
-				if ch == " " && m.createType == "" {
-					return m, nil
-				}
-				m.createType += ch
+			prev := m.createTypeInput.Value()
+			var cmd tea.Cmd
+			m.createTypeInput, cmd = m.createTypeInput.Update(msg)
+			if m.createTypeInput.Value() != prev {
 				m.createTypeNav = false
 				m.updateTypeSuggestions()
 			}
+			return m, cmd
 		}
 	}
 	return m, nil
@@ -942,13 +907,12 @@ func (m RelationshipsModel) renderCreate() string {
 // renderCreateSearch renders render create search.
 func (m RelationshipsModel) renderCreateSearch(title string) string {
 	var b strings.Builder
-	b.WriteString(MetaKeyStyle.Render("Search") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(components.SanitizeText(m.createQuery)))
-	b.WriteString(AccentStyle.Render("█"))
+	b.WriteString(m.createQueryInput.View())
 	b.WriteString("\n\n")
 
 	if m.createLoading {
 		b.WriteString(MutedStyle.Render("Searching..."))
-	} else if strings.TrimSpace(m.createQuery) == "" {
+	} else if strings.TrimSpace(m.createQueryInput.Value()) == "" {
 		b.WriteString(MutedStyle.Render("Type to search."))
 	} else if len(m.createResults) == 0 {
 		b.WriteString(MutedStyle.Render("No matches."))
@@ -1060,11 +1024,10 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 // renderCreateType renders render create type.
 func (m RelationshipsModel) renderCreateType() string {
 	var b strings.Builder
-	b.WriteString(MetaKeyStyle.Render("Type") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(components.SanitizeText(m.createType)))
-	b.WriteString(AccentStyle.Render("█"))
+	b.WriteString(m.createTypeInput.View())
 	b.WriteString("\n\n")
 
-	if strings.TrimSpace(m.createType) == "" && len(m.typeOptions) == 0 {
+	if strings.TrimSpace(m.createTypeInput.Value()) == "" && len(m.typeOptions) == 0 {
 		b.WriteString(MutedStyle.Render("Type a relationship type."))
 	} else if len(m.createTypeResults) == 0 {
 		b.WriteString(MutedStyle.Render("No suggestions."))
@@ -1285,7 +1248,7 @@ func (m RelationshipsModel) buildListLabels() []string {
 
 // applyListFilter handles apply list filter.
 func (m *RelationshipsModel) applyListFilter() {
-	query := strings.ToLower(strings.TrimSpace(m.filterBuf))
+	query := strings.ToLower(strings.TrimSpace(m.filterInput.Value()))
 	if query == "" {
 		m.items = append([]api.Relationship{}, m.allItems...)
 	} else {
@@ -1381,7 +1344,7 @@ func (m RelationshipsModel) createRelationship(source relationshipCreateCandidat
 
 // updateCreateSearch updates update create search.
 func (m *RelationshipsModel) updateCreateSearch() tea.Cmd {
-	query := strings.TrimSpace(m.createQuery)
+	query := strings.TrimSpace(m.createQueryInput.Value())
 	if query == "" {
 		m.createLoading = false
 		m.createResults = nil
@@ -1412,7 +1375,7 @@ func (m *RelationshipsModel) resetTypeSuggestions() {
 
 // updateTypeSuggestions updates update type suggestions.
 func (m *RelationshipsModel) updateTypeSuggestions() {
-	m.createTypeResults = filterRelationshipTypes(m.typeOptions, m.createType)
+	m.createTypeResults = filterRelationshipTypes(m.typeOptions, m.createTypeInput.Value())
 	m.createTypeList.SetItems(m.createTypeResults)
 }
 

@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -47,14 +48,14 @@ type searchEntry struct {
 }
 
 type SearchModel struct {
-	client  *api.Client
-	query   string
-	mode    string
-	loading bool
-	spinner spinner.Model
-	list    *components.List
-	items   []searchEntry
-	width   int
+	client     *api.Client
+	queryInput textinput.Model
+	mode       string
+	loading    bool
+	spinner    spinner.Model
+	list       *components.List
+	items      []searchEntry
+	width      int
 }
 
 const (
@@ -64,11 +65,14 @@ const (
 
 // NewSearchModel builds the search UI model.
 func NewSearchModel(client *api.Client) SearchModel {
+	qi := components.NewNebulaTextInput("Type to search...")
+	qi.Focus()
 	return SearchModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		mode:    searchModeText,
-		list:    components.NewList(12),
+		client:     client,
+		queryInput: qi,
+		spinner:    components.NewNebulaSpinner(),
+		mode:       searchModeText,
+		list:       components.NewList(12),
 	}
 }
 
@@ -86,7 +90,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		return m, cmd
 
 	case searchResultsMsg:
-		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.query) {
+		if strings.TrimSpace(msg.query) != strings.TrimSpace(m.queryInput.Value()) {
 			return m, nil
 		}
 		if msg.mode != m.mode {
@@ -111,27 +115,11 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch {
 		case isBack(msg):
-			if m.query != "" {
-				m.query = ""
+			if m.queryInput.Value() != "" {
+				m.queryInput.Reset()
 				m.items = nil
 				m.list.SetItems(nil)
 				m.loading = false
-				return m, nil
-			}
-		case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-			if m.query != "" {
-				m.query = ""
-				m.items = nil
-				m.list.SetItems(nil)
-				m.loading = false
-				return m, nil
-			}
-		case isKey(msg, "backspace", "delete"):
-			if len(m.query) > 0 {
-				m.query = m.query[:len(m.query)-1]
-				if cmd := m.search(m.query); cmd != nil {
-					return m, tea.Batch(cmd, m.spinner.Tick)
-				}
 				return m, nil
 			}
 		case isDown(msg):
@@ -144,13 +132,13 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 			} else {
 				m.mode = searchModeText
 			}
-			if strings.TrimSpace(m.query) == "" {
+			if strings.TrimSpace(m.queryInput.Value()) == "" {
 				m.loading = false
 				m.items = nil
 				m.list.SetItems(nil)
 				return m, nil
 			}
-			if cmd := m.search(m.query); cmd != nil {
+			if cmd := m.search(m.queryInput.Value()); cmd != nil {
 				return m, tea.Batch(cmd, m.spinner.Tick)
 			}
 			return m, nil
@@ -160,17 +148,16 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 				return m, m.emitSelection(entry)
 			}
 		default:
-			ch := keyText(msg)
-			if ch != "" {
-				if ch == " " && m.query == "" {
-					return m, nil
+			prev := m.queryInput.Value()
+			var cmd tea.Cmd
+			m.queryInput, cmd = m.queryInput.Update(msg)
+			cur := m.queryInput.Value()
+			if cur != prev {
+				if searchCmd := m.search(cur); searchCmd != nil {
+					return m, tea.Batch(cmd, searchCmd, m.spinner.Tick)
 				}
-				m.query += ch
-				if cmd := m.search(m.query); cmd != nil {
-					return m, tea.Batch(cmd, m.spinner.Tick)
-				}
-				return m, nil
 			}
+			return m, cmd
 		}
 	}
 	return m, nil
@@ -181,19 +168,12 @@ func (m SearchModel) View() string {
 	var b strings.Builder
 	b.WriteString(MutedStyle.Render(fmt.Sprintf("Mode: %s (tab to toggle)", m.mode)))
 	b.WriteString("\n\n")
-	query := components.SanitizeText(m.query)
-	queryWidth := components.BoxContentWidth(m.width) - 8
-	if queryWidth < 10 {
-		queryWidth = 10
-	}
-	query = components.ClampTextWidthEllipsis(query, queryWidth)
-	b.WriteString(MetaKeyStyle.Render("Query") + MetaPunctStyle.Render(": ") + SelectedStyle.Render(query))
-	b.WriteString(AccentStyle.Render("█"))
+	b.WriteString(m.queryInput.View())
 	b.WriteString("\n\n")
 
 	if m.loading {
 		b.WriteString(m.spinner.View() + " " + MutedStyle.Render("Searching..."))
-	} else if strings.TrimSpace(m.query) == "" {
+	} else if strings.TrimSpace(m.queryInput.Value()) == "" {
 		b.WriteString(MutedStyle.Render("Type to search."))
 	} else if len(m.items) == 0 {
 		b.WriteString(MutedStyle.Render("No matches."))

@@ -15,7 +15,7 @@ func TestEntitiesRenderEditTagsAndRenderEditBranches(t *testing.T) {
 	assert.Equal(t, "-", model.renderEditTags(false))
 
 	model.editTags = []string{"alpha"}
-	model.editTagBuf = "beta"
+	model.editTagInput.SetValue("beta")
 	out := components.SanitizeText(model.renderEditTags(false))
 	assert.Contains(t, out, "alpha")
 	assert.Contains(t, out, "beta")
@@ -92,7 +92,7 @@ func TestEntitiesViewBranchMatrix(t *testing.T) {
 	base.historyList.SetItems([]string{formatHistoryLine(base.history[0])})
 	base.relateResults = []api.Entity{{ID: "ent-2", Name: "Beta", Type: "tool", Status: "active"}}
 	base.relateList.SetItems([]string{"Beta"})
-	base.relEditBuf = "{}"
+	base.relEditInput.SetValue("{}")
 
 	model := base
 	model.view = entitiesViewList

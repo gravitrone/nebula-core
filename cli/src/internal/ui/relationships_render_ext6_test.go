@@ -29,7 +29,7 @@ func TestRelationshipsRenderListNarrowEdgeCaseBranches(t *testing.T) {
 	model.list.SetItems([]string{"rel-1", "phantom"})
 	model.list.Cursor = 0
 	model.modeFocus = true
-	model.filterBuf = "ent-1"
+	model.filterInput.SetValue("ent-1")
 
 	out := components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "1 total · filter: ent-1")

@@ -17,16 +17,16 @@ func TestFilesCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
 
 	assert.Equal(t, "-", model.renderAddTags(false))
 
-	model.addTagBuf = "  "
+	model.addTagInput.SetValue("  ")
 	model.commitAddTag()
 	assert.Empty(t, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.addTagBuf = "#Alpha"
+	model.addTagInput.SetValue("#Alpha")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha"}, model.addTags)
 
-	model.addTagBuf = "alpha"
+	model.addTagInput.SetValue("alpha")
 	model.commitAddTag()
 	assert.Equal(t, []string{"alpha"}, model.addTags)
 
@@ -34,7 +34,7 @@ func TestFilesCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
 	assert.Contains(t, focused, "[alpha]")
 	assert.Contains(t, focused, "█")
 
-	model.addTagBuf = "pending"
+	model.addTagInput.SetValue("pending")
 	blurred := stripANSI(model.renderAddTags(false))
 	assert.Contains(t, blurred, "[alpha]")
 	assert.Contains(t, blurred, "pending")
@@ -43,7 +43,7 @@ func TestFilesCommitAddTagAndRenderAddTagsMatrix(t *testing.T) {
 func TestFilesRenderAddTagsFocusedMultiTagAndBufferBranches(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.addTags = []string{"alpha", "beta"}
-	model.addTagBuf = "tail"
+	model.addTagInput.SetValue("tail")
 
 	out := stripANSI(model.renderAddTags(true))
 	assert.Contains(t, out, "[alpha]")
@@ -57,16 +57,16 @@ func TestFilesCommitEditTagAndRenderEditTagsMatrix(t *testing.T) {
 
 	assert.Equal(t, "-", model.renderEditTags(false))
 
-	model.editTagBuf = "  "
+	model.editTagInput.SetValue("  ")
 	model.commitEditTag()
 	assert.Empty(t, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
-	model.editTagBuf = "#Beta"
+	model.editTagInput.SetValue("#Beta")
 	model.commitEditTag()
 	assert.Equal(t, []string{"beta"}, model.editTags)
 
-	model.editTagBuf = "beta"
+	model.editTagInput.SetValue("beta")
 	model.commitEditTag()
 	assert.Equal(t, []string{"beta"}, model.editTags)
 
@@ -74,7 +74,7 @@ func TestFilesCommitEditTagAndRenderEditTagsMatrix(t *testing.T) {
 	assert.Contains(t, focused, "[beta]")
 	assert.Contains(t, focused, "█")
 
-	model.editTagBuf = "next"
+	model.editTagInput.SetValue("next")
 	blurred := stripANSI(model.renderEditTags(false))
 	assert.Contains(t, blurred, "[beta]")
 	assert.Contains(t, blurred, "next")

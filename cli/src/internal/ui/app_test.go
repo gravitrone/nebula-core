@@ -323,9 +323,9 @@ func TestPaletteModeSwitchesBetweenCommandAndSearch(t *testing.T) {
 	app.openPaletteCommand()
 
 	require.True(t, app.paletteCommandMode())
-	assert.Equal(t, "/", app.paletteQuery)
+	assert.Equal(t, "/", app.paletteInput.Value())
 
-	app.paletteQuery = "alpha"
+	app.paletteInput.SetValue("alpha")
 	require.False(t, app.paletteCommandMode())
 
 	app.paletteSearchQuery = "alpha"

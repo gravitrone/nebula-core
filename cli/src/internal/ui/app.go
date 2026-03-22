@@ -8,6 +8,7 @@ import (
 
 	"charm.land/bubbles/v2/help"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/harmonica"
 
@@ -126,8 +127,8 @@ type App struct {
 	showRecoveryHints bool
 	recoveryCommand   string
 
-	onboarding     bool
-	onboardingName string
+	onboarding      bool
+	onboardingInput textinput.Model
 	onboardingBusy bool
 
 	quickstartOpen bool
@@ -138,7 +139,7 @@ type App struct {
 	toast           *appToast
 
 	paletteOpen          bool
-	paletteQuery         string
+	paletteInput         textinput.Model
 	paletteIndex         int
 	paletteActions       []paletteAction
 	paletteFiltered      []paletteAction
@@ -198,6 +199,8 @@ func NewApp(client *api.Client, cfg *config.Config) App {
 		tabNav:          true,
 		recoveryCommand: "nebula login",
 		onboarding:      onboarding,
+		onboardingInput: components.NewNebulaTextInput("Enter username..."),
+		paletteInput:    components.NewNebulaTextInput(""),
 		quickstartOpen:  quickstartPending,
 		startupChecking: startupChecking,
 		startup: startupSummary{
@@ -353,7 +356,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.profile.config = cfg
 		a.inbox.SetPendingLimit(cfg.PendingLimit)
 		a.onboarding = false
-		a.onboardingName = ""
+		a.onboardingInput.Reset()
 		a.quickstartOpen = cfg.QuickstartPending
 		a.err = ""
 		a.lastErrCode = ""
@@ -1261,7 +1264,7 @@ func (a *App) handleOnboardingKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return *a, nil
 	}
 	if isEnter(msg) {
-		username := strings.TrimSpace(a.onboardingName)
+		username := strings.TrimSpace(a.onboardingInput.Value())
 		if username == "" {
 			a.err = "username is required"
 			return *a, nil
@@ -1270,17 +1273,9 @@ func (a *App) handleOnboardingKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		a.onboardingBusy = true
 		return *a, a.onboardingLoginCmd(username)
 	}
-	if isKey(msg, "backspace", "ctrl+h", "delete", "backspace2") {
-		runes := []rune(a.onboardingName)
-		if len(runes) > 0 {
-			a.onboardingName = string(runes[:len(runes)-1])
-		}
-		return *a, nil
-	}
-	if ch := keyText(msg); ch != "" {
-		a.onboardingName += ch
-	}
-	return *a, nil
+	var cmd tea.Cmd
+	a.onboardingInput, cmd = a.onboardingInput.Update(msg)
+	return *a, cmd
 }
 
 // onboardingLoginCmd handles onboarding login cmd.
@@ -1298,7 +1293,7 @@ func (a *App) onboardingLoginCmd(username string) tea.Cmd {
 
 // renderOnboarding renders render onboarding.
 func (a App) renderOnboarding() string {
-	prompt := components.SanitizeOneLine(strings.TrimSpace(a.onboardingName))
+	prompt := components.SanitizeOneLine(strings.TrimSpace(a.onboardingInput.Value()))
 	if prompt == "" {
 		prompt = ""
 	}
@@ -1529,7 +1524,8 @@ func startupStatusColor(status string) string {
 func (a *App) openPaletteCommand() {
 	a.paletteOpen = true
 	// Open in explicit command mode. Users can backspace this to switch to search mode.
-	a.paletteQuery = "/"
+	a.paletteInput.SetValue("/")
+	a.paletteInput.Focus()
 	a.paletteIndex = 0
 	a.paletteSearchQuery = ""
 	a.paletteSearchLoading = false
@@ -1539,7 +1535,7 @@ func (a *App) openPaletteCommand() {
 
 // paletteCommandMode handles palette command mode.
 func (a App) paletteCommandMode() bool {
-	query := strings.TrimSpace(a.paletteQuery)
+	query := strings.TrimSpace(a.paletteInput.Value())
 	return strings.HasPrefix(query, "/")
 }
 
@@ -1553,7 +1549,7 @@ func (a App) renderPalette() string {
 		prompt = "Command"
 	}
 
-	query := components.SanitizeOneLine(a.paletteQuery)
+	query := components.SanitizeOneLine(a.paletteInput.Value())
 	if commandMode {
 		query = strings.TrimLeft(query, "/")
 	}
@@ -1574,7 +1570,7 @@ func (a App) renderPalette() string {
 	} else if len(items) == 0 {
 		if commandMode {
 			b.WriteString(MutedStyle.Render("No matching actions."))
-		} else if strings.TrimSpace(a.paletteQuery) == "" {
+		} else if strings.TrimSpace(a.paletteInput.Value()) == "" {
 			b.WriteString(MutedStyle.Render("Type to search, or prefix with / for commands."))
 		} else {
 			b.WriteString(MutedStyle.Render("No search results."))
@@ -1631,10 +1627,10 @@ func (a App) renderPalette() string {
 
 // refreshPaletteFiltered handles refresh palette filtered.
 func (a *App) refreshPaletteFiltered() tea.Cmd {
-	a.paletteQuery = components.SanitizeOneLine(a.paletteQuery)
+	a.paletteInput.SetValue(components.SanitizeOneLine(a.paletteInput.Value()))
 
 	if a.paletteCommandMode() {
-		query := strings.TrimSpace(strings.TrimLeft(a.paletteQuery, "/"))
+		query := strings.TrimSpace(strings.TrimLeft(a.paletteInput.Value(), "/"))
 		a.paletteSearchQuery = ""
 		a.paletteSearchLoading = false
 		a.paletteSelections = nil
@@ -1645,7 +1641,7 @@ func (a *App) refreshPaletteFiltered() tea.Cmd {
 		return nil
 	}
 
-	query := strings.TrimSpace(a.paletteQuery)
+	query := strings.TrimSpace(a.paletteInput.Value())
 	if query == "" {
 		a.paletteSearchQuery = ""
 		a.paletteSearchLoading = false
@@ -1796,7 +1792,7 @@ func (a App) handlePaletteKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		action := a.paletteFiltered[a.paletteIndex]
 		a.paletteOpen = false
-		a.paletteQuery = ""
+		a.paletteInput.Reset()
 		return a.runPaletteAction(action)
 	case isUp(msg):
 		if a.paletteIndex > 0 {
@@ -1806,15 +1802,10 @@ func (a App) handlePaletteKeys(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if a.paletteIndex < len(a.paletteFiltered)-1 {
 			a.paletteIndex++
 		}
-	case isKey(msg, "backspace"):
-		if len(a.paletteQuery) > 0 {
-			r := []rune(a.paletteQuery)
-			a.paletteQuery = string(r[:len(r)-1])
-			return a, a.refreshPaletteFiltered()
-		}
 	default:
-		if ch := keyText(msg); ch != "" {
-			a.paletteQuery += ch
+		prev := a.paletteInput.Value()
+		a.paletteInput, _ = a.paletteInput.Update(msg)
+		if a.paletteInput.Value() != prev {
 			return a, a.refreshPaletteFiltered()
 		}
 	}
@@ -2005,10 +1996,10 @@ func contextHasInput(m ContextModel) bool {
 			return true
 		}
 	}
-	if len(m.tags) > 0 || strings.TrimSpace(m.tagBuf) != "" {
+	if len(m.tags) > 0 || strings.TrimSpace(m.tagInput.Value()) != "" {
 		return true
 	}
-	if len(m.linkEntities) > 0 || strings.TrimSpace(m.linkQuery) != "" {
+	if len(m.linkEntities) > 0 || strings.TrimSpace(m.linkQueryInput.Value()) != "" {
 		return true
 	}
 	return false

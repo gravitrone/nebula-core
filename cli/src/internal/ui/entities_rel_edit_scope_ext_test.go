@@ -211,7 +211,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	assert.Equal(t, "rel-1", model.relEditID)
 	assert.Equal(t, relEditFieldStatus, model.relEditFocus)
 	assert.Equal(t, 0, model.relEditStatusIdx)
-	assert.Equal(t, "", strings.TrimSpace(model.relEditBuf))
+	assert.Equal(t, "", strings.TrimSpace(model.relEditInput.Value()))
 
 	// Status selector branches.
 	updated, cmd := model.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyRight})
@@ -236,16 +236,16 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
 
 	updated.relEditFocus = relEditFieldProperties
-	updated.relEditBuf = "a"
+	updated.relEditInput.SetValue("a")
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.relEditBuf)
+	assert.Equal(t, "", updated.relEditInput.Value())
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: '{', Text: "{"})
-	assert.Equal(t, "{", updated.relEditBuf)
+	assert.Equal(t, "{", updated.relEditInput.Value())
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "{ ", updated.relEditBuf)
+	assert.Equal(t, "{ ", updated.relEditInput.Value())
 
 	// Save invalid JSON branch.
-	updated.relEditBuf = "{"
+	updated.relEditInput.SetValue("{")
 	updated, cmd = updated.handleRelEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
 	assert.NotEmpty(t, updated.errText)
@@ -253,7 +253,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	// Save valid branch.
 	updated.errText = ""
 	updated.relEditStatusIdx = 0
-	updated.relEditBuf = `{"note":"ok"}`
+	updated.relEditInput.SetValue(`{"note":"ok"}`)
 	updated, cmd = updated.handleRelEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -272,32 +272,32 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 func TestEntitiesCommitEditTagScopeAndRenderEditTagsBranches(t *testing.T) {
 	model := NewEntitiesModel(nil)
 
-	model.editTagBuf = "  "
+	model.editTagInput.SetValue("  ")
 	model.commitEditTag()
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
 	model.editTags = []string{"alpha"}
-	model.editTagBuf = "ALPHA"
+	model.editTagInput.SetValue("ALPHA")
 	model.commitEditTag()
 	assert.Equal(t, []string{"alpha"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
-	model.editTagBuf = "beta"
+	model.editTagInput.SetValue("beta")
 	model.commitEditTag()
 	assert.Equal(t, []string{"alpha", "beta"}, model.editTags)
 
-	model.editScopeBuf = "  "
+	model.editScopeInput.SetValue("  ")
 	model.commitEditScope()
-	assert.Equal(t, "", model.editScopeBuf)
+	assert.Equal(t, "", model.editScopeInput.Value())
 	assert.False(t, model.editScopesDirty)
 
 	model.editScopes = []string{"public"}
-	model.editScopeBuf = " PUBLIC "
+	model.editScopeInput.SetValue(" PUBLIC ")
 	model.commitEditScope()
 	assert.Equal(t, []string{"public"}, model.editScopes)
 	assert.False(t, model.editScopesDirty)
 
-	model.editScopeBuf = "private"
+	model.editScopeInput.SetValue("private")
 	model.commitEditScope()
 	assert.Equal(t, []string{"public", "private"}, model.editScopes)
 	assert.True(t, model.editScopesDirty)
@@ -305,7 +305,7 @@ func TestEntitiesCommitEditTagScopeAndRenderEditTagsBranches(t *testing.T) {
 	empty := model.renderEditTags(false)
 	assert.NotEqual(t, "-", empty)
 	model.editTags = nil
-	model.editTagBuf = ""
+	model.editTagInput.SetValue("")
 	assert.Equal(t, "-", model.renderEditTags(false))
 	assert.Contains(t, components.SanitizeText(model.renderEditTags(true)), "█")
 }
@@ -322,18 +322,18 @@ func TestEntitiesHandleRelationshipsKeysBranchMatrix(t *testing.T) {
 
 	// Enter relate flow and ensure startRelate reset is applied.
 	model.view = entitiesViewRelationships
-	model.relateQuery = "stale"
+	model.relateQueryInput.SetValue("stale")
 	model.relateResults = []api.Entity{{ID: "ent-x"}}
 	model.relateTarget = &api.Entity{ID: "ent-y"}
-	model.relateType = "knows"
+	model.relateTypeInput.SetValue("knows")
 	model.relateLoading = true
 	next, cmd = model.handleRelationshipsKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.Equal(t, entitiesViewRelateSearch, next.view)
-	assert.Equal(t, "", next.relateQuery)
+	assert.Equal(t, "", next.relateQueryInput.Value())
 	assert.Nil(t, next.relateResults)
 	assert.Nil(t, next.relateTarget)
-	assert.Equal(t, "", next.relateType)
+	assert.Equal(t, "", next.relateTypeInput.Value())
 	assert.False(t, next.relateLoading)
 
 	// Down/up branches on relationship list.
@@ -481,7 +481,7 @@ func TestEntitiesSaveRelEditReturnsErrMsgOnUpdateFailure(t *testing.T) {
 	model := NewEntitiesModel(client)
 	model.relEditID = "rel-1"
 	model.relEditStatusIdx = 0
-	model.relEditBuf = `{"note":"ok"}`
+	model.relEditInput.SetValue(`{"note":"ok"}`)
 
 	updated, cmd := model.saveRelEdit()
 	require.NotNil(t, cmd)

@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -65,7 +66,7 @@ type LogsModel struct {
 	view          logsView
 	modeFocus     bool
 	filtering     bool
-	searchBuf     string
+	searchInput   textinput.Model
 	searchSuggest string
 	detail        *api.Log
 	detailRels    []api.Relationship
@@ -82,7 +83,7 @@ type LogsModel struct {
 	addFocus     int
 	addStatusIdx int
 	addTags      []string
-	addTagBuf    string
+	addTagInput  textinput.Model
 	addType      string
 	addTimestamp string
 	addValue     MetadataEditor
@@ -94,7 +95,7 @@ type LogsModel struct {
 	editFocus     int
 	editStatusIdx int
 	editTags      []string
-	editTagBuf    string
+	editTagInput  textinput.Model
 	editType      string
 	editTimestamp string
 	editValue     MetadataEditor
@@ -105,9 +106,12 @@ type LogsModel struct {
 // NewLogsModel builds the logs UI model.
 func NewLogsModel(client *api.Client) LogsModel {
 	return LogsModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		list:    components.NewList(12),
+		client:       client,
+		spinner:      components.NewNebulaSpinner(),
+		searchInput:  components.NewNebulaTextInput("Filter logs..."),
+		addTagInput:  components.NewNebulaTextInput("Add tag..."),
+		editTagInput: components.NewNebulaTextInput("Edit tag..."),
+		list:         components.NewList(12),
 		view:   logsViewList,
 		addFields: []formField{
 			{label: "Type"},
@@ -126,7 +130,7 @@ func (m LogsModel) Init() tea.Cmd {
 	m.view = logsViewList
 	m.modeFocus = false
 	m.filtering = false
-	m.searchBuf = ""
+	m.searchInput.Reset()
 	m.searchSuggest = ""
 	m.detail = nil
 	m.detailRels = nil
@@ -136,7 +140,7 @@ func (m LogsModel) Init() tea.Cmd {
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(logStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addType = ""
 	m.addTimestamp = ""
 	m.addValue.Reset()
@@ -146,7 +150,7 @@ func (m LogsModel) Init() tea.Cmd {
 	m.editFocus = 0
 	m.editStatusIdx = statusIndex(logStatusOptions, "active")
 	m.editTags = nil
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editType = ""
 	m.editTimestamp = ""
 	m.editValue.Reset()
@@ -244,7 +248,7 @@ func (m LogsModel) View() string {
 		return m.editMeta.Render(m.width)
 	}
 	if m.filtering && m.view == logsViewList {
-		return components.Indent(components.InputDialog("Filter Logs", m.searchBuf), 1)
+		return components.Indent(components.TextInputDialog("Filter Logs", m.searchInput.View()), 1)
 	}
 	modeLine := m.renderModeLine()
 	var body string
@@ -417,9 +421,9 @@ func (m LogsModel) renderList() string {
 	}
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
-	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
+	if strings.TrimSpace(m.searchInput.Value()) != "" {
+		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchInput.Value()))
+		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchInput.Value()), strings.TrimSpace(m.searchSuggest)) {
 			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
 		}
 	}
@@ -511,33 +515,23 @@ func (m LogsModel) handleListKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 		}
 	case isKey(msg, "f"):
 		m.filtering = true
+		m.searchInput.Focus()
 		return m, nil
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applyLogSearch()
-		}
-	case isKey(msg, "cmd+backspace", "cmd+delete", "ctrl+u"):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
-			m.searchSuggest = ""
-			m.applyLogSearch()
-		}
 	case isBack(msg):
-		if m.searchBuf != "" {
-			m.searchBuf = ""
+		if m.searchInput.Value() != "" {
+			m.searchInput.Reset()
 			m.searchSuggest = ""
 			m.applyLogSearch()
 		}
 	case isKey(msg, "tab"):
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
-			m.searchBuf = m.searchSuggest
+		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchInput.Value()), strings.TrimSpace(m.searchSuggest)) {
+			m.searchInput.SetValue(m.searchSuggest)
 			m.applyLogSearch()
 		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		m.searchInput, _ = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applyLogSearch()
 		}
 	}
@@ -549,25 +543,21 @@ func (m LogsModel) handleFilterInput(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	switch {
 	case isEnter(msg):
 		m.filtering = false
+		m.searchInput.Blur()
 	case isBack(msg):
 		m.filtering = false
-		m.searchBuf = ""
+		m.searchInput.Reset()
+		m.searchInput.Blur()
 		m.searchSuggest = ""
 		m.applyLogSearch()
-	case isKey(msg, "backspace", "delete"):
-		if len(m.searchBuf) > 0 {
-			m.searchBuf = m.searchBuf[:len(m.searchBuf)-1]
-			m.applyLogSearch()
-		}
 	default:
-		ch := keyText(msg)
-		if ch != "" {
-			if ch == " " && m.searchBuf == "" {
-				return m, nil
-			}
-			m.searchBuf += ch
+		prev := m.searchInput.Value()
+		var cmd tea.Cmd
+		m.searchInput, cmd = m.searchInput.Update(msg)
+		if m.searchInput.Value() != prev {
 			m.applyLogSearch()
 		}
+		return m, cmd
 	}
 	return m, nil
 }
@@ -682,10 +672,10 @@ func (m LogsModel) handleAddKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	case isKey(msg, "backspace", "delete"):
 		switch m.addFocus {
 		case logFieldTags:
-			if len(m.addTagBuf) > 0 {
-				m.addTagBuf = m.addTagBuf[:len(m.addTagBuf)-1]
-			} else if len(m.addTags) > 0 {
+			if m.addTagInput.Value() == "" && len(m.addTags) > 0 {
 				m.addTags = m.addTags[:len(m.addTags)-1]
+			} else {
+				m.addTagInput, _ = m.addTagInput.Update(msg)
 			}
 		case logFieldType:
 			if len(m.addType) > 0 {
@@ -705,10 +695,7 @@ func (m LogsModel) handleAddKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitAddTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.addTagBuf += ch
-				}
+				m.addTagInput, _ = m.addTagInput.Update(msg)
 			}
 		case logFieldType:
 			ch := keyText(msg)
@@ -843,7 +830,7 @@ func (m *LogsModel) resetAddForm() {
 	m.addFocus = 0
 	m.addStatusIdx = statusIndex(logStatusOptions, "active")
 	m.addTags = nil
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 	m.addType = ""
 	m.addTimestamp = ""
 	m.addValue.Reset()
@@ -852,29 +839,29 @@ func (m *LogsModel) resetAddForm() {
 
 // commitAddTag handles commit add tag.
 func (m *LogsModel) commitAddTag() {
-	raw := strings.TrimSpace(m.addTagBuf)
+	raw := strings.TrimSpace(m.addTagInput.Value())
 	if raw == "" {
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 		return
 	}
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.addTagBuf = ""
+		m.addTagInput.Reset()
 		return
 	}
 	for _, t := range m.addTags {
 		if t == tag {
-			m.addTagBuf = ""
+			m.addTagInput.Reset()
 			return
 		}
 	}
 	m.addTags = append(m.addTags, tag)
-	m.addTagBuf = ""
+	m.addTagInput.Reset()
 }
 
 // renderAddTags renders render add tags.
 func (m LogsModel) renderAddTags(focused bool) string {
-	if len(m.addTags) == 0 && m.addTagBuf == "" && !focused {
+	if len(m.addTags) == 0 && m.addTagInput.Value() == "" && !focused {
 		return "-"
 	}
 	var b strings.Builder
@@ -888,15 +875,15 @@ func (m LogsModel) renderAddTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.addTagBuf != "" {
-			b.WriteString(m.addTagBuf)
+		if m.addTagInput.Value() != "" {
+			b.WriteString(m.addTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.addTagBuf != "" {
+	} else if m.addTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.addTagBuf))
+		b.WriteString(MutedStyle.Render(m.addTagInput.Value()))
 	}
 	return b.String()
 }
@@ -911,7 +898,7 @@ func (m LogsModel) startEdit() {
 	m.editFocus = 0
 	m.editStatusIdx = statusIndex(logStatusOptions, l.Status)
 	m.editTags = append([]string{}, l.Tags...)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 	m.editType = l.LogType
 	m.editTimestamp = l.Timestamp.Format(time.RFC3339)
 	m.editValue.Load(map[string]any(l.Value))
@@ -948,10 +935,10 @@ func (m LogsModel) handleEditKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 	case isKey(msg, "backspace", "delete"):
 		switch m.editFocus {
 		case logEditFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
+			if m.editTagInput.Value() == "" && len(m.editTags) > 0 {
 				m.editTags = m.editTags[:len(m.editTags)-1]
+			} else {
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		}
 	default:
@@ -961,10 +948,7 @@ func (m LogsModel) handleEditKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
 				m.commitEditTag()
 			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
+				m.editTagInput, _ = m.editTagInput.Update(msg)
 			}
 		case logEditFieldValue:
 			if isEnter(msg) {
@@ -1046,29 +1030,29 @@ func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
 
 // commitEditTag handles commit edit tag.
 func (m *LogsModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
+	raw := strings.TrimSpace(m.editTagInput.Value())
 	if raw == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 	tag := normalizeTag(raw)
 	if tag == "" {
-		m.editTagBuf = ""
+		m.editTagInput.Reset()
 		return
 	}
 	for _, t := range m.editTags {
 		if t == tag {
-			m.editTagBuf = ""
+			m.editTagInput.Reset()
 			return
 		}
 	}
 	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
+	m.editTagInput.Reset()
 }
 
 // renderEditTags renders render edit tags.
 func (m LogsModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
+	if len(m.editTags) == 0 && m.editTagInput.Value() == "" && !focused {
 		return "-"
 	}
 	var b strings.Builder
@@ -1082,15 +1066,15 @@ func (m LogsModel) renderEditTags(focused bool) string {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
+		if m.editTagInput.Value() != "" {
+			b.WriteString(m.editTagInput.Value())
 		}
 		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
+	} else if m.editTagInput.Value() != "" {
 		if b.Len() > 0 {
 			b.WriteString(" ")
 		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
+		b.WriteString(MutedStyle.Render(m.editTagInput.Value()))
 	}
 	return b.String()
 }
@@ -1127,7 +1111,7 @@ func (m LogsModel) loadScopeOptions() tea.Cmd {
 
 // applyLogSearch handles apply log search.
 func (m *LogsModel) applyLogSearch() {
-	query := strings.TrimSpace(strings.ToLower(m.searchBuf))
+	query := strings.TrimSpace(strings.ToLower(m.searchInput.Value()))
 	if query == "" {
 		m.items = m.allItems
 	} else {
@@ -1151,7 +1135,7 @@ func (m *LogsModel) applyLogSearch() {
 // updateSearchSuggest updates update search suggest.
 func (m *LogsModel) updateSearchSuggest() {
 	m.searchSuggest = ""
-	query := strings.ToLower(strings.TrimSpace(m.searchBuf))
+	query := strings.ToLower(strings.TrimSpace(m.searchInput.Value()))
 	if query == "" {
 		return
 	}

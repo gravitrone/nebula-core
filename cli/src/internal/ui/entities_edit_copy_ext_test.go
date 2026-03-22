@@ -48,13 +48,13 @@ func TestEntitiesHandleEditKeysBranchMatrix(t *testing.T) {
 
 	t.Run("navigation, status, tags branches", func(t *testing.T) {
 		model.editFocus = editFieldTags
-		model.editTagBuf = "ab"
+		model.editTagInput.SetValue("ab")
 
 		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.Nil(t, cmd)
-		assert.Equal(t, "a", updated.editTagBuf)
+		assert.Equal(t, "a", updated.editTagInput.Value())
 
-		updated.editTagBuf = ""
+		updated.editTagInput.SetValue("")
 		updated.editTags = []string{"alpha", "beta"}
 		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, []string{"alpha"}, updated.editTags)
@@ -68,10 +68,10 @@ func TestEntitiesHandleEditKeysBranchMatrix(t *testing.T) {
 
 		updated.editFocus = editFieldTags
 		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
-		assert.Equal(t, "x", updated.editTagBuf)
+		assert.Equal(t, "x", updated.editTagInput.Value())
 		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Equal(t, []string{"alpha", "x"}, updated.editTags)
-		assert.Equal(t, "", updated.editTagBuf)
+		assert.Equal(t, "", updated.editTagInput.Value())
 
 		updated.editFocus = editFieldScopes
 		updated.editScopeSelecting = false

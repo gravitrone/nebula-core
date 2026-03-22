@@ -65,7 +65,7 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 
 	// Tab should complete to suggestion.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, "Alpha.txt", model.searchBuf)
+	assert.Equal(t, "Alpha.txt", model.searchInput.Value())
 }
 
 // TestFilesDetailViewRendersMetadataWhenExpanded handles test files detail view renders metadata when expanded.

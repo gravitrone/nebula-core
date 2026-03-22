@@ -106,7 +106,7 @@ func TestContextViewEarlyReturnBranches(t *testing.T) {
 
 	model.saved = false
 	model.linkSearching = true
-	model.linkQuery = "alpha"
+	model.linkQueryInput.SetValue("alpha")
 	model.linkResults = nil
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "No matches")
@@ -126,7 +126,7 @@ func TestContextRenderAddBranchMatrix(t *testing.T) {
 	model.fields[fieldURL].value = "https://a"
 	model.fields[fieldNotes].value = "notes"
 	model.tags = []string{"alpha"}
-	model.tagBuf = "beta"
+	model.tagInput.SetValue("beta")
 	model.scopes = []string{"public"}
 	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
 
@@ -182,7 +182,7 @@ func TestContextRenderEditBranchMatrix(t *testing.T) {
 	model.contextEditFields[contextEditFieldURL].value = "https://e"
 	model.contextEditFields[contextEditFieldNotes].value = "notes edit"
 	model.editTags = []string{"alpha"}
-	model.editTagBuf = "beta"
+	model.editTagInput.SetValue("beta")
 	model.editScopes = []string{"public"}
 
 	model.editFocus = contextEditFieldType
@@ -286,11 +286,11 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 	updated.focus = fieldTags
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'A', Text: "A"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "A", updated.tagBuf)
+	assert.Equal(t, "A", updated.tagInput.Value())
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: ',', Text: ","})
 	require.Nil(t, cmd)
 	assert.Equal(t, []string{"a"}, updated.tags)
-	assert.Equal(t, "", updated.tagBuf)
+	assert.Equal(t, "", updated.tagInput.Value())
 
 	// Backspace branches for tags/scopes/entities/default fields.
 	updated.tags = []string{"a", "b"}
@@ -325,11 +325,11 @@ func TestContextUpdateKeyBranchMatrixAdditional(t *testing.T) {
 	// Entities typing starts link search and emits command.
 	updated.focus = fieldEntities
 	updated.linkSearching = false
-	updated.linkQuery = ""
+	updated.linkQueryInput.SetValue("")
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.linkSearching)
-	assert.Equal(t, "x", updated.linkQuery)
+	assert.Equal(t, "x", updated.linkQueryInput.Value())
 
 	// Global navigation + reset + save branches.
 	updated.linkSearching = false

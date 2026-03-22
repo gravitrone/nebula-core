@@ -14,12 +14,12 @@ import (
 func TestFilesUpdateUnknownMessageReturnsNoop(t *testing.T) {
 	model := NewFilesModel(nil)
 	model.view = filesViewDetail
-	model.searchBuf = "alpha"
+	model.searchInput.SetValue("alpha")
 
 	updated, cmd := model.Update(struct{ name string }{name: "noop"})
 	require.Nil(t, cmd)
 	assert.Equal(t, filesViewDetail, updated.view)
-	assert.Equal(t, "alpha", updated.searchBuf)
+	assert.Equal(t, "alpha", updated.searchInput.Value())
 }
 
 func TestFilesRenderListLoadingAndSmallWidthBranches(t *testing.T) {
@@ -50,7 +50,7 @@ func TestFilesRenderListLoadingAndSmallWidthBranches(t *testing.T) {
 	}
 	// Keep one extra list row so renderList hits the out-of-range guard branch.
 	model.list.SetItems([]string{"row-1", "row-2", "row-3"})
-	model.searchBuf = "be"
+	model.searchInput.SetValue("be")
 	model.searchSuggest = "Beta.txt"
 	model.modeFocus = true
 
@@ -97,17 +97,17 @@ func TestFilesHandleListKeysSpaceAndEscapeSearchBranches(t *testing.T) {
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated.all = []api.File{
 		{ID: "file-1", Filename: "Alpha.txt", Status: "active", CreatedAt: now},
 	}
 	updated.applyFileSearch()
-	updated.searchBuf = "Alpha"
+	updated.searchInput.SetValue("Alpha")
 	updated.searchSuggest = "Alpha.txt"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.Equal(t, "", updated.searchSuggest)
 }
 

@@ -60,35 +60,35 @@ func TestContextHandleFilterInputBranchMatrix(t *testing.T) {
 	assert.Len(t, model.items, 2)
 
 	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: ' ', Text: " "})
-	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.filterBuf)
+	_ = cmd // textinput may return cursor cmd
+	assert.Equal(t, "", updated.filterInput.Value())
 	assert.Len(t, updated.items, 2)
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
-	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.filterBuf)
+	_ = cmd // textinput may return cursor cmd
+	assert.Equal(t, "a", updated.filterInput.Value())
 	assert.Len(t, updated.items, 2)
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.filterBuf)
+	_ = cmd // textinput may return cursor cmd
+	assert.Equal(t, "", updated.filterInput.Value())
 	assert.Len(t, updated.items, 2)
 
-	updated.filterBuf = "beta"
+	updated.filterInput.SetValue("beta")
 	updated.applyContextFilter()
 	assert.Len(t, updated.items, 1)
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.filterBuf)
+	assert.Equal(t, "", updated.filterInput.Value())
 	assert.Len(t, updated.items, 2)
 
 	updated.filtering = true
-	updated.filterBuf = "active"
+	updated.filterInput.SetValue("active")
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "active", updated.filterBuf)
+	assert.Equal(t, "active", updated.filterInput.Value())
 }
 
 func TestContextHandleDetailKeysBranchMatrix(t *testing.T) {
@@ -198,13 +198,13 @@ func TestContextHandleEditKeysBranchMatrix(t *testing.T) {
 		model.view = contextViewEdit
 		model.detail = &api.Context{ID: "ctx-1"}
 		model.editFocus = contextEditFieldTags
-		model.editTagBuf = "ab"
+		model.editTagInput.SetValue("ab")
 
 		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		require.Nil(t, cmd)
-		assert.Equal(t, "a", updated.editTagBuf)
+		assert.Equal(t, "a", updated.editTagInput.Value())
 
-		updated.editTagBuf = ""
+		updated.editTagInput.SetValue("")
 		updated.editTags = []string{"alpha", "beta"}
 		updated, _ = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 		assert.Equal(t, []string{"alpha"}, updated.editTags)
@@ -247,7 +247,7 @@ func TestContextRenderTagsAndEditTagsBranches(t *testing.T) {
 	assert.Equal(t, "-", model.renderEditTags(false))
 
 	model.tags = []string{"alpha"}
-	model.tagBuf = "beta"
+	model.tagInput.SetValue("beta")
 	out := components.SanitizeText(model.renderTags(false))
 	assert.Contains(t, out, "alpha")
 	assert.Contains(t, out, "beta")
@@ -258,7 +258,7 @@ func TestContextRenderTagsAndEditTagsBranches(t *testing.T) {
 	assert.Contains(t, out, "█")
 
 	model.editTags = []string{"x"}
-	model.editTagBuf = "y"
+	model.editTagInput.SetValue("y")
 	out = components.SanitizeText(model.renderEditTags(false))
 	assert.Contains(t, out, "x")
 	assert.Contains(t, out, "y")
@@ -287,7 +287,7 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	model := NewContextModel(nil)
 	model.startLinkSearch()
 	assert.True(t, model.linkSearching)
-	assert.Equal(t, "", model.linkQuery)
+	assert.Equal(t, "", model.linkQueryInput.Value())
 
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
 	model.linkList.SetItems([]string{"Alpha"})
@@ -298,34 +298,34 @@ func TestContextHandleLinkSearchBranchMatrix(t *testing.T) {
 	assert.Empty(t, model.linkResults)
 
 	model.linkSearching = true
-	model.linkQuery = "ab"
+	model.linkQueryInput.SetValue("ab")
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.NotNil(t, cmd)
-	assert.Equal(t, "a", model.linkQuery)
+	assert.Equal(t, "a", model.linkQueryInput.Value())
 
 	model.linkResults = []api.Entity{{ID: "ent-2", Name: "Beta"}}
 	model.linkList.SetItems([]string{"Beta"})
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.NotNil(t, cmd)
-	assert.Equal(t, "ax", model.linkQuery)
+	assert.Equal(t, "ax", model.linkQueryInput.Value())
 	assert.Empty(t, model.linkResults)
 
-	model.linkQuery = "query"
+	model.linkQueryInput.SetValue("query")
 	model.linkResults = []api.Entity{{ID: "ent-3"}}
 	model.linkList.SetItems([]string{"ent-3"})
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
-	require.Nil(t, cmd)
-	assert.Equal(t, "", model.linkQuery)
+	_ = cmd // textinput may return cursor cmd
+	assert.Equal(t, "", model.linkQueryInput.Value())
 	assert.Empty(t, model.linkResults)
 
 	model.linkSearching = true
-	model.linkQuery = "z"
+	model.linkQueryInput.SetValue("z")
 	model.linkResults = []api.Entity{{ID: "ent-4"}}
 	model.linkList.SetItems([]string{"ent-4"})
 	model, cmd = model.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, model.linkSearching)
-	assert.Equal(t, "", model.linkQuery)
+	assert.Equal(t, "", model.linkQueryInput.Value())
 	assert.Empty(t, model.linkResults)
 }
 
@@ -337,11 +337,11 @@ func TestContextRenderLinkSearchAndPreviewBranches(t *testing.T) {
 	assert.Contains(t, view, "Searching")
 
 	model.linkLoading = false
-	model.linkQuery = ""
+	model.linkQueryInput.SetValue("")
 	view = components.SanitizeText(model.renderLinkSearch())
 	assert.Contains(t, view, "Type to search")
 
-	model.linkQuery = "alpha"
+	model.linkQueryInput.SetValue("alpha")
 	model.linkResults = nil
 	view = components.SanitizeText(model.renderLinkSearch())
 	assert.Contains(t, view, "No matches")
@@ -371,7 +371,7 @@ func TestContextRenderLinkEntityPreviewFallbacks(t *testing.T) {
 func TestContextRenderLinkSearchWideLayoutAndSelectionFallbackBranches(t *testing.T) {
 	model := NewContextModel(nil)
 	model.width = 220 // trigger side-by-side layout branch
-	model.linkQuery = "alpha"
+	model.linkQueryInput.SetValue("alpha")
 	model.linkResults = []api.Entity{
 		{ID: "ent-1", Name: "", Type: "", Status: ""},
 	}
@@ -432,14 +432,14 @@ func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing
 	assert.True(t, updated.linkSearching)
 	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.linkQuery)
+	assert.Equal(t, "", updated.linkQueryInput.Value())
 	updated, cmd = updated.handleLinkSearch(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.linkQuery)
+	assert.Equal(t, "", updated.linkQueryInput.Value())
 
 	model = NewContextModel(nil)
 	model.startLinkSearch()
-	model.linkQuery = "alpha"
+	model.linkQueryInput.SetValue("alpha")
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
 	model.linkList.SetItems([]string{"Alpha", "Ghost"})
 	model.linkList.Cursor = 1
@@ -449,13 +449,13 @@ func TestContextHandleLinkSearchNilListAndOutOfRangeSelectionBranches(t *testing
 	assert.False(t, updated.linkSearching)
 	assert.Empty(t, updated.linkEntities)
 	assert.Empty(t, updated.linkResults)
-	assert.Equal(t, "", updated.linkQuery)
+	assert.Equal(t, "", updated.linkQueryInput.Value())
 }
 
 func TestContextRenderLinkSearchSideBySidePreviewAndNarrowTableBranches(t *testing.T) {
 	model := NewContextModel(nil)
 	model.width = 220
-	model.linkQuery = "alpha"
+	model.linkQueryInput.SetValue("alpha")
 	model.linkResults = []api.Entity{
 		{ID: "ent-1", Name: "Alpha", Type: "person", Status: "active"},
 	}

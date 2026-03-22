@@ -52,7 +52,7 @@ func TestEntitiesSaveEditGuardAndScopeErrorBranches(t *testing.T) {
 		model.detail = &api.Entity{ID: "ent-1", Status: "active"}
 		model.editStatusIdx = 0
 		model.editTags = []string{"alpha"}
-		model.editTagBuf = "Beta Tag"
+		model.editTagInput.SetValue("Beta Tag")
 		model.editScopesDirty = true
 		model.editScopes = []string{"Public Scope"}
 

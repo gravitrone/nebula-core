@@ -122,7 +122,7 @@ func TestEntitiesSaveRelEditSendsPatchPayload(t *testing.T) {
 	model := NewEntitiesModel(api.NewClient(srv.URL, "test-key"))
 	model.relEditID = "rel-1"
 	model.relEditStatusIdx = 0
-	model.relEditBuf = `{"note":"ok"}`
+	model.relEditInput.SetValue(`{"note":"ok"}`)
 
 	updated, cmd := model.saveRelEdit()
 	require.NotNil(t, cmd)
