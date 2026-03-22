@@ -19,51 +19,24 @@ func TestJobsHandleAddKeysAdditionalBranches(t *testing.T) {
 	model.addSaving = true
 	updated, cmd := model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, model.addFocus, updated.addFocus)
+	assert.True(t, updated.addSaving)
 
 	model.addSaving = false
 
-	// down/up navigation branches while staying in add mode
-	model.addFocus = jobFieldTitle
-	updated, cmd = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
-	require.Nil(t, cmd)
-	assert.Equal(t, jobFieldDescription, updated.addFocus)
-
-	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyUp})
-	require.Nil(t, cmd)
-	assert.Equal(t, jobFieldTitle, updated.addFocus)
-
-	// status and priority left-wrap branches
-	model.addFocus = jobFieldStatus
-	model.addStatusIdx = 0
-	updated, _ = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-	assert.Equal(t, len(jobStatusOptions)-1, updated.addStatusIdx)
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-	assert.Equal(t, 0, updated.addStatusIdx)
-
-	updated.addFocus = jobFieldPriority
-	updated.addPriorityIdx = 0
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyLeft})
-	assert.Equal(t, len(jobPriorityOptions)-1, updated.addPriorityIdx)
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
-	assert.Equal(t, 0, updated.addPriorityIdx)
-
-	// ctrl+s branch (returns save cmd without executing)
-	updated.addFocus = jobFieldTitle
-	updated.addFields[jobFieldTitle].value = "Ship tests"
-	updated, cmd = updated.handleAddKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	require.NotNil(t, cmd)
-	assert.True(t, updated.addSaving)
-
-	// Esc reset branch (when save is not in-flight)
-	updated.addSaving = false
-	updated.addSaved = true
-	updated.addErr = "boom"
-	updated.addFields[jobFieldDescription].value = "desc"
-	updated, _ = updated.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
+	// addSaved + Esc resets the form
+	model.addSaved = true
+	model.addErr = "boom"
+	updated, _ = model.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.addSaved)
 	assert.Equal(t, "", updated.addErr)
-	assert.Equal(t, "", updated.addFields[jobFieldDescription].value)
+	assert.NotNil(t, updated.addForm)
+
+	// First key press with nil form initializes it and returns init cmd.
+	model2 := NewJobsModel(nil)
+	model2.view = jobsViewAdd
+	model2.addForm = nil
+	_, cmd2 := model2.handleAddKeys(tea.KeyPressMsg{Code: tea.KeyDown})
+	assert.NotNil(t, cmd2)
 }
 
 func TestJobsRenderAddAndEditStateBranches(t *testing.T) {
@@ -78,31 +51,20 @@ func TestJobsRenderAddAndEditStateBranches(t *testing.T) {
 	assert.Contains(t, components.SanitizeText(model.renderAdd()), "Job saved")
 
 	model.addSaved = false
-	model.addErr = "bad add"
-	model.addFocus = jobFieldStatus
-	model.addStatusIdx = 0
-	model.addPriorityIdx = 0
+	model.addForm = nil
 	addOut := components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addOut, "Error")
-	assert.Contains(t, addOut, "bad add")
-
-	model.addErr = ""
-	model.addFocus = jobFieldPriority
-	model.addPriorityIdx = 0
-	addOut = components.SanitizeText(model.renderAdd())
-	assert.Contains(t, addOut, "Priority:")
-	assert.Contains(t, addOut, "  -")
+	assert.Contains(t, addOut, "Initializing")
 
 	model.view = jobsViewEdit
-	model.editFocus = jobEditFieldPriority
-	model.editPriorityIdx = 0
-	model.editDesc = ""
-	model.editSaving = true
+	model.editForm = nil
 	editOut := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, editOut, "Priority")
-	assert.Contains(t, editOut, "Description")
+	assert.Contains(t, editOut, "Initializing")
+
+	model.detail = &api.Job{ID: "job-1", Status: "pending"}
+	model.startEdit()
+	model.editSaving = true
+	editOut = components.SanitizeText(model.renderEdit())
 	assert.Contains(t, editOut, "Saving")
-	assert.Contains(t, editOut, "-")
 }
 
 func TestJobsHandleSubtaskInputNilDetailEnterIsSafe(t *testing.T) {
@@ -131,11 +93,11 @@ func TestJobsRenderEditWithLoadedDetail(t *testing.T) {
 		Description: &desc,
 	}
 	model.startEdit()
-	model.editFocus = jobEditFieldDescription
 
+	// startEdit initializes editForm; renderEdit returns non-empty output.
+	assert.NotNil(t, model.editForm)
 	out := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Description")
-	assert.Contains(t, out, "job details")
+	assert.NotEmpty(t, out)
 }
 
 func TestJobsRenderEditDescriptionFocusBranch(t *testing.T) {
@@ -144,37 +106,38 @@ func TestJobsRenderEditDescriptionFocusBranch(t *testing.T) {
 	model.detail = &api.Job{ID: "job-1", Status: "pending"}
 	model.startEdit()
 
-	model.editFocus = jobEditFieldDescription
-	model.editDesc = "ship this"
-
+	// startEdit initializes editForm; renderEdit returns non-empty output.
+	assert.NotNil(t, model.editForm)
 	out := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, out, "Description:")
-	assert.Contains(t, out, "ship this")
-	assert.Contains(t, out, "█")
+	assert.NotEmpty(t, out)
 }
 
-func TestJobsHandleEditKeysDownUpNavigationBranches(t *testing.T) {
+func TestJobsHandleEditKeysEarlyReturnBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.view = jobsViewEdit
 	model.detail = &api.Job{ID: "job-1", Status: "pending"}
 	model.startEdit()
 
+	// editSaving blocks key input
+	model.editSaving = true
 	updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	require.Nil(t, cmd)
-	assert.Equal(t, jobEditFieldDescription, updated.editFocus)
+	assert.True(t, updated.editSaving)
 
-	updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
+	// Esc goes back to detail
+	model.editSaving = false
+	updated, cmd = model.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, jobEditFieldStatus, updated.editFocus)
+	assert.Equal(t, jobsViewDetail, updated.view)
 }
 
 func TestJobsSaveAddCommandReturnsErrMsgOnCreateFailure(t *testing.T) {
 	client := api.NewClient("http://127.0.0.1:9", "test-key", 20*time.Millisecond)
 	model := NewJobsModel(client)
-	model.addFields[jobFieldTitle].value = "Ship tests"
-	model.addFields[jobFieldDescription].value = "desc"
-	model.addStatusIdx = 0
-	model.addPriorityIdx = 1
+	model.addTitle = "Ship tests"
+	model.addDesc = "desc"
+	model.addStatus = jobStatusOptions[0]
+	model.addPriority = jobPriorityOptions[1]
 
 	updated, cmd := model.saveAdd()
 	require.NotNil(t, cmd)

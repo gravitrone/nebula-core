@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -26,6 +27,12 @@ type contextDetailLoadedMsg struct {
 type contextUpdatedMsg struct{ item api.Context }
 
 // --- Constants ---
+
+// formField is a simple label+value pair used by protocols, files, and logs.
+type formField struct {
+	label string
+	value string
+}
 
 var contextTypes = []string{
 	"note",
@@ -48,131 +55,148 @@ const (
 	contextViewEdit
 )
 
-// Field indices
-const (
-	fieldTitle    = 0
-	fieldURL      = 1
-	fieldType     = 2
-	fieldTags     = 3
-	fieldScopes   = 4
-	fieldEntities = 5
-	fieldNotes    = 6
-	fieldCount    = 7
-)
-
-const (
-	contextEditFieldTitle = iota
-	contextEditFieldURL
-	contextEditFieldType
-	contextEditFieldStatus
-	contextEditFieldTags
-	contextEditFieldScopes
-	contextEditFieldNotes
-	contextEditFieldCount
-)
-
 // --- Context Model ---
 
 // ContextModel handles adding context items manually.
 type ContextModel struct {
-	client              *api.Client
-	fields              []formField
-	typeIdx             int
-	typeSelecting       bool
-	scopeOptions        []string
-	scopeIdx            int
-	scopeSelecting      bool
-	focus               int
-	modeFocus           bool
-	saved               bool
-	saving              bool
-	view                contextView
-	errText             string
-	tags                []string
-	tagBuf              string
-	scopes              []string
-	scopeBuf            string
-	linkSearching       bool
-	linkLoading         bool
-	linkQuery           string
-	linkResults         []api.Entity
-	linkTable           table.Model
-	linkEntities        []api.Entity
-	dataTable           table.Model
-	allItems            []api.Context
-	items               []api.Context
-	filtering           bool
-	filterBuf           string
-	loadingList         bool
-	spinner             spinner.Model
+	client      *api.Client
+	scopeOptions []string
+	modeFocus   bool
+	saved       bool
+	saving      bool
+	view        contextView
+	errText     string
+
+	// add form (huh)
+	addForm    *huh.Form
+	addTitle   string
+	addURL     string
+	addType    string
+	addTagStr  string
+	addScopeStr string
+	addNotes   string
+
+	// edit form (huh)
+	editForm    *huh.Form
+	editTitle   string
+	editURL     string
+	editType    string
+	editStatus  string
+	editTagStr  string
+	editScopeStr string
+	editNotes   string
+	editSaving  bool
+
+	// link search
+	linkSearching bool
+	linkLoading   bool
+	linkQuery     string
+	linkResults   []api.Entity
+	linkTable     table.Model
+	linkEntities  []api.Entity
+
+	// list
+	dataTable   table.Model
+	allItems    []api.Context
+	items       []api.Context
+	filtering   bool
+	filterBuf   string
+	loadingList bool
+	spinner     spinner.Model
+
+	// detail
 	detail              *api.Context
 	detailRelationships []api.Relationship
-	contextEditFields   []formField
-	editFocus           int
-	editTypeIdx         int
-	editTypeSelecting   bool
-	editScopeSelecting  bool
-	editStatusIdx       int
-	editTags            []string
-	editTagBuf          string
-	editScopes          []string
-	editScopeBuf        string
-	editSaving          bool
 	contentExpanded     bool
 	sourcePathExpanded  bool
-	scopeNames          map[string]string
-	width               int
-	height              int
-}
 
-type formField struct {
-	label string
-	value string
+	scopeNames map[string]string
+	width      int
+	height     int
 }
 
 // NewContextModel builds the context UI model.
 func NewContextModel(client *api.Client) ContextModel {
 	return ContextModel{
-		client:  client,
-		spinner: components.NewNebulaSpinner(),
-		fields: []formField{
-			{label: "Title"},
-			{label: "URL"},
-			{label: "Type"},
-			{label: "Tags"},
-			{label: "Scopes"},
-			{label: "Entities"},
-			{label: "Notes"},
-		},
-		contextEditFields: []formField{
-			{label: "Title"},
-			{label: "URL"},
-			{label: "Type"},
-			{label: "Status"},
-			{label: "Tags"},
-			{label: "Scopes"},
-			{label: "Notes"},
-		},
+		client:    client,
+		spinner:   components.NewNebulaSpinner(),
 		linkTable: components.NewNebulaTable(nil, 6),
 		dataTable: components.NewNebulaTable(nil, 10),
+		addType:   "note",
+		editType:  "note",
 	}
+}
+
+// initAddForm creates a new huh form for the add context flow.
+func (m *ContextModel) initAddForm() {
+	typeOptions := make([]huh.Option[string], len(contextTypes))
+	for i, t := range contextTypes {
+		typeOptions[i] = huh.NewOption(t, t)
+	}
+	scopeOptions := make([]huh.Option[string], len(m.scopeOptions))
+	for i, s := range m.scopeOptions {
+		scopeOptions[i] = huh.NewOption(s, s)
+	}
+	m.addForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Title").Value(&m.addTitle),
+			huh.NewInput().Title("URL").Value(&m.addURL),
+			huh.NewSelect[string]().Title("Type").Options(typeOptions...).Value(&m.addType),
+			huh.NewInput().Title("Tags (comma-separated)").Value(&m.addTagStr),
+			huh.NewInput().Title("Scopes (comma-separated)").Value(&m.addScopeStr),
+			huh.NewInput().Title("Notes").Value(&m.addNotes),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
+}
+
+// initEditForm creates a new huh form for the edit context flow.
+func (m *ContextModel) initEditForm() {
+	typeOptions := make([]huh.Option[string], len(contextTypes))
+	for i, t := range contextTypes {
+		typeOptions[i] = huh.NewOption(t, t)
+	}
+	m.editForm = huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().Title("Title").Value(&m.editTitle),
+			huh.NewInput().Title("URL").Value(&m.editURL),
+			huh.NewSelect[string]().Title("Type").Options(typeOptions...).Value(&m.editType),
+			huh.NewSelect[string]().Title("Status").Options(
+				huh.NewOption("active", "active"),
+				huh.NewOption("inactive", "inactive"),
+			).Value(&m.editStatus),
+			huh.NewInput().Title("Tags (comma-separated)").Value(&m.editTagStr),
+			huh.NewInput().Title("Scopes (comma-separated)").Value(&m.editScopeStr),
+			huh.NewInput().Title("Notes").Value(&m.editNotes),
+		),
+	).WithTheme(huh.ThemeFunc(huh.ThemeDracula)).WithWidth(60)
+}
+
+// resetAddForm resets the add form state.
+func (m *ContextModel) resetAddForm() {
+	m.saved = false
+	m.errText = ""
+	m.addTitle = ""
+	m.addURL = ""
+	m.addType = "note"
+	m.addTagStr = ""
+	m.addScopeStr = ""
+	m.addNotes = ""
+	m.addForm = nil
+	m.linkSearching = false
+	m.linkLoading = false
+	m.linkQuery = ""
+	m.linkResults = nil
+	m.linkEntities = nil
+	m.linkTable.SetRows(nil)
+	m.linkTable.SetCursor(0)
 }
 
 // Init handles init.
 func (m ContextModel) Init() tea.Cmd {
 	m.saved = false
 	m.errText = ""
-	m.focus = 0
 	m.modeFocus = false
-	m.typeIdx = 0
-	m.typeSelecting = false
-	m.scopeIdx = 0
-	m.scopeSelecting = false
 	m.view = contextViewAdd
-	m.tags = nil
-	m.tagBuf = ""
-	m.scopes = nil
-	m.scopeBuf = ""
 	m.linkSearching = false
 	m.linkLoading = false
 	m.linkQuery = ""
@@ -183,15 +207,6 @@ func (m ContextModel) Init() tea.Cmd {
 	m.filterBuf = ""
 	m.detail = nil
 	m.loadingList = false
-	m.editFocus = 0
-	m.editTypeIdx = 0
-	m.editTypeSelecting = false
-	m.editScopeSelecting = false
-	m.editStatusIdx = statusIndex(contextStatusOptions, "active")
-	m.editTags = nil
-	m.editTagBuf = ""
-	m.editScopes = nil
-	m.editScopeBuf = ""
 	m.editSaving = false
 	m.contentExpanded = false
 	m.sourcePathExpanded = false
@@ -202,10 +217,15 @@ func (m ContextModel) Init() tea.Cmd {
 	m.linkTable.SetCursor(0)
 	m.dataTable.SetRows(nil)
 	m.dataTable.SetCursor(0)
-	for i := range m.fields {
-		m.fields[i].value = ""
-	}
-	return m.loadScopeNames()
+	m.addTitle = ""
+	m.addURL = ""
+	m.addType = "note"
+	m.addTagStr = ""
+	m.addScopeStr = ""
+	m.addNotes = ""
+	m.addForm = nil
+	m.initAddForm()
+	return tea.Batch(m.addForm.Init(), m.loadScopeNames())
 }
 
 // Update updates update.
@@ -271,134 +291,96 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 		if m.view == contextViewDetail {
 			return m.handleDetailKeys(msg)
 		}
+		if m.saved {
+			if isBack(msg) {
+				m.resetAddForm()
+				m.initAddForm()
+				cmd := m.addForm.Init()
+				return m, cmd
+			}
+			return m, nil
+		}
 		if m.linkSearching {
 			return m.handleLinkSearch(msg)
 		}
 		if m.modeFocus {
 			return m.handleModeKeys(msg)
 		}
-		// Type selector field - press space to enter, then space/left/right to cycle
-		if m.focus == fieldType {
-			if m.typeSelecting {
-				switch {
-				case isKey(msg, "left"):
-					m.typeIdx = (m.typeIdx - 1 + len(contextTypes)) % len(contextTypes)
-					return m, nil
-				case isKey(msg, "right"):
-					m.typeIdx = (m.typeIdx + 1) % len(contextTypes)
-					return m, nil
-				case isSpace(msg):
-					m.typeSelecting = false
-					return m, nil
-				}
-			} else if isSpace(msg) {
-				m.typeSelecting = true
-				return m, nil
-			}
-		}
-		if m.focus == fieldScopes && m.scopeSelecting {
-			switch {
-			case isKey(msg, "left"):
-				if len(m.scopeOptions) > 0 {
-					m.scopeIdx = (m.scopeIdx - 1 + len(m.scopeOptions)) % len(m.scopeOptions)
-				}
-				return m, nil
-			case isKey(msg, "right"):
-				if len(m.scopeOptions) > 0 {
-					m.scopeIdx = (m.scopeIdx + 1) % len(m.scopeOptions)
-				}
-				return m, nil
-			case isSpace(msg):
-				if len(m.scopeOptions) > 0 {
-					scope := m.scopeOptions[m.scopeIdx]
-					m.scopes = toggleScope(m.scopes, scope)
-				}
-				return m, nil
-			case isEnter(msg), isBack(msg):
-				m.scopeSelecting = false
-				return m, nil
-			}
-		}
+		return m.handleAddKeys(msg)
 
-		switch {
-		case isDown(msg):
-			m.typeSelecting = false
-			m.scopeSelecting = false
-			m.focus = (m.focus + 1) % fieldCount
-		case isUp(msg):
-			if m.focus == 0 {
-				m.typeSelecting = false
-				m.scopeSelecting = false
-				m.modeFocus = true
-				return m, nil
-			}
-			m.typeSelecting = false
-			m.scopeSelecting = false
-			m.focus = (m.focus - 1 + fieldCount) % fieldCount
-		case isKey(msg, "ctrl+s"):
-			return m.save()
-		case isBack(msg):
-			m.resetForm()
-		case isKey(msg, "backspace"):
-			switch m.focus {
-			case fieldTags:
-				if len(m.tagBuf) > 0 {
-					m.tagBuf = m.tagBuf[:len(m.tagBuf)-1]
-				} else if len(m.tags) > 0 {
-					m.tags = m.tags[:len(m.tags)-1]
-				}
-			case fieldScopes:
-				if len(m.scopes) > 0 {
-					m.scopes = m.scopes[:len(m.scopes)-1]
-				}
-			case fieldEntities:
-				if len(m.linkEntities) > 0 {
-					m.linkEntities = m.linkEntities[:len(m.linkEntities)-1]
-				}
-			default:
-				if m.focus != fieldType {
-					f := &m.fields[m.focus]
-					if len(f.value) > 0 {
-						f.value = f.value[:len(f.value)-1]
-					}
-				}
-			}
-		default:
-			if m.focus == fieldTags {
-				switch {
-				case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-					m.commitTag()
-				default:
-					ch := keyText(msg)
-					if ch != "" && ch != "," {
-						m.tagBuf += ch
-					}
-				}
-			} else if m.focus == fieldScopes {
-				if isSpace(msg) {
-					m.scopeSelecting = true
-				}
-			} else if m.focus == fieldEntities {
-				if isEnter(msg) {
-					m.startLinkSearch()
-				}
-			} else if m.focus != fieldType {
-				ch := keyText(msg)
-				if ch != "" {
-					m.fields[m.focus].value += ch
-				}
-			}
+	default:
+		// Forward non-key messages to active huh forms.
+		if m.view == contextViewAdd && m.addForm != nil && !m.saving && !m.saved {
+			_, cmd := m.addForm.Update(msg)
+			return m, cmd
 		}
-		if m.focus == fieldEntities && !m.linkSearching {
-			ch := keyText(msg)
-			if ch != "" {
-				m.startLinkSearch()
-				m.linkQuery += ch
-				return m, m.updateLinkSearch()
-			}
+		if m.view == contextViewEdit && m.editForm != nil && !m.editSaving {
+			_, cmd := m.editForm.Update(msg)
+			return m, cmd
 		}
 	}
 	return m, nil
+}
+
+// handleAddKeys handles key input in the add view.
+func (m ContextModel) handleAddKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
+	if m.saving {
+		return m, nil
+	}
+
+	// Let link search capture keys first if active.
+	if m.linkSearching {
+		return m.handleLinkSearch(msg)
+	}
+
+	if m.addForm == nil {
+		m.initAddForm()
+		cmd := m.addForm.Init()
+		return m, cmd
+	}
+
+	_, cmd := m.addForm.Update(msg)
+
+	switch m.addForm.State {
+	case huh.StateCompleted:
+		return m.save()
+	case huh.StateAborted:
+		m.resetAddForm()
+		m.initAddForm()
+		cmd = m.addForm.Init()
+		return m, cmd
+	}
+
+	return m, cmd
+}
+
+// handleEditKeys handles key input in the edit view.
+func (m ContextModel) handleEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
+	if m.editSaving {
+		return m, nil
+	}
+	if m.modeFocus {
+		return m.handleModeKeys(msg)
+	}
+
+	if m.editForm == nil {
+		m.initEditForm()
+		cmd := m.editForm.Init()
+		return m, cmd
+	}
+
+	_, cmd := m.editForm.Update(msg)
+
+	switch m.editForm.State {
+	case huh.StateCompleted:
+		return m.saveEdit()
+	case huh.StateAborted:
+		m.view = contextViewDetail
+		m.editForm = nil
+		return m, nil
+	}
+
+	return m, cmd
 }
 
 // View handles view.
@@ -436,193 +418,40 @@ func (m ContextModel) View() string {
 	return components.Indent(body, 1)
 }
 
-// renderAdd renders render add.
+// renderAdd renders the add context form.
 func (m ContextModel) renderAdd() string {
-	var b strings.Builder
-	for i, f := range m.fields {
-		label := f.label
+	var content string
+	if m.addForm == nil {
+		content = MutedStyle.Render("  Initializing...")
+	} else {
+		content = m.addForm.View()
+	}
 
-		switch i {
-		case fieldType:
-			// Type selector
-			if i == m.focus && m.typeSelecting {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n  ")
-				for j, t := range contextTypes {
-					if j == m.typeIdx {
-						b.WriteString(AccentStyle.Render("[" + t + "]"))
-					} else {
-						b.WriteString(MutedStyle.Render(" " + t + " "))
-					}
-					if j < len(contextTypes)-1 {
-						b.WriteString(" ")
-					}
-				}
-			} else if i == m.focus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + contextTypes[m.typeIdx]))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + contextTypes[m.typeIdx]))
-			}
-		case fieldTags:
-			if i == m.focus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderTags(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderTags(false)))
-			}
-		case fieldScopes:
-			if i == m.focus && m.scopeSelecting {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + renderScopeOptions(m.scopes, m.scopeOptions, m.scopeIdx)))
-			} else if i == m.focus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderScopes(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderScopes(false)))
-			}
-		case fieldEntities:
-			if i == m.focus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderLinkedEntities(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderLinkedEntities(false)))
-			}
-		case m.focus:
-			b.WriteString(SelectedStyle.Render("  " + label + ":"))
-			b.WriteString("\n")
-			b.WriteString(NormalStyle.Render("  " + f.value))
-			b.WriteString(AccentStyle.Render("█"))
-		default:
-			b.WriteString(MutedStyle.Render("  " + label + ":"))
-			b.WriteString("\n")
-			val := f.value
-			if val == "" {
-				val = "-"
-			}
-			b.WriteString(NormalStyle.Render("  " + val))
-		}
-
-		if i < fieldCount-1 {
-			b.WriteString("\n\n")
-		}
+	linked := m.renderLinkedEntities()
+	if linked != "" {
+		content += "\n\n" + MutedStyle.Render("  Entities: ") + NormalStyle.Render(linked)
 	}
 
 	if m.errText != "" {
-		b.WriteString("\n\n")
-		b.WriteString(components.ErrorBox("Error", m.errText, m.width))
+		content += "\n\n" + components.ErrorBox("Error", m.errText, m.width)
 	}
 
-	return components.TitledBox("Add Context", b.String(), m.width)
+	return components.TitledBox("Add Context", content, m.width)
 }
 
-// renderEdit renders render edit.
+// renderEdit renders the edit context form.
 func (m ContextModel) renderEdit() string {
-	var b strings.Builder
-	for i, f := range m.contextEditFields {
-		label := f.label
-		switch i {
-		case contextEditFieldType:
-			if i == m.editFocus && m.editTypeSelecting {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n  ")
-				for j, t := range contextTypes {
-					if j == m.editTypeIdx {
-						b.WriteString(AccentStyle.Render("[" + t + "]"))
-					} else {
-						b.WriteString(MutedStyle.Render(" " + t + " "))
-					}
-					if j < len(contextTypes)-1 {
-						b.WriteString(" ")
-					}
-				}
-			} else if i == m.editFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + contextTypes[m.editTypeIdx]))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + contextTypes[m.editTypeIdx]))
-			}
-		case contextEditFieldStatus:
-			if i == m.editFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-			}
-			b.WriteString("\n")
-			status := contextStatusOptions[m.editStatusIdx]
-			b.WriteString(NormalStyle.Render("  " + status))
-		case contextEditFieldTags:
-			if i == m.editFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderEditTags(false)))
-			}
-		case contextEditFieldScopes:
-			if i == m.editFocus && m.editScopeSelecting {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + renderScopeOptions(m.editScopes, m.scopeOptions, m.scopeIdx)))
-			} else if i == m.editFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderEditScopes(true)))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + m.renderEditScopes(false)))
-			}
-		default:
-			if i == m.editFocus {
-				b.WriteString(SelectedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				b.WriteString(NormalStyle.Render("  " + f.value))
-				b.WriteString(AccentStyle.Render("█"))
-			} else {
-				b.WriteString(MutedStyle.Render("  " + label + ":"))
-				b.WriteString("\n")
-				val := f.value
-				if val == "" {
-					val = "-"
-				}
-				b.WriteString(NormalStyle.Render("  " + val))
-			}
-		}
-
-		if i < contextEditFieldCount-1 {
-			b.WriteString("\n\n")
-		}
-	}
-
-	if m.errText != "" {
-		b.WriteString("\n\n")
-		b.WriteString(components.ErrorBox("Error", m.errText, m.width))
-	}
-
 	if m.editSaving {
-		b.WriteString("\n\n" + MutedStyle.Render("Saving..."))
+		return components.TitledBox("Edit Context", MutedStyle.Render("  Saving..."), m.width)
 	}
-
-	return components.TitledBox("Edit Context", b.String(), m.width)
+	if m.editForm == nil {
+		return components.TitledBox("Edit Context", MutedStyle.Render("  Initializing..."), m.width)
+	}
+	content := m.editForm.View()
+	if m.errText != "" {
+		content += "\n\n" + components.ErrorBox("Error", m.errText, m.width)
+	}
+	return components.TitledBox("Edit Context", content, m.width)
 }
 
 // renderModeLine renders render mode line.
@@ -649,22 +478,12 @@ func (m ContextModel) handleModeKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 	switch {
 	case isDown(msg):
 		m.modeFocus = false
-		if m.view == contextViewEdit {
-			m.editFocus = 0
-		} else {
-			m.focus = 0
-		}
 	case isUp(msg):
 		m.modeFocus = false
 	case isKey(msg, "left"), isKey(msg, "right"), isSpace(msg), isEnter(msg):
 		return m.toggleMode()
 	case isBack(msg):
 		m.modeFocus = false
-		if m.view == contextViewEdit {
-			m.editFocus = 0
-		} else {
-			m.focus = 0
-		}
 	}
 	return m, nil
 }
@@ -684,7 +503,13 @@ func (m ContextModel) toggleMode() (ContextModel, tea.Cmd) {
 		m.view = contextViewList
 		return m, nil
 	}
+	// list -> add
 	m.view = contextViewAdd
+	if m.addForm == nil {
+		m.initAddForm()
+		cmd := m.addForm.Init()
+		return m, cmd
+	}
 	return m, nil
 }
 
@@ -769,132 +594,6 @@ func (m ContextModel) handleDetailKeys(msg tea.KeyPressMsg) (ContextModel, tea.C
 		m.contentExpanded = !m.contentExpanded
 	case isKey(msg, "v"):
 		m.sourcePathExpanded = !m.sourcePathExpanded
-	}
-	return m, nil
-}
-
-// handleEditKeys handles handle edit keys.
-func (m ContextModel) handleEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
-	if m.editSaving {
-		return m, nil
-	}
-	if m.modeFocus {
-		return m.handleModeKeys(msg)
-	}
-	if m.editFocus == contextEditFieldType {
-		if m.editTypeSelecting {
-			switch {
-			case isKey(msg, "left"):
-				m.editTypeIdx = (m.editTypeIdx - 1 + len(contextTypes)) % len(contextTypes)
-				return m, nil
-			case isKey(msg, "right"):
-				m.editTypeIdx = (m.editTypeIdx + 1) % len(contextTypes)
-				return m, nil
-			case isSpace(msg), isEnter(msg):
-				m.editTypeSelecting = false
-				return m, nil
-			}
-		} else if isSpace(msg) || isEnter(msg) {
-			m.editTypeSelecting = true
-			return m, nil
-		}
-	}
-	if m.editFocus == contextEditFieldScopes && m.editScopeSelecting {
-		switch {
-		case isKey(msg, "left"):
-			if len(m.scopeOptions) > 0 {
-				m.scopeIdx = (m.scopeIdx - 1 + len(m.scopeOptions)) % len(m.scopeOptions)
-			}
-			return m, nil
-		case isKey(msg, "right"):
-			if len(m.scopeOptions) > 0 {
-				m.scopeIdx = (m.scopeIdx + 1) % len(m.scopeOptions)
-			}
-			return m, nil
-		case isSpace(msg):
-			if len(m.scopeOptions) > 0 {
-				scope := m.scopeOptions[m.scopeIdx]
-				m.editScopes = toggleScope(m.editScopes, scope)
-			}
-			return m, nil
-		case isEnter(msg), isBack(msg):
-			m.editScopeSelecting = false
-			return m, nil
-		}
-	}
-	if m.editFocus == contextEditFieldStatus {
-		switch {
-		case isKey(msg, "left"):
-			m.editStatusIdx = (m.editStatusIdx - 1 + len(contextStatusOptions)) % len(contextStatusOptions)
-			return m, nil
-		case isKey(msg, "right"), isSpace(msg):
-			m.editStatusIdx = (m.editStatusIdx + 1) % len(contextStatusOptions)
-			return m, nil
-		}
-	}
-
-	switch {
-	case isDown(msg):
-		m.editTypeSelecting = false
-		m.editScopeSelecting = false
-		m.editFocus = (m.editFocus + 1) % contextEditFieldCount
-	case isUp(msg):
-		m.editTypeSelecting = false
-		m.editScopeSelecting = false
-		if m.editFocus == 0 {
-			m.modeFocus = true
-			return m, nil
-		}
-		m.editFocus = (m.editFocus - 1 + contextEditFieldCount) % contextEditFieldCount
-	case isKey(msg, "ctrl+s"):
-		return m.saveEdit()
-	case isBack(msg):
-		m.editScopeSelecting = false
-		m.view = contextViewDetail
-	case isKey(msg, "backspace"):
-		switch m.editFocus {
-		case contextEditFieldTags:
-			if len(m.editTagBuf) > 0 {
-				m.editTagBuf = m.editTagBuf[:len(m.editTagBuf)-1]
-			} else if len(m.editTags) > 0 {
-				m.editTags = m.editTags[:len(m.editTags)-1]
-			}
-		case contextEditFieldScopes:
-			if len(m.editScopes) > 0 {
-				m.editScopes = m.editScopes[:len(m.editScopes)-1]
-			}
-		default:
-			if m.editFocus != contextEditFieldType && m.editFocus != contextEditFieldStatus {
-				f := &m.contextEditFields[m.editFocus]
-				if len(f.value) > 0 {
-					f.value = f.value[:len(f.value)-1]
-				}
-			}
-		}
-	default:
-		switch m.editFocus {
-		case contextEditFieldTags:
-			switch {
-			case isSpace(msg) || isKey(msg, ",") || isEnter(msg):
-				m.commitEditTag()
-			default:
-				ch := keyText(msg)
-				if ch != "" && ch != "," {
-					m.editTagBuf += ch
-				}
-			}
-		case contextEditFieldScopes:
-			if isSpace(msg) {
-				m.editScopeSelecting = true
-			}
-		default:
-			if m.editFocus != contextEditFieldType && m.editFocus != contextEditFieldStatus {
-				ch := keyText(msg)
-				if ch != "" {
-					m.contextEditFields[m.editFocus].value += ch
-				}
-			}
-		}
 	}
 	return m, nil
 }
@@ -1118,32 +817,34 @@ func (m ContextModel) renderContextPreview(k api.Context, width int) string {
 	return padPreviewLines(lines, width)
 }
 
-// startEdit handles start edit.
+// startEdit populates edit form fields from the current detail.
 func (m *ContextModel) startEdit() {
 	if m.detail == nil {
 		return
 	}
 	k := m.detail
-	m.contextEditFields[contextEditFieldTitle].value = contextTitle(*k)
+	m.editTitle = contextTitle(*k)
+	m.editURL = ""
 	if k.URL != nil {
-		m.contextEditFields[contextEditFieldURL].value = *k.URL
-	} else {
-		m.contextEditFields[contextEditFieldURL].value = ""
+		m.editURL = *k.URL
 	}
-	m.contextEditFields[contextEditFieldNotes].value = ""
+	m.editNotes = ""
 	if k.Content != nil {
-		m.contextEditFields[contextEditFieldNotes].value = *k.Content
+		m.editNotes = *k.Content
 	}
-	m.editTypeIdx = statusIndex(contextTypes, k.SourceType)
-	m.editStatusIdx = statusIndex(contextStatusOptions, k.Status)
-	m.editTags = append([]string{}, k.Tags...)
-	m.editTagBuf = ""
-	m.editScopes = m.scopeNamesFromIDs(k.PrivacyScopeIDs)
-	m.editScopeBuf = ""
-	m.editScopeSelecting = false
-	m.scopeIdx = 0
+	m.editType = k.SourceType
+	if m.editType == "" {
+		m.editType = "note"
+	}
+	m.editStatus = k.Status
+	if m.editStatus == "" {
+		m.editStatus = "active"
+	}
+	m.editTagStr = strings.Join(k.Tags, ", ")
+	m.editScopeStr = strings.Join(m.scopeNamesFromIDs(k.PrivacyScopeIDs), ", ")
 	m.editSaving = false
-	m.editFocus = 0
+	m.editForm = nil
+	m.initEditForm()
 }
 
 // saveEdit handles save edit.
@@ -1151,14 +852,30 @@ func (m ContextModel) saveEdit() (ContextModel, tea.Cmd) {
 	if m.detail == nil {
 		return m, nil
 	}
-	m.commitEditTag()
-	title := strings.TrimSpace(m.contextEditFields[contextEditFieldTitle].value)
-	url := strings.TrimSpace(m.contextEditFields[contextEditFieldURL].value)
-	content := strings.TrimSpace(m.contextEditFields[contextEditFieldNotes].value)
-	sourceType := contextTypes[m.editTypeIdx]
-	status := contextStatusOptions[m.editStatusIdx]
-	tags := normalizeBulkTags(m.editTags)
-	scopes := normalizeBulkScopes(m.editScopes)
+
+	title := strings.TrimSpace(m.editTitle)
+	url := strings.TrimSpace(m.editURL)
+	content := strings.TrimSpace(m.editNotes)
+	sourceType := m.editType
+	if sourceType == "" {
+		sourceType = "note"
+	}
+	status := m.editStatus
+	if status == "" {
+		status = "active"
+	}
+
+	tags := parseCommaSeparated(m.editTagStr)
+	for i, t := range tags {
+		tags[i] = normalizeTag(t)
+	}
+	tags = dedup(tags)
+
+	scopes := parseCommaSeparated(m.editScopeStr)
+	for i, s := range scopes {
+		scopes[i] = normalizeScope(s)
+	}
+	scopes = normalizeScopeList(scopes)
 
 	input := api.UpdateContextInput{
 		Title:      &title,
@@ -1349,47 +1066,32 @@ func (m ContextModel) scopeNamesFromIDs(ids []string) []string {
 	return names
 }
 
-// resetForm handles reset form.
-func (m *ContextModel) resetForm() {
-	m.saved = false
-	m.errText = ""
-	m.typeSelecting = false
-	m.focus = 0
-	m.modeFocus = false
-	m.typeIdx = 0
-	m.scopeIdx = 0
-	m.scopeSelecting = false
-	m.tags = nil
-	m.tagBuf = ""
-	m.scopes = nil
-	m.scopeBuf = ""
-	m.linkSearching = false
-	m.linkLoading = false
-	m.linkQuery = ""
-	m.linkResults = nil
-	m.linkEntities = nil
-	m.linkTable.SetRows(nil)
-	m.linkTable.SetCursor(0)
-	for i := range m.fields {
-		m.fields[i].value = ""
-	}
-}
-
 // save handles save.
 func (m ContextModel) save() (ContextModel, tea.Cmd) {
-	title := strings.TrimSpace(m.fields[fieldTitle].value)
+	title := strings.TrimSpace(m.addTitle)
 	if title == "" {
 		m.errText = "Title is required"
 		return m, nil
 	}
 
-	url := strings.TrimSpace(m.fields[fieldURL].value)
-	sourceType := contextTypes[m.typeIdx]
-	notes := strings.TrimSpace(m.fields[fieldNotes].value)
+	url := strings.TrimSpace(m.addURL)
+	sourceType := m.addType
+	if sourceType == "" {
+		sourceType = "note"
+	}
+	notes := strings.TrimSpace(m.addNotes)
 
-	m.commitTag()
+	tags := parseCommaSeparated(m.addTagStr)
+	for i, t := range tags {
+		tags[i] = normalizeTag(t)
+	}
+	tags = dedup(tags)
 
-	scopes := normalizeBulkScopes(m.scopes)
+	scopes := parseCommaSeparated(m.addScopeStr)
+	for i, s := range scopes {
+		scopes[i] = normalizeScope(s)
+	}
+	scopes = normalizeScopeList(scopes)
 	if len(scopes) == 0 {
 		scopes = []string{"private"}
 	}
@@ -1400,7 +1102,7 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 		SourceType: sourceType,
 		Content:    notes,
 		Scopes:     scopes,
-		Tags:       m.tags,
+		Tags:       tags,
 	}
 
 	linkIDs := make([]string, 0, len(m.linkEntities))
@@ -1426,80 +1128,10 @@ func (m ContextModel) save() (ContextModel, tea.Cmd) {
 	}
 }
 
-// renderTags renders render tags.
-func (m *ContextModel) renderTags(focused bool) string {
-	if len(m.tags) == 0 && m.tagBuf == "" && !focused {
-		return "-"
-	}
-
-	var b strings.Builder
-	for i, t := range m.tags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.tagBuf != "" {
-			b.WriteString(m.tagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.tagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.tagBuf))
-	}
-	return b.String()
-}
-
-// renderEditTags renders render edit tags.
-func (m *ContextModel) renderEditTags(focused bool) string {
-	if len(m.editTags) == 0 && m.editTagBuf == "" && !focused {
-		return "-"
-	}
-
-	var b strings.Builder
-	for i, t := range m.editTags {
-		if i > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(AccentStyle.Render("[" + t + "]"))
-	}
-	if focused {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		if m.editTagBuf != "" {
-			b.WriteString(m.editTagBuf)
-		}
-		b.WriteString(AccentStyle.Render("█"))
-	} else if m.editTagBuf != "" {
-		if b.Len() > 0 {
-			b.WriteString(" ")
-		}
-		b.WriteString(MutedStyle.Render(m.editTagBuf))
-	}
-	return b.String()
-}
-
-// renderScopes renders render scopes.
-func (m *ContextModel) renderScopes(focused bool) string {
-	return renderScopePills(m.scopes, focused)
-}
-
-// renderEditScopes renders render edit scopes.
-func (m *ContextModel) renderEditScopes(focused bool) string {
-	return renderScopePills(m.editScopes, focused)
-}
-
-// renderLinkedEntities renders render linked entities.
-func (m *ContextModel) renderLinkedEntities(focused bool) string {
-	if len(m.linkEntities) == 0 && !focused {
-		return "-"
+// renderLinkedEntities renders the list of linked entities.
+func (m *ContextModel) renderLinkedEntities() string {
+	if len(m.linkEntities) == 0 {
+		return ""
 	}
 	var b strings.Builder
 	for i, e := range m.linkEntities {
@@ -1742,102 +1374,6 @@ func (m *ContextModel) addLinkedEntity(entity api.Entity) {
 		}
 	}
 	m.linkEntities = append(m.linkEntities, entity)
-}
-
-// commitTag handles commit tag.
-func (m *ContextModel) commitTag() {
-	raw := strings.TrimSpace(m.tagBuf)
-	if raw == "" {
-		m.tagBuf = ""
-		return
-	}
-
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.tagBuf = ""
-		return
-	}
-
-	for _, t := range m.tags {
-		if t == tag {
-			m.tagBuf = ""
-			return
-		}
-	}
-	m.tags = append(m.tags, tag)
-	m.tagBuf = ""
-}
-
-// commitScope handles commit scope.
-func (m *ContextModel) commitScope() {
-	raw := strings.TrimSpace(m.scopeBuf)
-	if raw == "" {
-		m.scopeBuf = ""
-		return
-	}
-
-	scope := normalizeScope(raw)
-	if scope == "" {
-		m.scopeBuf = ""
-		return
-	}
-
-	for _, s := range m.scopes {
-		if s == scope {
-			m.scopeBuf = ""
-			return
-		}
-	}
-	m.scopes = append(m.scopes, scope)
-	m.scopeBuf = ""
-}
-
-// commitEditTag handles commit edit tag.
-func (m *ContextModel) commitEditTag() {
-	raw := strings.TrimSpace(m.editTagBuf)
-	if raw == "" {
-		m.editTagBuf = ""
-		return
-	}
-
-	tag := normalizeTag(raw)
-	if tag == "" {
-		m.editTagBuf = ""
-		return
-	}
-
-	for _, t := range m.editTags {
-		if t == tag {
-			m.editTagBuf = ""
-			return
-		}
-	}
-	m.editTags = append(m.editTags, tag)
-	m.editTagBuf = ""
-}
-
-// commitEditScope handles commit edit scope.
-func (m *ContextModel) commitEditScope() {
-	raw := strings.TrimSpace(m.editScopeBuf)
-	if raw == "" {
-		m.editScopeBuf = ""
-		return
-	}
-
-	scope := normalizeScope(raw)
-	if scope == "" {
-		m.editScopeBuf = ""
-		return
-	}
-
-	for _, s := range m.editScopes {
-		if s == scope {
-			m.editScopeBuf = ""
-			return
-		}
-	}
-	m.editScopes = append(m.editScopes, scope)
-	m.editScopeBuf = ""
 }
 
 // normalizeTag handles normalize tag.

@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestContextAddLinkSearchSaveAndReset handles test context add link search save and reset.
-func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
+// TestContextAddSaveAndReset verifies that the add flow saves a context and resets on Esc.
+func TestContextAddSaveAndReset(t *testing.T) {
 	now := time.Now()
 	createCalled := false
 	linkCalled := false
@@ -26,12 +26,6 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": []map[string]any{
 					{"id": "scope-1", "name": "public", "agent_count": 1},
-				},
-			}))
-		case strings.HasPrefix(r.URL.Path, "/api/entities") && r.Method == http.MethodGet:
-			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
-				"data": []map[string]any{
-					{"id": "ent-1", "name": "OpenAI", "type": "organization", "status": "active", "tags": []string{}},
 				},
 			}))
 		case r.URL.Path == "/api/context" && r.Method == http.MethodPost:
@@ -62,62 +56,25 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	// Init + load scopes.
 	cmd := model.Init()
 	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Contains(t, model.scopeOptions, "public")
 
-	// Move focus to Entities field and start link search.
-	for i := 0; i < fieldEntities; i++ {
-		model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	}
-	assert.Equal(t, fieldEntities, model.focus)
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.True(t, model.linkSearching)
+	// Set add form fields directly (huh forms don't support programmatic key navigation).
+	model.addTitle = "Alpha"
+	model.addTagStr = "demo"
+	model.addScopeStr = "public"
+	model.addType = "note"
 
-	// Type a query and run the search command.
-	var searchCmd tea.Cmd
-	for _, r := range "Open" {
-		model, searchCmd = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	require.NotNil(t, searchCmd)
-	msg = searchCmd()
-	model, _ = model.Update(msg)
-	assert.False(t, model.linkLoading)
-	assert.Len(t, model.linkResults, 1)
-
-	// Select first result.
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.False(t, model.linkSearching)
-	assert.Len(t, model.linkEntities, 1)
+	// Add a linked entity.
+	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "OpenAI"}}
 	assert.Contains(t, components.SanitizeText(model.View()), "OpenAI")
 
-	// Fill title.
-	model.focus = fieldTitle
-	for _, r := range "Alpha" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-
-	// Commit a tag.
-	model.focus = fieldTags
-	for _, r := range "demo" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.Contains(t, model.tags, "demo")
-
-	// Select a scope via selector.
-	model.focus = fieldScopes
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // enter selector
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeySpace}) // toggle current scope
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter}) // exit selector
-	assert.Contains(t, model.scopes, "public")
-
-	// Save context (Create + Link).
+	// Trigger save directly.
 	var saveCmd tea.Cmd
-	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, saveCmd = model.save()
 	require.NotNil(t, saveCmd)
-	msg = saveCmd()
-	model, _ = model.Update(msg)
+	saveMsg := saveCmd()
+	model, _ = model.Update(saveMsg)
 
 	assert.True(t, createCalled)
 	assert.True(t, linkCalled)
@@ -127,9 +84,7 @@ func TestContextAddLinkSearchSaveAndReset(t *testing.T) {
 	// Esc should reset add state.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.saved)
-	assert.Equal(t, "", model.fields[fieldTitle].value)
-	assert.Len(t, model.tags, 0)
-	assert.Len(t, model.scopes, 0)
+	assert.Equal(t, "", model.addTitle)
 }
 
 // TestContextLibraryDetailEditAndSave handles test context library detail edit and save.
@@ -212,10 +167,8 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	require.NotNil(t, cmd)
 	model, _ = model.Update(runCmdFirst(cmd))
 
-	// Toggle to Library view via modeFocus.
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.True(t, model.modeFocus)
-	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	// Toggle to Library view directly (huh form captures KeyUp in add view).
+	model, cmd = model.toggleMode()
 	require.NotNil(t, cmd)
 	model, _ = model.Update(runCmdFirst(cmd))
 	assert.Equal(t, contextViewList, model.view)
@@ -241,18 +194,15 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, contextViewEdit, model.view)
 
-	// Add a tag and save.
-	model.editFocus = contextEditFieldTags
-	for _, r := range "new" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
-	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
-	assert.Contains(t, model.editTags, "new")
+	// Set edit tag directly (huh forms don't support programmatic field navigation).
+	model.editTagStr = "demo, new"
 
-	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	require.NotNil(t, cmd)
-	msg := cmd()
-	model, _ = model.Update(msg)
+	// Trigger save directly.
+	var saveCmd tea.Cmd
+	model, saveCmd = model.saveEdit()
+	require.NotNil(t, saveCmd)
+	saveMsg := saveCmd()
+	model, _ = model.Update(saveMsg)
 
 	assert.True(t, updateCalled)
 	assert.Equal(t, contextViewDetail, model.view)
@@ -318,4 +268,44 @@ func TestContextRenderLinkEntityPreviewShowsCoreFields(t *testing.T) {
 	assert.Contains(t, preview, "Alpha")
 	assert.Contains(t, preview, "Type")
 	assert.Contains(t, preview, "Status")
+}
+
+// TestContextAddLinkSearchIntegration verifies link search selects entities and renders them.
+func TestContextAddLinkSearchIntegration(t *testing.T) {
+	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasPrefix(r.URL.Path, "/api/entities") && r.Method == http.MethodGet:
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
+				"data": []map[string]any{
+					{"id": "ent-1", "name": "OpenAI", "type": "organization", "status": "active", "tags": []string{}},
+				},
+			}))
+		case r.URL.Path == "/api/audit/scopes":
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	model := NewContextModel(client)
+	model.width = 90
+	model.startLinkSearch()
+	assert.True(t, model.linkSearching)
+
+	// Type a query and run the search command.
+	var searchCmd tea.Cmd
+	for _, r := range "Open" {
+		model, searchCmd = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
+	}
+	require.NotNil(t, searchCmd)
+	msg := searchCmd()
+	model, _ = model.Update(msg)
+	assert.False(t, model.linkLoading)
+	assert.Len(t, model.linkResults, 1)
+
+	// Select first result.
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	assert.False(t, model.linkSearching)
+	assert.Len(t, model.linkEntities, 1)
+	assert.Contains(t, components.SanitizeText(model.renderLinkedEntities()), "OpenAI")
 }

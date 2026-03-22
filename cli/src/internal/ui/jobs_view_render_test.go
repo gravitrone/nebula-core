@@ -81,14 +81,13 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Equal(t, jobsViewAdd, model.view)
 
-	// Enter title.
-	for _, r := range "New Job" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
+	// Set form fields directly (huh forms don't support programmatic field navigation).
+	model.addTitle = "New Job"
+	model.addStatus = jobStatusOptions[0]
 
-	// Save.
+	// Save by calling saveAdd directly.
 	var saveCmd tea.Cmd
-	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, saveCmd = model.saveAdd()
 	require.NotNil(t, saveCmd)
 	msg := saveCmd()
 	model, cmd := model.Update(msg)
@@ -101,7 +100,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	// Esc should reset add state.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.addSaved)
-	assert.Equal(t, "", model.addFields[jobFieldTitle].value)
+	assert.Equal(t, "", model.addTitle)
 }
 
 // TestJobsDetailRendersAndEditSaves handles test jobs detail renders and edit saves.
@@ -159,14 +158,11 @@ func TestJobsDetailRendersAndEditSaves(t *testing.T) {
 	// Enter edit mode.
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, jobsViewEdit, model.view)
+	assert.NotNil(t, model.editForm)
 
-	// Edit description and save.
-	model.editFocus = jobEditFieldDescription
-	for _, r := range " world" {
-		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
-	}
+	// Save via saveEdit directly (huh forms complete via StateCompleted, not ctrl+s).
 	var saveCmd tea.Cmd
-	model, saveCmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	model, saveCmd = model.saveEdit()
 	require.NotNil(t, saveCmd)
 	msg := saveCmd()
 	model, _ = model.Update(msg)

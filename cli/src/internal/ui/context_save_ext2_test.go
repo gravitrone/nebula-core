@@ -13,13 +13,13 @@ import (
 
 func TestContextSaveValidationBranches(t *testing.T) {
 	model := NewContextModel(nil)
-	model.fields[fieldTitle].value = "   "
+	model.addTitle = "   "
 	updated, cmd := model.save()
 	assert.Nil(t, cmd)
 	assert.Contains(t, updated.errText, "Title is required")
 
 	model = NewContextModel(nil)
-	model.fields[fieldTitle].value = "Alpha"
+	model.addTitle = "Alpha"
 	updated, cmd = model.save()
 	assert.NotNil(t, cmd)
 	assert.Equal(t, "", updated.errText)
@@ -37,8 +37,8 @@ func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
 		})
 
 		model := NewContextModel(client)
-		model.fields[fieldTitle].value = "Alpha"
-		model.fields[fieldNotes].value = "Notes"
+		model.addTitle = "Alpha"
+		model.addNotes = "Notes"
 
 		updated, cmd := model.save()
 		require.NotNil(t, cmd)
@@ -74,9 +74,9 @@ func TestContextSaveCreateAndLinkErrorBranches(t *testing.T) {
 		})
 
 		model := NewContextModel(client)
-		model.fields[fieldTitle].value = "Alpha"
-		model.fields[fieldNotes].value = "Notes"
-		model.tagBuf = "Core Tag"
+		model.addTitle = "Alpha"
+		model.addNotes = "Notes"
+		model.addTagStr = "Core Tag"
 		model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
 
 		updated, cmd := model.save()

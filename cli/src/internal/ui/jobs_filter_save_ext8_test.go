@@ -155,7 +155,7 @@ func TestJobsSaveAddValidationAndSuccess(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Equal(t, "Title is required", updated.addErr)
 
-	updated.addFields[jobFieldTitle].value = "Ship it"
+	updated.addTitle = "Ship it"
 	var seen api.CreateJobInput
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/api/jobs" {
@@ -169,10 +169,10 @@ func TestJobsSaveAddValidationAndSuccess(t *testing.T) {
 	})
 
 	model = NewJobsModel(client)
-	model.addFields[jobFieldTitle].value = "Ship it"
-	model.addFields[jobFieldDescription].value = "desc"
-	model.addStatusIdx = 1
-	model.addPriorityIdx = 2
+	model.addTitle = "Ship it"
+	model.addDesc = "desc"
+	model.addStatus = jobStatusOptions[1]
+	model.addPriority = jobPriorityOptions[2]
 
 	updated, cmd = model.saveAdd()
 	require.NotNil(t, cmd)

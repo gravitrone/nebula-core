@@ -1990,12 +1990,10 @@ func (a App) hasUnsaved() bool {
 
 // contextHasInput handles context has input.
 func contextHasInput(m ContextModel) bool {
-	for _, f := range m.fields {
-		if strings.TrimSpace(f.value) != "" {
-			return true
-		}
-	}
-	if len(m.tags) > 0 || strings.TrimSpace(m.tagBuf) != "" {
+	if strings.TrimSpace(m.addTitle) != "" ||
+		strings.TrimSpace(m.addURL) != "" ||
+		strings.TrimSpace(m.addNotes) != "" ||
+		strings.TrimSpace(m.addTagStr) != "" {
 		return true
 	}
 	if len(m.linkEntities) > 0 || strings.TrimSpace(m.linkQuery) != "" {
@@ -2114,7 +2112,7 @@ func (a App) canExitToTabNav() bool {
 		if a.know.view != contextViewAdd {
 			return false
 		}
-		return !a.know.modeFocus && a.know.focus == fieldTitle
+		return !a.know.modeFocus
 	case tabJobs:
 		if a.jobs.filtering || a.jobs.detail != nil || a.jobs.changingSt {
 			return false

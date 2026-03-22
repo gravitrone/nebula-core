@@ -11,17 +11,12 @@ import (
 
 func TestJobsStartEditNilDetailNoMutation(t *testing.T) {
 	model := NewJobsModel(nil)
-	model.editFocus = jobEditFieldPriority
-	model.editStatusIdx = 2
-	model.editPriorityIdx = 1
 	model.editDesc = "keep-me"
 	model.editSaving = true
 
+	// startEdit with nil detail is a no-op
 	model.startEdit()
 
-	assert.Equal(t, jobEditFieldPriority, model.editFocus)
-	assert.Equal(t, 2, model.editStatusIdx)
-	assert.Equal(t, 1, model.editPriorityIdx)
 	assert.Equal(t, "keep-me", model.editDesc)
 	assert.True(t, model.editSaving)
 }

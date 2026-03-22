@@ -28,11 +28,13 @@ func TestContextHandleListKeysFilteringDispatchAndTopUpFocus(t *testing.T) {
 }
 
 func TestContextStartEditNilDetailAndNilURLBranch(t *testing.T) {
+	// startEdit is a no-op when detail is nil.
 	model := NewContextModel(nil)
-	model.contextEditFields[contextEditFieldURL].value = "keep"
+	model.editURL = "keep"
 	model.startEdit()
-	assert.Equal(t, "keep", model.contextEditFields[contextEditFieldURL].value)
+	assert.Equal(t, "keep", model.editURL)
 
+	// startEdit populates fields from detail; nil URL/Content produce empty strings.
 	model.detail = &api.Context{
 		ID:         "ctx-1",
 		Title:      "Alpha",
@@ -42,7 +44,10 @@ func TestContextStartEditNilDetailAndNilURLBranch(t *testing.T) {
 		Content:    nil,
 	}
 	model.startEdit()
-	assert.Equal(t, "", model.contextEditFields[contextEditFieldURL].value)
+	assert.Equal(t, "", model.editURL)
+	assert.Equal(t, "Alpha", model.editTitle)
+	assert.Equal(t, "note", model.editType)
+	assert.Equal(t, "active", model.editStatus)
 }
 
 func TestContextSaveEditNilDetailAndUpdateErrorBranch(t *testing.T) {
