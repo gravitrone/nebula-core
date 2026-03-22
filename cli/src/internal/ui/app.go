@@ -1051,7 +1051,9 @@ func (a App) statusHintsForTab() []string {
 				components.Hint("y/n", "Aliases"),
 			)
 		default:
-			hints := append(base,
+			hints := make([]string, 0, len(base)+8)
+			hints = append(hints, base...)
+			hints = append(hints,
 				components.Hint("↑/↓", "Scroll"),
 				components.Hint("tab", "Complete"),
 				components.Hint("enter", "Details"),

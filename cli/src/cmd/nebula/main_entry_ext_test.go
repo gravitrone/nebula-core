@@ -57,8 +57,8 @@ func TestMainExecuteErrorExitsWithCodeOne(t *testing.T) {
 	err := cmd.Run()
 	require.Error(t, err)
 
-	exitErr, ok := err.(*exec.ExitError)
-	require.True(t, ok)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
 	assert.Equal(t, 1, exitErr.ExitCode())
 	assert.Contains(t, stderr.String(), "unknown command")
 }
