@@ -78,8 +78,32 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
   gum spin --spinner dot --title "building nebula..." -- \
     bash -c "cd '$ITER_DIR' && make build 2>/dev/null"
 
+  # ── capture screenshots via VHS ──────────────────────────────────────────
+  info "capturing TUI screenshots with VHS..."
+  SCREENSHOTS_DIR="$ITER_DIR/screenshots"
+  mkdir -p "$SCREENSHOTS_DIR"
+
+  for tape in "$SCRIPT_DIR/../vhs/tapes/"*.tape; do
+    tapename=$(basename "$tape" .tape)
+    gum spin --spinner dot --title "recording: $tapename" -- \
+      vhs "$tape" -o "$SCREENSHOTS_DIR/$tapename.gif" 2>/dev/null || {
+        warn "failed to record $tapename"
+      }
+  done
+
+  SCREENSHOT_COUNT=$(ls "$SCREENSHOTS_DIR"/*.gif 2>/dev/null | wc -l | tr -d ' ')
+  info "captured $SCREENSHOT_COUNT screenshots"
+
+  # ── build screenshot file list for prompt ────────────────────────────────
+  SCREENSHOT_INSTRUCTIONS=""
+  for gif in "$SCREENSHOTS_DIR"/*.gif; do
+    [ -f "$gif" ] || continue
+    SCREENSHOT_INSTRUCTIONS="$SCREENSHOT_INSTRUCTIONS
+- Read the image file at $gif using the Read tool and analyze it visually"
+  done
+
   # ── launch claude ─────────────────────────────────────────────────────────
-  info "launching claude to analyze and fix visual bugs..."
+  info "launching claude to analyze screenshots and fix visual bugs..."
 
   PROMPT=$(cat "$SCRIPT_DIR/program.md")
   SUITE_STATUS=$(tail -1 /tmp/ar-tests.txt 2>/dev/null || echo "unknown")
@@ -89,13 +113,21 @@ while [ $ITERATION -lt $MAX_ITERATIONS ]; do
 - Golden tests: $GOLDEN_PASS passing
 - Full suite: $SUITE_STATUS
 
+## CRITICAL: You MUST look at actual screenshots before making any changes
+
+Screenshots have been captured at: $SCREENSHOTS_DIR/
+
+Your FIRST action must be to Read each screenshot file listed below using the Read tool.
+The Read tool can display images visually. Look at each one and identify visual bugs.
+$SCREENSHOT_INSTRUCTIONS
+
 ## Task
-1. Read the scenario checks from this prompt
-2. Look at the TUI source code and identify visual bugs matching the check categories
+1. FIRST: Read each screenshot GIF file listed above using the Read tool - actually LOOK at the rendered TUI
+2. Identify visual bugs you can SEE in the screenshots (alignment, overflow, spacing, missing elements)
 3. Fix any bugs you find in cli/src/internal/ui/
 4. Run: make test-cli to verify no regressions
 5. Only keep changes that pass tests
-6. Be specific about what you changed and why"
+6. Be specific about what you SAW in the screenshots and what you fixed"
 
   (cd "$ITER_DIR" && echo "$PROMPT" | claude \
     --model opus \
