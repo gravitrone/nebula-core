@@ -22,11 +22,12 @@ ERR="#d1606b" # error (red)
 # ── helpers ─────────────────────────────────────────────────────────────────
 banner() {
   echo ""
-  printf '{{ Bold (Color "135" "" "◆ Nebula Autoresearch") }}\n{{ Italic (Color "105" "" "  Autonomous Visual Bug Hunter") }}\n{{ Color "61" "" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" }}\n{{ Color "146" "" "  Iterations" }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Branch    " }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Isolation " }}   {{ Color "153" "" "Git Worktrees" }}' \
-    "$MAX_ITERATIONS" \
-    "$BRANCH" \
-    | gum format --type=template \
-    | gum style --border thick --border-foreground "$P" --padding "1 2"
+  local title=$(gum style --bold --foreground "$P" "◆ Nebula Autoresearch")
+  local sub=$(gum style --faint --italic "  Autonomous Visual Bug Hunter")
+  local sep=$(gum style --foreground "$S" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+  local info=$(printf "  Iterations   %s\n  Branch       %s\n  Isolation    Git Worktrees" "$MAX_ITERATIONS" "$BRANCH")
+  printf "%s\n%s\n%s\n%s" "$title" "$sub" "$sep" "$info" \
+    | gum style --border rounded --border-foreground "$P" --padding "1 2"
 }
 
 header() {
@@ -206,11 +207,10 @@ done
 
 # ── summary ─────────────────────────────────────────────────────────────────
 echo ""
-printf '{{ Bold (Color "35" "" "◆ Autoresearch Complete") }}\n{{ Color "61" "" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" }}\n{{ Color "146" "" "  Iterations  " }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Fixes Merged" }}   {{ Color "153" "" "%s" }}\n{{ Color "146" "" "  Branch      " }}   {{ Color "153" "" "%s" }}' \
-  "$ITERATION" \
-  "$TOTAL_FIXES" \
-  "$BRANCH" \
-  | gum format --type=template \
+DONE_TITLE=$(gum style --bold --foreground "$OK" "◆ Autoresearch Complete")
+DONE_SEP=$(gum style --foreground "$S" "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+DONE_INFO=$(printf "  Iterations    %s\n  Fixes Merged  %s\n  Branch        %s" "$ITERATION" "$TOTAL_FIXES" "$BRANCH")
+printf "%s\n%s\n%s" "$DONE_TITLE" "$DONE_SEP" "$DONE_INFO" \
   | gum style --border rounded --border-foreground "$OK" --padding "1 2"
 
 # cleanup worktree dir if empty
