@@ -403,8 +403,12 @@ func (m HistoryModel) loadActors() tea.Cmd {
 // renderList renders render list.
 func (m HistoryModel) renderList() string {
 	if len(m.items) == 0 {
-		content := MutedStyle.Render("No audit entries yet.")
-		return components.Indent(components.Box(content, m.width), 1)
+		return components.Indent(components.EmptyStateBox(
+			"Audit Log",
+			"No audit entries yet.",
+			[]string{"Make changes to entities or context to generate audit entries", "Press f to filter by table or action"},
+			m.width,
+		), 1)
 	}
 
 	filterLine := formatAuditFilters(m.filter)

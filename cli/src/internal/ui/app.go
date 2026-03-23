@@ -939,7 +939,7 @@ func (a App) renderTabs() string {
 				segments = append(segments, TabActiveStyle.Render(label))
 			}
 		} else if isAnimating {
-			segments = append(segments, TabFocusStyle.Render(label))
+			segments = append(segments, TabTrailStyle.Render(label))
 		} else {
 			segments = append(segments, TabInactiveStyle.Render(label))
 		}
