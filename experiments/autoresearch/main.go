@@ -87,6 +87,7 @@ func info(msg string)    { fmt.Printf("  %s\n", msg) }
 func success(msg string) { fmt.Printf("  %s\n", successStyle.Render(msg)) }
 func warn(msg string)    { fmt.Printf("  %s\n", warnStyle.Render(msg)) }
 func fail(msg string)    { fmt.Printf("  %s\n", errorStyle.Render(msg)) }
+func header(msg string)  { fmt.Printf("  %s\n", headerStyle.Render(msg)) }
 
 func run(dir string, name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
@@ -182,7 +183,7 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 		"--output-format", "stream-json",
 		"--verbose",
 		"--include-partial-messages",
-		"--dangerously-skip-permissions",
+		"--permission-mode", "default",
 	}
 	if model != "" {
 		args = append(args, "--model", model)
@@ -194,11 +195,12 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 	cmd := exec.Command("claude", args...)
 	cmd.Dir = cwd
 
-	// Clean env - remove CLAUDECODE to avoid subprocess conflicts
+	// Clean env - remove CLAUDECODE to avoid subprocess conflicts,
+	// and ANTHROPIC_API_KEY to force OAuth login (subscription) instead of API key auth
 	env := os.Environ()
 	filtered := make([]string, 0, len(env))
 	for _, e := range env {
-		if !strings.HasPrefix(e, "CLAUDECODE=") {
+		if !strings.HasPrefix(e, "CLAUDECODE=") && !strings.HasPrefix(e, "ANTHROPIC_API_KEY=") {
 			filtered = append(filtered, e)
 		}
 	}
@@ -249,7 +251,7 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 			var sys systemEvent
 			json.Unmarshal(line, &sys)
 			if sys.Subtype == "init" {
-				fmt.Println(dimStyle.Render(fmt.Sprintf("  session: %s  model: %s", sys.SessionID, sys.Model)))
+				fmt.Printf("  Session: %s  Model: %s\n", sys.SessionID, sys.Model)
 			}
 
 		case "stream_event":
@@ -260,7 +262,7 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 			case "content_block_start":
 				if se.Event.ContentBlock.Type == "tool_use" {
 					activeTools[se.Event.Index] = se.Event.ContentBlock.Name
-					fmt.Print(toolStyle.Render(fmt.Sprintf("\n  [%s] ", se.Event.ContentBlock.Name)))
+					fmt.Printf("\n  [%s] ", se.Event.ContentBlock.Name)
 				}
 
 			case "content_block_delta":
@@ -270,14 +272,14 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 				} else if se.Event.Delta.Type == "input_json_delta" {
 					// Tool input streaming - show abbreviated
 					if len(se.Event.Delta.PartialJSON) > 0 && lineCount%20 == 0 {
-						fmt.Print(dimStyle.Render("."))
+						fmt.Print(".")
 					}
 					lineCount++
 				}
 
 			case "content_block_stop":
 				if name, ok := activeTools[se.Event.Index]; ok {
-					fmt.Println(dimStyle.Render(fmt.Sprintf(" [/%s]", name)))
+					fmt.Printf(" [/%s]\n", name)
 					delete(activeTools, se.Event.Index)
 				}
 			}
@@ -287,10 +289,10 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 			json.Unmarshal(line, &res)
 			fmt.Println()
 			if res.IsError {
-				fail(fmt.Sprintf("error: %s", res.Result))
+				fail(fmt.Sprintf("Error: %s", res.Result))
 			} else {
-				fmt.Println(dimStyle.Render(fmt.Sprintf("  cost: $%.4f  turns: %d  duration: %ds",
-					res.TotalCostUSD, res.NumTurns, res.DurationMs/1000)))
+				fmt.Printf("  Cost: $%.4f  Turns: %d  Duration: %ds\n",
+					res.TotalCostUSD, res.NumTurns, res.DurationMs/1000)
 			}
 			stdin.Close()
 			break
@@ -317,7 +319,7 @@ func main() {
 		}
 		parent := filepath.Dir(root)
 		if parent == root {
-			fail("could not find git repo root")
+			fail("Could not find git repo root")
 			os.Exit(1)
 		}
 		root = parent
@@ -339,7 +341,11 @@ func main() {
 	fmt.Println()
 	fmt.Printf("  Iterations   %d\n", *iterations)
 	fmt.Printf("  Branch       %s\n", *branch)
-	fmt.Printf("  Model        %s\n", *model)
+	displayModel := *model
+	if len(displayModel) > 0 {
+		displayModel = strings.ToUpper(displayModel[:1]) + displayModel[1:]
+	}
+	fmt.Printf("  Model        %s\n", displayModel)
 	fmt.Println("  Isolation    Git Worktrees")
 	fmt.Println()
 
@@ -347,7 +353,7 @@ func main() {
 
 	for i := 1; i <= *iterations; i++ {
 		fmt.Println()
-		fmt.Println(headerStyle.Render(fmt.Sprintf("  iteration %d/%d", i, *iterations)))
+		header(fmt.Sprintf("Iteration %d/%d", i, *iterations))
 		fmt.Println()
 
 		iterBranch := fmt.Sprintf("autoresearch/iter-%d", i)
@@ -362,43 +368,43 @@ func main() {
 		// Create worktree
 		runSilent(root, "git", "branch", "-D", iterBranch)
 		if _, err := run(root, "git", "branch", iterBranch, *branch); err != nil {
-			fail("failed to create branch: " + iterBranch)
+			fail("Failed to create branch: " + iterBranch)
 			continue
 		}
 		if _, err := run(root, "git", "worktree", "add", iterDir, iterBranch); err != nil {
-			fail("failed to create worktree")
+			fail("Failed to create worktree")
 			runSilent(root, "git", "branch", "-D", iterBranch)
 			continue
 		}
-		info("worktree: " + iterDir)
+		info("Worktree: " + iterDir)
 
 		// Run tests
-		info("running tests...")
+		info("Running tests...")
 		testOut, testErr := run(iterDir, "make", "test-cli")
 		if testErr != nil {
-			warn("test issues")
+			warn("Test issues")
 		} else {
-			info("tests: all passing")
+			info("Tests: all passing")
 		}
 
 		// Build
-		info("building nebula...")
+		info("Building nebula...")
 		if _, err := run(iterDir, "make", "build"); err != nil {
-			fail("build failed")
+			fail("Build failed")
 			runSilent(root, "git", "worktree", "remove", "--force", iterDir)
 			runSilent(root, "git", "branch", "-D", iterBranch)
 			continue
 		}
 
 		// Capture TUI
-		info("capturing TUI...")
+		info("Capturing TUI...")
 		capturesDir := filepath.Join(iterDir, "captures")
 		nebulaBin := filepath.Join(iterDir, "cli", "src", "build", "nebula")
 		captured, err := captureTUI(capturesDir, nebulaBin)
 		if err != nil {
-			warn("capture failed: " + err.Error())
+			warn("Capture failed: " + err.Error())
 		} else {
-			info(fmt.Sprintf("captured %d snapshots", len(captured)))
+			info(fmt.Sprintf("Captured %d snapshots", len(captured)))
 		}
 
 		// Build prompt
@@ -435,11 +441,11 @@ Terminal snapshots captured at: %s/
 
 		// Launch claude
 		fmt.Println()
-		fmt.Println(headerStyle.Render("  claude analyzing..."))
+		header("Claude analyzing...")
 		fmt.Println()
 
 		if err := spawnClaude(prompt, iterDir, *model, *maxTurns); err != nil {
-			warn("claude session ended: " + err.Error())
+			warn("Claude session ended: " + err.Error())
 		}
 
 		// Check results
@@ -454,12 +460,12 @@ Terminal snapshots captured at: %s/
 			// Check for uncommitted changes
 			changed, _ := run(iterDir, "git", "diff", "--name-only")
 			if strings.TrimSpace(changed) != "" {
-				info("saving uncommitted changes...")
+				info("Saving uncommitted changes...")
 				runSilent(iterDir, "git", "add", "-A")
 				runSilent(iterDir, "git", "commit", "-m", fmt.Sprintf("fix(cli): autoresearch visual fixes (iteration %d)", i))
 				commitCount = 1
 			} else {
-				info("no changes this iteration")
+				info("No changes this iteration")
 				runSilent(root, "git", "worktree", "remove", "--force", iterDir)
 				runSilent(root, "git", "branch", "-D", iterBranch)
 				continue
@@ -469,9 +475,9 @@ Terminal snapshots captured at: %s/
 		info(fmt.Sprintf("%d commit(s) from claude", commitCount))
 
 		// Verify tests
-		info("verifying tests...")
+		info("Verifying tests...")
 		if err := runSilent(iterDir, "make", "test-cli"); err != nil {
-			fail("tests failed, keeping branch: " + iterBranch)
+			fail("Tests failed, keeping branch: " + iterBranch)
 			runSilent(root, "git", "worktree", "remove", "--force", iterDir)
 			continue
 		}
@@ -479,13 +485,13 @@ Terminal snapshots captured at: %s/
 		// Merge
 		runSilent(root, "git", "checkout", *branch)
 		if _, err := run(root, "git", "merge", iterBranch, "--no-edit"); err != nil {
-			fail("merge conflict, keeping branch: " + iterBranch)
+			fail("Merge conflict, keeping branch: " + iterBranch)
 			runSilent(root, "git", "merge", "--abort")
 			runSilent(root, "git", "worktree", "remove", "--force", iterDir)
 			continue
 		}
 
-		success(fmt.Sprintf("merged iteration %d into %s", i, *branch))
+		success(fmt.Sprintf("Merged iteration %d into %s", i, *branch))
 		totalFixes++
 
 		// Cleanup
