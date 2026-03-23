@@ -25,9 +25,10 @@ echo ""
 gum style --bold --foreground 212 "Nebula Autoresearch"
 gum style --faint --italic "Autonomous Visual Bug Hunter"
 echo ""
-gum log --level info "Iterations   $MAX_ITERATIONS"
-gum log --level info "Branch       $BRANCH"
-gum log --level info "Isolation    Git Worktrees"
+gum style --foreground 245 \
+  "Iterations   $MAX_ITERATIONS" \
+  "Branch       $BRANCH" \
+  "Isolation    Git Worktrees"
 echo ""
 
 # ── main ────────────────────────────────────────────────────────────────────
@@ -191,9 +192,10 @@ done
 echo ""
 gum style --bold --foreground 35 "Autoresearch Complete"
 echo ""
-gum log --level info "Iterations    $ITERATION"
-gum log --level info "Fixes Merged  $TOTAL_FIXES"
-gum log --level info "Branch        $BRANCH"
+gum style --foreground 245 \
+  "Iterations    $ITERATION" \
+  "Fixes Merged  $TOTAL_FIXES" \
+  "Branch        $BRANCH"
 
 # cleanup worktree dir if empty
 rmdir "$WORKTREE_DIR" 2>/dev/null || true
