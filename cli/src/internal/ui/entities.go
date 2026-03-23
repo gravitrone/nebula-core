@@ -1112,7 +1112,7 @@ func (m EntitiesModel) renderList() string {
 		return components.EmptyStateBox(
 			"Entities",
 			"No entities found.",
-			[]string{"Type to live-search", "Press tab to switch Add/Library", "Press / for command palette"},
+			[]string{"Type to live-search", "Press / for command palette"},
 			m.width,
 		)
 	}
