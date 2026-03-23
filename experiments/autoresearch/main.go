@@ -15,7 +15,7 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// ── styles ──────────────────────────────────────────────────────────────────
+// --- Styles ---
 
 var (
 	purple = lipgloss.Color("#7f57b4")
@@ -38,7 +38,7 @@ var (
 	headerStyle  = lipgloss.NewStyle().Foreground(teal).Bold(true)
 )
 
-// ── NDJSON event types ──────────────────────────────────────────────────────
+// --- NDJSON Event Types ---
 
 type baseEvent struct {
 	Type    string `json:"type"`
@@ -81,12 +81,12 @@ type systemEvent struct {
 	Model     string `json:"model"`
 }
 
-// ── helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers ---
 
-func info(msg string)    { fmt.Println(infoStyle.Render("  " + msg)) }
-func success(msg string) { fmt.Println(successStyle.Render("  " + msg)) }
-func warn(msg string)    { fmt.Println(warnStyle.Render("  " + msg)) }
-func fail(msg string)    { fmt.Println(errorStyle.Render("  " + msg)) }
+func info(msg string)    { fmt.Printf("  %s\n", msg) }
+func success(msg string) { fmt.Printf("  %s\n", successStyle.Render(msg)) }
+func warn(msg string)    { fmt.Printf("  %s\n", warnStyle.Render(msg)) }
+func fail(msg string)    { fmt.Printf("  %s\n", errorStyle.Render(msg)) }
 
 func run(dir string, name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
@@ -103,7 +103,7 @@ func runSilent(dir string, name string, args ...string) error {
 	return cmd.Run()
 }
 
-// ── capture TUI via tmux ────────────────────────────────────────────────────
+// --- Capture TUI Via Tmux ---
 
 func captureTUI(capturesDir, nebulaBin string) ([]string, error) {
 	os.MkdirAll(capturesDir, 0o755)
@@ -173,7 +173,7 @@ func captureTUI(capturesDir, nebulaBin string) ([]string, error) {
 	return captured, nil
 }
 
-// ── claude headless ─────────────────────────────────────────────────────────
+// --- Claude Headless ---
 
 func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 	args := []string{
@@ -300,7 +300,7 @@ func spawnClaude(prompt, cwd, model string, maxTurns int) error {
 	return cmd.Wait()
 }
 
-// ── main ────────────────────────────────────────────────────────────────────
+// --- Main ---
 
 func main() {
 	iterations := flag.Int("iterations", 5, "number of iterations")
@@ -332,15 +332,15 @@ func main() {
 
 	worktreeDir := filepath.Join(root, ".autoresearch-work")
 
-	// ── banner ────────────────────────────────────────────────────────────
+	// Banner
 	fmt.Println()
-	lipgloss.Println(titleStyle.Render("Nebula Autoresearch"))
-	lipgloss.Println(subStyle.Render("Autonomous Visual Bug Hunter"))
+	fmt.Println(titleStyle.Render("Nebula Autoresearch"))
+	fmt.Println(subStyle.Render("Autonomous Visual Bug Hunter"))
 	fmt.Println()
-	fmt.Println(infoStyle.Render(fmt.Sprintf("  Iterations   %d", *iterations)))
-	fmt.Println(infoStyle.Render(fmt.Sprintf("  Branch       %s", *branch)))
-	fmt.Println(infoStyle.Render(fmt.Sprintf("  Model        %s", *model)))
-	fmt.Println(infoStyle.Render("  Isolation    Git Worktrees"))
+	fmt.Printf("  Iterations   %d\n", *iterations)
+	fmt.Printf("  Branch       %s\n", *branch)
+	fmt.Printf("  Model        %s\n", *model)
+	fmt.Println("  Isolation    Git Worktrees")
 	fmt.Println()
 
 	totalFixes := 0
@@ -353,13 +353,13 @@ func main() {
 		iterBranch := fmt.Sprintf("autoresearch/iter-%d", i)
 		iterDir := filepath.Join(worktreeDir, fmt.Sprintf("iter-%d", i))
 
-		// ── cleanup leftover ──────────────────────────────────────────────
+		// Cleanup leftover
 		if _, err := os.Stat(iterDir); err == nil {
 			runSilent(root, "git", "worktree", "remove", "--force", iterDir)
 			runSilent(root, "git", "branch", "-D", iterBranch)
 		}
 
-		// ── create worktree ───────────────────────────────────────────────
+		// Create worktree
 		runSilent(root, "git", "branch", "-D", iterBranch)
 		if _, err := run(root, "git", "branch", iterBranch, *branch); err != nil {
 			fail("failed to create branch: " + iterBranch)
@@ -372,7 +372,7 @@ func main() {
 		}
 		info("worktree: " + iterDir)
 
-		// ── run tests ─────────────────────────────────────────────────────
+		// Run tests
 		info("running tests...")
 		testOut, testErr := run(iterDir, "make", "test-cli")
 		if testErr != nil {
@@ -381,7 +381,7 @@ func main() {
 			info("tests: all passing")
 		}
 
-		// ── build ─────────────────────────────────────────────────────────
+		// Build
 		info("building nebula...")
 		if _, err := run(iterDir, "make", "build"); err != nil {
 			fail("build failed")
@@ -390,7 +390,7 @@ func main() {
 			continue
 		}
 
-		// ── capture TUI ───────────────────────────────────────────────────
+		// Capture TUI
 		info("capturing TUI...")
 		capturesDir := filepath.Join(iterDir, "captures")
 		nebulaBin := filepath.Join(iterDir, "cli", "src", "build", "nebula")
@@ -401,7 +401,7 @@ func main() {
 			info(fmt.Sprintf("captured %d snapshots", len(captured)))
 		}
 
-		// ── build prompt ──────────────────────────────────────────────────
+		// Build prompt
 		programBytes, _ := os.ReadFile(programMD)
 		captureInstructions := ""
 		for _, path := range captured {
@@ -433,7 +433,7 @@ Terminal snapshots captured at: %s/
 5. Use /commit-forge to commit changes`,
 			string(programBytes), i, suiteStatus, capturesDir, captureInstructions)
 
-		// ── launch claude ─────────────────────────────────────────────────
+		// Launch claude
 		fmt.Println()
 		fmt.Println(headerStyle.Render("  claude analyzing..."))
 		fmt.Println()
@@ -442,7 +442,7 @@ Terminal snapshots captured at: %s/
 			warn("claude session ended: " + err.Error())
 		}
 
-		// ── check results ─────────────────────────────────────────────────
+		// Check results
 		fmt.Println()
 		commitsAhead, _ := run(iterDir, "git", "log", *branch+".."+iterBranch, "--oneline")
 		commitCount := 0
@@ -468,7 +468,7 @@ Terminal snapshots captured at: %s/
 
 		info(fmt.Sprintf("%d commit(s) from claude", commitCount))
 
-		// ── verify tests ──────────────────────────────────────────────────
+		// Verify tests
 		info("verifying tests...")
 		if err := runSilent(iterDir, "make", "test-cli"); err != nil {
 			fail("tests failed, keeping branch: " + iterBranch)
@@ -476,7 +476,7 @@ Terminal snapshots captured at: %s/
 			continue
 		}
 
-		// ── merge ─────────────────────────────────────────────────────────
+		// Merge
 		runSilent(root, "git", "checkout", *branch)
 		if _, err := run(root, "git", "merge", iterBranch, "--no-edit"); err != nil {
 			fail("merge conflict, keeping branch: " + iterBranch)
@@ -488,18 +488,18 @@ Terminal snapshots captured at: %s/
 		success(fmt.Sprintf("merged iteration %d into %s", i, *branch))
 		totalFixes++
 
-		// ── cleanup ───────────────────────────────────────────────────────
+		// Cleanup
 		runSilent(root, "git", "worktree", "remove", "--force", iterDir)
 		runSilent(root, "git", "branch", "-D", iterBranch)
 	}
 
-	// ── summary ─────────────────────────────────────────────────────────────
+	// Summary
 	fmt.Println()
-	lipgloss.Println(successStyle.Render("Autoresearch Complete"))
+	fmt.Println(successStyle.Render("Autoresearch Complete"))
 	fmt.Println()
-	fmt.Println(infoStyle.Render(fmt.Sprintf("  Iterations    %d", *iterations)))
-	fmt.Println(infoStyle.Render(fmt.Sprintf("  Fixes Merged  %d", totalFixes)))
-	fmt.Println(infoStyle.Render(fmt.Sprintf("  Branch        %s", *branch)))
+	fmt.Printf("  Iterations    %d\n", *iterations)
+	fmt.Printf("  Fixes Merged  %d\n", totalFixes)
+	fmt.Printf("  Branch        %s\n", *branch)
 	fmt.Println()
 
 	os.RemoveAll(worktreeDir)
