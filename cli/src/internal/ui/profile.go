@@ -371,7 +371,7 @@ func (m ProfileModel) View() string {
 			" " + active.Render(taxonomyLabel)
 	}
 	b.WriteString(components.CenterLine(tabs, m.width))
-	b.WriteString("\n\n")
+	b.WriteString("\n")
 
 	switch m.section {
 	case 0:
