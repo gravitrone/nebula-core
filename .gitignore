@@ -45,3 +45,4 @@ package-lock.json
 .claude/worktrees/
 experiments/vhs/baselines/*.gif
 .autoresearch-work/
+experiments/autoresearch/autoresearch
