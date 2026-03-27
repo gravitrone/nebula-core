@@ -1,6 +1,5 @@
 """Relationship API routes."""
 
-import json
 import re
 from pathlib import Path
 from typing import Any
@@ -13,7 +12,7 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, require_relationship_type, require_status
 from nebula_mcp.executors import execute_create_relationship
-from nebula_mcp.helpers import sanitize_relationship_properties, scope_names_from_ids
+from nebula_mcp.helpers import sanitize_relationship_notes, scope_names_from_ids
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -143,7 +142,7 @@ def _normalize_relationship_row(row: Any, scope_names: list[str]) -> dict[str, A
     """
 
     item = dict(row)
-    item["properties"] = sanitize_relationship_properties(item.get("properties"), scope_names)
+    item["notes"] = sanitize_relationship_notes(item.get("notes"))
     return item
 
 
@@ -212,7 +211,7 @@ class CreateRelationshipBody(BaseModel):
         target_type: Target node type.
         target_id: Target node id.
         relationship_type: Relationship type name.
-        properties: Optional relationship properties.
+        notes: Relationship notes.
     """
 
     source_type: str
@@ -220,18 +219,18 @@ class CreateRelationshipBody(BaseModel):
     target_type: str
     target_id: str
     relationship_type: str
-    properties: dict | None = None
+    notes: str = ""
 
 
 class UpdateRelationshipBody(BaseModel):
     """Payload for updating a relationship.
 
     Attributes:
-        properties: Updated properties.
+        notes: Updated relationship notes.
         status: Updated status name.
     """
 
-    properties: dict | None = None
+    notes: str | None = None
     status: str | None = None
 
 
@@ -255,8 +254,6 @@ async def create_relationship(
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
-    if data.get("properties") is None:
-        data["properties"] = {}
     await _validate_relationship_node(pool, enums, auth, data["source_type"], data["source_id"])
     await _validate_relationship_node(pool, enums, auth, data["target_type"], data["target_id"])
     # Validate taxonomy-backed fields before queuing approvals.
@@ -410,7 +407,7 @@ async def update_relationship(
 
     change = {
         "relationship_id": relationship_id,
-        "properties": payload.properties,
+        "notes": payload.notes,
         "status": payload.status,
     }
     row = await pool.fetchrow(QUERIES["relationships/get_by_id"], relationship_id)
@@ -429,7 +426,7 @@ async def update_relationship(
     row = await pool.fetchrow(
         QUERIES["relationships/update"],
         relationship_id,
-        json.dumps(payload.properties) if payload.properties else None,
+        payload.notes,
         status_id,
     )
     if not row:

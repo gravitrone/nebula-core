@@ -80,7 +80,7 @@ class CreateProtocolBody(BaseModel):
     applies_to: list[str] = []
     status: str = "active"
     tags: list[str] = []
-    metadata: dict | None = None
+    notes: str = ""
     source_path: str | None = None
     trusted: bool = False
 
@@ -109,7 +109,7 @@ class UpdateProtocolBody(BaseModel):
     applies_to: list[str] | None = None
     status: str | None = None
     tags: list[str] | None = None
-    metadata: dict | None = None
+    notes: str | None = None
     source_path: str | None = None
     trusted: bool | None = None
 
@@ -183,8 +183,6 @@ async def create_protocol(
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
-    if data["metadata"] is None:
-        data["metadata"] = {}
     if not _is_admin(auth, enums):
         data["trusted"] = False
     try:

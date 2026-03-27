@@ -13,7 +13,7 @@ from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_entity_type, require_scopes
 from nebula_mcp.helpers import (
     enforce_scope_subset,
-    sanitize_relationship_properties,
+    sanitize_relationship_notes,
     scope_names_from_ids,
 )
 from nebula_mcp.query_loader import QueryLoader
@@ -97,7 +97,7 @@ def _normalize_relationship_export_row(row: Any, scope_names: list[str]) -> dict
     """
 
     item = dict(row)
-    item["properties"] = sanitize_relationship_properties(item.get("properties"), scope_names)
+    item["notes"] = sanitize_relationship_notes(item.get("notes"))
     return item
 
 

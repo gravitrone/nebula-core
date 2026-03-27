@@ -506,7 +506,7 @@ async def link_to_owner(
         "target_type": "context",
         "target_id": context_id,
         "relationship_type": "context-of",
-        "properties": {},
+        "notes": "",
     }
     try:
         require_relationship_type("context-of", enums)

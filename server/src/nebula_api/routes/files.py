@@ -1,6 +1,5 @@
 """File API routes."""
 
-import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -12,7 +11,6 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import EnumRegistry, require_status
 from nebula_mcp.executors import execute_create_file, execute_update_file
-from nebula_mcp.models import validate_metadata_payload
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -21,41 +19,18 @@ router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
 
 
-def _coerce_json_value(value: Any, fallback: Any) -> Any:
-    """Coerce text JSON payloads returned by asyncpg into Python objects.
-
-    Args:
-        value: Raw value from database row.
-        fallback: Value returned when payload cannot be parsed.
-
-    Returns:
-        Parsed JSON object/array or fallback when parsing fails.
-    """
-
-    if value is None:
-        return fallback
-    if isinstance(value, (dict, list)):
-        return value
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return fallback
-    return fallback
-
-
 def _normalize_file_payload(file_row: dict[str, Any]) -> dict[str, Any]:
-    """Normalize JSON fields in a file row for API responses.
+    """Normalize text fields in a file row for API responses.
 
     Args:
         file_row: File payload row converted to a dict.
 
     Returns:
-        File payload with consistent JSON object metadata.
+        File payload with consistent notes field.
     """
 
-    metadata = _coerce_json_value(file_row.get("metadata"), {})
-    file_row["metadata"] = metadata if isinstance(metadata, dict) else {}
+    if file_row.get("notes") is None:
+        file_row["notes"] = ""
     return file_row
 
 
@@ -138,7 +113,7 @@ class CreateFileBody(BaseModel):
     checksum: str | None = None
     status: str = "active"
     tags: list[str] = []
-    metadata: dict | None = None
+    notes: str = ""
 
 
 class UpdateFileBody(BaseModel):
@@ -152,7 +127,7 @@ class UpdateFileBody(BaseModel):
     checksum: str | None = None
     status: str | None = None
     tags: list[str] | None = None
-    metadata: dict | None = None
+    notes: str | None = None
 
 
 @router.get("/")
@@ -222,12 +197,6 @@ async def create_file(
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
-    if data.get("metadata") is None:
-        data["metadata"] = {}
-    try:
-        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
-    except ValueError as exc:
-        api_error("INVALID_INPUT", str(exc), 400)
     if not data.get("uri") and not data.get("file_path"):
         api_error("INVALID_INPUT", "uri or file_path is required", 400)
     if not data.get("uri") and data.get("file_path"):
@@ -269,13 +238,6 @@ async def update_file(
 
     data = payload.model_dump()
     data["file_id"] = file_id
-    if data.get("metadata") is None:
-        data.pop("metadata", None)
-    else:
-        try:
-            data["metadata"] = validate_metadata_payload(data["metadata"])
-        except ValueError as exc:
-            api_error("INVALID_INPUT", str(exc), 400)
     if data.get("uri") is None and data.get("file_path") is not None:
         data["uri"] = data["file_path"]
     if data.get("file_path") is None and data.get("uri") is not None:

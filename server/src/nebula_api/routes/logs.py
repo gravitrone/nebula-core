@@ -1,6 +1,5 @@
 """Log API routes."""
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -13,7 +12,6 @@ from nebula_api.auth import maybe_check_agent_approval, require_auth
 from nebula_api.response import api_error, success
 from nebula_mcp.enums import require_log_type, require_status
 from nebula_mcp.executors import execute_create_log, execute_update_log
-from nebula_mcp.models import validate_metadata_payload
 from nebula_mcp.query_loader import QueryLoader
 
 QUERIES = QueryLoader(Path(__file__).resolve().parents[2] / "queries")
@@ -22,43 +20,20 @@ router = APIRouter()
 ADMIN_SCOPE_NAMES = {"admin"}
 
 
-def _coerce_json_value(value: Any, fallback: Any) -> Any:
-    """Coerce text JSON payloads returned by asyncpg into Python objects.
-
-    Args:
-        value: Raw value from database row.
-        fallback: Value returned when payload cannot be parsed.
-
-    Returns:
-        Parsed JSON object/array or fallback when parsing fails.
-    """
-
-    if value is None:
-        return fallback
-    if isinstance(value, (dict, list)):
-        return value
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except json.JSONDecodeError:
-            return fallback
-    return fallback
-
-
 def _normalize_log_payload(log: dict[str, Any]) -> dict[str, Any]:
-    """Normalize JSON fields in a log row for API responses.
+    """Normalize text fields in a log row for API responses.
 
     Args:
         log: Log payload row converted to a dict.
 
     Returns:
-        Log payload with consistent JSON object fields.
+        Log payload with consistent text fields.
     """
 
-    value = _coerce_json_value(log.get("value"), {})
-    log["value"] = value if isinstance(value, dict) else {}
-    metadata = _coerce_json_value(log.get("metadata"), {})
-    log["metadata"] = metadata if isinstance(metadata, dict) else {}
+    if log.get("content") is None:
+        log["content"] = ""
+    if log.get("notes") is None:
+        log["notes"] = ""
     return log
 
 
@@ -136,18 +111,18 @@ class CreateLogBody(BaseModel):
     Attributes:
         log_type: Log type name.
         timestamp: Timestamp for the log entry.
-        value: Log value payload.
+        content: Log content text.
         status: Status name.
         tags: Optional tag list.
-        metadata: Optional metadata payload.
+        notes: Markdown notes.
     """
 
     log_type: str
     timestamp: datetime | None = None
-    value: dict | None = None
+    content: str = ""
     status: str = "active"
     tags: list[str] = []
-    metadata: dict | None = None
+    notes: str = ""
 
 
 class UpdateLogBody(BaseModel):
@@ -156,18 +131,18 @@ class UpdateLogBody(BaseModel):
     Attributes:
         log_type: Updated log type name.
         timestamp: Updated timestamp.
-        value: Updated value payload.
+        content: Updated log content.
         status: Updated status name.
         tags: Updated tags.
-        metadata: Updated metadata.
+        notes: Updated markdown notes.
     """
 
     log_type: str | None = None
     timestamp: datetime | None = None
-    value: dict | None = None
+    content: str | None = None
     status: str | None = None
     tags: list[str] | None = None
-    metadata: dict | None = None
+    notes: str | None = None
 
 
 @router.post("/")
@@ -181,14 +156,6 @@ async def create_log(
     pool = request.app.state.pool
     enums = request.app.state.enums
     data = payload.model_dump()
-    if data.get("value") is None:
-        data["value"] = {}
-    if data.get("metadata") is None:
-        data["metadata"] = {}
-    try:
-        data["metadata"] = validate_metadata_payload(data["metadata"]) or {}
-    except ValueError as exc:
-        api_error("INVALID_INPUT", str(exc), 400)
 
     # Validate taxonomy-backed fields before queuing approvals.
     try:
@@ -287,13 +254,6 @@ async def update_log(
 
     data = payload.model_dump()
     data["id"] = log_id
-    if data.get("metadata") is None:
-        data.pop("metadata", None)
-    else:
-        try:
-            data["metadata"] = validate_metadata_payload(data["metadata"])
-        except ValueError as exc:
-            api_error("INVALID_INPUT", str(exc), 400)
 
     if not await _log_visible(pool, enums, auth, log_id):
         api_error("FORBIDDEN", "Access denied", 403)

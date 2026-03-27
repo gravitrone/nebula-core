@@ -182,7 +182,7 @@ class TaxonomyCreateBody(BaseModel):
 
     name: str
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    notes: str | None = None
     is_symmetric: bool | None = None
     value_schema: dict[str, Any] | None = None
 
@@ -192,7 +192,7 @@ class TaxonomyUpdateBody(BaseModel):
 
     name: str | None = None
     description: str | None = None
-    metadata: dict[str, Any] | None = None
+    notes: str | None = None
     is_symmetric: bool | None = None
     value_schema: dict[str, Any] | None = None
 
@@ -272,7 +272,7 @@ async def create_taxonomy(
                 QUERIES[cfg["create"]],
                 name,
                 payload.description,
-                json.dumps(payload.metadata or {}),
+                payload.notes or "",
             )
         elif kind == "relationship-types":
             row = await pool.fetchrow(
@@ -280,7 +280,7 @@ async def create_taxonomy(
                 name,
                 payload.description,
                 payload.is_symmetric,
-                json.dumps(payload.metadata or {}),
+                payload.notes or "",
             )
         else:
             row = await pool.fetchrow(
@@ -329,7 +329,7 @@ async def update_taxonomy(
                 item_id,
                 name,
                 payload.description,
-                json.dumps(payload.metadata) if payload.metadata is not None else None,
+                payload.notes,
             )
         elif kind == "relationship-types":
             row = await pool.fetchrow(
@@ -338,7 +338,7 @@ async def update_taxonomy(
                 name,
                 payload.description,
                 payload.is_symmetric,
-                json.dumps(payload.metadata) if payload.metadata is not None else None,
+                payload.notes,
             )
         else:
             row = await pool.fetchrow(
