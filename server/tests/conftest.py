@@ -2,6 +2,7 @@
 
 # Standard Library
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -13,32 +14,7 @@ SRC_DIR = Path(__file__).resolve().parents[1] / "src"
 sys.path.insert(0, str(SRC_DIR))
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-MIGRATIONS_DIR = PROJECT_ROOT / "database" / "migrations"
-
-MIGRATION_FILES = [
-    "006_pgcrypto.sql",
-    "000_init.sql",
-    "001_seed.sql",
-    "002_entity_types.sql",
-    "003_add_requires_approval.sql",
-    "004_approval_execution.sql",
-    "005_log_types.sql",
-    "007_schema_fixes.sql",
-    "008_api_keys.sql",
-    "009_agent_api_keys.sql",
-    "010_add_work_scope.sql",
-    "011_security_hardening.sql",
-    "012_taxonomy_lifecycle.sql",
-    "013_taxonomy_generalization.sql",
-    "014_mcp_agent_enrollment.sql",
-    "015_add_default_log_types.sql",
-    "016_jobs_privacy_scopes.sql",
-    "017_enterprise_defaults.sql",
-    "018_context_core_rename.sql",
-    "019_source_refs_and_files_uri.sql",
-    "020_requires_approval_defaults.sql",
-    "021_context_of_and_drop_metadata.sql",
-]
+ALEMBIC_DIR = Path(__file__).resolve().parents[1]
 
 TEST_DB = os.getenv("NEBULA_TEST_DB", "postgres")
 TEST_SCHEMA = os.getenv("NEBULA_TEST_SCHEMA", "nebula_test")
@@ -129,9 +105,17 @@ async def test_db_dsn():
         await conn.execute(f"CREATE SCHEMA {TEST_SCHEMA}")
         await conn.execute(f"SET search_path TO {TEST_SCHEMA}, public")
 
-        for migration_file in MIGRATION_FILES:
-            sql = (MIGRATIONS_DIR / migration_file).read_text(encoding="utf-8")
-            await conn.execute(sql)
+        # Run Alembic migrations against the test schema.
+        env = os.environ.copy()
+        env["POSTGRES_DB"] = TEST_DB
+        env["PGOPTIONS"] = f"-c search_path={TEST_SCHEMA},public"
+        subprocess.run(
+            ["uv", "run", "alembic", "upgrade", "head"],
+            cwd=str(ALEMBIC_DIR),
+            env=env,
+            check=True,
+            capture_output=True,
+        )
     finally:
         await conn.close()
 

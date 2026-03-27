@@ -46,12 +46,17 @@ _JSONB_CONSTRAINTS = [
 ]
 
 
-def _convert_jsonb_to_text(table: str, old_col: str, new_col: str) -> None:
+def _convert_jsonb_to_text(
+    table: str, old_col: str, new_col: str, *, nullable: bool = False
+) -> None:
     """Add TEXT column, copy JSONB data as text, drop old JSONB column."""
 
-    op.execute(
-        f"ALTER TABLE {table} ADD COLUMN {new_col} TEXT NOT NULL DEFAULT ''"
-    )
+    if nullable:
+        op.execute(f"ALTER TABLE {table} ADD COLUMN {new_col} TEXT")
+    else:
+        op.execute(
+            f"ALTER TABLE {table} ADD COLUMN {new_col} TEXT NOT NULL DEFAULT ''"
+        )
     op.execute(
         f"UPDATE {table} SET {new_col} = {old_col}::text "
         f"WHERE {old_col} IS NOT NULL AND {old_col}::text != '{{}}'"
@@ -78,8 +83,8 @@ def upgrade() -> None:
     _convert_jsonb_to_text("relationships", "properties", "notes")
 
     # --- audit_log: old_data -> old_values, new_data -> new_values, metadata -> notes ---
-    _convert_jsonb_to_text("audit_log", "old_data", "old_values")
-    _convert_jsonb_to_text("audit_log", "new_data", "new_values")
+    _convert_jsonb_to_text("audit_log", "old_data", "old_values", nullable=True)
+    _convert_jsonb_to_text("audit_log", "new_data", "new_values", nullable=True)
     _convert_jsonb_to_text("audit_log", "metadata", "notes")
 
     # --- approval_requests: change_details JSONB -> TEXT (keep name) ---
