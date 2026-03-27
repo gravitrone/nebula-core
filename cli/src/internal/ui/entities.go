@@ -59,7 +59,7 @@ const (
 
 const (
 	relEditFieldStatus = iota
-	relEditFieldProperties
+	relEditFieldNotes
 	relEditFieldCount
 )
 
@@ -2148,11 +2148,8 @@ func (m EntitiesModel) renderRelationships() string {
 	}
 
 	sections := []string{components.Table("Relationship", rows, m.width)}
-	if len(rel.Properties) > 0 {
-		props := renderMetadataBlock(map[string]any(rel.Properties), m.width, true)
-		if props != "" {
-			sections = append(sections, props)
-		}
+	if rel.Notes != "" {
+		sections = append(sections, components.TitledBox("Notes", rel.Notes, m.width))
 	}
 	return components.Indent(strings.Join(sections, "\n\n"), 1)
 }
@@ -2372,7 +2369,7 @@ func (m *EntitiesModel) startRelEdit() {
 	m.relEditID = rel.ID
 	m.relEditFocus = relEditFieldStatus
 	m.relEditStatusIdx = statusIndex(relationshipStatusOptions, rel.Status)
-	m.relEditBuf = compactJSON(map[string]any(rel.Properties))
+	m.relEditBuf = rel.Notes
 }
 
 // handleRelEditKeys handles handle rel edit keys.
@@ -2389,7 +2386,7 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyPressMsg) (EntitiesModel, te
 	case isKey(msg, "ctrl+s"):
 		return m.saveRelEdit()
 	case isKey(msg, "backspace"):
-		if m.relEditFocus == relEditFieldProperties && len(m.relEditBuf) > 0 {
+		if m.relEditFocus == relEditFieldNotes && len(m.relEditBuf) > 0 {
 			m.relEditBuf = m.relEditBuf[:len(m.relEditBuf)-1]
 		}
 	default:
@@ -2401,7 +2398,7 @@ func (m EntitiesModel) handleRelEditKeys(msg tea.KeyPressMsg) (EntitiesModel, te
 			case isKey(msg, "right"), isSpace(msg):
 				m.relEditStatusIdx = (m.relEditStatusIdx + 1) % len(relationshipStatusOptions)
 			}
-		case relEditFieldProperties:
+		case relEditFieldNotes:
 			ch := keyText(msg)
 			if ch != "" {
 				m.relEditBuf += ch
@@ -2428,13 +2425,13 @@ func (m EntitiesModel) renderRelEdit() string {
 
 	b.WriteString("\n\n")
 
-	if m.relEditFocus == relEditFieldProperties {
-		b.WriteString(SelectedStyle.Render("  Properties (JSON):"))
+	if m.relEditFocus == relEditFieldNotes {
+		b.WriteString(SelectedStyle.Render("  Notes:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + m.relEditBuf))
 		b.WriteString(AccentStyle.Render("█"))
 	} else {
-		b.WriteString(MutedStyle.Render("  Properties (JSON):"))
+		b.WriteString(MutedStyle.Render("  Notes:"))
 		b.WriteString("\n")
 		b.WriteString(NormalStyle.Render("  " + m.relEditBuf))
 	}
@@ -2447,12 +2444,7 @@ func (m EntitiesModel) saveRelEdit() (EntitiesModel, tea.Cmd) {
 	status := relationshipStatusOptions[m.relEditStatusIdx]
 	input := api.UpdateRelationshipInput{Status: &status}
 	if strings.TrimSpace(m.relEditBuf) != "" {
-		props, err := parseJSONMap(m.relEditBuf)
-		if err != nil {
-			m.errText = err.Error()
-			return m, nil
-		}
-		input.Properties = props
+		input.Notes = m.relEditBuf
 	}
 
 	m.view = entitiesViewRelationships

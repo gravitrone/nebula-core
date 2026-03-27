@@ -336,7 +336,7 @@ func (m LogsModel) renderList() string {
 		if status == "" {
 			status = "-"
 		}
-		value := metadataPreview(map[string]any(l.Value), 80)
+		value := truncateString(l.Content, 80)
 		if strings.TrimSpace(value) == "" {
 			value = "-"
 		}
@@ -430,11 +430,11 @@ func (m LogsModel) renderLogPreview(l api.Log, width int) string {
 	if len(l.Tags) > 0 {
 		lines = append(lines, renderPreviewRow("Tags", strings.Join(l.Tags, ", "), width))
 	}
-	if valuePreview := metadataPreview(map[string]any(l.Value), 120); valuePreview != "" {
-		lines = append(lines, renderPreviewRow("Value", valuePreview, width))
+	if l.Content != "" {
+		lines = append(lines, renderPreviewRow("Content", truncateString(l.Content, 120), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(l.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
+	if l.Notes != "" {
+		lines = append(lines, renderPreviewRow("Notes", truncateString(l.Notes, 80), width))
 	}
 
 	return padPreviewLines(lines, width)
@@ -571,11 +571,11 @@ func (m LogsModel) renderDetail() string {
 	}
 
 	sections := []string{components.Table("Log", rows, m.width)}
-	if len(l.Value) > 0 {
-		sections = append(sections, renderMetadataBlockWithTitle("Value", map[string]any(l.Value), m.width, m.valueExpanded))
+	if l.Content != "" {
+		sections = append(sections, components.TitledBox("Content", l.Content, m.width))
 	}
-	if len(l.Metadata) > 0 {
-		sections = append(sections, renderMetadataBlockWithTitle("Metadata", map[string]any(l.Metadata), m.width, m.metaExpanded))
+	if l.Notes != "" {
+		sections = append(sections, components.TitledBox("Notes", l.Notes, m.width))
 	}
 	if len(m.detailRels) > 0 {
 		sections = append(sections, renderRelationshipSummaryTable("log", l.ID, m.detailRels, 6, m.width))
@@ -653,13 +653,11 @@ func (m LogsModel) renderAdd() string {
 	}
 	var b strings.Builder
 	b.WriteString(m.addForm.View())
-	valuePreview := renderMetadataEditorPreview(m.addValue.Buffer, m.addValue.Scopes, m.width, 6)
-	metaPreview := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-	if valuePreview != "" {
-		b.WriteString("\n" + MutedStyle.Render("Value:") + "\n  " + NormalStyle.Render(valuePreview))
+	if m.addValue.Buffer != "" {
+		b.WriteString("\n" + MutedStyle.Render("Content:") + "\n  " + NormalStyle.Render(m.addValue.Buffer))
 	}
-	if metaPreview != "" {
-		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	if m.addMeta.Buffer != "" {
+		b.WriteString("\n" + MutedStyle.Render("Notes:") + "\n  " + NormalStyle.Render(m.addMeta.Buffer))
 	}
 	if m.addErr != "" {
 		b.WriteString("\n\n" + ErrorStyle.Render(m.addErr))
@@ -679,25 +677,14 @@ func (m LogsModel) saveAdd() (LogsModel, tea.Cmd) {
 		m.addErr = err.Error()
 		return m, nil
 	}
-	value, err := parseMetadataInput(m.addValue.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta, err := parseMetadataInput(m.addMeta.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
 	tags := parseCommaSeparated(m.addTagStr)
 
 	input := api.CreateLogInput{
 		LogType:   logType,
 		Status:    m.addStatus,
 		Tags:      tags,
-		Value:     value,
-		Metadata:  meta,
+		Content:   m.addValue.Buffer,
+		Notes:     m.addMeta.Buffer,
 		Timestamp: timestamp,
 	}
 	m.addSaving = true
@@ -738,8 +725,8 @@ func (m *LogsModel) startEdit() {
 	m.editTagStr = strings.Join(l.Tags, ", ")
 	m.editType = l.LogType
 	m.editTimestamp = l.Timestamp.Format(time.RFC3339)
-	m.editValue.Load(map[string]any(l.Value))
-	m.editMeta.Load(map[string]any(l.Metadata))
+	m.editValue.Buffer = l.Content
+	m.editMeta.Buffer = l.Notes
 	m.editSaving = false
 	m.initEditForm()
 }
@@ -792,13 +779,11 @@ func (m LogsModel) renderEdit() string {
 	}
 	var b strings.Builder
 	b.WriteString(m.editForm.View())
-	valuePreview := renderMetadataEditorPreview(m.editValue.Buffer, m.editValue.Scopes, m.width, 6)
-	metaPreview := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-	if valuePreview != "" {
-		b.WriteString("\n" + MutedStyle.Render("Value:") + "\n  " + NormalStyle.Render(valuePreview))
+	if m.editValue.Buffer != "" {
+		b.WriteString("\n" + MutedStyle.Render("Content:") + "\n  " + NormalStyle.Render(m.editValue.Buffer))
 	}
-	if metaPreview != "" {
-		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	if m.editMeta.Buffer != "" {
+		b.WriteString("\n" + MutedStyle.Render("Notes:") + "\n  " + NormalStyle.Render(m.editMeta.Buffer))
 	}
 	if m.errText != "" {
 		b.WriteString("\n\n" + ErrorStyle.Render(m.errText))
@@ -808,24 +793,13 @@ func (m LogsModel) renderEdit() string {
 
 // saveEdit handles save edit.
 func (m LogsModel) saveEdit() (LogsModel, tea.Cmd) {
-	value, err := parseMetadataInput(m.editValue.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	meta, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
 	tags := parseCommaSeparated(m.editTagStr)
 
 	input := api.UpdateLogInput{
-		Status:   &m.editStatus,
-		Tags:     &tags,
-		Value:    value,
-		Metadata: meta,
+		Status:  &m.editStatus,
+		Tags:    &tags,
+		Content: m.editValue.Buffer,
+		Notes:   m.editMeta.Buffer,
 	}
 	m.editSaving = true
 	m.errText = ""
@@ -917,8 +891,8 @@ func formatLogLine(l api.Log) string {
 	if l.Status != "" {
 		segments = append(segments, components.SanitizeText(l.Status))
 	}
-	if preview := metadataPreview(map[string]any(l.Metadata), 40); preview != "" {
-		segments = append(segments, preview)
+	if l.Notes != "" {
+		segments = append(segments, truncateString(l.Notes, 40))
 	}
 	return strings.Join(segments, " · ")
 }

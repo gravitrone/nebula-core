@@ -6,7 +6,6 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/gravitrone/nebula-core/cli/internal/api"
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
 )
 
@@ -201,7 +200,7 @@ func formatScopePreview(scopes []string) string {
 }
 
 // previewStringValue handles preview string value.
-func previewStringValue(m api.JSONMap, key string) string {
+func previewStringValue(m map[string]any, key string) string {
 	if m == nil {
 		return ""
 	}
@@ -217,7 +216,7 @@ func previewStringValue(m api.JSONMap, key string) string {
 }
 
 // previewListValue handles preview list value.
-func previewListValue(m api.JSONMap, key string) string {
+func previewListValue(m map[string]any, key string) string {
 	if m == nil {
 		return ""
 	}

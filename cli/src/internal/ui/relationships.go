@@ -46,7 +46,7 @@ const (
 
 const (
 	relsEditFieldStatus = iota
-	relsEditFieldProperties
+	relsEditFieldNotes
 	relsEditFieldCount
 )
 
@@ -509,11 +509,8 @@ func (m RelationshipsModel) renderDetail() string {
 	}
 
 	sections := []string{components.Table("Relationship", rows, m.width)}
-	if len(rel.Properties) > 0 {
-		props := renderMetadataBlock(map[string]any(rel.Properties), m.width, m.metaExpanded)
-		if props != "" {
-			sections = append(sections, props)
-		}
+	if rel.Notes != "" {
+		sections = append(sections, components.TitledBox("Notes", rel.Notes, m.width))
 	}
 
 	return strings.Join(sections, "\n\n")
@@ -562,7 +559,7 @@ func (m *RelationshipsModel) startEdit() {
 	m.editFocus = relsEditFieldStatus
 	m.editStatusIdx = statusIndex(relsStatusOptions, m.detail.Status)
 	m.editMeta.Reset()
-	m.editMeta.Load(map[string]any(m.detail.Properties))
+	m.editMeta.Buffer = m.detail.Notes
 	m.editSaving = false
 }
 
@@ -593,7 +590,7 @@ func (m RelationshipsModel) handleEditKeys(msg tea.KeyPressMsg) (RelationshipsMo
 			case isKey(msg, "right"), isSpace(msg):
 				m.editStatusIdx = (m.editStatusIdx + 1) % len(relsStatusOptions)
 			}
-		case relsEditFieldProperties:
+		case relsEditFieldNotes:
 			if isEnter(msg) {
 				m.editMeta.Active = true
 			}
@@ -619,10 +616,10 @@ func (m RelationshipsModel) renderEdit() string {
 
 	b.WriteString("\n\n")
 
-	if m.editFocus == relsEditFieldProperties {
-		b.WriteString(SelectedStyle.Render("  Properties:"))
+	if m.editFocus == relsEditFieldNotes {
+		b.WriteString(SelectedStyle.Render("  Notes:"))
 	} else {
-		b.WriteString(MutedStyle.Render("  Properties:"))
+		b.WriteString(MutedStyle.Render("  Notes:"))
 	}
 	b.WriteString("\n")
 	props := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
@@ -645,13 +642,8 @@ func (m RelationshipsModel) saveEdit() (RelationshipsModel, tea.Cmd) {
 	}
 	status := relsStatusOptions[m.editStatusIdx]
 	input := api.UpdateRelationshipInput{Status: &status}
-	props, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		return m, nil
-	}
-	props = mergeMetadataScopes(props, m.editMeta.Scopes)
-	if len(props) > 0 {
-		input.Properties = props
+	if strings.TrimSpace(m.editMeta.Buffer) != "" {
+		input.Notes = m.editMeta.Buffer
 	}
 
 	m.editSaving = true

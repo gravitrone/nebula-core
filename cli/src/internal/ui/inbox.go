@@ -34,7 +34,8 @@ type InboxModel struct {
 	dataTable     table.Model
 	loading       bool
 	spinner       spinner.Model
-	detail        *api.Approval
+	detail           *api.Approval
+	detailChangeMap  map[string]any
 	filtering     bool
 	filterBuf     string
 	filtered      []int
@@ -98,10 +99,13 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 
 	case approvalDiffLoadedMsg:
 		if m.detail != nil && m.detail.ID == msg.id {
-			if m.detail.ChangeDetails == nil {
-				m.detail.ChangeDetails = api.JSONMap{}
+			if m.detailChangeMap == nil {
+				m.detailChangeMap = parseApprovalChangeDetails(m.detail.ChangeDetails)
+				if m.detailChangeMap == nil {
+					m.detailChangeMap = make(map[string]any)
+				}
 			}
-			m.detail.ChangeDetails["changes"] = msg.changes
+			m.detailChangeMap["changes"] = msg.changes
 		}
 		return m, nil
 
@@ -147,6 +151,7 @@ func (m InboxModel) Update(msg tea.Msg) (InboxModel, tea.Cmd) {
 		case isEnter(msg):
 			if item, ok := m.selectedItem(); ok {
 				m.detail = &item
+				m.detailChangeMap = parseApprovalChangeDetails(item.ChangeDetails)
 				return m, m.loadApprovalDiff(item.ID)
 			}
 		case isKey(msg, "a"):
@@ -551,40 +556,25 @@ func (m InboxModel) renderDetail() string {
 	}
 	sections = append(sections, components.Table("Approval Request", rows, m.width))
 
-	if len(a.ReviewDetails) > 0 {
-		reviewKeys := make([]string, 0, len(a.ReviewDetails))
-		for k := range a.ReviewDetails {
-			reviewKeys = append(reviewKeys, k)
-		}
-		sort.Strings(reviewKeys)
-		var grantRows []components.TableRow
-		for _, k := range reviewKeys {
-			v := a.ReviewDetails[k]
-			grantRows = append(
-				grantRows,
-				components.TableRow{Label: detailLabel(k), Value: formatAny(v)},
-			)
-		}
-		if len(grantRows) > 0 {
-			sections = append(sections, components.Table("Reviewer Grants", grantRows, m.width))
-		}
-	}
-
 	// Change details
-	if len(a.ChangeDetails) > 0 {
+	cd := m.detailChangeMap
+	if cd == nil {
+		cd = parseApprovalChangeDetails(a.ChangeDetails)
+	}
+	if len(cd) > 0 {
 		var summaryRows []components.TableRow
 		var diffRows []components.DiffRow
 		metadata, hasMetadata := map[string]any(nil), false
 		nested := make(map[string]map[string]any)
 
-		keys := make([]string, 0, len(a.ChangeDetails))
-		for k := range a.ChangeDetails {
+		keys := make([]string, 0, len(cd))
+		for k := range cd {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
 
 		for _, k := range keys {
-			v := a.ChangeDetails[k]
+			v := cd[k]
 			if k == "changes" {
 				// Diff object with from/to pairs
 				if changesMap, ok := v.(map[string]any); ok {
@@ -596,8 +586,8 @@ func (m InboxModel) renderDetail() string {
 					for _, field := range diffKeys {
 						diff := changesMap[field]
 						if diffObj, ok := diff.(map[string]any); ok {
-							from := approvalDiffValue(a.ChangeDetails, field, diffObj["from"])
-							to := approvalDiffValue(a.ChangeDetails, field, diffObj["to"])
+							from := approvalDiffValue(cd, field, diffObj["from"])
+							to := approvalDiffValue(cd, field, diffObj["to"])
 							if from == to {
 								continue
 							}
@@ -623,15 +613,15 @@ func (m InboxModel) renderDetail() string {
 			display := formatAny(v)
 			switch strings.ToLower(k) {
 			case "source_id":
-				if label := approvalEndpointLabel(a.ChangeDetails, "source"); label != "" {
+				if label := approvalEndpointLabel(cd, "source"); label != "" {
 					display = label
 				}
 			case "target_id":
-				if label := approvalEndpointLabel(a.ChangeDetails, "target"); label != "" {
+				if label := approvalEndpointLabel(cd, "target"); label != "" {
 					display = label
 				}
 			case "entity_ids":
-				names := parseStringList(a.ChangeDetails["entity_names"])
+				names := parseStringList(cd["entity_names"])
 				if len(names) > 0 {
 					display = strings.Join(names, ", ")
 				} else {
@@ -797,8 +787,9 @@ func detailLabel(raw string) string {
 
 // formatApprovalLine handles format approval line.
 func formatApprovalLine(a api.Approval) string {
+	cd := parseApprovalChangeDetails(a.ChangeDetails)
 	name := ""
-	if n, ok := a.ChangeDetails["name"]; ok {
+	if n, ok := cd["name"]; ok {
 		name = fmt.Sprintf(": %q", components.SanitizeText(fmt.Sprintf("%v", n)))
 	}
 	return fmt.Sprintf(
@@ -811,19 +802,20 @@ func formatApprovalLine(a api.Approval) string {
 
 // approvalTitle handles approval title.
 func approvalTitle(a api.Approval) string {
-	if v, ok := a.ChangeDetails["name"]; ok {
+	cd := parseApprovalChangeDetails(a.ChangeDetails)
+	if v, ok := cd["name"]; ok {
 		s := strings.TrimSpace(fmt.Sprintf("%v", v))
 		if s != "" {
 			return components.SanitizeOneLine(s)
 		}
 	}
-	if v, ok := a.ChangeDetails["title"]; ok {
+	if v, ok := cd["title"]; ok {
 		s := strings.TrimSpace(fmt.Sprintf("%v", v))
 		if s != "" {
 			return components.SanitizeOneLine(s)
 		}
 	}
-	if v, ok := a.ChangeDetails["entity_name"]; ok {
+	if v, ok := cd["entity_name"]; ok {
 		s := strings.TrimSpace(fmt.Sprintf("%v", v))
 		if s != "" {
 			return components.SanitizeOneLine(s)
@@ -835,10 +827,10 @@ func approvalTitle(a api.Approval) string {
 	// More descriptive fallbacks for request types that don't carry names/titles.
 	switch reqType {
 	case "create_relationship", "update_relationship":
-		relType := strings.TrimSpace(fmt.Sprintf("%v", a.ChangeDetails["relationship_type"]))
+		relType := strings.TrimSpace(fmt.Sprintf("%v", cd["relationship_type"]))
 		relType = components.SanitizeOneLine(relType)
-		src := approvalEndpointLabel(a.ChangeDetails, "source")
-		tgt := approvalEndpointLabel(a.ChangeDetails, "target")
+		src := approvalEndpointLabel(cd, "source")
+		tgt := approvalEndpointLabel(cd, "target")
 		if relType != "" && relType != "<nil>" {
 			if src != "" && tgt != "" {
 				return components.SanitizeOneLine(fmt.Sprintf("%s (%s -> %s)", relType, src, tgt))
@@ -846,7 +838,7 @@ func approvalTitle(a api.Approval) string {
 			return relType
 		}
 	case "bulk_update_entity_scopes", "bulk_update_entity_tags":
-		entityNames := parseStringList(a.ChangeDetails["entity_names"])
+		entityNames := parseStringList(cd["entity_names"])
 		if len(entityNames) == 1 {
 			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), entityNames[0]))
 		}
@@ -857,7 +849,7 @@ func approvalTitle(a api.Approval) string {
 			}
 			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), preview))
 		}
-		entityIDs := parseStringList(a.ChangeDetails["entity_ids"])
+		entityIDs := parseStringList(cd["entity_ids"])
 		if len(entityIDs) == 1 {
 			return components.SanitizeOneLine(fmt.Sprintf("%s (%s)", humanizeApprovalType(reqType), shortID(entityIDs[0])))
 		}
@@ -867,7 +859,7 @@ func approvalTitle(a api.Approval) string {
 			)
 		}
 	case "create_log", "update_log":
-		logType := strings.TrimSpace(fmt.Sprintf("%v", a.ChangeDetails["log_type"]))
+		logType := strings.TrimSpace(fmt.Sprintf("%v", cd["log_type"]))
 		logType = components.SanitizeOneLine(logType)
 		if logType != "" && logType != "<nil>" {
 			return components.SanitizeOneLine("log: " + logType)
@@ -928,29 +920,30 @@ func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 		lines = append(lines, renderPreviewRow("In batch", "yes", width))
 	}
 
-	if scopes := parseStringList(a.ChangeDetails["scopes"]); len(scopes) > 0 {
+	cd := parseApprovalChangeDetails(a.ChangeDetails)
+	if scopes := parseStringList(cd["scopes"]); len(scopes) > 0 {
 		lines = append(lines, renderPreviewRow("Scopes", formatScopePreview(scopes), width))
-	} else if scope := previewStringValue(a.ChangeDetails, "scope"); scope != "" {
+	} else if scope := previewStringValue(cd, "scope"); scope != "" {
 		lines = append(lines, renderPreviewRow("Scope", formatScopePreview([]string{scope}), width))
 	}
-	if tags := previewListValue(a.ChangeDetails, "tags"); tags != "" {
+	if tags := previewListValue(cd, "tags"); tags != "" {
 		lines = append(lines, renderPreviewRow("Tags", tags, width))
 	}
-	if typ := previewStringValue(a.ChangeDetails, "type"); typ != "" {
+	if typ := previewStringValue(cd, "type"); typ != "" {
 		lines = append(lines, renderPreviewRow("Type", typ, width))
 	}
-	if rel := previewStringValue(a.ChangeDetails, "relationship_type"); rel != "" {
+	if rel := previewStringValue(cd, "relationship_type"); rel != "" {
 		lines = append(lines, renderPreviewRow("Rel", rel, width))
 	}
-	if src := approvalEndpointLabel(a.ChangeDetails, "source"); src != "" {
+	if src := approvalEndpointLabel(cd, "source"); src != "" {
 		lines = append(lines, renderPreviewRow("From", src, width))
 	}
-	if tgt := approvalEndpointLabel(a.ChangeDetails, "target"); tgt != "" {
+	if tgt := approvalEndpointLabel(cd, "target"); tgt != "" {
 		lines = append(lines, renderPreviewRow("To", tgt, width))
 	}
-	if ids := parseStringList(a.ChangeDetails["entity_ids"]); len(ids) > 0 {
+	if ids := parseStringList(cd["entity_ids"]); len(ids) > 0 {
 		display := make([]string, 0, len(ids))
-		names := parseStringList(a.ChangeDetails["entity_names"])
+		names := parseStringList(cd["entity_names"])
 		if len(names) == len(ids) {
 			display = append(display, names...)
 		} else {
@@ -960,7 +953,7 @@ func renderApprovalPreview(a api.Approval, picked bool, width int) string {
 		}
 		lines = append(lines, renderPreviewRow("Entities", strings.Join(display, ", "), width))
 	}
-	if logType := previewStringValue(a.ChangeDetails, "log_type"); logType != "" {
+	if logType := previewStringValue(cd, "log_type"); logType != "" {
 		lines = append(lines, renderPreviewRow("Log", logType, width))
 	}
 
@@ -1153,7 +1146,8 @@ func (m InboxModel) findApprovalByID(id string) (api.Approval, bool) {
 
 // requestedScopesFromApproval handles requested scopes from approval.
 func requestedScopesFromApproval(a api.Approval) []string {
-	raw := a.ChangeDetails["requested_scopes"]
+	cd := parseApprovalChangeDetails(a.ChangeDetails)
+	raw := cd["requested_scopes"]
 	scopes := parseStringList(raw)
 	if len(scopes) == 0 {
 		scopes = []string{"public"}
@@ -1163,7 +1157,8 @@ func requestedScopesFromApproval(a api.Approval) []string {
 
 // requestedRequiresApprovalFromApproval handles requested requires approval from approval.
 func requestedRequiresApprovalFromApproval(a api.Approval) bool {
-	raw, ok := a.ChangeDetails["requested_requires_approval"]
+	cd := parseApprovalChangeDetails(a.ChangeDetails)
+	raw, ok := cd["requested_requires_approval"]
 	if !ok {
 		return true
 	}
@@ -1171,6 +1166,18 @@ func requestedRequiresApprovalFromApproval(a api.Approval) bool {
 		return value
 	}
 	return true
+}
+
+// parseApprovalChangeDetails parses the change_details text field into a map.
+func parseApprovalChangeDetails(text string) map[string]any {
+	if text == "" {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(text), &m); err != nil {
+		return nil
+	}
+	return m
 }
 
 // parseStringList parses parse string list.
@@ -1231,7 +1238,7 @@ func approvalWhoLabel(a api.Approval) string {
 }
 
 // approvalEndpointLabel handles approval endpoint label.
-func approvalEndpointLabel(details api.JSONMap, prefix string) string {
+func approvalEndpointLabel(details map[string]any, prefix string) string {
 	nameKeys := []string{
 		prefix + "_name",
 		prefix + "_title",
@@ -1271,8 +1278,11 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 	if m.detail == nil {
 		return nil
 	}
-	details := m.detail.ChangeDetails
-	raw, ok := m.detail.ChangeDetails["changes"]
+	cd := m.detailChangeMap
+	if cd == nil {
+		cd = parseApprovalChangeDetails(m.detail.ChangeDetails)
+	}
+	raw, ok := cd["changes"]
 	if !ok {
 		return nil
 	}
@@ -1286,8 +1296,8 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 		if !ok {
 			continue
 		}
-		from := approvalDiffValue(details, field, diffObj["from"])
-		to := approvalDiffValue(details, field, diffObj["to"])
+		from := approvalDiffValue(cd, field, diffObj["from"])
+		to := approvalDiffValue(cd, field, diffObj["to"])
 		if from == to {
 			continue
 		}
@@ -1301,7 +1311,7 @@ func (m InboxModel) approveDiffRows() []components.DiffRow {
 }
 
 // approvalDiffValue handles approval diff value.
-func approvalDiffValue(details api.JSONMap, field string, raw any) string {
+func approvalDiffValue(details map[string]any, field string, raw any) string {
 	base := formatAny(raw)
 	if base == "None" {
 		return base

@@ -119,7 +119,7 @@ func NewProtocolsModel(client *api.Client) ProtocolsModel {
 			{label: "Status"},
 			{label: "Tags"},
 			{label: "Content"},
-			{label: "Metadata"},
+			{label: "Notes"},
 			{label: "Source Path"},
 		},
 		editFields: []formField{
@@ -130,7 +130,7 @@ func NewProtocolsModel(client *api.Client) ProtocolsModel {
 			{label: "Status"},
 			{label: "Tags"},
 			{label: "Content"},
-			{label: "Metadata"},
+			{label: "Notes"},
 			{label: "Source Path"},
 		},
 	}
@@ -571,8 +571,8 @@ func (m ProtocolsModel) renderProtocolPreview(p api.Protocol, width int) string 
 	if p.Content != nil && strings.TrimSpace(*p.Content) != "" {
 		lines = append(lines, renderPreviewRow("Content", strings.TrimSpace(*p.Content), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(p.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
+	if p.Notes != "" {
+		lines = append(lines, renderPreviewRow("Notes", truncateString(p.Notes, 80), width))
 	}
 
 	return padPreviewLines(lines, width)
@@ -636,8 +636,8 @@ func (m ProtocolsModel) renderDetail() string {
 			components.TitledBox("Content", rendered, m.width),
 		)
 	}
-	if len(p.Metadata) > 0 {
-		sections = append(sections, renderMetadataBlock(map[string]any(p.Metadata), m.width, true))
+	if p.Notes != "" {
+		sections = append(sections, components.TitledBox("Notes", p.Notes, m.width))
 	}
 	if len(m.detailRels) > 0 {
 		sections = append(sections, renderRelationshipSummaryTable("protocol", p.ID, m.detailRels, 6, m.width))
@@ -729,7 +729,7 @@ func (m ProtocolsModel) renderAdd() string {
 		case protoFieldApplies:
 			value = m.renderApplies(m.addApplies, m.addApplyBuf)
 		case protoFieldMetadata:
-			value = renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
+			value = m.addMeta.Buffer
 		default:
 			value = formatFormValue(f.value, i == m.addFocus)
 		}
@@ -763,13 +763,6 @@ func (m ProtocolsModel) saveAdd() (ProtocolsModel, tea.Cmd) {
 	m.commitTag(true)
 	m.commitApply(true)
 
-	meta, err := parseMetadataInput(m.addMeta.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
-
 	input := api.CreateProtocolInput{
 		Name:         name,
 		Title:        title,
@@ -779,7 +772,7 @@ func (m ProtocolsModel) saveAdd() (ProtocolsModel, tea.Cmd) {
 		AppliesTo:    append([]string{}, m.addApplies...),
 		Status:       protocolStatusOptions[m.addStatusIdx],
 		Tags:         append([]string{}, m.addTags...),
-		Metadata:     meta,
+		Notes:        m.addMeta.Buffer,
 		SourcePath:   stringPtr(strings.TrimSpace(m.addFields[protoFieldSourcePath].value)),
 	}
 	m.addSaving = true
@@ -818,7 +811,7 @@ func (m ProtocolsModel) startEdit() {
 		m.editFields[protoEditFieldSourcePath].value = *p.SourcePath
 	}
 	m.editStatusIdx = statusIndex(protocolStatusOptions, p.Status)
-	m.editMeta.Load(map[string]any(p.Metadata))
+	m.editMeta.Buffer = p.Notes
 	m.editFocus = 0
 	m.editSaving = false
 }
@@ -893,7 +886,7 @@ func (m ProtocolsModel) renderEdit() string {
 		case protoEditFieldApplies:
 			value = m.renderApplies(m.editApplies, m.editApplyBuf)
 		case protoEditFieldMetadata:
-			value = renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
+			value = m.editMeta.Buffer
 		default:
 			value = formatFormValue(f.value, i == m.editFocus)
 		}
@@ -909,13 +902,6 @@ func (m ProtocolsModel) saveEdit() (ProtocolsModel, tea.Cmd) {
 	}
 	m.commitTag(false)
 	m.commitApply(false)
-	meta, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
-
 	input := api.UpdateProtocolInput{
 		Title:        stringPtr(strings.TrimSpace(m.editFields[protoEditFieldTitle].value)),
 		Version:      stringPtr(strings.TrimSpace(m.editFields[protoEditFieldVersion].value)),
@@ -924,7 +910,7 @@ func (m ProtocolsModel) saveEdit() (ProtocolsModel, tea.Cmd) {
 		AppliesTo:    slicePtr(m.editApplies),
 		Status:       stringPtr(protocolStatusOptions[m.editStatusIdx]),
 		Tags:         slicePtr(m.editTags),
-		Metadata:     meta,
+		Notes:        m.editMeta.Buffer,
 		SourcePath:   stringPtr(strings.TrimSpace(m.editFields[protoEditFieldSourcePath].value)),
 	}
 

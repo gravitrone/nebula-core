@@ -171,7 +171,7 @@ type Protocol struct {
 	Status       string    `json:"status,omitempty"`
 	Tags         []string  `json:"tags,omitempty"`
 	Trusted      *bool     `json:"trusted,omitempty"`
-	Metadata     JSONMap   `json:"metadata"`
+	Notes        string   `json:"notes"`
 	SourcePath   *string   `json:"source_path,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -188,7 +188,7 @@ type CreateProtocolInput struct {
 	Status       string         `json:"status,omitempty"`
 	Tags         []string       `json:"tags,omitempty"`
 	Trusted      bool           `json:"trusted,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
+	Notes        string         `json:"notes,omitempty"`
 	SourcePath   *string        `json:"source_path,omitempty"`
 }
 
@@ -202,7 +202,7 @@ type UpdateProtocolInput struct {
 	Status       *string        `json:"status,omitempty"`
 	Tags         *[]string      `json:"tags,omitempty"`
 	Trusted      *bool          `json:"trusted,omitempty"`
-	Metadata     map[string]any `json:"metadata,omitempty"`
+	Notes        string         `json:"notes,omitempty"`
 	SourcePath   *string        `json:"source_path,omitempty"`
 }
 
@@ -213,10 +213,10 @@ type Log struct {
 	ID        string    `json:"id"`
 	LogType   string    `json:"log_type"`
 	Timestamp time.Time `json:"timestamp"`
-	Value     JSONMap   `json:"value"`
+	Content   string    `json:"content"`
 	Status    string    `json:"status,omitempty"`
 	Tags      []string  `json:"tags,omitempty"`
-	Metadata  JSONMap   `json:"metadata"`
+	Notes     string    `json:"notes"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -225,20 +225,20 @@ type Log struct {
 type CreateLogInput struct {
 	LogType   string         `json:"log_type"`
 	Timestamp *time.Time     `json:"timestamp,omitempty"`
-	Value     map[string]any `json:"value,omitempty"`
+	Content   string         `json:"content,omitempty"`
 	Status    string         `json:"status,omitempty"`
 	Tags      []string       `json:"tags,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Notes     string         `json:"notes,omitempty"`
 }
 
 // UpdateLogInput defines fields for updating a log entry.
 type UpdateLogInput struct {
 	LogType   *string        `json:"log_type,omitempty"`
 	Timestamp *time.Time     `json:"timestamp,omitempty"`
-	Value     map[string]any `json:"value,omitempty"`
+	Content   string         `json:"content,omitempty"`
 	Status    *string        `json:"status,omitempty"`
 	Tags      *[]string      `json:"tags,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Notes     string         `json:"notes,omitempty"`
 }
 
 // --- Files ---
@@ -254,7 +254,7 @@ type File struct {
 	Checksum  *string   `json:"checksum,omitempty"`
 	Status    string    `json:"status,omitempty"`
 	Tags      []string  `json:"tags,omitempty"`
-	Metadata  JSONMap   `json:"metadata"`
+	Notes     string    `json:"notes"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -269,7 +269,7 @@ type CreateFileInput struct {
 	Checksum  string         `json:"checksum,omitempty"`
 	Status    string         `json:"status,omitempty"`
 	Tags      []string       `json:"tags,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Notes     string         `json:"notes,omitempty"`
 }
 
 // UpdateFileInput defines fields for updating a file record.
@@ -282,7 +282,7 @@ type UpdateFileInput struct {
 	Checksum  *string        `json:"checksum,omitempty"`
 	Status    *string        `json:"status,omitempty"`
 	Tags      *[]string      `json:"tags,omitempty"`
-	Metadata  map[string]any `json:"metadata,omitempty"`
+	Notes     string         `json:"notes,omitempty"`
 }
 
 // --- Relationship ---
@@ -299,7 +299,7 @@ type Relationship struct {
 	TypeID     string    `json:"type_id,omitempty"`
 	Type       string    `json:"relationship_type,omitempty"`
 	Status     string    `json:"status,omitempty"`
-	Properties JSONMap   `json:"properties"`
+	Notes      string    `json:"notes"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -310,13 +310,13 @@ type CreateRelationshipInput struct {
 	TargetType string         `json:"target_type"`
 	TargetID   string         `json:"target_id"`
 	Type       string         `json:"relationship_type"`
-	Properties map[string]any `json:"properties,omitempty"`
+	Notes      string         `json:"notes,omitempty"`
 }
 
 // UpdateRelationshipInput defines the fields for updating a relationship.
 type UpdateRelationshipInput struct {
 	Type       *string        `json:"type,omitempty"`
-	Properties map[string]any `json:"properties,omitempty"`
+	Notes      string         `json:"notes,omitempty"`
 	Status     *string        `json:"status,omitempty"`
 }
 
@@ -359,8 +359,7 @@ type Approval struct {
 	RequestedBy     string    `json:"requested_by"`
 	RequestedByName string    `json:"requested_by_name"`
 	AgentName       string    `json:"agent_name"`
-	ChangeDetails   JSONMap   `json:"change_details"`
-	ReviewDetails   JSONMap   `json:"review_details"`
+	ChangeDetails   string    `json:"change_details"`
 	Status          string    `json:"status"`
 	Notes           *string   `json:"review_notes"`
 	CreatedAt       time.Time `json:"created_at"`
@@ -389,11 +388,11 @@ type AuditEntry struct {
 	ChangedByType *string   `json:"changed_by_type"`
 	ChangedByID   *string   `json:"changed_by_id"`
 	ActorName     *string   `json:"actor_name"`
-	OldData       JSONMap   `json:"old_data"`
-	NewData       JSONMap   `json:"new_data"`
+	OldValues     string    `json:"old_values"`
+	NewValues     string    `json:"new_values"`
 	ChangedFields []string  `json:"changed_fields"`
 	ChangeReason  *string   `json:"change_reason"`
-	Metadata      JSONMap   `json:"metadata"`
+	Notes         string    `json:"notes"`
 	ChangedAt     time.Time `json:"changed_at"`
 }
 
@@ -447,7 +446,7 @@ type TaxonomyEntry struct {
 	Description *string   `json:"description,omitempty"`
 	IsBuiltin   bool      `json:"is_builtin"`
 	IsActive    bool      `json:"is_active"`
-	Metadata    JSONMap   `json:"metadata,omitempty"`
+	Notes       string    `json:"notes,omitempty"`
 	IsSymmetric *bool     `json:"is_symmetric,omitempty"`
 	ValueSchema JSONMap   `json:"value_schema,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
@@ -458,7 +457,7 @@ type TaxonomyEntry struct {
 type CreateTaxonomyInput struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Notes       string         `json:"notes,omitempty"`
 	IsSymmetric *bool          `json:"is_symmetric,omitempty"`
 	ValueSchema map[string]any `json:"value_schema,omitempty"`
 }
@@ -467,7 +466,7 @@ type CreateTaxonomyInput struct {
 type UpdateTaxonomyInput struct {
 	Name        *string        `json:"name,omitempty"`
 	Description *string        `json:"description,omitempty"`
-	Metadata    map[string]any `json:"metadata,omitempty"`
+	Notes       string         `json:"notes,omitempty"`
 	IsSymmetric *bool          `json:"is_symmetric,omitempty"`
 	ValueSchema map[string]any `json:"value_schema,omitempty"`
 }

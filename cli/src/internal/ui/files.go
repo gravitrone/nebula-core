@@ -426,8 +426,8 @@ func (m FilesModel) renderFilePreview(f api.File, width int) string {
 	if len(f.Tags) > 0 {
 		lines = append(lines, renderPreviewRow("Tags", strings.Join(f.Tags, ", "), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(f.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Preview", metaPreview, width))
+	if f.Notes != "" {
+		lines = append(lines, renderPreviewRow("Notes", truncateString(f.Notes, 80), width))
 	}
 
 	return padPreviewLines(lines, width)
@@ -570,8 +570,8 @@ func (m FilesModel) renderDetail() string {
 	}
 
 	sections := []string{components.Table("File", rows, m.width)}
-	if len(f.Metadata) > 0 {
-		sections = append(sections, renderMetadataBlock(map[string]any(f.Metadata), m.width, m.metaExpanded))
+	if f.Notes != "" {
+		sections = append(sections, components.TitledBox("Notes", f.Notes, m.width))
 	}
 	if len(m.detailRels) > 0 {
 		sections = append(sections, renderRelationshipSummaryTable("file", f.ID, m.detailRels, 6, m.width))
@@ -650,9 +650,8 @@ func (m FilesModel) renderAdd() string {
 	}
 	var b strings.Builder
 	b.WriteString(m.addForm.View())
-	metaPreview := renderMetadataEditorPreview(m.addMeta.Buffer, m.addMeta.Scopes, m.width, 6)
-	if metaPreview != "" {
-		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	if m.addMeta.Buffer != "" {
+		b.WriteString("\n" + MutedStyle.Render("Notes:") + "\n  " + NormalStyle.Render(m.addMeta.Buffer))
 	}
 	if m.addErr != "" {
 		b.WriteString("\n\n" + ErrorStyle.Render(m.addErr))
@@ -677,12 +676,6 @@ func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
 		m.addErr = err.Error()
 		return m, nil
 	}
-	meta, err := parseMetadataInput(m.addMeta.Buffer)
-	if err != nil {
-		m.addErr = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.addMeta.Scopes)
 	tags := parseCommaSeparated(m.addTagStr)
 
 	input := api.CreateFileInput{
@@ -693,7 +686,7 @@ func (m FilesModel) saveAdd() (FilesModel, tea.Cmd) {
 		Checksum:  strings.TrimSpace(m.addChecksum),
 		Status:    m.addStatus,
 		Tags:      tags,
-		Metadata:  meta,
+		Notes:     m.addMeta.Buffer,
 	}
 	m.addSaving = true
 	m.addErr = ""
@@ -750,7 +743,7 @@ func (m *FilesModel) startEdit() {
 	} else {
 		m.editChecksum = ""
 	}
-	m.editMeta.Load(map[string]any(f.Metadata))
+	m.editMeta.Buffer = f.Notes
 	m.editSaving = false
 	m.initEditForm()
 }
@@ -806,9 +799,8 @@ func (m FilesModel) renderEdit() string {
 	}
 	var b strings.Builder
 	b.WriteString(m.editForm.View())
-	metaPreview := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-	if metaPreview != "" {
-		b.WriteString("\n" + MutedStyle.Render("Metadata:") + "\n  " + NormalStyle.Render(metaPreview))
+	if m.editMeta.Buffer != "" {
+		b.WriteString("\n" + MutedStyle.Render("Notes:") + "\n  " + NormalStyle.Render(m.editMeta.Buffer))
 	}
 	if m.errText != "" {
 		b.WriteString("\n\n" + ErrorStyle.Render(m.errText))
@@ -823,18 +815,12 @@ func (m FilesModel) saveEdit() (FilesModel, tea.Cmd) {
 		m.errText = err.Error()
 		return m, nil
 	}
-	meta, err := parseMetadataInput(m.editMeta.Buffer)
-	if err != nil {
-		m.errText = err.Error()
-		return m, nil
-	}
-	meta = mergeMetadataScopes(meta, m.editMeta.Scopes)
 	tags := parseCommaSeparated(m.editTagStr)
 
 	input := api.UpdateFileInput{
-		Metadata: meta,
-		Status:   &m.editStatus,
-		Tags:     &tags,
+		Notes:  m.editMeta.Buffer,
+		Status: &m.editStatus,
+		Tags:   &tags,
 	}
 	if strings.TrimSpace(m.editName) != "" {
 		input.Filename = stringPtr(strings.TrimSpace(m.editName))
@@ -947,8 +933,8 @@ func formatFileLine(f api.File) string {
 	if f.Status != "" {
 		segments = append(segments, components.SanitizeText(f.Status))
 	}
-	if preview := metadataPreview(map[string]any(f.Metadata), 40); preview != "" {
-		segments = append(segments, preview)
+	if f.Notes != "" {
+		segments = append(segments, truncateString(f.Notes, 40))
 	}
 	return strings.Join(segments, " · ")
 }

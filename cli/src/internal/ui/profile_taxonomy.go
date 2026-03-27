@@ -422,8 +422,8 @@ func (m ProfileModel) renderTaxonomyPreview(item api.TaxonomyEntry, width int) s
 	if item.IsSymmetric != nil {
 		lines = append(lines, renderPreviewRow("Symmetric", fmt.Sprintf("%t", *item.IsSymmetric), width))
 	}
-	if metaPreview := metadataPreview(map[string]any(item.Metadata), 80); metaPreview != "" {
-		lines = append(lines, renderPreviewRow("Meta", metaPreview, width))
+	if item.Notes != "" {
+		lines = append(lines, renderPreviewRow("Notes", truncateString(item.Notes, 80), width))
 	}
 
 	return padPreviewLines(lines, width)

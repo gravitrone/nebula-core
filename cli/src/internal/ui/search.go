@@ -757,7 +757,7 @@ func filterLogsByQuery(items []api.Log, query string) []api.Log {
 	out := make([]api.Log, 0, len(items))
 	for _, l := range items {
 		haystack := strings.ToLower(strings.Join([]string{
-			l.ID, l.LogType, l.Status, fmt.Sprintf("%v", l.Value),
+			l.ID, l.LogType, l.Status, l.Content,
 		}, " "))
 		if strings.Contains(haystack, q) {
 			out = append(out, l)

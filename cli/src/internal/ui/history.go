@@ -1025,8 +1025,23 @@ func formatAuditFilters(filter auditFilter) string {
 	return "Filters:\n  " + strings.Join(parts, "\n  ")
 }
 
+// parseAuditValuesMap parses a JSON text string into a map for diff display.
+func parseAuditValuesMap(text string) map[string]any {
+	if text == "" {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(text), &m); err != nil {
+		return nil
+	}
+	return m
+}
+
 // buildAuditDiffRows builds build audit diff rows.
 func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
+	oldMap := parseAuditValuesMap(entry.OldValues)
+	newMap := parseAuditValuesMap(entry.NewValues)
+
 	keys := make([]string, 0)
 	seen := map[string]bool{}
 	if len(entry.ChangedFields) > 0 {
@@ -1038,13 +1053,13 @@ func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
 			keys = append(keys, k)
 		}
 	} else {
-		for k := range entry.OldData {
+		for k := range oldMap {
 			if !seen[k] {
 				seen[k] = true
 				keys = append(keys, k)
 			}
 		}
-		for k := range entry.NewData {
+		for k := range newMap {
 			if !seen[k] {
 				keys = append(keys, k)
 			}
@@ -1056,8 +1071,8 @@ func buildAuditDiffRows(entry api.AuditEntry) []components.DiffRow {
 	sort.Strings(keys)
 	rows := make([]components.DiffRow, 0, len(keys))
 	for _, key := range keys {
-		from := entry.OldData[key]
-		to := entry.NewData[key]
+		from := oldMap[key]
+		to := newMap[key]
 		if formatAuditValue(from) == formatAuditValue(to) {
 			continue
 		}
