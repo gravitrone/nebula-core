@@ -6,12 +6,12 @@ SELECT
   audit_log.action,
   audit_log.changed_by_type,
   audit_log.changed_by_id,
-  audit_log.old_data,
-  audit_log.new_data,
+  audit_log.old_values,
+  audit_log.new_values,
   audit_log.changed_fields,
   audit_log.changed_at,
   audit_log.change_reason,
-  audit_log.metadata,
+  audit_log.notes,
   COALESCE(entities.name, agents.name) AS actor_name
 FROM audit_log
 LEFT JOIN entities

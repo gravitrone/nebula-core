@@ -9,7 +9,7 @@ SELECT
     f.checksum,
     s.name AS status,
     f.tags,
-    f.metadata,
+    f.notes,
     f.created_at,
     f.updated_at
 FROM files f

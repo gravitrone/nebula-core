@@ -14,6 +14,6 @@ RETURNING
     capabilities,
     requires_approval,
     status_id,
-    metadata,
+    notes,
     created_at,
     updated_at;

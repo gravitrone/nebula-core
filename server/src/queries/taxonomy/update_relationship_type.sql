@@ -4,7 +4,7 @@ SET
     name = COALESCE(NULLIF($2, ''), name),
     description = COALESCE($3, description),
     is_symmetric = COALESCE($4, is_symmetric),
-    metadata = COALESCE($5::jsonb, metadata)
+    notes = COALESCE($5, notes)
 WHERE id = $1
 RETURNING
     id,
@@ -13,6 +13,6 @@ RETURNING
     is_symmetric,
     is_builtin,
     is_active,
-    metadata,
+    notes,
     created_at,
     updated_at;

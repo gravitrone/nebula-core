@@ -1,4 +1,4 @@
--- Create file metadata entry
+-- Create file record
 INSERT INTO files (
     filename,
     uri,
@@ -8,7 +8,7 @@ INSERT INTO files (
     checksum,
     status_id,
     tags,
-    metadata
+    notes
 )
 VALUES (
     $1,
@@ -19,6 +19,6 @@ VALUES (
     $6,
     $7,
     $8,
-    $9::jsonb
+    $9
 )
 RETURNING *;

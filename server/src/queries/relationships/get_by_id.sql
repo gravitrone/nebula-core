@@ -7,7 +7,7 @@ SELECT
     r.target_id,
     rt.name AS relationship_type,
     s.name AS status,
-    r.properties,
+    r.notes,
     r.created_at,
     r.updated_at
 FROM relationships r

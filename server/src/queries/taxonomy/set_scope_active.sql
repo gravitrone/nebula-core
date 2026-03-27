@@ -9,6 +9,6 @@ RETURNING
     description,
     is_builtin,
     is_active,
-    metadata,
+    notes,
     created_at,
     updated_at;

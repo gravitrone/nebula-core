@@ -3,22 +3,22 @@ WITH inserted AS (
     INSERT INTO logs (
         log_type_id,
         timestamp,
-        value,
+        content,
         status_id,
         tags,
-        metadata
+        notes
     )
-    VALUES ($1, $2, $3::jsonb, $4, $5, $6::jsonb)
+    VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
 )
 SELECT
     i.id,
     lt.name AS log_type,
     i.timestamp,
-    i.value,
+    i.content,
     s.name AS status,
     i.tags,
-    i.metadata,
+    i.notes,
     i.created_at,
     i.updated_at
 FROM inserted i

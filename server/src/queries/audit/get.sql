@@ -6,8 +6,8 @@ SELECT
   action,
   changed_by_type,
   changed_by_id,
-  old_data,
-  new_data,
+  old_values,
+  new_values,
   changed_fields,
   changed_at
 FROM audit_log

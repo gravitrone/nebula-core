@@ -3,10 +3,10 @@ SELECT
     l.id,
     lt.name AS log_type,
     l.timestamp,
-    l.value,
+    l.content,
     s.name AS status,
     l.tags,
-    l.metadata,
+    l.notes,
     l.created_at,
     l.updated_at
 FROM logs l

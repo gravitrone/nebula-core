@@ -7,7 +7,7 @@ SELECT
     r.target_id,
     rt.name AS relationship_type,
     s.name AS status,
-    r.properties,
+    r.notes,
     r.created_at,
     COALESCE(es.name, ks.title, js.title) AS source_name,
     COALESCE(et.name, kt.title, jt.title) AS target_name

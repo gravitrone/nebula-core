@@ -1,4 +1,4 @@
--- Update file metadata entry
+-- Update file record
 WITH updated AS (
     UPDATE files
     SET
@@ -10,7 +10,7 @@ WITH updated AS (
         checksum = COALESCE($7, checksum),
         status_id = COALESCE($8, status_id),
         tags = COALESCE($9, tags),
-        metadata = COALESCE($10::jsonb, metadata)
+        notes = COALESCE($10, notes)
     WHERE id = $1
     RETURNING *
 )
@@ -24,7 +24,7 @@ SELECT
     u.checksum,
     s.name AS status,
     u.tags,
-    u.metadata,
+    u.notes,
     u.created_at,
     u.updated_at
 FROM updated u

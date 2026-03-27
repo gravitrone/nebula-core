@@ -9,7 +9,7 @@ SET
     status_id = COALESCE($7, status_id),
     tags = COALESCE($8, tags),
     trusted = COALESCE($9, trusted),
-    metadata = COALESCE($10::jsonb, metadata),
+    notes = COALESCE($10, notes),
     source_path = COALESCE($11, source_path)
 WHERE name = $1
 RETURNING
@@ -23,7 +23,7 @@ RETURNING
     status_id,
     tags,
     trusted,
-    metadata,
+    notes,
     source_path,
     created_at,
     updated_at;

@@ -9,10 +9,10 @@ INSERT INTO protocols (
     status_id,
     tags,
     trusted,
-    metadata,
+    notes,
     source_path
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING
     id,
     name,
@@ -24,7 +24,7 @@ RETURNING
     status_id,
     tags,
     trusted,
-    metadata,
+    notes,
     source_path,
     created_at,
     updated_at;

@@ -8,7 +8,7 @@ SELECT
     a.capabilities,
     s.name AS status,
     a.requires_approval,
-    a.metadata,
+    a.notes,
     a.created_at,
     a.updated_at
 FROM agents a

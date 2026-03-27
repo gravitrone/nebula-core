@@ -2,14 +2,14 @@
 INSERT INTO privacy_scopes (
     name,
     description,
-    metadata,
+    notes,
     is_builtin,
     is_active
 )
 VALUES (
     $1,
     NULLIF($2, ''),
-    COALESCE($3::jsonb, '{}'::jsonb),
+    COALESCE($3, ''),
     FALSE,
     TRUE
 )
@@ -19,6 +19,6 @@ RETURNING
     description,
     is_builtin,
     is_active,
-    metadata,
+    notes,
     created_at,
     updated_at;

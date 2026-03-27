@@ -3,7 +3,7 @@ UPDATE privacy_scopes
 SET
     name = COALESCE(NULLIF($2, ''), name),
     description = COALESCE($3, description),
-    metadata = COALESCE($4::jsonb, metadata)
+    notes = COALESCE($4, notes)
 WHERE id = $1
 RETURNING
     id,
@@ -11,6 +11,6 @@ RETURNING
     description,
     is_builtin,
     is_active,
-    metadata,
+    notes,
     created_at,
     updated_at;

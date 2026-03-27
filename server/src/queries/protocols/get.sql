@@ -10,7 +10,7 @@ SELECT
     s.name AS status,
     p.tags,
     p.trusted,
-    p.metadata,
+    p.notes,
     p.source_path,
     p.created_at,
     p.updated_at
