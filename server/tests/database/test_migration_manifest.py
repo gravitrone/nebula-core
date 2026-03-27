@@ -1,25 +1,33 @@
-"""Database migration manifest contract tests."""
+"""Alembic migration manifest contract tests."""
 
-# Third-Party
+from pathlib import Path
+
 import pytest
-
-# Local
-from tests.conftest import MIGRATION_FILES, MIGRATIONS_DIR
 
 pytestmark = pytest.mark.database
 
-
-def test_migration_manifest_covers_all_sql_files():
-    """Session migration manifest should include every migration SQL file."""
-
-    disk_files = {path.name for path in MIGRATIONS_DIR.glob("*.sql")}
-    manifest_files = set(MIGRATION_FILES)
-
-    assert manifest_files == disk_files
+ALEMBIC_VERSIONS_DIR = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
 
-def test_migration_manifest_preserves_bootstrap_order():
-    """Manifest should keep extension/bootstrap files before schema init."""
+def test_alembic_versions_directory_exists():
+    """Alembic versions directory should exist with migration files."""
 
-    assert MIGRATION_FILES[0] == "006_pgcrypto.sql"
-    assert MIGRATION_FILES[1] == "000_init.sql"
+    assert ALEMBIC_VERSIONS_DIR.is_dir()
+    migrations = list(ALEMBIC_VERSIONS_DIR.glob("*.py"))
+    assert len(migrations) >= 2, "Expected at least initial + JSONB->TEXT migrations"
+
+
+def test_alembic_initial_migration_exists():
+    """Initial schema migration should be present."""
+
+    files = [f.name for f in ALEMBIC_VERSIONS_DIR.glob("*.py")]
+    initial = [f for f in files if "initial_schema" in f]
+    assert len(initial) == 1, f"Expected exactly one initial migration, found: {initial}"
+
+
+def test_alembic_jsonb_to_text_migration_exists():
+    """JSONB to TEXT migration should be present."""
+
+    files = [f.name for f in ALEMBIC_VERSIONS_DIR.glob("*.py")]
+    jsonb_text = [f for f in files if "jsonb" in f.lower() or "replace" in f.lower()]
+    assert len(jsonb_text) >= 1, f"Expected JSONB->TEXT migration, found: {jsonb_text}"
