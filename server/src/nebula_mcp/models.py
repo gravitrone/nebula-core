@@ -48,14 +48,6 @@ BIDI_CONTROLS = {
     "\u200f",
 }
 
-BANNED_METADATA_KEYS = {
-    "__proto__",
-    "prototype",
-    "constructor",
-    "visibility",
-}
-
-
 def _strip_control(text: str) -> str:
     """Handle strip control.
 
@@ -136,66 +128,6 @@ def _validate_node_type(value: str | None) -> str | None:
     return cleaned
 
 
-def _reject_metadata_keys(value: object) -> None:
-    """Handle reject metadata keys.
-
-    Args:
-        value: Input parameter for _reject_metadata_keys.
-    """
-
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if isinstance(key, str) and key == "visibility":
-                raise ValueError(
-                    "Metadata key 'visibility' is not supported. "
-                    "Use scoped context items linked with context-of."
-                )
-            if isinstance(key, str) and key in BANNED_METADATA_KEYS:
-                raise ValueError(f"Metadata key '{key}' is not allowed")
-            _reject_metadata_keys(item)
-        return
-    if isinstance(value, list):
-        for item in value:
-            _reject_metadata_keys(item)
-
-
-def _sanitize_metadata(value: dict | None) -> dict | None:
-    """Handle sanitize metadata.
-
-    Args:
-        value: Input parameter for _sanitize_metadata.
-
-    Returns:
-        Result value from the operation.
-    """
-
-    if value is None:
-        return None
-    if not isinstance(value, dict):
-        raise ValueError("Metadata must be an object")
-    if "visibility" in value:
-        raise ValueError(
-            "Metadata key 'visibility' is not supported. "
-            "Use scoped context items linked with context-of."
-        )
-    _reject_metadata_keys(value)
-    return value
-
-
-def validate_metadata_payload(value: dict | None) -> dict | None:
-    """Validate and sanitize arbitrary metadata payloads.
-
-    Args:
-        value: Metadata object from REST or MCP payloads.
-
-    Returns:
-        Sanitized metadata payload or None.
-
-    Raises:
-        ValueError: If payload shape or keys are invalid.
-    """
-
-    return _sanitize_metadata(value)
 
 
 def _validate_taxonomy_kind(value: str | None) -> str:
@@ -334,7 +266,7 @@ class CreateApprovalRequestInput(BaseModel):
     """Input payload for creating an approval request."""
 
     request_type: str = Field(..., description="Type of action (e.g., create_entity)")
-    change_details: dict = Field(..., description="Full payload of requested change")
+    change_details: str = Field(..., description="Full payload of requested change as text")
     job_id: str | None = Field(default=None, description="Optional related job ID")
 
 
@@ -802,10 +734,10 @@ class CreateLogInput(BaseModel):
 
     log_type: str = Field(..., description="Log type name")
     timestamp: datetime | None = Field(default=None, description="Timestamp for log")
-    value: dict = Field(default_factory=dict, description="Log value payload")
+    content: str = Field(default="", description="Log content")
     status: str = Field(default="active", description="Status name")
     tags: list[str] = Field(default_factory=list, description="Kebab-case tags")
-    metadata: dict = Field(default_factory=dict, description="Additional metadata")
+    notes: str = Field(default="", description="Markdown notes")
 
     @field_validator("log_type", mode="before")
     @classmethod
@@ -834,20 +766,6 @@ class CreateLogInput(BaseModel):
         """
 
         return _sanitize_tags(v)
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_log_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean log metadata.
-
-        Args:
-            v: Input parameter for _clean_log_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
 
 class GetLogInput(BaseModel):
@@ -886,10 +804,10 @@ class UpdateLogInput(BaseModel):
     id: str = Field(..., description="Log UUID")
     log_type: str | None = Field(default=None, description="Log type name")
     timestamp: datetime | None = Field(default=None, description="Timestamp")
-    value: dict | None = Field(default=None, description="Updated value payload")
+    content: str | None = Field(default=None, description="Updated log content")
     status: str | None = Field(default=None, description="Status name")
     tags: list[str] | None = Field(default=None, description="Tags")
-    metadata: dict | None = Field(default=None, description="Metadata")
+    notes: str | None = Field(default=None, description="Markdown notes")
 
     @field_validator("tags", mode="before")
     @classmethod
@@ -905,20 +823,6 @@ class UpdateLogInput(BaseModel):
 
         return _sanitize_tags(v)
 
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_update_log_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean update log metadata.
-
-        Args:
-            v: Input parameter for _clean_update_log_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
-
 
 # --- Relationship Input Models ---
 
@@ -931,7 +835,7 @@ class CreateRelationshipInput(BaseModel):
     target_type: str = Field(..., description="entity, context, log, job, agent, file, protocol")
     target_id: str = Field(..., description="Target item UUID")
     relationship_type: str = Field(..., description="Relationship type name")
-    properties: dict = Field(default_factory=dict, description="Additional properties")
+    notes: str = Field(default="", description="Relationship notes")
 
     @field_validator("source_type", "target_type", mode="before")
     @classmethod
@@ -960,20 +864,6 @@ class CreateRelationshipInput(BaseModel):
         """
 
         return _sanitize_text(v)
-
-    @field_validator("properties", mode="before")
-    @classmethod
-    def _clean_rel_properties(cls, v: dict | None) -> dict | None:
-        """Handle clean rel properties.
-
-        Args:
-            v: Input parameter for _clean_rel_properties.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
 
 class GetRelationshipsInput(BaseModel):
@@ -1029,7 +919,7 @@ class UpdateRelationshipInput(BaseModel):
     """Input payload for updating a relationship."""
 
     relationship_id: str = Field(..., description="Relationship UUID")
-    properties: dict | None = Field(default=None, description="Updated properties")
+    notes: str | None = Field(default=None, description="Updated relationship notes")
     status: str | None = Field(default=None, description="New status name")
 
 
@@ -1168,7 +1058,7 @@ class CreateFileInput(BaseModel):
     checksum: str | None = Field(default=None, description="Checksum hash")
     status: str = Field(default="active", description="Status name")
     tags: list[str] = Field(default_factory=list, description="File tags")
-    metadata: dict = Field(default_factory=dict, description="Additional metadata")
+    notes: str = Field(default="", description="Markdown notes")
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -1211,20 +1101,6 @@ class CreateFileInput(BaseModel):
         """
 
         return _sanitize_tags(v)
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_file_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean file metadata.
-
-        Args:
-            v: Input parameter for _clean_file_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _ensure_file_location(self) -> Self:
@@ -1288,7 +1164,7 @@ class UpdateFileInput(BaseModel):
     checksum: str | None = Field(default=None, description="Checksum hash")
     status: str | None = Field(default=None, description="Status name")
     tags: list[str] | None = Field(default=None, description="File tags")
-    metadata: dict | None = Field(default=None, description="Additional metadata")
+    notes: str | None = Field(default=None, description="Markdown notes")
 
     @field_validator("filename", mode="before")
     @classmethod
@@ -1331,20 +1207,6 @@ class UpdateFileInput(BaseModel):
         """
 
         return _sanitize_tags(v)
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_update_file_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean update file metadata.
-
-        Args:
-            v: Input parameter for _clean_update_file_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _sync_update_file_location(self) -> Self:
@@ -1398,7 +1260,7 @@ class CreateProtocolInput(BaseModel):
     applies_to: list[str] = Field(default_factory=list, description="Applies-to categories")
     status: str = Field(default="active", description="Status name")
     tags: list[str] = Field(default_factory=list, description="Tags")
-    metadata: dict = Field(default_factory=dict, description="Metadata")
+    notes: str = Field(default="", description="Markdown notes")
     source_path: str | None = Field(default=None, description="Source path")
     trusted: bool = Field(default=False, description="Trusted for prompt use")
 
@@ -1430,20 +1292,6 @@ class CreateProtocolInput(BaseModel):
 
         return _sanitize_tags(v)
 
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_protocol_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean protocol metadata.
-
-        Args:
-            v: Input parameter for _clean_protocol_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
-
     @field_validator("source_path", mode="before")
     @classmethod
     def _clean_protocol_source_path(cls, v: str | None) -> str | None:
@@ -1470,7 +1318,7 @@ class UpdateProtocolInput(BaseModel):
     applies_to: list[str] | None = Field(default=None, description="Applies-to list")
     status: str | None = Field(default=None, description="Status name")
     tags: list[str] | None = Field(default=None, description="Tags")
-    metadata: dict | None = Field(default=None, description="Metadata")
+    notes: str | None = Field(default=None, description="Markdown notes")
     source_path: str | None = Field(default=None, description="Source path")
     trusted: bool | None = Field(default=None, description="Trusted for prompt use")
 
@@ -1501,20 +1349,6 @@ class UpdateProtocolInput(BaseModel):
         """
 
         return _sanitize_tags(v)
-
-    @field_validator("metadata", mode="before")
-    @classmethod
-    def _clean_update_protocol_metadata(cls, v: dict | None) -> dict | None:
-        """Handle clean update protocol metadata.
-
-        Args:
-            v: Input parameter for _clean_update_protocol_metadata.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
     @field_validator("source_path", mode="before")
     @classmethod
@@ -1824,7 +1658,11 @@ class ExportDataInput(BaseModel):
             Result value from the operation.
         """
 
-        return _sanitize_metadata(v) or {}
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            raise ValueError("Params must be an object")
+        return v
 
 
 # --- Taxonomy Input Models ---
@@ -1874,7 +1712,7 @@ class CreateTaxonomyInput(BaseModel):
     kind: str = Field(..., description="Taxonomy kind")
     name: str = Field(..., description="Taxonomy row name")
     description: str | None = Field(default=None, description="Optional description")
-    metadata: dict | None = Field(default=None, description="Optional metadata object")
+    notes: str | None = Field(default=None, description="Markdown notes")
     is_symmetric: bool | None = Field(default=None, description="Relationship symmetry flag")
     value_schema: dict | None = Field(default=None, description="Log type value schema")
 
@@ -1906,20 +1744,6 @@ class CreateTaxonomyInput(BaseModel):
 
         return _sanitize_text(v)
 
-    @field_validator("metadata", "value_schema", mode="before")
-    @classmethod
-    def _clean_json_objects(cls, v: dict | None) -> dict | None:
-        """Handle clean json objects.
-
-        Args:
-            v: Input parameter for _clean_json_objects.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
-
     @model_validator(mode="after")
     def _validate_kind_fields(self) -> Self:
         """Handle validate kind fields.
@@ -1942,7 +1766,7 @@ class UpdateTaxonomyInput(BaseModel):
     item_id: str = Field(..., description="Taxonomy row UUID")
     name: str | None = Field(default=None, description="Optional name")
     description: str | None = Field(default=None, description="Optional description")
-    metadata: dict | None = Field(default=None, description="Optional metadata object")
+    notes: str | None = Field(default=None, description="Markdown notes")
     is_symmetric: bool | None = Field(default=None, description="Relationship symmetry flag")
     value_schema: dict | None = Field(default=None, description="Log type value schema")
 
@@ -1973,20 +1797,6 @@ class UpdateTaxonomyInput(BaseModel):
         """
 
         return _sanitize_text(v)
-
-    @field_validator("metadata", "value_schema", mode="before")
-    @classmethod
-    def _clean_json_objects(cls, v: dict | None) -> dict | None:
-        """Handle clean json objects.
-
-        Args:
-            v: Input parameter for _clean_json_objects.
-
-        Returns:
-            Result value from the operation.
-        """
-
-        return _sanitize_metadata(v)
 
     @model_validator(mode="after")
     def _validate_kind_fields(self) -> Self:
