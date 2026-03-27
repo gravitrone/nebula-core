@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from nebula_models.base import Base, IDMixin, TimestampMixin
@@ -21,7 +21,7 @@ class Log(Base, IDMixin, TimestampMixin):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
-    value: Mapped[dict | None] = mapped_column(JSONB, server_default=text("'{}'"))
+    content: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     privacy_scope_ids: Mapped[list[uuid.UUID]] = mapped_column(
         ARRAY(UUID(as_uuid=True)), server_default=text("'{}'"), nullable=False
     )
@@ -31,7 +31,7 @@ class Log(Base, IDMixin, TimestampMixin):
     tags: Mapped[list[str]] = mapped_column(
         ARRAY(Text), server_default=text("'{}'"), nullable=False
     )
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     source_path: Mapped[str | None] = mapped_column(Text)
 
     log_type = relationship("LogType", lazy="joined")

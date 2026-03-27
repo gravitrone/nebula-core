@@ -3,7 +3,7 @@
 import uuid
 
 from sqlalchemy import Boolean, ForeignKey, Integer, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from nebula_models.base import Base, IDMixin, TimestampMixin
@@ -32,7 +32,7 @@ class Protocol(Base, IDMixin, TimestampMixin):
         ARRAY(Text), server_default=text("'{}'"), nullable=False
     )
     trusted: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     source_path: Mapped[str | None] = mapped_column(Text)
 
     status = relationship("Status", lazy="joined")

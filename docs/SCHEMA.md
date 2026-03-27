@@ -32,7 +32,7 @@ erDiagram
         ARRAY scopes
         ARRAY capabilities
         UUID status_id FK
-        JSONB metadata
+        TEXT notes
         BOOLEAN requires_approval
         UUID id PK
         DATETIME created_at
@@ -55,14 +55,13 @@ erDiagram
         TEXT job_id
         TEXT request_type
         UUID requested_by
-        JSONB change_details
+        TEXT change_details
         TEXT status
         UUID reviewed_by
         DATETIME reviewed_at
         TEXT review_notes
         DATETIME created_at
         TEXT execution_error
-        JSONB review_details
         UUID id PK
     }
     audit_log {
@@ -71,12 +70,12 @@ erDiagram
         TEXT action
         TEXT changed_by_type
         UUID changed_by_id
-        JSONB old_data
-        JSONB new_data
+        TEXT old_values
+        TEXT new_values
         ARRAY changed_fields
         TEXT change_reason
         DATETIME changed_at
-        JSONB metadata
+        TEXT notes
         UUID id PK
     }
     context_items {
@@ -112,7 +111,7 @@ erDiagram
         TEXT description
         BOOLEAN is_builtin
         BOOLEAN is_active
-        JSONB metadata
+        TEXT notes
         JSONB value_schema
         UUID id PK
         DATETIME created_at
@@ -124,7 +123,7 @@ erDiagram
         TEXT system
         TEXT external_id
         TEXT url
-        JSONB metadata
+        TEXT notes
         UUID id PK
         DATETIME created_at
         DATETIME updated_at
@@ -139,7 +138,7 @@ erDiagram
         ARRAY privacy_scope_ids
         UUID status_id FK
         ARRAY tags
-        JSONB metadata
+        TEXT notes
         TEXT source_path
         UUID id PK
         DATETIME created_at
@@ -157,6 +156,8 @@ erDiagram
         DATETIME due_at
         DATETIME completed_at
         ARRAY privacy_scope_ids
+        TEXT status_reason
+        DATETIME status_changed_at
         DATETIME created_at
         DATETIME updated_at
     }
@@ -165,7 +166,7 @@ erDiagram
         TEXT description
         BOOLEAN is_builtin
         BOOLEAN is_active
-        JSONB metadata
+        TEXT notes
         JSONB value_schema
         UUID id PK
         DATETIME created_at
@@ -174,11 +175,11 @@ erDiagram
     logs {
         UUID log_type_id FK
         DATETIME timestamp
-        JSONB value
+        TEXT content
         ARRAY privacy_scope_ids
         UUID status_id FK
         ARRAY tags
-        JSONB metadata
+        TEXT notes
         TEXT source_path
         UUID id PK
         DATETIME created_at
@@ -189,7 +190,7 @@ erDiagram
         TEXT description
         BOOLEAN is_builtin
         BOOLEAN is_active
-        JSONB metadata
+        TEXT notes
         UUID id PK
         DATETIME created_at
         DATETIME updated_at
@@ -205,7 +206,7 @@ erDiagram
         UUID status_id FK
         ARRAY tags
         BOOLEAN trusted
-        JSONB metadata
+        TEXT notes
         TEXT source_path
         UUID id PK
         DATETIME created_at
@@ -217,7 +218,7 @@ erDiagram
         BOOLEAN is_symmetric
         BOOLEAN is_builtin
         BOOLEAN is_active
-        JSONB metadata
+        TEXT notes
         UUID id PK
         DATETIME created_at
         DATETIME updated_at
@@ -230,7 +231,7 @@ erDiagram
         UUID type_id FK
         UUID status_id FK
         DATETIME status_changed_at
-        JSONB properties
+        TEXT notes
         DATETIME created_at
         DATETIME updated_at
         UUID id PK
@@ -240,7 +241,7 @@ erDiagram
         TEXT source_id
         INTEGER segment_index
         ARRAY scopes
-        JSONB metadata
+        TEXT notes
         DATETIME created_at
         UUID id PK
     }
@@ -250,7 +251,7 @@ erDiagram
         VARCHAR category
         BOOLEAN is_builtin
         BOOLEAN is_active
-        JSONB metadata
+        TEXT notes
         UUID id PK
         DATETIME created_at
         DATETIME updated_at
@@ -267,8 +268,8 @@ erDiagram
     jobs }o--|| statuses : "status_id"
     jobs }o--|| jobs : "parent_job_id"
     jobs }o--|| agents : "agent_id"
-    logs }o--|| statuses : "status_id"
     logs }o--|| log_types : "log_type_id"
+    logs }o--|| statuses : "status_id"
     protocols }o--|| statuses : "status_id"
     relationships }o--|| statuses : "status_id"
     relationships }o--|| relationship_types : "type_id"
@@ -307,7 +308,7 @@ erDiagram
 | scopes | ARRAY | no |  |  |
 | capabilities | ARRAY | no |  |  |
 | status_id | UUID | yes | FK -> statuses.id |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | requires_approval | BOOLEAN | no |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
@@ -336,14 +337,13 @@ erDiagram
 | job_id | TEXT | yes |  |  |
 | request_type | TEXT | no |  |  |
 | requested_by | UUID | yes |  |  |
-| change_details | JSONB | yes |  |  |
+| change_details | TEXT | yes |  |  |
 | status | TEXT | no |  |  |
 | reviewed_by | UUID | yes |  |  |
 | reviewed_at | DATETIME | yes |  |  |
 | review_notes | TEXT | yes |  |  |
 | created_at | DATETIME | no |  |  |
 | execution_error | TEXT | yes |  |  |
-| review_details | JSONB | no |  |  |
 | id | UUID | no | PK |  |
 
 ### audit_log
@@ -355,12 +355,12 @@ erDiagram
 | action | TEXT | no |  |  |
 | changed_by_type | TEXT | yes |  |  |
 | changed_by_id | UUID | yes |  |  |
-| old_data | JSONB | yes |  |  |
-| new_data | JSONB | yes |  |  |
+| old_values | TEXT | yes |  |  |
+| new_values | TEXT | yes |  |  |
 | changed_fields | ARRAY | yes |  |  |
 | change_reason | TEXT | yes |  |  |
 | changed_at | DATETIME | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 
 ### context_items
@@ -405,7 +405,7 @@ erDiagram
 | description | TEXT | yes |  |  |
 | is_builtin | BOOLEAN | no |  |  |
 | is_active | BOOLEAN | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | value_schema | JSONB | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
@@ -420,7 +420,7 @@ erDiagram
 | system | TEXT | no |  |  |
 | external_id | TEXT | no |  |  |
 | url | TEXT | yes |  |  |
-| metadata | JSONB | no |  |  |
+| notes | TEXT | no |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
 | updated_at | DATETIME | no |  |  |
@@ -438,7 +438,7 @@ erDiagram
 | privacy_scope_ids | ARRAY | no |  |  |
 | status_id | UUID | yes | FK -> statuses.id |  |
 | tags | ARRAY | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | source_path | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
@@ -459,6 +459,8 @@ erDiagram
 | due_at | DATETIME | yes |  |  |
 | completed_at | DATETIME | yes |  |  |
 | privacy_scope_ids | ARRAY | no |  |  |
+| status_reason | TEXT | yes |  |  |
+| status_changed_at | DATETIME | yes |  |  |
 | created_at | DATETIME | no |  |  |
 | updated_at | DATETIME | no |  |  |
 
@@ -470,7 +472,7 @@ erDiagram
 | description | TEXT | yes |  |  |
 | is_builtin | BOOLEAN | no |  |  |
 | is_active | BOOLEAN | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | value_schema | JSONB | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
@@ -482,11 +484,11 @@ erDiagram
 |--------|------|----------|-----|-------------|
 | log_type_id | UUID | yes | FK -> log_types.id |  |
 | timestamp | DATETIME | no |  |  |
-| value | JSONB | yes |  |  |
+| content | TEXT | yes |  |  |
 | privacy_scope_ids | ARRAY | no |  |  |
 | status_id | UUID | yes | FK -> statuses.id |  |
 | tags | ARRAY | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | source_path | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
@@ -500,7 +502,7 @@ erDiagram
 | description | TEXT | yes |  |  |
 | is_builtin | BOOLEAN | no |  |  |
 | is_active | BOOLEAN | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
 | updated_at | DATETIME | no |  |  |
@@ -519,7 +521,7 @@ erDiagram
 | status_id | UUID | yes | FK -> statuses.id |  |
 | tags | ARRAY | no |  |  |
 | trusted | BOOLEAN | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | source_path | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
@@ -534,7 +536,7 @@ erDiagram
 | is_symmetric | BOOLEAN | no |  |  |
 | is_builtin | BOOLEAN | no |  |  |
 | is_active | BOOLEAN | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
 | updated_at | DATETIME | no |  |  |
@@ -550,7 +552,7 @@ erDiagram
 | type_id | UUID | no | FK -> relationship_types.id |  |
 | status_id | UUID | yes | FK -> statuses.id |  |
 | status_changed_at | DATETIME | yes |  |  |
-| properties | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | created_at | DATETIME | no |  |  |
 | updated_at | DATETIME | no |  |  |
 | id | UUID | no | PK |  |
@@ -563,7 +565,7 @@ erDiagram
 | source_id | TEXT | no |  |  |
 | segment_index | INTEGER | yes |  |  |
 | scopes | ARRAY | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | created_at | DATETIME | no |  |  |
 | id | UUID | no | PK |  |
 
@@ -576,7 +578,7 @@ erDiagram
 | category | VARCHAR | no |  |  |
 | is_builtin | BOOLEAN | no |  |  |
 | is_active | BOOLEAN | no |  |  |
-| metadata | JSONB | yes |  |  |
+| notes | TEXT | yes |  |  |
 | id | UUID | no | PK |  |
 | created_at | DATETIME | no |  |  |
 | updated_at | DATETIME | no |  |  |

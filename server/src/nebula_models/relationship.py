@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Text, UniqueConstraint, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from nebula_models.base import Base, IDMixin
@@ -36,7 +36,7 @@ class Relationship(Base, IDMixin):
         UUID(as_uuid=True), ForeignKey("statuses.id")
     )
     status_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    properties: Mapped[dict | None] = mapped_column(JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

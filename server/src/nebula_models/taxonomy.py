@@ -16,7 +16,7 @@ class EntityType(Base, IDMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     is_builtin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     value_schema: Mapped[dict | None] = mapped_column(JSONB)
 
 
@@ -29,7 +29,7 @@ class LogType(Base, IDMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     is_builtin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     value_schema: Mapped[dict | None] = mapped_column(JSONB)
 
 
@@ -42,7 +42,7 @@ class PrivacyScope(Base, IDMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text)
     is_builtin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
 
 
 class RelationshipType(Base, IDMixin, TimestampMixin):
@@ -57,7 +57,7 @@ class RelationshipType(Base, IDMixin, TimestampMixin):
     )
     is_builtin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
 
 
 class Status(Base, IDMixin, TimestampMixin):
@@ -70,4 +70,4 @@ class Status(Base, IDMixin, TimestampMixin):
     category: Mapped[str] = mapped_column(String, server_default=text("'active'"), nullable=False)
     is_builtin: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))

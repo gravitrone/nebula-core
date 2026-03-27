@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from nebula_models.base import Base, IDMixin, TimestampMixin
@@ -27,7 +27,7 @@ class Agent(Base, IDMixin, TimestampMixin):
     status_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("statuses.id")
     )
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     requires_approval: Mapped[bool] = mapped_column(
         Boolean, server_default=text("true"), nullable=False
     )

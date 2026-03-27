@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from nebula_models.base import Base, IDMixin
@@ -22,7 +22,7 @@ class SemanticSearch(Base, IDMixin):
     scopes: Mapped[list[uuid.UUID]] = mapped_column(
         ARRAY(UUID(as_uuid=True)), server_default=text("'{}'"), nullable=False
     )
-    metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, server_default=text("'{}'"))
+    notes: Mapped[str | None] = mapped_column(Text, server_default=text("''"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
