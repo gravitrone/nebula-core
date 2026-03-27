@@ -27,6 +27,7 @@ known-first-party = ["nebula_api", "nebula_mcp"]
 
 [lint.per-file-ignores]
 "tests/**" = ["S101", "E402", "S608", "E501"]
+"alembic/versions/**" = ["S608"]
 
 [format]
 quote-style = "double"
