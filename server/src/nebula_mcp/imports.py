@@ -236,7 +236,7 @@ def normalize_relationship(item: dict[str, Any], defaults: dict[str, Any] | None
         "target_type": target_type,
         "target_id": target_id,
         "relationship_type": relationship_type,
-        "properties": coerce_json(merged.get("properties")),
+        "notes": str(merged.get("notes") or ""),
     }
 
 

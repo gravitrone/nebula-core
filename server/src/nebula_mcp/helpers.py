@@ -112,21 +112,19 @@ def filter_context_segments(metadata: dict | str | None, agent_scopes: list[str]
     return filtered
 
 
-def sanitize_relationship_properties(properties: Any, agent_scopes: list[str]) -> dict[str, Any]:
-    """Normalize and scope-filter relationship properties payloads.
+def sanitize_relationship_notes(notes: Any) -> str:
+    """Normalize relationship notes to a plain string.
 
     Args:
-        properties: Relationship properties from DB/JSON.
-        agent_scopes: Caller-visible scope names.
+        notes: Relationship notes from DB, may be None or str.
 
     Returns:
-        Relationship properties as a dict with scoped context segments.
+        Relationship notes as a string.
     """
 
-    parsed = _decode_json_object(properties)
-    if not parsed:
-        return {}
-    return filter_context_segments(parsed, agent_scopes)
+    if notes is None:
+        return ""
+    return str(notes)
 
 
 # --- Approval Workflow ---
@@ -835,15 +833,16 @@ async def approve_request(
 
     from .executors import EXECUTORS
 
+    review_details_text = (
+        json.dumps(review_details, default=str)
+        if isinstance(review_details, dict)
+        else "{}"
+    )
     approval = await pool.fetchrow(
         QUERIES["approvals/approve"],
         approval_id,
         reviewed_by,
-        (
-            json.dumps(review_details, default=str)
-            if isinstance(review_details, dict)
-            else json.dumps({})
-        ),
+        review_details_text,
         review_notes,
     )
 
@@ -1005,9 +1004,9 @@ async def revert_entity(pool: Pool, entity_id: str, audit_id: str) -> dict:
     if audit.get("record_id") != entity_id:
         raise ValueError("Audit entry does not match entity")
 
-    snapshot = audit.get("new_data")
+    snapshot = audit.get("new_values")
     if audit.get("action") == "delete":
-        snapshot = audit.get("old_data")
+        snapshot = audit.get("old_values")
     if snapshot is None:
         raise ValueError("Audit snapshot is empty")
 

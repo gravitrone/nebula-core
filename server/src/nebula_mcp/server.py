@@ -64,7 +64,7 @@ from nebula_mcp.helpers import (
     ensure_approval_capacity,
     normalize_bulk_operation,
     redeem_enrollment_key,
-    sanitize_relationship_properties,
+    sanitize_relationship_notes,
     scope_names_from_ids,
     wait_for_enrollment_status,
 )
@@ -436,12 +436,10 @@ def _visible_scope_names(agent: dict, enums: Any, scope_ids: list | None = None)
 
 
 def _normalize_relationship_row(row: Any, visible_scope_names: list[str]) -> dict[str, Any]:
-    """Normalize relationship payload shape and scope-filter properties."""
+    """Normalize relationship payload shape."""
 
     item = dict(row)
-    item["properties"] = sanitize_relationship_properties(
-        item.get("properties"), visible_scope_names
-    )
+    item["notes"] = sanitize_relationship_notes(item.get("notes"))
     return item
 
 
@@ -2298,7 +2296,7 @@ async def update_relationship(payload: UpdateRelationshipInput, ctx: Context) ->
     row = await pool.fetchrow(
         QUERIES["relationships/update"],
         payload.relationship_id,
-        json.dumps(payload.properties) if payload.properties else None,
+        payload.notes,
         status_id,
     )
     return dict(row) if row else {}
@@ -2943,7 +2941,7 @@ async def create_taxonomy(payload: CreateTaxonomyInput, ctx: Context) -> dict:
                 QUERIES[cfg["create"]],
                 name,
                 payload.description,
-                json.dumps(payload.metadata or {}),
+                payload.notes or "",
             )
         elif payload.kind == "relationship-types":
             row = await pool.fetchrow(
@@ -2951,7 +2949,7 @@ async def create_taxonomy(payload: CreateTaxonomyInput, ctx: Context) -> dict:
                 name,
                 payload.description,
                 payload.is_symmetric,
-                json.dumps(payload.metadata or {}),
+                payload.notes or "",
             )
         else:
             row = await pool.fetchrow(
@@ -2997,7 +2995,7 @@ async def update_taxonomy(payload: UpdateTaxonomyInput, ctx: Context) -> dict:
                 payload.item_id,
                 name,
                 payload.description,
-                json.dumps(payload.metadata) if payload.metadata is not None else None,
+                payload.notes,
             )
         elif payload.kind == "relationship-types":
             row = await pool.fetchrow(
@@ -3006,7 +3004,7 @@ async def update_taxonomy(payload: UpdateTaxonomyInput, ctx: Context) -> dict:
                 name,
                 payload.description,
                 payload.is_symmetric,
-                json.dumps(payload.metadata) if payload.metadata is not None else None,
+                payload.notes,
             )
         else:
             row = await pool.fetchrow(

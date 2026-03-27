@@ -284,7 +284,7 @@ async def execute_create_relationship(
             payload.target_id,
             type_id,
             status_id,
-            json.dumps(payload.properties) if payload.properties else "{}",
+            payload.notes or "",
         )
     except UniqueViolationError as exc:
         if exc.constraint_name == (
@@ -402,7 +402,7 @@ async def execute_update_relationship(
     row = await pool.fetchrow(
         QUERIES["relationships/update"],
         payload.relationship_id,
-        json.dumps(payload.properties) if payload.properties else None,
+        payload.notes,
         status_id,
     )
 
@@ -477,7 +477,7 @@ async def execute_create_file(pool: Pool, enums: EnumRegistry, change_details: d
         payload.checksum,
         status_id,
         payload.tags,
-        json.dumps(payload.metadata) if payload.metadata else "{}",
+        payload.notes or "",
     )
 
     return dict(row) if row else {}
@@ -508,7 +508,7 @@ async def execute_update_file(pool: Pool, enums: EnumRegistry, change_details: d
         payload.checksum,
         status_id,
         payload.tags,
-        json.dumps(payload.metadata) if payload.metadata is not None else None,
+        payload.notes,
     )
 
     return dict(row) if row else {}
@@ -536,7 +536,7 @@ async def execute_create_protocol(pool: Pool, enums: EnumRegistry, change_detail
         status_id,
         payload.tags,
         payload.trusted,
-        json.dumps(payload.metadata) if payload.metadata else "{}",
+        payload.notes or "",
         payload.source_path,
     )
 
@@ -567,7 +567,7 @@ async def execute_update_protocol(pool: Pool, enums: EnumRegistry, change_detail
         status_id,
         payload.tags,
         payload.trusted,
-        json.dumps(payload.metadata) if payload.metadata else None,
+        payload.notes,
         payload.source_path,
     )
 
@@ -592,10 +592,10 @@ async def execute_create_log(pool: Pool, enums: EnumRegistry, change_details: di
         QUERIES["logs/create"],
         log_type_id,
         timestamp,
-        json.dumps(payload.value) if payload.value is not None else "{}",
+        payload.content or "",
         status_id,
         payload.tags,
-        json.dumps(payload.metadata) if payload.metadata is not None else "{}",
+        payload.notes or "",
     )
 
     return dict(row) if row else {}
@@ -623,10 +623,10 @@ async def execute_update_log(pool: Pool, enums: EnumRegistry, change_details: di
         payload.id,
         log_type_id,
         payload.timestamp,
-        json.dumps(payload.value) if payload.value is not None else None,
+        payload.content,
         status_id,
         payload.tags,
-        json.dumps(payload.metadata) if payload.metadata is not None else None,
+        payload.notes,
     )
 
     return dict(row) if row else {}
