@@ -192,6 +192,93 @@ $$ LANGUAGE plpgsql
 """)
 
 
+    # --- Update symmetric relationship functions to use 'notes' instead of 'properties' ---
+    op.execute(r"""
+CREATE OR REPLACE FUNCTION sync_symmetric_relationships()
+RETURNS TRIGGER AS $$
+DECLARE
+    is_sym BOOLEAN;
+BEGIN
+    SELECT is_symmetric INTO is_sym
+    FROM relationship_types
+    WHERE id = COALESCE(NEW.type_id, OLD.type_id);
+    IF is_sym THEN
+        IF TG_OP = 'INSERT' THEN
+            INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, notes)
+            VALUES (NEW.target_type, NEW.target_id, NEW.source_type, NEW.source_id, NEW.type_id, NEW.notes)
+            ON CONFLICT (source_type, source_id, target_type, target_id, type_id) DO NOTHING;
+        ELSIF TG_OP = 'UPDATE' THEN
+            IF current_setting('nebula.cascade_in_progress', true) = 'true' THEN RETURN NEW; END IF;
+            UPDATE relationships SET notes = NEW.notes, updated_at = NOW()
+            WHERE source_type = NEW.target_type AND source_id = NEW.target_id
+              AND target_type = NEW.source_type AND target_id = NEW.source_id AND type_id = NEW.type_id;
+        ELSIF TG_OP = 'DELETE' THEN
+            DELETE FROM relationships
+            WHERE source_type = OLD.target_type AND source_id = OLD.target_id
+              AND target_type = OLD.source_type AND target_id = OLD.source_id AND type_id = OLD.type_id;
+            RETURN OLD;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+""")
+
+    op.execute(r"""
+CREATE OR REPLACE FUNCTION symmetric_relationship_sync()
+RETURNS TRIGGER AS $$
+DECLARE
+    is_sym BOOLEAN;
+BEGIN
+    SELECT is_symmetric INTO is_sym
+    FROM relationship_types
+    WHERE id = COALESCE(NEW.type_id, OLD.type_id);
+
+    IF is_sym THEN
+        IF TG_OP = 'INSERT' THEN
+            INSERT INTO relationships (
+                source_type, source_id,
+                target_type, target_id,
+                type_id, notes
+            )
+            VALUES (
+                NEW.target_type, NEW.target_id,
+                NEW.source_type, NEW.source_id,
+                NEW.type_id, NEW.notes
+            )
+            ON CONFLICT (source_type, source_id, target_type, target_id, type_id) DO NOTHING;
+
+        ELSIF TG_OP = 'UPDATE' THEN
+            IF current_setting('nebula.cascade_in_progress', true) = 'true' THEN
+                RETURN NEW;
+            END IF;
+
+            UPDATE relationships
+            SET notes = NEW.notes,
+                updated_at = NOW()
+            WHERE source_type = NEW.target_type
+              AND source_id = NEW.target_id
+              AND target_type = NEW.source_type
+              AND target_id = NEW.source_id
+              AND type_id = NEW.type_id;
+
+        ELSIF TG_OP = 'DELETE' THEN
+            DELETE FROM relationships
+            WHERE source_type = OLD.target_type
+              AND source_id = OLD.target_id
+              AND target_type = OLD.source_type
+              AND target_id = OLD.source_id
+              AND type_id = OLD.type_id;
+            RETURN OLD;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql
+""")
+
+
 def downgrade() -> None:
     """Downgrade is not supported for this migration."""
 

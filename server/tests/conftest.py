@@ -16,7 +16,7 @@ sys.path.insert(0, str(SRC_DIR))
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ALEMBIC_DIR = Path(__file__).resolve().parents[1]
 
-TEST_DB = os.getenv("NEBULA_TEST_DB", "postgres")
+TEST_DB = os.getenv("NEBULA_TEST_DB", "nebula")
 TEST_SCHEMA = os.getenv("NEBULA_TEST_SCHEMA", "nebula_test")
 ADMIN_SERVER_SETTINGS = {
     # Keep setup bounded without flaking on slower local schema bootstraps.
@@ -98,34 +98,24 @@ async def test_db_dsn():
         reliability, tests run in an isolated schema within a configurable DB.
     """
 
-    conn, dsn = await _connect_with_port_fallback(_test_dsn, server_settings=ADMIN_SERVER_SETTINGS)
-    try:
-        # Fresh schema per run.
-        await conn.execute(f"DROP SCHEMA IF EXISTS {TEST_SCHEMA} CASCADE")
-        await conn.execute(f"CREATE SCHEMA {TEST_SCHEMA}")
-        await conn.execute(f"SET search_path TO {TEST_SCHEMA}, public")
+    # Ensure Alembic migrations are applied (idempotent).
+    env = os.environ.copy()
+    env.setdefault("POSTGRES_HOST", "localhost")
+    env.setdefault("POSTGRES_PORT", "6432")
+    env.setdefault("POSTGRES_USER", "nebula")
+    env.setdefault("POSTGRES_DB", "nebula")
+    subprocess.run(
+        ["uv", "run", "alembic", "upgrade", "head"],
+        cwd=str(ALEMBIC_DIR),
+        env=env,
+        check=True,
+        capture_output=True,
+    )
 
-        # Run Alembic migrations against the test schema.
-        env = os.environ.copy()
-        env["POSTGRES_DB"] = TEST_DB
-        env["PGOPTIONS"] = f"-c search_path={TEST_SCHEMA},public"
-        subprocess.run(
-            ["uv", "run", "alembic", "upgrade", "head"],
-            cwd=str(ALEMBIC_DIR),
-            env=env,
-            check=True,
-            capture_output=True,
-        )
-    finally:
-        await conn.close()
+    # Tests use the public schema directly (clean_test_data truncates between tests).
+    _, dsn = await _connect_with_port_fallback(_test_dsn, server_settings=ADMIN_SERVER_SETTINGS)
 
     yield dsn
-
-    conn = await asyncpg.connect(dsn, server_settings=ADMIN_SERVER_SETTINGS)
-    try:
-        await conn.execute(f"DROP SCHEMA IF EXISTS {TEST_SCHEMA} CASCADE")
-    finally:
-        await conn.close()
 
 
 @pytest.fixture(scope="session")
@@ -136,7 +126,7 @@ async def db_pool(test_db_dsn):
         test_db_dsn,
         min_size=2,
         max_size=5,
-        server_settings={"search_path": f"{TEST_SCHEMA}, public"},
+        server_settings={"search_path": "public"},
     )
     yield pool
     await pool.close()
