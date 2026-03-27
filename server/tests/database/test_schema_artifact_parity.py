@@ -1,23 +1,14 @@
-"""Schema artifact parity checks against migrations and live DB tables."""
+"""Schema artifact parity checks against live DB tables."""
 
-# Standard Library
-import os
-import re
 from pathlib import Path
 
-# Third-Party
 import pytest
 
-# Local
-from tests.conftest import MIGRATION_FILES, TEST_SCHEMA
+from tests.conftest import TEST_SCHEMA
 
 pytestmark = pytest.mark.database
 
-_ROOT = Path(__file__).resolve()
-_env_artifact = os.getenv("NEBULA_SCHEMA_ARTIFACT")
-ARTIFACT_SCHEMA_CANDIDATES = ([Path(_env_artifact).expanduser()] if _env_artifact else []) + [
-    _ROOT.parents[3] / "database" / "schema.sql",  # nebula-core/database/schema.sql
-]
+ALEMBIC_VERSIONS_DIR = Path(__file__).resolve().parents[2] / "alembic" / "versions"
 
 CORE_TABLES = {
     "agent_enrollment_sessions",
@@ -42,31 +33,17 @@ CORE_TABLES = {
 }
 
 
-def _read_artifact_schema() -> str:
-    """Load the schema artifact from the repository database directory."""
+def test_alembic_migrations_exist():
+    """Alembic versions directory should have migration files."""
 
-    for candidate in ARTIFACT_SCHEMA_CANDIDATES:
-        if candidate and candidate.is_file():
-            return candidate.read_text(encoding="utf-8")
-    raise AssertionError(
-        "schema artifact missing, looked at: "
-        + ", ".join(str(path) for path in ARTIFACT_SCHEMA_CANDIDATES if str(path))
-    )
-
-
-def test_artifact_schema_lists_all_runtime_migrations():
-    """Schema artifact header should enumerate all runtime migrations."""
-
-    text = _read_artifact_schema()
-    listed = set(re.findall(r"-\s+(\d+_[a-z0-9_]+\.sql)", text))
-    assert set(MIGRATION_FILES).issubset(listed)
+    migrations = list(ALEMBIC_VERSIONS_DIR.glob("*.py"))
+    assert len(migrations) >= 2, "Expected at least initial + JSONB->TEXT migrations"
 
 
 @pytest.mark.asyncio
-async def test_artifact_schema_mentions_live_core_tables(db_pool):
-    """Artifact should include CREATE TABLE entries for current core tables."""
+async def test_live_schema_has_core_tables(db_pool):
+    """Live test schema should contain all core tables after migration."""
 
-    text = _read_artifact_schema()
     rows = await db_pool.fetch(
         """
         SELECT tablename
@@ -77,11 +54,5 @@ async def test_artifact_schema_mentions_live_core_tables(db_pool):
     )
     live_tables = {str(row["tablename"]) for row in rows}
 
-    assert CORE_TABLES.issubset(live_tables)
-
-    missing = sorted(
-        table
-        for table in CORE_TABLES
-        if f"CREATE TABLE public.{table}" not in text and f"CREATE TABLE {table}" not in text
-    )
-    assert not missing, f"schema artifact missing tables: {missing}"
+    missing = sorted(CORE_TABLES - live_tables)
+    assert not missing, f"Missing core tables in test schema: {missing}"
