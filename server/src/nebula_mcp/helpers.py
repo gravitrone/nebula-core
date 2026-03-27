@@ -833,17 +833,17 @@ async def approve_request(
 
     from .executors import EXECUTORS
 
-    review_details_text = (
-        json.dumps(review_details, default=str)
-        if isinstance(review_details, dict)
-        else "{}"
-    )
+    # Merge review_details into review_notes as text.
+    combined_notes = review_notes or ""
+    if isinstance(review_details, dict) and review_details:
+        details_text = json.dumps(review_details, default=str)
+        combined_notes = f"{combined_notes}\n{details_text}".strip() if combined_notes else details_text
+
     approval = await pool.fetchrow(
         QUERIES["approvals/approve"],
         approval_id,
         reviewed_by,
-        review_details_text,
-        review_notes,
+        combined_notes or None,
     )
 
     if not approval:
