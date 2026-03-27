@@ -2039,7 +2039,7 @@ async def link_context_to_owner(payload: LinkContextInput, ctx: Context) -> dict
         "target_type": "context",
         "target_id": payload.context_id,
         "relationship_type": "context-of",
-        "properties": {},
+        "notes": "",
     }
     require_relationship_type("context-of", enums)
     if resp := await maybe_require_approval(
@@ -2257,7 +2257,7 @@ async def query_relationships(payload: QueryRelationshipsInput, ctx: Context) ->
 
 @mcp.tool()
 async def update_relationship(payload: UpdateRelationshipInput, ctx: Context) -> dict:
-    """Update relationship properties or status."""
+    """Update relationship notes or status."""
 
     pool, enums, agent = await require_context(ctx)
 
@@ -2659,7 +2659,7 @@ async def _attach_file(ctx: Context, target_type: str, payload: AttachFileInput)
         "target_type": target_type,
         "target_id": payload.target_id,
         "relationship_type": payload.relationship_type,
-        "properties": {},
+        "notes": "",
     }
 
     if resp := await maybe_require_approval(
