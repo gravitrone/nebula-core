@@ -34,7 +34,7 @@ async def test_approve_invalid_enum_marks_approved_failed(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        VALUES ($1, $2::uuid, $3, $4)
         RETURNING id
         """,
         "update_job_status",

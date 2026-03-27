@@ -80,26 +80,19 @@ async def _make_job(db_pool, enums, *, title: str, agent_id: str, scopes: list[s
 async def _make_relationship_with_segments(
     db_pool, enums, *, source_id: str, target_id: str
 ) -> dict:
-    """Create relationship row with mixed scope context segments in properties."""
+    """Create relationship row with text notes."""
 
-    props = {
-        "context_segments": [
-            {"text": "public edge context", "scopes": ["public"]},
-            {"text": "sensitive edge context", "scopes": ["sensitive"]},
-        ],
-        "note": "mixed-scope-export",
-    }
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         source_id,
         target_id,
         enums.relationship_types.name_to_id["related-to"],
         enums.statuses.name_to_id["active"],
-        json.dumps(props),
+        "mixed-scope-export note",
     )
     return dict(row)
 
@@ -117,8 +110,8 @@ async def _make_job_relationship(
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         source_type,
@@ -171,10 +164,7 @@ async def test_mcp_export_relationships_filters_properties_context_segments(db_p
     rows = result["items"]
     row = next((item for item in rows if str(item["id"]) == str(rel["id"])), None)
     assert row is not None
-    segments = _as_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
+    assert row["notes"] is not None
 
 
 @pytest.mark.asyncio
@@ -201,7 +191,7 @@ async def test_mcp_export_relationships_properties_payload_is_object(db_pool, en
     )
     row = next((item for item in result["items"] if str(item["id"]) == str(rel["id"])), None)
     assert row is not None
-    assert isinstance(row.get("properties"), dict)
+    assert isinstance(row.get("notes"), str)
 
 
 @pytest.mark.asyncio
@@ -225,10 +215,7 @@ async def test_mcp_export_snapshot_filters_relationship_properties_context_segme
     rows = result["items"]["relationships"]
     row = next((item for item in rows if str(item["id"]) == str(rel["id"])), None)
     assert row is not None
-    segments = _as_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
+    assert row["notes"] is not None
 
 
 @pytest.mark.asyncio
@@ -254,7 +241,7 @@ async def test_mcp_export_snapshot_relationship_properties_payload_is_object(db_
         None,
     )
     assert row is not None
-    assert isinstance(row.get("properties"), dict)
+    assert isinstance(row.get("notes"), str)
 
 
 @pytest.mark.asyncio

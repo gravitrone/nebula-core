@@ -41,8 +41,8 @@ async def _make_relationship(db_pool, enums, source_id, target_id):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         str(source_id),
@@ -54,30 +54,23 @@ async def _make_relationship(db_pool, enums, source_id, target_id):
     return dict(row)
 
 
-async def _make_scoped_properties_relationship(db_pool, enums, source_id, target_id):
-    """Insert a relationship with mixed-scope properties segments."""
+async def _make_scoped_notes_relationship(db_pool, enums, source_id, target_id):
+    """Insert a relationship with text notes."""
 
     status_id = enums.statuses.name_to_id["active"]
     type_id = enums.relationship_types.name_to_id["related-to"]
-    properties = {
-        "context_segments": [
-            {"text": "public edge context", "scopes": ["public"]},
-            {"text": "sensitive edge context", "scopes": ["sensitive"]},
-        ],
-        "note": "mixed-scope",
-    }
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         str(source_id),
         str(target_id),
         type_id,
         status_id,
-        json.dumps(properties),
+        "mixed-scope note",
     )
     return dict(row)
 
@@ -159,14 +152,14 @@ async def test_api_query_relationships_hides_private_entities(api_no_auth, db_po
 
 
 @pytest.mark.asyncio
-async def test_api_get_relationships_filters_properties_context_segments(
+async def test_api_get_relationships_returns_notes_as_string(
     api_no_auth, db_pool, enums
 ):
-    """API get relationships should scope-filter relationship properties segments."""
+    """API get relationships should return notes as plain text."""
 
-    source_entity = await _make_entity(db_pool, enums, "Public Props", ["public"])
-    target_entity = await _make_entity(db_pool, enums, "Public Props Target", ["public"])
-    rel = await _make_scoped_properties_relationship(
+    source_entity = await _make_entity(db_pool, enums, "Public Notes", ["public"])
+    target_entity = await _make_entity(db_pool, enums, "Public Notes Target", ["public"])
+    rel = await _make_scoped_notes_relationship(
         db_pool, enums, source_entity["id"], target_entity["id"]
     )
 
@@ -187,21 +180,19 @@ async def test_api_get_relationships_filters_properties_context_segments(
         None,
     )
     assert row is not None
-    segments = _properties_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
+    assert isinstance(row.get("notes"), str)
+    assert row["notes"] == "mixed-scope note"
 
 
 @pytest.mark.asyncio
-async def test_api_query_relationships_filters_properties_context_segments(
+async def test_api_query_relationships_returns_notes_as_string(
     api_no_auth, db_pool, enums
 ):
-    """API query relationships should scope-filter relationship properties segments."""
+    """API query relationships should return notes as plain text."""
 
-    source_entity = await _make_entity(db_pool, enums, "Public Props Q", ["public"])
-    target_entity = await _make_entity(db_pool, enums, "Public Props Target Q", ["public"])
-    rel = await _make_scoped_properties_relationship(
+    source_entity = await _make_entity(db_pool, enums, "Public Notes Q", ["public"])
+    target_entity = await _make_entity(db_pool, enums, "Public Notes Target Q", ["public"])
+    rel = await _make_scoped_notes_relationship(
         db_pool, enums, source_entity["id"], target_entity["id"]
     )
 
@@ -222,7 +213,5 @@ async def test_api_query_relationships_filters_properties_context_segments(
         None,
     )
     assert row is not None
-    segments = _properties_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
+    assert isinstance(row.get("notes"), str)
+    assert row["notes"] == "mixed-scope note"

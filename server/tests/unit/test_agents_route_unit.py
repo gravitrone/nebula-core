@@ -18,7 +18,6 @@ from nebula_api.routes.agents import (
     update_agent,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

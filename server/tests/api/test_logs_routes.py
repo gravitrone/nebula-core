@@ -80,8 +80,8 @@ async def _insert_log(db_pool, enums, log_type: str = "event") -> dict:
     log_type_id = enums.log_types.name_to_id[log_type]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, tags, metadata)
-        VALUES ($1, now(), $2::jsonb, $3, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, tags, notes)
+        VALUES ($1, now(), $2, $3, $4, $5)
         RETURNING *
         """,
         log_type_id,
@@ -107,8 +107,8 @@ async def _insert_relationship(
     rel_type_id = enums.relationship_types.name_to_id["related-to"]
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
         source_type,
         source_id,
@@ -130,31 +130,28 @@ async def test_logs_create_get_query_and_update_roundtrip(api):
     )
     assert created.status_code == 200
     log_row = created.json()["data"]
-    assert isinstance(log_row["value"], dict)
-    assert log_row["value"] == {}
-    assert isinstance(log_row["metadata"], dict)
-    assert log_row["metadata"] == {}
+    assert isinstance(log_row["content"], str)
+    assert log_row["content"] == ""
+    assert isinstance(log_row["notes"], str)
+    assert log_row["notes"] == ""
 
     fetched = await api.get(f"/api/logs/{log_row['id']}")
     assert fetched.status_code == 200
-    assert isinstance(fetched.json()["data"]["value"], dict)
-    assert isinstance(fetched.json()["data"]["metadata"], dict)
+    assert isinstance(fetched.json()["data"]["content"], str)
+    assert isinstance(fetched.json()["data"]["notes"], str)
 
     queried = await api.get("/api/logs", params={"log_type": "event"})
     assert queried.status_code == 200
     assert queried.json()["data"]
-    assert isinstance(queried.json()["data"][0]["value"], dict)
-    assert isinstance(queried.json()["data"][0]["metadata"], dict)
+    assert isinstance(queried.json()["data"][0]["content"], str)
+    assert isinstance(queried.json()["data"][0]["notes"], str)
 
     updated = await api.patch(
         f"/api/logs/{log_row['id']}",
-        json={"status": "in-progress", "metadata": {"note": "x"}},
+        json={"status": "in-progress", "notes": "note: x"},
     )
     assert updated.status_code == 200
-    updated_meta = updated.json()["data"]["metadata"]
-    if isinstance(updated_meta, str):
-        updated_meta = json.loads(updated_meta)
-    assert updated_meta["note"] == "x"
+    assert updated.json()["data"]["notes"] == "note: x"
 
 
 @pytest.mark.asyncio
@@ -269,8 +266,8 @@ async def test_logs_get_and_query_preserve_object_payloads(api, db_pool, enums):
     log_type_id = enums.log_types.name_to_id["note"]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, tags, metadata)
-        VALUES ($1, now(), $2::jsonb, $3, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, tags, notes)
+        VALUES ($1, now(), $2, $3, $4, $5)
         RETURNING id
         """,
         log_type_id,
@@ -285,10 +282,8 @@ async def test_logs_get_and_query_preserve_object_payloads(api, db_pool, enums):
     get_res = await api.get(f"/api/logs/{log_id}")
     assert get_res.status_code == 200, get_res.text
     get_payload = get_res.json()["data"]
-    assert get_payload["value"] == {"text": "legacy-value"}
-    assert isinstance(get_payload["value"], dict)
-    assert get_payload["metadata"] == {"source": "legacy"}
-    assert isinstance(get_payload["metadata"], dict)
+    assert isinstance(get_payload["content"], str)
+    assert isinstance(get_payload["notes"], str)
 
     list_res = await api.get("/api/logs", params={"log_type": "note"})
     assert list_res.status_code == 200, list_res.text
@@ -297,5 +292,5 @@ async def test_logs_get_and_query_preserve_object_payloads(api, db_pool, enums):
         None,
     )
     assert listed is not None
-    assert listed["value"] == {"text": "legacy-value"}
-    assert listed["metadata"] == {"source": "legacy"}
+    assert isinstance(listed["content"], str)
+    assert isinstance(listed["notes"], str)

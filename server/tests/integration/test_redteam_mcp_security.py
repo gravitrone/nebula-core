@@ -155,8 +155,8 @@ async def test_mcp_relationships_hide_private_nodes(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         """,
         str(test_entity["id"]),
         str(private_entity["id"]),
@@ -189,8 +189,8 @@ async def test_mcp_query_relationships_hides_private_nodes(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         """,
         str(test_entity["id"]),
         str(private_entity["id"]),

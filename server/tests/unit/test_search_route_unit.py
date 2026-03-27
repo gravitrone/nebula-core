@@ -11,7 +11,6 @@ from nebula_api.routes.search import (
     _scope_filter_ids,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

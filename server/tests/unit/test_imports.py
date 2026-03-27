@@ -218,8 +218,8 @@ def test_normalize_relationship_requires_core_fields():
         normalize_relationship({"source_type": "entity"}, None)
 
 
-def test_normalize_relationship_success_parses_properties():
-    """Relationship normalization should parse properties json."""
+def test_normalize_relationship_success_parses_notes():
+    """Relationship normalization should return notes as string."""
 
     result = normalize_relationship(
         {
@@ -228,11 +228,11 @@ def test_normalize_relationship_success_parses_properties():
             "target_type": "entity",
             "target_id": "2",
             "relationship_type": "related-to",
-            "properties": '{"k":"v"}',
+            "notes": "k: v",
         },
         None,
     )
-    assert result["properties"] == {"k": "v"}
+    assert result["notes"] == "k: v"
 
 
 def test_normalize_job_requires_title():

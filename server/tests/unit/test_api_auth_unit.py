@@ -19,7 +19,6 @@ from nebula_api.auth import (
     require_auth,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

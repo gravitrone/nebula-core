@@ -1,7 +1,6 @@
 """Red team tests for bulk import ownership and scope isolation."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 
 # Third-Party

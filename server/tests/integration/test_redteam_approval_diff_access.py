@@ -51,7 +51,7 @@ async def _make_approval_request(db_pool, agent_id):
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "create_entity",

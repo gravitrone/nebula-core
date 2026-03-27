@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-# Standard Library
-from datetime import timezone
 import json
-from uuid import uuid4
+
+# Standard Library
+from datetime import UTC
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 # Third-Party
 import pytest
@@ -384,7 +385,7 @@ async def test_execute_create_relationship_string_payload_success(mock_enums):
     """String payloads should decode for create_relationship success path."""
 
     relationship_id = str(uuid4())
-    pool = _PoolStub(fetchrow_rows=[{"id": relationship_id, "properties": {}}])
+    pool = _PoolStub(fetchrow_rows=[{"id": relationship_id, "notes": ""}])
 
     result = await executors.execute_create_relationship(
         pool,
@@ -401,7 +402,7 @@ async def test_execute_create_relationship_string_payload_success(mock_enums):
     )
 
     assert result["id"] == relationship_id
-    assert result["properties"] == {}
+    assert result["notes"] == ""
 
 
 @pytest.mark.asyncio
@@ -555,7 +556,7 @@ async def test_execute_create_file_success(mock_enums):
             "filename": "alpha.txt",
             "file_path": "/tmp/alpha.txt",
             "status": "active",
-            "metadata": {"kind": "text"},
+            "notes": "kind: text",
         },
     )
     assert result["id"] == file_id
@@ -593,7 +594,7 @@ async def test_execute_create_protocol_success(mock_enums):
             "status": "active",
             "tags": ["core"],
             "trusted": False,
-            "metadata": {"owner": "ops"},
+            "notes": "owner: ops",
         },
     )
     assert result["name"] == "p1"
@@ -660,14 +661,14 @@ async def test_execute_create_log_defaults_timestamp_and_maps_types(mock_enums):
         {
             "log_type": "event",
             "status": "active",
-            "value": {"k": "v"},
-            "metadata": {"origin": "unit"},
+            "content": "k: v",
+            "notes": "origin: unit",
         },
     )
     assert result == {"id": log_id}
     call = pool.fetchrow_calls[0]
     assert call[0] == executors.QUERIES["logs/create"]
-    assert call[2].tzinfo == timezone.utc
+    assert call[2].tzinfo == UTC
 
 
 @pytest.mark.asyncio

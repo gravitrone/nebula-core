@@ -16,9 +16,9 @@ async def test_query_protocols_filters_trusted_for_non_admin(api, db_pool, enums
         """
         INSERT INTO protocols (
             name, title, version, content, protocol_type, applies_to,
-            status_id, tags, trusted, metadata, source_path
+            status_id, tags, trusted, notes, source_path
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9::jsonb,$10)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9,$10)
         """,
         "trusted-hidden",
         "Trusted Hidden",
@@ -35,9 +35,9 @@ async def test_query_protocols_filters_trusted_for_non_admin(api, db_pool, enums
         """
         INSERT INTO protocols (
             name, title, version, content, protocol_type, applies_to,
-            status_id, tags, trusted, metadata, source_path
+            status_id, tags, trusted, notes, source_path
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9::jsonb,$10)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9,$10)
         """,
         "public-visible",
         "Public Visible",
@@ -67,9 +67,9 @@ async def test_query_protocols_limit_does_not_starve_public_rows(api, db_pool, e
         """
         INSERT INTO protocols (
             name, title, version, content, protocol_type, applies_to,
-            status_id, tags, trusted, metadata, source_path
+            status_id, tags, trusted, notes, source_path
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9::jsonb,$10)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE,$9,$10)
         """,
         "a-trusted-protocol",
         "Trusted First",
@@ -86,9 +86,9 @@ async def test_query_protocols_limit_does_not_starve_public_rows(api, db_pool, e
         """
         INSERT INTO protocols (
             name, title, version, content, protocol_type, applies_to,
-            status_id, tags, trusted, metadata, source_path
+            status_id, tags, trusted, notes, source_path
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9::jsonb,$10)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9,$10)
         """,
         "z-public-protocol",
         "Public Later",

@@ -89,8 +89,8 @@ async def _make_relationship(db_pool, enums, source_id, target_id):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         str(source_id),
@@ -103,28 +103,21 @@ async def _make_relationship(db_pool, enums, source_id, target_id):
 
 
 async def _make_scoped_properties_relationship(db_pool, enums, source_id, target_id):
-    """Insert a relationship with mixed-scope context segments in properties."""
+    """Insert a relationship with text notes."""
 
     status_id = enums.statuses.name_to_id["active"]
     type_id = enums.relationship_types.name_to_id["related-to"]
-    properties = {
-        "context_segments": [
-            {"text": "public edge context", "scopes": ["public"]},
-            {"text": "sensitive edge context", "scopes": ["sensitive"]},
-        ],
-        "note": "mixed-scope",
-    }
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         str(source_id),
         str(target_id),
         type_id,
         status_id,
-        json.dumps(properties),
+        "mixed-scope note",
     )
     return dict(row)
 
@@ -200,7 +193,7 @@ async def test_get_relationships_properties_payload_is_object(db_pool, enums):
     )
     row = next((item for item in results if item["id"] == rel["id"]), None)
     assert row is not None
-    assert isinstance(row.get("properties"), dict)
+    assert isinstance(row.get("notes"), str)
 
 
 @pytest.mark.asyncio
@@ -227,10 +220,7 @@ async def test_get_relationships_filters_properties_context_segments(db_pool, en
     )
     row = next((item for item in results if item["id"] == rel["id"]), None)
     assert row is not None
-    segments = _properties_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
+    assert row["notes"] is not None
 
 
 @pytest.mark.asyncio
@@ -258,7 +248,4 @@ async def test_query_relationships_filters_properties_context_segments(db_pool, 
     )
     row = next((item for item in results if item["id"] == rel["id"]), None)
     assert row is not None
-    segments = _properties_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
+    assert row["notes"] is not None

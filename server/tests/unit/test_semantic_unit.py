@@ -6,7 +6,6 @@ import pytest
 # Local
 from nebula_mcp.semantic import _embed_text, rank_semantic_candidates
 
-
 pytestmark = pytest.mark.unit
 
 

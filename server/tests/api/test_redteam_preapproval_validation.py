@@ -3,9 +3,10 @@
 # Standard Library
 import json
 
+import pytest
+
 # Third-Party
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 # Local
 from nebula_api.app import app
@@ -132,9 +133,9 @@ async def test_update_job_status_invalid_status_rejected_before_approval(
             "/api/logs/",
             {
                 "log_type": "note",
-                "value": {"text": "visibility-log"},
+                "content": "visibility-log",
                 "status": "active",
-                "metadata": {"visibility": "private"},
+                "notes": "visibility: private",
             },
             "create_log",
         ),
@@ -144,7 +145,7 @@ async def test_update_job_status_invalid_status_rejected_before_approval(
                 "filename": "visibility-file.txt",
                 "uri": "path:visibility-file.txt",
                 "status": "active",
-                "metadata": {"visibility": "private"},
+                "notes": "visibility: private",
             },
             "create_file",
         ),
@@ -194,9 +195,9 @@ async def test_update_file_visibility_metadata_key_rejected_before_approval(
     file_row = await db_pool.fetchrow(
         """
         INSERT INTO files
-            (filename, uri, file_path, mime_type, size_bytes, checksum, status_id, tags, metadata)
+            (filename, uri, file_path, mime_type, size_bytes, checksum, status_id, tags, notes)
         VALUES
-            ($1, $2, $3, $4, $5, $6, $7::uuid, $8, $9::jsonb)
+            ($1, $2, $3, $4, $5, $6, $7::uuid, $8, $9)
         RETURNING id
         """,
         "visibility-update-file.txt",
@@ -221,7 +222,7 @@ async def test_update_file_visibility_metadata_key_rejected_before_approval(
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/files/{file_row['id']}",
-            json={"metadata": {"visibility": "private"}},
+            json={"notes": "visibility: private"},
         )
 
     app.dependency_overrides.pop(require_auth, None)
@@ -251,8 +252,8 @@ async def test_update_log_visibility_metadata_key_rejected_before_approval(
 
     log_row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, tags, metadata)
-        VALUES ($1::uuid, NOW(), $2::jsonb, $3::uuid, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, tags, notes)
+        VALUES ($1::uuid, NOW(), $2, $3::uuid, $4, $5)
         RETURNING id
         """,
         enums.log_types.name_to_id["note"],
@@ -273,7 +274,7 @@ async def test_update_log_visibility_metadata_key_rejected_before_approval(
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/logs/{log_row['id']}",
-            json={"metadata": {"visibility": "private"}},
+            json={"notes": "visibility: private"},
         )
 
     app.dependency_overrides.pop(require_auth, None)

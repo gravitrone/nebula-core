@@ -3,9 +3,10 @@
 # Standard Library
 import json
 
+import pytest
+
 # Third-Party
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 # Local
 from nebula_api.app import app

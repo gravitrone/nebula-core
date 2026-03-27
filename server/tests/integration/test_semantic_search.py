@@ -1,7 +1,6 @@
 """Integration tests for MCP semantic search tool."""
 
 # Standard Library
-import json
 
 # Third-Party
 import pytest

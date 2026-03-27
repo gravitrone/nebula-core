@@ -7,9 +7,7 @@ import asyncio
 import pytest
 
 # Local
-from nebula_mcp.models import CreateEntityInput
-from nebula_mcp.models import CreateRelationshipInput
-from nebula_mcp.models import UpdateEntityInput
+from nebula_mcp.models import CreateEntityInput, CreateRelationshipInput, UpdateEntityInput
 from nebula_mcp.server import create_entity, create_relationship, update_entity
 
 

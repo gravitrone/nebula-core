@@ -2,8 +2,8 @@
 
 # Standard Library
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 # Third-Party
 import pytest

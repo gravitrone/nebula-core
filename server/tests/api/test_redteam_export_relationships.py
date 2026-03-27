@@ -64,27 +64,20 @@ async def _make_job(db_pool, enums, *, title: str, agent_id: str, scopes: list[s
     return dict(row)
 
 
-async def _make_relationship_with_segments(db_pool, enums, source_id: str, target_id: str):
-    """Create and return a relationship with mixed-scope context segments."""
+async def _make_relationship_with_notes(db_pool, enums, source_id: str, target_id: str):
+    """Create and return a relationship with text notes."""
 
-    props = {
-        "context_segments": [
-            {"text": "public edge context", "scopes": ["public"]},
-            {"text": "sensitive edge context", "scopes": ["sensitive"]},
-        ],
-        "note": "mixed-scope-export-api",
-    }
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         source_id,
         target_id,
         enums.relationship_types.name_to_id["related-to"],
         enums.statuses.name_to_id["active"],
-        json.dumps(props),
+        "mixed-scope-export-api",
     )
     return dict(row)
 
@@ -102,8 +95,8 @@ async def _make_job_relationship(
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         source_type,
@@ -112,7 +105,7 @@ async def _make_job_relationship(
         target_id,
         enums.relationship_types.name_to_id["related-to"],
         enums.statuses.name_to_id["active"],
-        json.dumps({"note": "job-rel-api"}),
+        "note: job-rel-api",
     )
     return dict(row)
 
@@ -161,7 +154,7 @@ async def test_export_relationships_filters_properties_context_segments(
 
     source = await _make_entity(db_pool, enums, "Export API Src")
     target = await _make_entity(db_pool, enums, "Export API Dst")
-    rel = await _make_relationship_with_segments(
+    rel = await _make_relationship_with_notes(
         db_pool, enums, str(source["id"]), str(target["id"])
     )
 
@@ -180,40 +173,8 @@ async def test_export_relationships_filters_properties_context_segments(
     rows = resp.json()["data"]["items"]
     row = next((item for item in rows if item["id"] == str(rel["id"])), None)
     assert row is not None
-    segments = _as_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
-
-
-@pytest.mark.asyncio
-async def test_export_relationships_properties_payload_is_object(api_no_auth, db_pool, enums):
-    """Relationships export should return properties as structured object."""
-
-    source = await _make_entity(db_pool, enums, "Export API Type Src")
-    target = await _make_entity(db_pool, enums, "Export API Type Dst")
-    rel = await _make_relationship_with_segments(
-        db_pool, enums, str(source["id"]), str(target["id"])
-    )
-
-    async def mock_auth():
-        """Return public-only auth context."""
-
-        return _public_auth(source, enums)
-
-    app.dependency_overrides[require_auth] = mock_auth
-    try:
-        resp = await api_no_auth.get("/api/export/relationships")
-    finally:
-        app.dependency_overrides.pop(require_auth, None)
-
-    assert resp.status_code == 200
-    row = next(
-        (item for item in resp.json()["data"]["items"] if item["id"] == str(rel["id"])),
-        None,
-    )
-    assert row is not None
-    assert isinstance(row.get("properties"), dict)
+    assert isinstance(row.get("notes"), str)
+    assert row["notes"] == "mixed-scope-export-api"
 
 
 @pytest.mark.asyncio
@@ -224,7 +185,7 @@ async def test_export_snapshot_filters_relationship_properties_context_segments(
 
     source = await _make_entity(db_pool, enums, "Snapshot API Src")
     target = await _make_entity(db_pool, enums, "Snapshot API Dst")
-    rel = await _make_relationship_with_segments(
+    rel = await _make_relationship_with_notes(
         db_pool, enums, str(source["id"]), str(target["id"])
     )
 
@@ -243,42 +204,8 @@ async def test_export_snapshot_filters_relationship_properties_context_segments(
     rows = resp.json()["data"]["relationships"]
     row = next((item for item in rows if item["id"] == str(rel["id"])), None)
     assert row is not None
-    segments = _as_dict(row.get("properties")).get("context_segments", [])
-    texts = {seg.get("text") for seg in segments if isinstance(seg, dict)}
-    assert "public edge context" in texts
-    assert "sensitive edge context" not in texts
-
-
-@pytest.mark.asyncio
-async def test_export_snapshot_relationship_properties_payload_is_object(
-    api_no_auth, db_pool, enums
-):
-    """Snapshot export should return relationship properties as structured object."""
-
-    source = await _make_entity(db_pool, enums, "Snapshot API Type Src")
-    target = await _make_entity(db_pool, enums, "Snapshot API Type Dst")
-    rel = await _make_relationship_with_segments(
-        db_pool, enums, str(source["id"]), str(target["id"])
-    )
-
-    async def mock_auth():
-        """Return public-only auth context."""
-
-        return _public_auth(source, enums)
-
-    app.dependency_overrides[require_auth] = mock_auth
-    try:
-        resp = await api_no_auth.get("/api/export/snapshot")
-    finally:
-        app.dependency_overrides.pop(require_auth, None)
-
-    assert resp.status_code == 200
-    row = next(
-        (item for item in resp.json()["data"]["relationships"] if item["id"] == str(rel["id"])),
-        None,
-    )
-    assert row is not None
-    assert isinstance(row.get("properties"), dict)
+    assert isinstance(row.get("notes"), str)
+    assert row["notes"] == "mixed-scope-export-api"
 
 
 @pytest.mark.asyncio

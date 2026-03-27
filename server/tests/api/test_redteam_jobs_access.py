@@ -1,7 +1,6 @@
 """Red team API tests for job access + write isolation."""
 
 # Standard Library
-import json
 
 # Third-Party
 import pytest

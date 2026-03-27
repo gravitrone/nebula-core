@@ -18,7 +18,6 @@ from nebula_api.routes.audit import (
     list_scopes,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

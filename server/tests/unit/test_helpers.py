@@ -2,46 +2,46 @@
 
 # Third-Party
 import copy
-from datetime import UTC, datetime, timedelta
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from nebula_mcp.helpers import (
     _decode_json_object,
-    _extract_string_list,
     _enrich_approval_rows,
-    _normalize_diff_value,
+    _extract_string_list,
     _normalize_change_details,
+    _normalize_diff_value,
     _pending_approval_limit,
     _safe_parse_uuid,
     _to_uuid_list,
+    approve_request,
     bulk_update_entity_scopes,
     bulk_update_entity_tags,
-    approve_request,
     create_approval_request,
     create_enrollment_session,
     enforce_scope_subset,
     ensure_approval_capacity,
     filter_context_segments,
+    generate_enrollment_token,
     get_approval_diff,
     get_approval_request,
-    get_entity_history,
     get_enrollment_for_wait,
+    get_entity_history,
     get_pending_approvals_all,
     list_audit_actors,
     list_audit_scopes,
     maybe_expire_enrollment,
     normalize_bulk_operation,
     query_audit_log,
-    reject_request,
     redeem_enrollment_key,
+    reject_request,
     revert_entity,
-    sanitize_relationship_properties,
+    sanitize_relationship_notes,
     scope_names_from_ids,
-    wait_for_enrollment_status,
-    generate_enrollment_token,
     verify_enrollment_token,
+    wait_for_enrollment_status,
 )
 
 pytestmark = pytest.mark.unit
@@ -203,25 +203,18 @@ class TestJsonDecodingHelpers:
         assert _decode_json_object(None) == {}
 
 
-class TestRelationshipPropertySanitization:
-    """Tests for relationship property normalization helper."""
+class TestRelationshipNotesSanitization:
+    """Tests for relationship notes normalization helper."""
 
-    def test_sanitize_relationship_properties_returns_empty_for_invalid_payload(self):
-        """Invalid property payloads should return an empty object."""
+    def test_sanitize_relationship_notes_returns_empty_for_none(self):
+        """None notes should return an empty string."""
 
-        assert sanitize_relationship_properties("{bad-json", ["public"]) == {}
+        assert sanitize_relationship_notes(None) == ""
 
-    def test_sanitize_relationship_properties_filters_context_segments(self):
-        """Valid properties should apply context-segment filtering."""
+    def test_sanitize_relationship_notes_returns_string(self):
+        """String notes should be returned as-is."""
 
-        props = {
-            "context_segments": [
-                {"text": "public", "scopes": ["public"]},
-                {"text": "private", "scopes": ["private"]},
-            ]
-        }
-        result = sanitize_relationship_properties(props, ["public"])
-        assert [s["text"] for s in result["context_segments"]] == ["public"]
+        assert sanitize_relationship_notes("some note") == "some note"
 
 
 class TestPendingApprovalLimit:
@@ -1467,7 +1460,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
                 {
                     "table_name": "jobs",
                     "record_id": "entity-1",
-                    "new_data": {"name": "x"},
+                    "new_values": {"name": "x"},
                 }
             ]
         )
@@ -1479,7 +1472,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
                 {
                     "table_name": "entities",
                     "record_id": "entity-2",
-                    "new_data": {"name": "x"},
+                    "new_values": {"name": "x"},
                 }
             ]
         )
@@ -1487,14 +1480,14 @@ class TestApprovalEnrichmentAndAuditHelpers:
             await revert_entity(wrong_record, "entity-1", "audit-1")
 
         empty_snapshot = _EnrollmentPool(
-            fetchrow_results=[{"table_name": "entities", "record_id": "entity-1", "new_data": None}]
+            fetchrow_results=[{"table_name": "entities", "record_id": "entity-1", "new_values": None}]
         )
         with pytest.raises(ValueError):
             await revert_entity(empty_snapshot, "entity-1", "audit-1")
 
     @pytest.mark.asyncio
-    async def test_revert_entity_uses_old_data_for_delete_actions(self):
-        """Delete audit actions should use old_data snapshot on revert."""
+    async def test_revert_entity_uses_old_values_for_delete_actions(self):
+        """Delete audit actions should use old_values snapshot on revert."""
 
         entity_id = "4f26cf1f-12ad-48dc-a6e0-954d7fd1fe66"
         snapshot = {
@@ -1505,7 +1498,7 @@ class TestApprovalEnrichmentAndAuditHelpers:
             "status_changed_at": None,
             "status_reason": None,
             "tags": ["a"],
-            "metadata": {"k": "v"},
+            "notes": "k: v",
             "source_path": None,
         }
         pool = _EnrollmentPool(
@@ -1514,8 +1507,8 @@ class TestApprovalEnrichmentAndAuditHelpers:
                     "table_name": "entities",
                     "record_id": entity_id,
                     "action": "delete",
-                    "new_data": None,
-                    "old_data": json.dumps(snapshot),
+                    "new_values": None,
+                    "old_values": json.dumps(snapshot),
                 },
                 {"id": entity_id, "name": "Restored Name"},
             ]
@@ -1716,15 +1709,15 @@ class TestApprovalEnrichmentAndAuditHelpers:
                     "change_details": {
                         "relationship_id": "rel-1",
                         "status": "archived",
-                        "metadata": {"a": 2},
+                        "notes": "a: 2",
                     },
                 },
-                {"status": "active", "metadata": {"a": 1}},
+                {"status": "active", "notes": "a: 1"},
             ]
         )
         rel_diff = await get_approval_diff(rel_pool, "approval-rel-update")
         assert rel_diff["changes"]["status"]["from"] == "active"
-        assert rel_diff["changes"]["metadata"]["to"] == {"a": 2}
+        assert rel_diff["changes"]["notes"]["to"] == "a: 2"
 
         job_pool = _EnrollmentPool(
             fetchrow_results=[

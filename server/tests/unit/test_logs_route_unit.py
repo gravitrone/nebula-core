@@ -13,13 +13,11 @@ from fastapi import HTTPException
 from nebula_api.routes.logs import (
     CreateLogBody,
     UpdateLogBody,
-    _coerce_json_value,
     _log_visible,
     create_log,
     query_logs,
     update_log,
 )
-
 
 pytestmark = pytest.mark.unit
 
@@ -34,31 +32,6 @@ def _admin_auth(mock_enums):
     """Build an admin-scoped auth payload."""
 
     return {"scopes": [mock_enums.scopes.name_to_id["admin"]]}
-
-
-def test_coerce_json_value_none_returns_fallback():
-    """None payloads should return fallback values."""
-
-    assert _coerce_json_value(None, {"x": 1}) == {"x": 1}
-
-
-def test_coerce_json_value_dict_returns_as_is():
-    """Object payloads should pass through unchanged."""
-
-    payload = {"x": 1}
-    assert _coerce_json_value(payload, {}) == payload
-
-
-def test_coerce_json_value_unexpected_type_returns_fallback():
-    """Unsupported payload types should return fallback values."""
-
-    assert _coerce_json_value(7, {"x": 1}) == {"x": 1}
-
-
-def test_coerce_json_value_invalid_json_returns_fallback():
-    """Invalid JSON text should return fallback values."""
-
-    assert _coerce_json_value("{bad", {"x": 1}) == {"x": 1}
 
 
 @pytest.mark.asyncio
@@ -163,25 +136,6 @@ async def test_create_log_executor_valueerror_maps_400(monkeypatch, mock_enums):
 
 
 @pytest.mark.asyncio
-async def test_create_log_metadata_validation_error_maps_400(monkeypatch, mock_enums):
-    """Invalid metadata payloads should return HTTP 400."""
-
-    pool = SimpleNamespace()
-    payload = CreateLogBody(log_type="note", status="active", metadata={"bad": True})
-
-    monkeypatch.setattr(
-        "nebula_api.routes.logs.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await create_log(payload, _request(pool, mock_enums), auth={"scopes": []})
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
-
-
-@pytest.mark.asyncio
 async def test_create_log_approval_short_circuit(monkeypatch, mock_enums):
     """Create should return approval envelopes without calling executor."""
 
@@ -206,32 +160,12 @@ async def test_query_logs_admin_returns_all_rows(mock_enums):
     """Admin callers should receive rows without visibility filtering."""
 
     pool = SimpleNamespace(
-        fetch=AsyncMock(return_value=[{"id": str(uuid4()), "value": '{"k":1}', "metadata": "{}"}])
+        fetch=AsyncMock(return_value=[{"id": str(uuid4()), "content": "k: 1", "notes": ""}])
     )
     result = await query_logs(_request(pool, mock_enums), auth=_admin_auth(mock_enums))
 
     assert len(result["data"]) == 1
-    assert result["data"][0]["value"] == {"k": 1}
-
-
-@pytest.mark.asyncio
-async def test_update_log_metadata_validation_error_maps_400(monkeypatch, mock_enums):
-    """Invalid metadata payloads should return HTTP 400 on update."""
-
-    log_id = str(uuid4())
-    pool = SimpleNamespace()
-    payload = UpdateLogBody(metadata={"bad": True})
-
-    monkeypatch.setattr(
-        "nebula_api.routes.logs.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await update_log(log_id, payload, _request(pool, mock_enums), auth={"scopes": []})
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
+    assert result["data"][0]["content"] == "k: 1"
 
 
 @pytest.mark.asyncio
@@ -258,7 +192,7 @@ async def test_update_log_applies_payload_log_type_before_executor(monkeypatch, 
     log_id = str(uuid4())
     pool = SimpleNamespace()
     payload = UpdateLogBody(log_type="note")
-    execute = AsyncMock(return_value={"id": log_id, "value": {}, "metadata": {}})
+    execute = AsyncMock(return_value={"id": log_id, "content": "", "notes": ""})
 
     monkeypatch.setattr("nebula_api.routes.logs._log_visible", AsyncMock(return_value=True))
     monkeypatch.setattr(

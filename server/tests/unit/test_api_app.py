@@ -10,7 +10,6 @@ import pytest
 # Local
 import nebula_api.app as app_mod
 
-
 pytestmark = pytest.mark.unit
 
 

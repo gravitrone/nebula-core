@@ -1,7 +1,6 @@
 """Red team tests for entity history access isolation."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 from uuid import UUID, uuid4
 

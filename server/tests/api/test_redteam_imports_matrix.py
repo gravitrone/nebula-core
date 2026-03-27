@@ -1,8 +1,8 @@
 """Red team API tests for bulk import edge cases and error contracts."""
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app
@@ -103,7 +103,7 @@ async def test_import_relationships_referential_validation_reports_error(api, te
                 "target_type": "entity",
                 "target_id": "00000000-0000-0000-0000-000000000001",
                 "relationship_type": "related-to",
-                "properties": {},
+                "notes": "",
             }
         ],
     }

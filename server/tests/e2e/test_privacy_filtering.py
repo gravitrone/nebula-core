@@ -76,8 +76,8 @@ async def _ensure_context_of_type(pool):
         return row["id"]
     row = await pool.fetchrow(
         """
-        INSERT INTO relationship_types (name, description, is_symmetric, is_builtin, is_active, metadata)
-        VALUES ('context-of', 'Context item used as scoped metadata for an owner', false, true, true, '{}'::jsonb)
+        INSERT INTO relationship_types (name, description, is_symmetric, is_builtin, is_active, notes)
+        VALUES ('context-of', 'Context item used as scoped metadata for an owner', false, true, true, '{}')
         RETURNING id
         """
     )
@@ -108,8 +108,8 @@ async def _link_context_to_entity(pool, entity_id, context_id):
     type_id = await _ensure_context_of_type(pool)
     await pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, properties)
-        VALUES ('entity', $1, 'context', $2, $3, '{}'::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, notes)
+        VALUES ('entity', $1, 'context', $2, $3, '{}')
         """,
         str(entity_id),
         str(context_id),

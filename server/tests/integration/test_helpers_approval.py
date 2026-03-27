@@ -2,10 +2,11 @@
 
 # Standard Library
 import asyncio
-import json
 
 # Third-Party
 import pytest
+
+from nebula_mcp.executors import EXECUTORS
 
 # Local
 from nebula_mcp.helpers import (
@@ -14,7 +15,6 @@ from nebula_mcp.helpers import (
     get_pending_approvals_all,
     reject_request,
 )
-from nebula_mcp.executors import EXECUTORS
 
 pytestmark = pytest.mark.integration
 
@@ -290,7 +290,7 @@ async def test_approve_request_race_only_one_executes(
                 str(approval["id"]),
                 str(test_entity["id"]),
             )
-        except Exception as exc:  # noqa: BLE001 - redteam capture
+        except Exception as exc:
             return exc
 
     results = await asyncio.gather(do_approve(), do_approve())
@@ -333,7 +333,7 @@ async def test_approve_request_type_matrix_has_executor_mapping(
         {},
     )
 
-    with pytest.raises(Exception):  # noqa: BLE001 - matrix intentionally sends invalid payloads
+    with pytest.raises(Exception):
         await approve_request(
             db_pool,
             enums,

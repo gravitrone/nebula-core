@@ -103,8 +103,8 @@ async def _make_relationship(db_pool, enums, source_type, source_id, target_type
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         source_type,

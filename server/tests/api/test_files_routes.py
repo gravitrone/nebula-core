@@ -79,8 +79,8 @@ async def _insert_file(db_pool, enums, filename: str) -> dict:
     status_id = enums.statuses.name_to_id["active"]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, uri, file_path, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO files (filename, uri, file_path, status_id, tags, notes)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
         """,
         filename,
@@ -107,8 +107,8 @@ async def _insert_relationship(
     rel_type_id = enums.relationship_types.name_to_id["has-file"]
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
         source_type,
         source_id,
@@ -131,20 +131,20 @@ async def test_files_create_and_get_roundtrip(api):
             "uri": "file:///doc.md",
             "status": "active",
             "tags": ["docs"],
-            "metadata": {"owner": "alxx"},
+            "notes": "owner: alxx",
         },
     )
     assert created.status_code == 200
     data = created.json()["data"]
     assert data["filename"] == "doc.md"
-    assert isinstance(data["metadata"], dict)
-    assert data["metadata"] == {"owner": "alxx"}
+    assert isinstance(data["notes"], str)
+    assert data["notes"] == "owner: alxx"
 
     fetched = await api.get(f"/api/files/{data['id']}")
     assert fetched.status_code == 200
     assert fetched.json()["data"]["id"] == data["id"]
-    assert isinstance(fetched.json()["data"]["metadata"], dict)
-    assert fetched.json()["data"]["metadata"] == {"owner": "alxx"}
+    assert isinstance(fetched.json()["data"]["notes"], str)
+    assert fetched.json()["data"]["notes"] == "owner: alxx"
 
 
 @pytest.mark.asyncio
@@ -270,15 +270,15 @@ async def test_files_agent_scope_checks_entity_context_job(api_agent_auth, db_po
 
 
 @pytest.mark.asyncio
-async def test_files_list_preserves_metadata_object_shape(api):
-    """List route should keep metadata as object payloads."""
+async def test_files_list_preserves_notes_text_shape(api):
+    """List route should keep notes as text payloads."""
 
     created = await api.post(
         "/api/files",
         json={
-            "filename": "list-metadata.bin",
-            "uri": "path:list-metadata.bin",
-            "metadata": {"owner": "alxx", "profile": {"timezone": "Europe/Warsaw"}},
+            "filename": "list-notes.bin",
+            "uri": "path:list-notes.bin",
+            "notes": "owner: alxx\nprofile: Europe/Warsaw",
         },
     )
     assert created.status_code == 200, created.text
@@ -291,8 +291,5 @@ async def test_files_list_preserves_metadata_object_shape(api):
         None,
     )
     assert listed is not None
-    assert isinstance(listed["metadata"], dict)
-    assert listed["metadata"] == {
-        "owner": "alxx",
-        "profile": {"timezone": "Europe/Warsaw"},
-    }
+    assert isinstance(listed["notes"], str)
+    assert listed["notes"] == "owner: alxx\nprofile: Europe/Warsaw"

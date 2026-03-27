@@ -22,7 +22,6 @@ from nebula_api.routes.jobs import (
     update_job_status,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

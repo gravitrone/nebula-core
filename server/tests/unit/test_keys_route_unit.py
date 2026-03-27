@@ -12,7 +12,6 @@ from fastapi import HTTPException
 # Local
 from nebula_api.routes.keys import _require_admin_scope, _require_uuid, revoke_key
 
-
 pytestmark = pytest.mark.unit
 
 

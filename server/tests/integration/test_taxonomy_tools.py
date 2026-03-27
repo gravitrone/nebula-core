@@ -1,7 +1,6 @@
 """Integration tests for MCP taxonomy tools."""
 
 # Standard Library
-import json
 
 # Third-Party
 import pytest

@@ -261,16 +261,16 @@ def test_require_job_read_and_write_matrix(mock_enums):
         _require_job_write(outsider, mock_enums, job)
 
 
-def test_normalize_relationship_row_scopes_properties():
-    """Relationship normalization preserves shape and filters properties."""
+def test_normalize_relationship_row_scopes_notes():
+    """Relationship normalization preserves shape and normalizes notes."""
 
     row = {
         "id": "rel-1",
-        "properties": {"context_segments": [{"text": "ok", "scopes": ["public"]}]},
+        "notes": "context note",
     }
     out = _normalize_relationship_row(row, ["public"])
     assert out["id"] == "rel-1"
-    assert out["properties"]["context_segments"][0]["text"] == "ok"
+    assert out["notes"] == "context note"
 
 
 def test_resolve_scope_ids_for_export_subset_enforced(mock_enums):

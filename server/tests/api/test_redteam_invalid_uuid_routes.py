@@ -39,7 +39,7 @@ async def test_api_update_relationship_rejects_invalid_uuid(api):
 
     resp = await api.patch(
         "/api/relationships/not-a-uuid",
-        json={"properties": {"note": "bad"}},
+        json={"notes": "note: bad"},
     )
     assert resp.status_code in {400, 404}
 

@@ -10,8 +10,8 @@ import pytest
 from nebula_mcp.models import (
     GetApprovalDiffInput,
     GetRelationshipsInput,
-    QueryJobsInput,
     QueryAuditLogInput,
+    QueryJobsInput,
     UpdateEntityInput,
     UpdateRelationshipInput,
 )

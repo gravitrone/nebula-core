@@ -1,7 +1,6 @@
 """Red team tests for write isolation across scopes."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 
 # Third-Party

@@ -75,8 +75,8 @@ async def _make_file(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, file_path, status_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO files (filename, file_path, status_id, notes)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "graph-secret.txt",
@@ -95,8 +95,8 @@ async def _make_log(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, metadata)
-        VALUES ($1, $2, $3::jsonb, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         log_type_id,
@@ -118,8 +118,8 @@ async def _attach_relationship(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
         source_type,
         source_id,

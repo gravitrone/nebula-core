@@ -1,11 +1,10 @@
 """Red team API tests for self-referencing relationships."""
 
 # Standard Library
-import json
 
 # Third-Party
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 # Local
 from nebula_api.app import app

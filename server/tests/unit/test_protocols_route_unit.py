@@ -15,13 +15,12 @@ from nebula_api.routes.protocols import (
     CreateProtocolBody,
     UpdateProtocolBody,
     _validate_tag_list,
-    query_protocols,
     create_protocol,
     get_protocol,
+    query_protocols,
     update_protocol,
 )
 from nebula_mcp.models import MAX_TAG_LENGTH, MAX_TAGS
-
 
 pytestmark = pytest.mark.unit
 
@@ -46,7 +45,7 @@ def _row(name: str, trusted: bool = False) -> dict:
         "status_name": "active",
         "tags": ["x"],
         "trusted": trusted,
-        "metadata": {},
+        "notes": "",
         "source_path": None,
     }
 
@@ -287,7 +286,7 @@ async def test_create_protocol_non_admin_normalizes_payload(monkeypatch, mock_en
 
     data = execute.await_args.args[2]
     assert data["trusted"] is False
-    assert data["metadata"] == {}
+    assert data["notes"] == ""
     assert result["data"]["name"] == "p4"
 
 

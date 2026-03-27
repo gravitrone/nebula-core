@@ -4,9 +4,10 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
+
 # Third-Party
 from fastapi import HTTPException
-import pytest
 
 # Local
 from nebula_api.routes.relationships import (
@@ -21,7 +22,6 @@ from nebula_api.routes.relationships import (
     query_relationships,
     update_relationship,
 )
-
 
 pytestmark = pytest.mark.unit
 
@@ -333,7 +333,7 @@ async def test_create_relationship_returns_pending_approval_payload(enums, monke
         target_type="entity",
         target_id="0c894f8e-a4e8-4012-af2f-0f59d5efc7e8",
         relationship_type="related-to",
-        properties={"note": "x"},
+        notes="note: x",
     )
 
     async def _approval(*_args, **_kwargs):
@@ -493,7 +493,7 @@ async def test_update_relationship_not_found_paths(enums):
     with pytest.raises(HTTPException) as missing_initial:
         await update_relationship(
             "d3964596-2b5f-4f1c-9f47-c66dc4fd1856",
-            UpdateRelationshipBody(properties={"a": 1}),
+            UpdateRelationshipBody(notes="a: 1"),
             req,
             auth=_auth(scopes=["scope-public"]),
         )
@@ -519,7 +519,7 @@ async def test_update_relationship_not_found_paths(enums):
     with pytest.raises(HTTPException) as missing_update:
         await update_relationship(
             "6d822f58-94a0-4ab2-9f8c-eb1b7e8c8f77",
-            UpdateRelationshipBody(properties={"a": 1}, status="active"),
+            UpdateRelationshipBody(notes="a: 1", status="active"),
             req2,
             auth=_auth(scopes=["scope-public"]),
         )
@@ -560,7 +560,7 @@ async def test_update_relationship_returns_pending_approval_payload(enums, monke
     monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
     result = await update_relationship(
         "5a898df8-7f2f-478f-b796-bf013dc5172a",
-        UpdateRelationshipBody(properties={"note": "ok"}, status="active"),
+        UpdateRelationshipBody(notes="note: ok", status="active"),
         req,
         auth=_auth(scopes=["scope-public"]),
     )
@@ -603,7 +603,7 @@ async def test_update_relationship_success_payload(enums, monkeypatch):
     monkeypatch.setattr("nebula_api.routes.relationships.maybe_check_agent_approval", _approval)
     result = await update_relationship(
         "5a898df8-7f2f-478f-b796-bf013dc5172a",
-        UpdateRelationshipBody(properties={"note": "ok"}, status="active"),
+        UpdateRelationshipBody(notes="note: ok", status="active"),
         req,
         auth=_auth(scopes=["scope-public"]),
     )
@@ -690,7 +690,7 @@ async def test_get_relationships_admin_returns_without_job_filtering(enums):
         "source_id": "job-private",
         "target_type": "entity",
         "target_id": str(uuid4()),
-        "properties": {"context_segments": [{"text": "x", "scopes": ["public"]}]},
+        "notes": "context note",
     }
     pool = _RoutePool(fetch_rows=[[row]])
     req = _request(pool, enums)
@@ -753,7 +753,7 @@ async def test_query_relationships_admin_returns_without_job_filtering(enums):
         "source_id": str(uuid4()),
         "target_type": "job",
         "target_id": "job-private",
-        "properties": {"k": "v"},
+        "notes": "k: v",
     }
     pool = _RoutePool(fetch_rows=[[row]])
     req = _request(pool, enums)

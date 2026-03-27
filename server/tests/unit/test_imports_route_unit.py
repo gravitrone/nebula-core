@@ -19,7 +19,6 @@ from nebula_api.routes.imports import (
     _validate_relationship_node,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

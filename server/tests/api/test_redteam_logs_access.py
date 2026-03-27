@@ -4,9 +4,10 @@
 import json
 from datetime import UTC, datetime
 
+import pytest
+
 # Third-Party
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 # Local
 from nebula_api.app import app
@@ -64,8 +65,8 @@ async def _make_log(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, metadata)
-        VALUES ($1, $2, $3::jsonb, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         log_type_id,
@@ -85,8 +86,8 @@ async def _attach_log(db_pool, enums, log_id, entity_id):
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('log', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('log', $1, 'entity', $2, $3, $4, $5)
         """,
         str(log_id),
         str(entity_id),

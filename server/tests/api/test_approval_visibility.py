@@ -1,8 +1,8 @@
 """Regression tests for post-approval visibility on agent-created records."""
 
 # Standard Library
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 
 # Third-Party
 import pytest
@@ -222,14 +222,14 @@ async def test_untrusted_create_remains_visible_after_approval(
         app.dependency_overrides.pop(require_auth, None)
 
 
-async def test_queued_create_log_preserves_metadata_after_approval(db_pool, enums):
-    """Queued log creates should preserve nested metadata after approval."""
+async def test_queued_create_log_preserves_notes_after_approval(db_pool, enums):
+    """Queued log creates should preserve notes after approval."""
 
     public_scope = enums.scopes.name_to_id["public"]
     untrusted_agent = await _make_agent(
         db_pool,
         enums,
-        "approval-queue-agent-log-metadata",
+        "approval-queue-agent-log-notes",
         True,
         scopes=["public"],
     )
@@ -237,17 +237,10 @@ async def test_queued_create_log_preserves_metadata_after_approval(db_pool, enum
 
     payload = {
         "log_type": "note",
-        "value": {"text": "queued metadata log"},
+        "content": "queued metadata log",
         "status": "active",
-        "tags": ["metadata", "log"],
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "context_segments": [
-                {"text": "public log context", "scopes": ["public"]},
-                {"text": "private log context", "scopes": ["private"]},
-            ],
-        },
+        "tags": ["notes", "log"],
+        "notes": "owner: alxx\nprofile: Europe/Warsaw",
     }
 
     app.state.pool = db_pool
@@ -281,14 +274,11 @@ async def test_queued_create_log_preserves_metadata_after_approval(db_pool, enum
         created_id = str(approved["entity"]["id"])
 
         row = await db_pool.fetchrow(
-            "SELECT metadata FROM logs WHERE id = $1::uuid",
+            "SELECT notes FROM logs WHERE id = $1::uuid",
             created_id,
         )
         assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata == payload["metadata"]
+        assert row["notes"] == payload["notes"]
 
         app.dependency_overrides[require_auth] = await _agent_auth_override(
             {**untrusted_agent, "requires_approval": False},
@@ -300,19 +290,19 @@ async def test_queued_create_log_preserves_metadata_after_approval(db_pool, enum
             response = await client.get(f"/api/logs/{created_id}")
 
         assert response.status_code == 200, response.text
-        assert response.json()["data"]["metadata"] == payload["metadata"]
+        assert response.json()["data"]["notes"] == payload["notes"]
     finally:
         app.dependency_overrides.pop(require_auth, None)
 
 
-async def test_queued_create_file_preserves_metadata_after_approval(db_pool, enums):
-    """Queued file creates should preserve nested metadata after approval."""
+async def test_queued_create_file_preserves_notes_after_approval(db_pool, enums):
+    """Queued file creates should preserve notes after approval."""
 
     public_scope = enums.scopes.name_to_id["public"]
     untrusted_agent = await _make_agent(
         db_pool,
         enums,
-        "approval-queue-agent-file-metadata",
+        "approval-queue-agent-file-notes",
         True,
         scopes=["public"],
     )
@@ -322,12 +312,8 @@ async def test_queued_create_file_preserves_metadata_after_approval(db_pool, enu
         "filename": "queued-file.txt",
         "uri": "path:queued-file.txt",
         "status": "active",
-        "tags": ["metadata", "file"],
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "notes": "queued file metadata",
-        },
+        "tags": ["notes", "file"],
+        "notes": "owner: alxx\nqueued file notes",
     }
 
     app.state.pool = db_pool
@@ -361,14 +347,11 @@ async def test_queued_create_file_preserves_metadata_after_approval(db_pool, enu
         created_id = str(approved["entity"]["id"])
 
         row = await db_pool.fetchrow(
-            "SELECT metadata FROM files WHERE id = $1::uuid",
+            "SELECT notes FROM files WHERE id = $1::uuid",
             created_id,
         )
         assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata == payload["metadata"]
+        assert row["notes"] == payload["notes"]
 
         app.dependency_overrides[require_auth] = await _agent_auth_override(
             {**untrusted_agent, "requires_approval": False},
@@ -380,19 +363,19 @@ async def test_queued_create_file_preserves_metadata_after_approval(db_pool, enu
             response = await client.get(f"/api/files/{created_id}")
 
         assert response.status_code == 200, response.text
-        assert response.json()["data"]["metadata"] == payload["metadata"]
+        assert response.json()["data"]["notes"] == payload["notes"]
     finally:
         app.dependency_overrides.pop(require_auth, None)
 
 
-async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enums):
-    """Queued log updates should preserve metadata and return object payloads."""
+async def test_queued_update_log_preserves_notes_after_approval(db_pool, enums):
+    """Queued log updates should preserve notes and return text payloads."""
 
     public_scope = enums.scopes.name_to_id["public"]
     untrusted_agent = await _make_agent(
         db_pool,
         enums,
-        "approval-queue-agent-update-log-metadata",
+        "approval-queue-agent-update-log-notes",
         True,
         scopes=["public"],
     )
@@ -402,8 +385,8 @@ async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enum
     log_type_id = enums.log_types.name_to_id["note"]
     existing = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, tags, metadata)
-        VALUES ($1, now(), $2::jsonb, $3, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, tags, notes)
+        VALUES ($1, now(), $2, $3, $4, $5)
         RETURNING id
         """,
         log_type_id,
@@ -416,11 +399,7 @@ async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enum
     log_id = str(existing["id"])
 
     payload = {
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "notes": "queued log metadata update",
-        }
+        "notes": "owner: alxx\nqueued log notes update",
     }
 
     app.state.pool = db_pool
@@ -454,14 +433,11 @@ async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enum
         await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
 
         row = await db_pool.fetchrow(
-            "SELECT metadata FROM logs WHERE id = $1::uuid",
+            "SELECT notes FROM logs WHERE id = $1::uuid",
             log_id,
         )
         assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata == payload["metadata"]
+        assert row["notes"] == payload["notes"]
 
         app.dependency_overrides[require_auth] = await _agent_auth_override(
             {**untrusted_agent, "requires_approval": False},
@@ -474,8 +450,8 @@ async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enum
             listing = await client.get("/api/logs", params={"log_type": "note"})
 
         assert response.status_code == 200, response.text
-        assert response.json()["data"]["metadata"] == payload["metadata"]
-        assert isinstance(response.json()["data"]["value"], dict)
+        assert response.json()["data"]["notes"] == payload["notes"]
+        assert isinstance(response.json()["data"]["content"], str)
 
         assert listing.status_code == 200, listing.text
         listed_row = next(
@@ -483,20 +459,20 @@ async def test_queued_update_log_preserves_metadata_after_approval(db_pool, enum
             None,
         )
         assert listed_row is not None
-        assert listed_row["metadata"] == payload["metadata"]
-        assert isinstance(listed_row["value"], dict)
+        assert listed_row["notes"] == payload["notes"]
+        assert isinstance(listed_row["content"], str)
     finally:
         app.dependency_overrides.pop(require_auth, None)
 
 
-async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enums):
-    """Queued file updates should preserve metadata and return object payloads."""
+async def test_queued_update_file_preserves_notes_after_approval(db_pool, enums):
+    """Queued file updates should preserve notes and return text payloads."""
 
     public_scope = enums.scopes.name_to_id["public"]
     untrusted_agent = await _make_agent(
         db_pool,
         enums,
-        "approval-queue-agent-update-file-metadata",
+        "approval-queue-agent-update-file-notes",
         True,
         scopes=["public"],
     )
@@ -505,8 +481,8 @@ async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enu
     status_id = enums.statuses.name_to_id["active"]
     existing = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, uri, file_path, status_id, tags, metadata)
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        INSERT INTO files (filename, uri, file_path, status_id, tags, notes)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id
         """,
         "queued-update-file.txt",
@@ -520,11 +496,7 @@ async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enu
     file_id = str(existing["id"])
 
     payload = {
-        "metadata": {
-            "owner": "alxx",
-            "profile": {"timezone": "Europe/Warsaw"},
-            "notes": "queued file metadata update",
-        }
+        "notes": "owner: alxx\nqueued file notes update",
     }
 
     app.state.pool = db_pool
@@ -558,14 +530,11 @@ async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enu
         await approve_request(db_pool, enums, str(approval["id"]), reviewer_id)
 
         row = await db_pool.fetchrow(
-            "SELECT metadata FROM files WHERE id = $1::uuid",
+            "SELECT notes FROM files WHERE id = $1::uuid",
             file_id,
         )
         assert row is not None
-        persisted_metadata = row["metadata"]
-        if isinstance(persisted_metadata, str):
-            persisted_metadata = json.loads(persisted_metadata)
-        assert persisted_metadata == payload["metadata"]
+        assert row["notes"] == payload["notes"]
 
         app.dependency_overrides[require_auth] = await _agent_auth_override(
             {**untrusted_agent, "requires_approval": False},
@@ -578,7 +547,7 @@ async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enu
             listing = await client.get("/api/files")
 
         assert response.status_code == 200, response.text
-        assert response.json()["data"]["metadata"] == payload["metadata"]
+        assert response.json()["data"]["notes"] == payload["notes"]
 
         assert listing.status_code == 200, listing.text
         listed_row = next(
@@ -586,6 +555,6 @@ async def test_queued_update_file_preserves_metadata_after_approval(db_pool, enu
             None,
         )
         assert listed_row is not None
-        assert listed_row["metadata"] == payload["metadata"]
+        assert listed_row["notes"] == payload["notes"]
     finally:
         app.dependency_overrides.pop(require_auth, None)

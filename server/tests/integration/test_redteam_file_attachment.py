@@ -78,8 +78,8 @@ async def _make_file(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, file_path, status_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO files (filename, file_path, status_id, notes)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "attached.txt",

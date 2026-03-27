@@ -63,8 +63,8 @@ async def _make_relationship(db_pool, enums, source_id, target_id):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         str(source_id),
@@ -142,7 +142,7 @@ async def test_api_create_relationship_denies_private_target(db_pool, enums):
                 "target_type": "entity",
                 "target_id": str(private_entity["id"]),
                 "relationship_type": "related-to",
-                "properties": {"note": "link"},
+                "notes": "note: link",
             },
         )
     app.dependency_overrides.pop(require_auth, None)
@@ -168,7 +168,7 @@ async def test_api_update_relationship_denies_private_target(db_pool, enums):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/relationships/{relationship['id']}",
-            json={"properties": {"note": "hijack"}},
+            json={"notes": "note: hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -191,7 +191,7 @@ async def test_api_update_relationship_requires_approval_for_untrusted_agent(db_
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/relationships/{relationship['id']}",
-            json={"properties": {"note": "approval-path"}},
+            json={"notes": "note: approval-path"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -220,7 +220,7 @@ async def test_api_create_relationship_denies_private_target_for_user(db_pool, e
                 "target_type": "entity",
                 "target_id": str(private_entity["id"]),
                 "relationship_type": "related-to",
-                "properties": {"note": "user-should-fail"},
+                "notes": "note: user-should-fail",
             },
         )
     app.dependency_overrides.pop(require_auth, None)
@@ -246,7 +246,7 @@ async def test_api_update_relationship_denies_private_target_for_user(db_pool, e
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/relationships/{relationship['id']}",
-            json={"properties": {"note": "user-hijack"}},
+            json={"notes": "note: user-hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 

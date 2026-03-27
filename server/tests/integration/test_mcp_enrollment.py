@@ -10,8 +10,7 @@ import pytest
 
 # Local
 from nebula_mcp.helpers import approve_request as do_approve
-from nebula_mcp.helpers import create_approval_request
-from nebula_mcp.helpers import create_enrollment_session
+from nebula_mcp.helpers import create_approval_request, create_enrollment_session
 from nebula_mcp.helpers import reject_request as do_reject
 from nebula_mcp.models import (
     AgentAuthAttachInput,

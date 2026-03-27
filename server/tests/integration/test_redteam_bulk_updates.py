@@ -1,7 +1,6 @@
 """Red team tests for bulk update isolation."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 
 # Third-Party

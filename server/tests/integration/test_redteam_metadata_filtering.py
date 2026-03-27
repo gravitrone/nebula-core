@@ -42,8 +42,8 @@ async def _ensure_context_of_type(db_pool) -> str:
         return str(row["id"])
     created = await db_pool.fetchrow(
         """
-        INSERT INTO relationship_types (name, description, is_symmetric, is_builtin, is_active, metadata)
-        VALUES ('context-of', 'Context item used as scoped metadata for an owner', false, true, true, '{}'::jsonb)
+        INSERT INTO relationship_types (name, description, is_symmetric, is_builtin, is_active, notes)
+        VALUES ('context-of', 'Context item used as scoped metadata for an owner', false, true, true, '{}')
         RETURNING id
         """
     )
@@ -97,8 +97,8 @@ async def _link_context(db_pool, enums, owner_id: str, context_id: str) -> None:
     status_id = enums.statuses.name_to_id["active"]
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('job', $1, 'context', $2, $3::uuid, $4::uuid, '{}'::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('job', $1, 'context', $2, $3::uuid, $4::uuid, '{}')
         """,
         str(owner_id),
         str(context_id),

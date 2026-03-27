@@ -1,9 +1,10 @@
 """Red team tests for MCP taxonomy admin scope boundaries."""
 
 # Third-Party
-import pytest
 from unittest.mock import MagicMock
 from uuid import uuid4
+
+import pytest
 
 # Local
 from nebula_mcp.models import CreateTaxonomyInput, ListTaxonomyInput

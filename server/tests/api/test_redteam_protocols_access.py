@@ -19,7 +19,7 @@ async def test_create_protocol_forces_trusted_false_for_non_admin(api):
             "applies_to": ["agents"],
             "status": "active",
             "tags": ["redteam"],
-            "metadata": {"source": "redteam"},
+            "notes": "source: redteam",
             "trusted": True,
         },
     )
@@ -42,7 +42,7 @@ async def test_update_protocol_forces_trusted_false_for_non_admin(api):
             "applies_to": ["agents"],
             "status": "active",
             "tags": ["redteam"],
-            "metadata": {"source": "redteam"},
+            "notes": "source: redteam",
             "trusted": False,
         },
     )

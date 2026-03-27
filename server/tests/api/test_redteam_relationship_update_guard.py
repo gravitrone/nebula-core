@@ -3,9 +3,10 @@
 # Standard Library
 import json
 
+import pytest
+
 # Third-Party
 from httpx import ASGITransport, AsyncClient
-import pytest
 
 # Local
 from nebula_api.app import app
@@ -53,23 +54,23 @@ async def _make_entity(db_pool, enums, name, scopes):
     return dict(row)
 
 
-async def _make_relationship(db_pool, enums, source_id, target_id, properties):
-    """Insert an entity->entity relationship with properties."""
+async def _make_relationship(db_pool, enums, source_id, target_id, notes):
+    """Insert an entity->entity relationship with notes."""
 
     status_id = enums.statuses.name_to_id["active"]
     # Use an asymmetric type to avoid known symmetric trigger recursion behavior.
     rel_type_id = enums.relationship_types.name_to_id["depends-on"]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         RETURNING *
         """,
         str(source_id),
         str(target_id),
         rel_type_id,
         status_id,
-        json.dumps(properties),
+        notes,
     )
     return dict(row)
 
@@ -102,11 +103,11 @@ async def test_untrusted_update_queues_approval_without_mutating(db_pool, enums)
 
     a = await _make_entity(db_pool, enums, "A", ["public"])
     b = await _make_entity(db_pool, enums, "B", ["public"])
-    relationship = await _make_relationship(db_pool, enums, a["id"], b["id"], {"note": "original"})
+    relationship = await _make_relationship(db_pool, enums, a["id"], b["id"], "note: original")
     untrusted = await _make_agent(db_pool, enums, "rel-untrusted-guard", ["public"], True)
 
     before = await db_pool.fetchval(
-        "SELECT properties FROM relationships WHERE id = $1", relationship["id"]
+        "SELECT notes FROM relationships WHERE id = $1", relationship["id"]
     )
 
     app.dependency_overrides[require_auth] = _auth_override(untrusted, enums)
@@ -116,7 +117,7 @@ async def test_untrusted_update_queues_approval_without_mutating(db_pool, enums)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/relationships/{relationship['id']}",
-            json={"properties": {"note": "should-not-apply"}},
+            json={"notes": "note: should-not-apply"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -124,7 +125,7 @@ async def test_untrusted_update_queues_approval_without_mutating(db_pool, enums)
     assert resp.json()["status"] == "approval_required"
 
     after = await db_pool.fetchval(
-        "SELECT properties FROM relationships WHERE id = $1", relationship["id"]
+        "SELECT notes FROM relationships WHERE id = $1", relationship["id"]
     )
     assert before == after
 
@@ -135,7 +136,7 @@ async def test_trusted_update_mutates_immediately(db_pool, enums):
 
     a = await _make_entity(db_pool, enums, "A", ["public"])
     b = await _make_entity(db_pool, enums, "B", ["public"])
-    relationship = await _make_relationship(db_pool, enums, a["id"], b["id"], {"note": "original"})
+    relationship = await _make_relationship(db_pool, enums, a["id"], b["id"], "note: original")
     trusted = await _make_agent(db_pool, enums, "rel-trusted-guard", ["public"], False)
 
     app.dependency_overrides[require_auth] = _auth_override(trusted, enums)
@@ -145,13 +146,13 @@ async def test_trusted_update_mutates_immediately(db_pool, enums):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/relationships/{relationship['id']}",
-            json={"properties": {"note": "updated"}},
+            json={"notes": "note: updated"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
     assert resp.status_code == 200
     props = await db_pool.fetchval(
-        "SELECT properties FROM relationships WHERE id = $1", relationship["id"]
+        "SELECT notes FROM relationships WHERE id = $1", relationship["id"]
     )
     if isinstance(props, str):
         props = json.loads(props)

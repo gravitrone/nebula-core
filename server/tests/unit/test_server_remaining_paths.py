@@ -48,10 +48,9 @@ from nebula_mcp.server import (
     login_user,
     reject_request,
     update_agent,
-    update_job,
     update_entity,
+    update_job,
 )
-
 
 pytestmark = pytest.mark.unit
 

@@ -85,8 +85,8 @@ async def _make_log(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, status_id, value, metadata)
-        VALUES ($1, NOW(), $2, $3::jsonb, $4::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, status_id, content, notes)
+        VALUES ($1, NOW(), $2, $3, $4)
         RETURNING *
         """,
         log_type_id,
@@ -104,8 +104,8 @@ async def _make_file(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, file_path, status_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO files (filename, file_path, status_id, notes)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "secret.txt",
@@ -126,8 +126,8 @@ async def _attach_relationship(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
         source_type,
         str(source_id),
@@ -229,7 +229,7 @@ async def test_api_update_log_denies_private_attachment(db_pool, enums):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/logs/{log_row['id']}",
-            json={"metadata": {"note": "hijack"}},
+            json={"notes": "note: hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -260,7 +260,7 @@ async def test_api_update_file_denies_private_attachment(db_pool, enums):
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/files/{file_row['id']}",
-            json={"metadata": {"note": "hijack"}},
+            json={"notes": "note: hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 

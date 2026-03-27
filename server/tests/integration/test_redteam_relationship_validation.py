@@ -1,7 +1,6 @@
 """Red team tests for relationship validation on non-entity nodes."""
 
 # Standard Library
-import json
 from uuid import uuid4
 
 # Third-Party

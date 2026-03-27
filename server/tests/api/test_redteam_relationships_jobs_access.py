@@ -105,8 +105,8 @@ async def _make_relationship(db_pool, enums, source_type, source_id, target_type
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         source_type,
@@ -273,7 +273,7 @@ async def test_update_relationship_denies_private_source_for_public_agent(db_poo
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.patch(
             f"/api/relationships/{relationship['id']}",
-            json={"properties": {"note": "hijack"}},
+            json={"notes": "note: hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 

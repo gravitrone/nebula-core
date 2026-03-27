@@ -38,8 +38,8 @@ async def test_graph_neighbors_hides_private_nodes(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         """,
         str(test_entity["id"]),
         str(private_entity["id"]),
@@ -87,8 +87,8 @@ async def test_graph_neighbors_hides_private_context(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'context', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'context', $2, $3, $4, $5)
         """,
         str(test_entity["id"]),
         str(context["id"]),
@@ -136,8 +136,8 @@ async def test_graph_shortest_path_hides_private_entity(
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, $5)
         """,
         str(test_entity["id"]),
         str(private_entity["id"]),

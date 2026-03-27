@@ -108,7 +108,7 @@ async def test_update_relationship(api):
     r = await api.patch(
         f"/api/relationships/{rel_id}",
         json={
-            "properties": {"note": "updated"},
+            "notes": "note: updated",
         },
     )
     assert r.status_code == 200

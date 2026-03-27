@@ -1,7 +1,6 @@
 """API tests for taxonomy management endpoints."""
 
 # Standard Library
-import json
 
 # Third-Party
 import pytest
@@ -75,7 +74,7 @@ async def test_taxonomy_requires_admin_scope(api):
             {
                 "name": "sdk-scope",
                 "description": "scope for SDK tests",
-                "metadata": {"owner": "tests"},
+                "notes": "owner: tests",
             },
             {"description": "scope for SDK tests v2"},
         ),
@@ -84,7 +83,7 @@ async def test_taxonomy_requires_admin_scope(api):
             {
                 "name": "sdk-entity",
                 "description": "entity type for SDK tests",
-                "metadata": {"category": "sdk"},
+                "notes": "category: sdk",
             },
             {"description": "entity type for SDK tests v2"},
         ),
@@ -94,7 +93,7 @@ async def test_taxonomy_requires_admin_scope(api):
                 "name": "sdk-relates",
                 "description": "relationship type for SDK tests",
                 "is_symmetric": False,
-                "metadata": {"kind": "sdk"},
+                "notes": "kind: sdk",
             },
             {"description": "relationship type for SDK tests v2", "is_symmetric": True},
         ),
@@ -278,8 +277,8 @@ async def test_taxonomy_relationship_type_archive_conflict_when_referenced(
     )
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'entity', $2, $3, $4, '{}'::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'entity', $2, $3, $4, '{}')
         """,
         str(source["id"]),
         str(target["id"]),
@@ -304,8 +303,8 @@ async def test_taxonomy_log_type_archive_conflict_when_referenced(api_admin, db_
 
     await db_pool.execute(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, metadata, status_id)
-        VALUES ($1, NOW(), '{}'::jsonb, '{}'::jsonb, $2)
+        INSERT INTO logs (log_type_id, timestamp, content, notes, status_id)
+        VALUES ($1, NOW(), '{}', '{}', $2)
         """,
         log_type["id"],
         enums.statuses.name_to_id["active"],

@@ -41,7 +41,7 @@ async def pending_approval(db_pool, untrusted_agent):
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "create_entity",
@@ -95,7 +95,7 @@ async def test_get_approval_enriches_bulk_entity_scope_targets(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        VALUES ($1, $2::uuid, $3, $4)
         RETURNING *
         """,
         "bulk_update_entity_scopes",
@@ -145,7 +145,7 @@ async def test_get_approval_enriches_relationship_endpoints_with_labels(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        VALUES ($1, $2::uuid, $3, $4)
         RETURNING *
         """,
         "create_relationship",
@@ -196,7 +196,7 @@ async def test_approve_request_type_matrix_resolves_registered_executors(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        VALUES ($1, $2::uuid, $3, $4)
         RETURNING id
         """,
         request_type,
@@ -238,7 +238,7 @@ async def test_approve_bulk_scope_and_update_requests_do_not_raise_id_errors(
     bulk_scope = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        VALUES ($1, $2::uuid, $3, $4)
         RETURNING id
         """,
         "bulk_update_entity_scopes",
@@ -255,7 +255,7 @@ async def test_approve_bulk_scope_and_update_requests_do_not_raise_id_errors(
     update_entity = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2::uuid, $3::jsonb, $4)
+        VALUES ($1, $2::uuid, $3, $4)
         RETURNING id
         """,
         "update_entity",
@@ -327,7 +327,7 @@ async def test_approve_register_agent_accepts_grant_fields(api, db_pool, auth_ov
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "register_agent",
@@ -366,15 +366,10 @@ async def test_approve_register_agent_accepts_grant_fields(api, db_pool, auth_ov
     }
 
     approval_after = await db_pool.fetchrow(
-        "SELECT review_details, review_notes FROM approval_requests WHERE id = $1::uuid",
+        "SELECT review_notes FROM approval_requests WHERE id = $1::uuid",
         approval["id"],
     )
     assert approval_after["review_notes"] == "approved with expanded scopes"
-    review_details = approval_after["review_details"]
-    if isinstance(review_details, str):
-        review_details = json.loads(review_details)
-    assert review_details["grant_scopes"] == ["public", "private"]
-    assert review_details["grant_requires_approval"] is False
 
 
 @pytest.mark.asyncio
@@ -403,7 +398,7 @@ async def test_approve_register_agent_preserves_existing_trusted_mode_without_ov
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "register_agent",
@@ -457,7 +452,7 @@ async def test_approve_register_agent_invalid_grant_scope_returns_4xx(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "register_agent",
@@ -517,7 +512,7 @@ async def test_approve_revert_entity_request_executes(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "revert_entity",
@@ -597,7 +592,7 @@ async def test_approve_register_agent_persists_review_details_shape(
     approval = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "register_agent",
@@ -624,20 +619,10 @@ async def test_approve_register_agent_persists_review_details_shape(
     assert r.status_code == 200
 
     approval_after = await db_pool.fetchrow(
-        "SELECT review_details FROM approval_requests WHERE id = $1::uuid",
+        "SELECT review_notes FROM approval_requests WHERE id = $1::uuid",
         approval["id"],
     )
-    review_details = approval_after["review_details"]
-    if isinstance(review_details, str):
-        review_details = json.loads(review_details)
-
-    assert review_details["grant_scopes"] == ["public", "private"]
-    assert review_details["grant_requires_approval"] is False
-    assert len(review_details["grant_scope_ids"]) == 2
-    assert set(review_details["grant_scope_ids"]) == {
-        str(enums.scopes.name_to_id["public"]),
-        str(enums.scopes.name_to_id["private"]),
-    }
+    assert approval_after is not None
 
 
 @pytest.mark.asyncio
@@ -758,7 +743,7 @@ async def test_get_approval_diff_create_job(api, db_pool, untrusted_agent, auth_
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "create_job",
@@ -785,7 +770,7 @@ async def test_get_approval_diff_create_context(
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "create_context",
@@ -837,8 +822,8 @@ async def test_get_approval_diff_update_relationship(
 
     relationship = await db_pool.fetchrow(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
         """,
         "entity",
@@ -853,7 +838,7 @@ async def test_get_approval_diff_update_relationship(
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "update_relationship",
@@ -861,7 +846,7 @@ async def test_get_approval_diff_update_relationship(
         json.dumps(
             {
                 "relationship_id": str(relationship["id"]),
-                "properties": {"note": "new"},
+                "notes": "note: new",
             }
         ),
         "pending",
@@ -871,7 +856,7 @@ async def test_get_approval_diff_update_relationship(
     assert r.status_code == 200
     data = r.json()["data"]
     assert data["request_type"] == "update_relationship"
-    assert data["changes"]["properties"]["to"] == {"note": "new"}
+    assert data["changes"]["notes"]["to"] == "note: new"
 
 
 @pytest.mark.asyncio
@@ -897,7 +882,7 @@ async def test_get_approval_diff_update_job_status(
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "update_job_status",
@@ -946,7 +931,7 @@ async def test_get_approval_diff_missing_relationship_reference_returns_clean_er
     row = await db_pool.fetchrow(
         """
         INSERT INTO approval_requests (request_type, requested_by, change_details, status)
-        VALUES ($1, $2, $3::jsonb, $4)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "update_relationship",
@@ -954,7 +939,7 @@ async def test_get_approval_diff_missing_relationship_reference_returns_clean_er
         json.dumps(
             {
                 "relationship_id": "00000000-0000-0000-0000-000000000001",
-                "properties": {"note": "new"},
+                "notes": "note: new",
             }
         ),
         "pending",

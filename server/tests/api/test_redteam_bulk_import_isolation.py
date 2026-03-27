@@ -1,7 +1,6 @@
 """Red team API tests for bulk import isolation."""
 
 # Standard Library
-import json
 
 # Third-Party
 import pytest

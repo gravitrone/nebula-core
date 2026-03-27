@@ -16,7 +16,6 @@ from nebula_api.routes.exports import (
     export_snapshot,
 )
 
-
 pytestmark = pytest.mark.unit
 
 
@@ -96,7 +95,7 @@ async def test_export_snapshot_hides_target_job_and_keeps_context_rows(monkeypat
         "source_id": str(uuid4()),
         "target_type": "job",
         "target_id": "2026Q1-ABCD",
-        "properties": {"context_segments": [{"text": "secret", "scopes": ["private"]}]},
+        "notes": "secret context note",
     }
     pool = SimpleNamespace(
         fetch=AsyncMock(

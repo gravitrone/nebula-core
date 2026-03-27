@@ -100,8 +100,8 @@ async def _make_file(db_pool, enums):
     status_id = enums.statuses.name_to_id["active"]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, file_path, status_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO files (filename, file_path, status_id, notes)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "secret.pdf",
@@ -119,8 +119,8 @@ async def _make_log(db_pool, enums):
     log_type_id = enums.log_types.name_to_id["note"]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO logs (log_type_id, timestamp, value, status_id, metadata)
-        VALUES ($1, $2, $3::jsonb, $4, $5::jsonb)
+        INSERT INTO logs (log_type_id, timestamp, content, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         log_type_id,
@@ -141,8 +141,8 @@ async def _attach_relationship(
     type_id = enums.relationship_types.name_to_id[rel_name]
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         """,
         source_type,
         str(source_id),
@@ -246,7 +246,7 @@ async def test_api_file_hidden_when_attached_to_out_of_scope_job(db_pool, enums)
         list_resp = await client.get("/api/files/")
         patch_resp = await client.patch(
             f"/api/files/{file_row['id']}",
-            json={"metadata": {"note": "hijack"}},
+            json={"notes": "note: hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -304,7 +304,7 @@ async def test_api_log_hidden_when_attached_to_out_of_scope_job(db_pool, enums):
         list_resp = await client.get("/api/logs/")
         patch_resp = await client.patch(
             f"/api/logs/{log_row['id']}",
-            json={"metadata": {"note": "hijack"}},
+            json={"notes": "note: hijack"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -335,7 +335,7 @@ async def test_api_file_hidden_for_public_user_when_attached_to_private_job(db_p
         list_resp = await client.get("/api/files/")
         patch_resp = await client.patch(
             f"/api/files/{file_row['id']}",
-            json={"metadata": {"note": "should-fail"}},
+            json={"notes": "note: should-fail"},
         )
     app.dependency_overrides.pop(require_auth, None)
 
@@ -366,7 +366,7 @@ async def test_api_log_hidden_for_public_user_when_attached_to_private_job(db_po
         list_resp = await client.get("/api/logs/")
         patch_resp = await client.patch(
             f"/api/logs/{log_row['id']}",
-            json={"metadata": {"note": "should-fail"}},
+            json={"notes": "note: should-fail"},
         )
     app.dependency_overrides.pop(require_auth, None)
 

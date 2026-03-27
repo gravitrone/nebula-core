@@ -31,7 +31,7 @@ async def _make_trusted_protocol(db_pool, enums, name: str) -> None:
             metadata,
             source_path
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9::jsonb, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9, $10)
         """,
         name,
         "Trusted Internal Protocol",
@@ -65,7 +65,7 @@ async def _make_public_protocol(db_pool, enums, name: str) -> None:
             metadata,
             source_path
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, $9::jsonb, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, FALSE, $9, $10)
         """,
         name,
         "Public Protocol",

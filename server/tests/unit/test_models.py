@@ -1,7 +1,7 @@
 """Unit tests for pydantic models (no DB needed)."""
 
 # Standard Library
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 # Third-Party
 import pytest
@@ -9,17 +9,17 @@ from pydantic import ValidationError
 
 from nebula_mcp.models import (
     AgentAuthAttachInput,
-    AgentEnrollStartInput,
     AgentEnrollRedeemInput,
+    AgentEnrollStartInput,
     AgentEnrollWaitInput,
     BulkUpdateEntityTagsInput,
-    CreateContextInput,
-    CreateLogInput,
-    CreateJobInput,
-    CreateFileInput,
     CreateAPIKeyInput,
-    CreateProtocolInput,
+    CreateContextInput,
     CreateEntityInput,
+    CreateFileInput,
+    CreateJobInput,
+    CreateLogInput,
+    CreateProtocolInput,
     CreateRelationshipInput,
     CreateTaxonomyInput,
     ExportDataInput,
@@ -38,24 +38,22 @@ from nebula_mcp.models import (
     QueryRelationshipsInput,
     RejectRequestInput,
     SemanticSearchInput,
-    UpdateContextInput,
+    ToggleTaxonomyInput,
     UpdateAgentInput,
+    UpdateContextInput,
     UpdateEntityInput,
     UpdateFileInput,
     UpdateJobInput,
     UpdateLogInput,
     UpdateProtocolInput,
     UpdateTaxonomyInput,
-    ToggleTaxonomyInput,
-    _sanitize_metadata,
     _sanitize_source_path,
     _sanitize_tags,
     _sanitize_text,
-    _validate_node_type,
     _strip_control,
+    _validate_node_type,
     _validate_taxonomy_kind,
     parse_optional_datetime,
-    validate_metadata_payload,
 )
 
 pytestmark = pytest.mark.unit
@@ -183,24 +181,6 @@ class TestModelSanitizerHelpers:
         with pytest.raises(ValueError, match="Expected string"):
             _strip_control(123)  # type: ignore[arg-type]
 
-    def test_validate_metadata_payload_rejects_non_object(self):
-        """Metadata payload must be a dict object."""
-
-        with pytest.raises(ValueError, match="Metadata must be an object"):
-            validate_metadata_payload(["bad"])  # type: ignore[arg-type]
-
-    def test_validate_metadata_payload_rejects_nested_visibility_key(self):
-        """Nested visibility keys should be rejected as unsupported."""
-
-        with pytest.raises(ValueError, match="Metadata key 'visibility' is not supported"):
-            validate_metadata_payload({"nested": {"visibility": "private"}})
-
-    def test_validate_metadata_payload_rejects_banned_key_inside_list_items(self):
-        """Banned metadata keys should be rejected even when nested in list values."""
-
-        with pytest.raises(ValueError, match="Metadata key 'constructor' is not allowed"):
-            validate_metadata_payload({"nested": [{"constructor": "bad"}]})
-
     def test_validate_taxonomy_kind_none_raises_required_error(self):
         """Taxonomy validator should reject missing kind values."""
 
@@ -216,10 +196,10 @@ class TestModelSanitizerHelpers:
     def test_parse_optional_datetime_handles_datetime_date_and_empty_text(self):
         """Datetime parser should accept datetime/date and blank text."""
 
-        now = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+        now = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
         assert parse_optional_datetime(now, "ts") == now
         assert parse_optional_datetime(date(2026, 1, 1), "ts") == datetime(
-            2026, 1, 1, 0, 0, tzinfo=timezone.utc
+            2026, 1, 1, 0, 0, tzinfo=UTC
         )
         assert parse_optional_datetime("   ", "ts") is None
 
@@ -227,7 +207,7 @@ class TestModelSanitizerHelpers:
         """Datetime parser should normalize trailing Z and reject bad timestamps."""
 
         parsed = parse_optional_datetime("2026-01-01T12:34:56Z", "ts")
-        assert parsed == datetime(2026, 1, 1, 12, 34, 56, tzinfo=timezone.utc)
+        assert parsed == datetime(2026, 1, 1, 12, 34, 56, tzinfo=UTC)
         with pytest.raises(ValueError, match="Invalid ts: expected ISO8601 datetime"):
             parse_optional_datetime("not-a-timestamp", "ts")
 
@@ -258,27 +238,12 @@ class TestModelSanitizerHelpers:
         assert _sanitize_source_path(" /tmp/nebula.log ") == "/tmp/nebula.log"
         assert _sanitize_tags(["\u202e", "alpha", ""]) == ["alpha"]
 
-    def test_validate_metadata_payload_rejects_other_banned_keys(self):
-        """Metadata payload should reject __proto__ and prototype keys recursively."""
-
-        with pytest.raises(ValueError, match="Metadata key '__proto__' is not allowed"):
-            validate_metadata_payload({"nested": {"__proto__": {"x": 1}}})
-        with pytest.raises(ValueError, match="Metadata key 'prototype' is not allowed"):
-            validate_metadata_payload({"items": [{"prototype": "bad"}]})
-
-    def test_validate_metadata_payload_rejects_top_level_prototype_key(self):
-        """Top-level banned keys should be rejected with a clear error."""
-
-        with pytest.raises(ValueError, match="Metadata key 'prototype' is not allowed"):
-            validate_metadata_payload({"prototype": "bad"})
-
     def test_private_sanitizers_return_none_for_none_inputs(self):
         """Private sanitizer helpers should preserve None values."""
 
         assert _sanitize_text(None) is None
         assert _sanitize_tags(None) is None
         assert _validate_node_type(None) is None
-        assert _sanitize_metadata(None) is None
         assert _sanitize_source_path(None) is None
         assert parse_optional_datetime(None, "ts") is None
 
@@ -666,18 +631,18 @@ class TestModelEdgeInputs:
         create_log = CreateLogInput(
             log_type=" note ",
             tags=["ops", "", "infra"],
-            metadata={"x": 1},
+            notes="x: 1",
         )
         assert create_log.log_type == "note"
         assert create_log.tags == ["ops", "infra"]
-        assert create_log.metadata == {"x": 1}
+        assert create_log.notes == "x: 1"
 
         query_logs = QueryLogsInput(tags=["ops", "", "infra"])
         assert query_logs.tags == ["ops", "infra"]
 
-        update_log = UpdateLogInput(id="log-1", tags=["a", "", "b"], metadata={"ok": True})
+        update_log = UpdateLogInput(id="log-1", tags=["a", "", "b"], notes="ok: true")
         assert update_log.tags == ["a", "b"]
-        assert update_log.metadata == {"ok": True}
+        assert update_log.notes == "ok: true"
 
         relationship = CreateRelationshipInput(
             source_type="entity",
@@ -685,10 +650,10 @@ class TestModelEdgeInputs:
             target_type="job",
             target_id="t1",
             relationship_type=" related-to ",
-            properties={"weight": 1},
+            notes="weight: 1",
         )
         assert relationship.relationship_type == "related-to"
-        assert relationship.properties == {"weight": 1}
+        assert relationship.notes == "weight: 1"
 
         get_rels = GetRelationshipsInput(source_type="entity", source_id="s1")
         assert get_rels.source_type == "entity"
@@ -722,13 +687,13 @@ class TestModelEdgeInputs:
             filename="  report.txt  ",
             uri=" file:///tmp/r.txt ",
             tags=["ops", "", "infra"],
-            metadata={"safe": True},
+            notes="safe: true",
         )
         assert create_file.filename == "report.txt"
         assert create_file.uri == "file:///tmp/r.txt"
         assert create_file.file_path == "file:///tmp/r.txt"
         assert create_file.tags == ["ops", "infra"]
-        assert create_file.metadata == {"safe": True}
+        assert create_file.notes == "safe: true"
 
         query_files = QueryFilesInput(tags=["ops", "", "infra"])
         assert query_files.tags == ["ops", "infra"]
@@ -738,13 +703,13 @@ class TestModelEdgeInputs:
             filename="  report-v2.txt  ",
             uri=" file:///tmp/r2.txt ",
             tags=["a", "", "b"],
-            metadata={"safe": True},
+            notes="safe: true",
         )
         assert update_file.filename == "report-v2.txt"
         assert update_file.uri == "file:///tmp/r2.txt"
         assert update_file.file_path == "file:///tmp/r2.txt"
         assert update_file.tags == ["a", "b"]
-        assert update_file.metadata == {"safe": True}
+        assert update_file.notes == "safe: true"
 
         create_protocol = CreateProtocolInput(
             name=" proto-a ",
@@ -752,14 +717,14 @@ class TestModelEdgeInputs:
             content="body",
             protocol_type=" guide ",
             tags=["a", "", "b"],
-            metadata={"safe": True},
+            notes="safe: true",
             source_path=" /tmp/proto-a.md ",
         )
         assert create_protocol.name == "proto-a"
         assert create_protocol.title == "Protocol A"
         assert create_protocol.protocol_type == "guide"
         assert create_protocol.tags == ["a", "b"]
-        assert create_protocol.metadata == {"safe": True}
+        assert create_protocol.notes == "safe: true"
         assert create_protocol.source_path == "/tmp/proto-a.md"
 
         update_protocol = UpdateProtocolInput(
@@ -767,14 +732,14 @@ class TestModelEdgeInputs:
             title=" Protocol A2 ",
             protocol_type=" guide ",
             tags=["x", "", "y"],
-            metadata={"safe": True},
+            notes="safe: true",
             source_path=" /tmp/proto-a2.md ",
         )
         assert update_protocol.name == "proto-a"
         assert update_protocol.title == "Protocol A2"
         assert update_protocol.protocol_type == "guide"
         assert update_protocol.tags == ["x", "y"]
-        assert update_protocol.metadata == {"safe": True}
+        assert update_protocol.notes == "safe: true"
         assert update_protocol.source_path == "/tmp/proto-a2.md"
 
     def test_agent_and_auth_models_sanitize_text_fields(self):
@@ -834,12 +799,12 @@ class TestModelEdgeInputs:
             kind="relationship-types",
             name=" related-to ",
             description=" desc ",
-            metadata={"x": 1},
+            notes="x: 1",
             is_symmetric=True,
         )
         assert create_taxonomy.name == "related-to"
         assert create_taxonomy.description == "desc"
-        assert create_taxonomy.metadata == {"x": 1}
+        assert create_taxonomy.notes == "x: 1"
         assert create_taxonomy.is_symmetric is True
 
         create_log_taxonomy = CreateTaxonomyInput(
@@ -854,13 +819,13 @@ class TestModelEdgeInputs:
             item_id=" rel-1 ",
             name=" related-to ",
             description=" desc ",
-            metadata={"x": 1},
+            notes="x: 1",
             is_symmetric=False,
         )
         assert update_taxonomy.item_id == "rel-1"
         assert update_taxonomy.name == "related-to"
         assert update_taxonomy.description == "desc"
-        assert update_taxonomy.metadata == {"x": 1}
+        assert update_taxonomy.notes == "x: 1"
         assert update_taxonomy.is_symmetric is False
 
         update_log_taxonomy = UpdateTaxonomyInput(

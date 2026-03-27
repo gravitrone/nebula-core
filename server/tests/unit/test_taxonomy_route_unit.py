@@ -23,7 +23,6 @@ from nebula_api.routes.taxonomy import (
     update_taxonomy,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

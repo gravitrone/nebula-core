@@ -20,7 +20,6 @@ from nebula_api.routes.approvals import (
     get_pending,
 )
 
-
 pytestmark = pytest.mark.unit
 
 

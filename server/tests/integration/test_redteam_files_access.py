@@ -74,8 +74,8 @@ async def _make_file(db_pool, enums):
 
     row = await db_pool.fetchrow(
         """
-        INSERT INTO files (filename, file_path, status_id, metadata)
-        VALUES ($1, $2, $3, $4::jsonb)
+        INSERT INTO files (filename, file_path, status_id, notes)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         "secret.pdf",
@@ -94,8 +94,8 @@ async def _attach_file(db_pool, enums, file_id, entity_id):
 
     await db_pool.execute(
         """
-        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, properties)
-        VALUES ('entity', $1, 'file', $2, $3, $4, $5::jsonb)
+        INSERT INTO relationships (source_type, source_id, target_type, target_id, type_id, status_id, notes)
+        VALUES ('entity', $1, 'file', $2, $3, $4, $5)
         """,
         str(entity_id),
         str(file_id),

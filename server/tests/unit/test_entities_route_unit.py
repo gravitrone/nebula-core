@@ -23,10 +23,8 @@ from nebula_api.routes.entities import (
     get_entity,
     get_entity_history,
     revert_entity,
-    update_entity,
 )
 from nebula_mcp.models import MAX_TAG_LENGTH, MAX_TAGS
-
 
 pytestmark = pytest.mark.unit
 

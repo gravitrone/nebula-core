@@ -13,14 +13,12 @@ from fastapi import HTTPException
 from nebula_api.routes.files import (
     CreateFileBody,
     UpdateFileBody,
-    _coerce_json_value,
     _file_visible,
     create_file,
     get_file,
     list_files,
     update_file,
 )
-
 
 pytestmark = pytest.mark.unit
 
@@ -29,24 +27,6 @@ def _request(pool, enums):
     """Build a minimal request carrying app state values."""
 
     return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(pool=pool, enums=enums)))
-
-
-def test_coerce_json_value_none_uses_fallback():
-    """None payloads should return fallback values."""
-
-    assert _coerce_json_value(None, {"x": 1}) == {"x": 1}
-
-
-def test_coerce_json_value_invalid_json_uses_fallback():
-    """Invalid JSON text should return fallback values."""
-
-    assert _coerce_json_value("{bad", {"x": 1}) == {"x": 1}
-
-
-def test_coerce_json_value_unexpected_type_uses_fallback():
-    """Unsupported payload types should return fallback values."""
-
-    assert _coerce_json_value(42, {"x": 1}) == {"x": 1}
 
 
 @pytest.mark.asyncio
@@ -168,7 +148,7 @@ async def test_list_files_admin_returns_all_rows(mock_enums):
 
     pool = SimpleNamespace(
         fetch=AsyncMock(
-            return_value=[{"id": str(uuid4()), "filename": "a.txt", "metadata": '{"k":1}'}]
+            return_value=[{"id": str(uuid4()), "filename": "a.txt", "notes": "k: 1"}]
         )
     )
     auth = {"scopes": [mock_enums.scopes.name_to_id["admin"]]}
@@ -176,7 +156,7 @@ async def test_list_files_admin_returns_all_rows(mock_enums):
     result = await list_files(_request(pool, mock_enums), auth=auth)
 
     assert result["data"][0]["filename"] == "a.txt"
-    assert result["data"][0]["metadata"] == {"k": 1}
+    assert result["data"][0]["notes"] == "k: 1"
 
 
 @pytest.mark.asyncio
@@ -188,8 +168,8 @@ async def test_list_files_non_admin_filters_hidden_rows(monkeypatch, mock_enums)
     pool = SimpleNamespace(
         fetch=AsyncMock(
             return_value=[
-                {"id": visible_id, "filename": "visible.txt", "metadata": "{}"},
-                {"id": hidden_id, "filename": "hidden.txt", "metadata": "{}"},
+                {"id": visible_id, "filename": "visible.txt", "notes": ""},
+                {"id": hidden_id, "filename": "hidden.txt", "notes": ""},
             ]
         )
     )
@@ -236,7 +216,7 @@ async def test_get_file_forbidden_maps_403(monkeypatch, mock_enums):
     """Hidden files should return HTTP 403."""
 
     file_id = str(uuid4())
-    pool = SimpleNamespace(fetchrow=AsyncMock(return_value={"id": file_id, "metadata": {}}))
+    pool = SimpleNamespace(fetchrow=AsyncMock(return_value={"id": file_id, "notes": ""}))
     monkeypatch.setattr("nebula_api.routes.files._file_visible", AsyncMock(return_value=False))
 
     with pytest.raises(HTTPException) as exc:
@@ -244,25 +224,6 @@ async def test_get_file_forbidden_maps_403(monkeypatch, mock_enums):
 
     assert exc.value.status_code == 403
     assert exc.value.detail["error"]["code"] == "FORBIDDEN"
-
-
-@pytest.mark.asyncio
-async def test_create_file_metadata_validation_error_maps_400(monkeypatch, mock_enums):
-    """Invalid metadata payloads should return HTTP 400."""
-
-    pool = SimpleNamespace()
-    payload = CreateFileBody(filename="f.txt", uri="file:///f.txt", status="active")
-
-    monkeypatch.setattr(
-        "nebula_api.routes.files.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await create_file(payload, _request(pool, mock_enums), auth={"scopes": []})
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
 
 
 @pytest.mark.asyncio
@@ -285,7 +246,7 @@ async def test_create_file_copies_file_path_into_uri(monkeypatch, mock_enums):
 
     pool = SimpleNamespace()
     payload = CreateFileBody(filename="f.txt", file_path="/tmp/f.txt", status="active")
-    execute = AsyncMock(return_value={"id": str(uuid4()), "metadata": {}})
+    execute = AsyncMock(return_value={"id": str(uuid4()), "notes": ""})
 
     monkeypatch.setattr(
         "nebula_api.routes.files.maybe_check_agent_approval",
@@ -355,14 +316,14 @@ async def test_create_file_success_returns_normalized_payload(monkeypatch, mock_
             return_value={
                 "id": str(uuid4()),
                 "filename": "f.txt",
-                "metadata": '{"k":1}',
+                "notes": "k: 1",
             }
         ),
     )
 
     result = await create_file(payload, _request(pool, mock_enums), auth={"scopes": []})
 
-    assert result["data"]["metadata"] == {"k": 1}
+    assert result["data"]["notes"] == "k: 1"
 
 
 @pytest.mark.asyncio
@@ -397,26 +358,6 @@ async def test_update_file_invalid_uuid_maps_400(mock_enums):
 
     with pytest.raises(HTTPException) as exc:
         await update_file("not-a-uuid", payload, _request(pool, mock_enums), auth={"scopes": []})
-
-    assert exc.value.status_code == 400
-    assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
-
-
-@pytest.mark.asyncio
-async def test_update_file_metadata_validation_error_maps_400(monkeypatch, mock_enums):
-    """Invalid update metadata should return HTTP 400."""
-
-    file_id = str(uuid4())
-    pool = SimpleNamespace()
-    payload = UpdateFileBody(metadata={"x": 1})
-
-    monkeypatch.setattr(
-        "nebula_api.routes.files.validate_metadata_payload",
-        lambda _v: (_ for _ in ()).throw(ValueError("bad metadata")),
-    )
-
-    with pytest.raises(HTTPException) as exc:
-        await update_file(file_id, payload, _request(pool, mock_enums), auth={"scopes": []})
 
     assert exc.value.status_code == 400
     assert exc.value.detail["error"]["code"] == "INVALID_INPUT"
@@ -489,7 +430,7 @@ async def test_update_file_copies_file_path_into_uri(monkeypatch, mock_enums):
     file_id = str(uuid4())
     pool = SimpleNamespace()
     payload = UpdateFileBody(file_path="/tmp/a.txt")
-    execute = AsyncMock(return_value={"id": file_id, "file_path": "/tmp/a.txt", "metadata": {}})
+    execute = AsyncMock(return_value={"id": file_id, "file_path": "/tmp/a.txt", "notes": ""})
 
     monkeypatch.setattr("nebula_api.routes.files._file_visible", AsyncMock(return_value=True))
     monkeypatch.setattr(
@@ -516,7 +457,7 @@ async def test_update_file_copies_uri_into_file_path(monkeypatch, mock_enums):
             "id": file_id,
             "uri": "file:///tmp/a.txt",
             "file_path": "file:///tmp/a.txt",
-            "metadata": {},
+            "notes": "",
         }
     )
 

@@ -1,7 +1,6 @@
 """Red team tests for self-referencing relationships."""
 
 # Standard Library
-import json
 from unittest.mock import MagicMock
 
 # Third-Party
