@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textarea"
 	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
@@ -20,6 +21,7 @@ import (
 type filesLoadedMsg struct{ items []api.File }
 type fileCreatedMsg struct{}
 type fileUpdatedMsg struct{}
+type fileNotesSavedMsg struct{}
 type filesScopesLoadedMsg struct{ options []string }
 type fileRelationshipsLoadedMsg struct {
 	id            string
@@ -85,6 +87,11 @@ type FilesModel struct {
 	editMeta     MetadataEditor
 	editSaving   bool
 
+	// inline notes editing (split-pane)
+	notesEditing  bool
+	notesTextarea textarea.Model
+	notesDirty    bool
+
 	hintBox components.HintBox
 }
 
@@ -100,6 +107,7 @@ func NewFilesModel(client *api.Client) FilesModel {
 			"↑/↓ navigate",
 			"enter view",
 			"a add",
+			"e edit",
 			"/ command",
 			"q quit",
 		}),
@@ -177,13 +185,22 @@ func (m FilesModel) Update(msg tea.Msg) (FilesModel, tea.Cmd) {
 		m.view = filesViewList
 		m.loading = true
 		return m, tea.Batch(m.loadFiles(), m.spinner.Tick)
+	case fileNotesSavedMsg:
+		m.notesEditing = false
+		m.notesDirty = false
+		m.loading = true
+		return m, tea.Batch(m.loadFiles(), m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.addSaving = false
 		m.editSaving = false
+		m.notesEditing = false
 		m.errText = msg.err.Error()
 		return m, nil
 	case tea.KeyPressMsg:
+		if m.notesEditing {
+			return m.handleNotesEditKeys(msg)
+		}
 		if m.addMeta.Active {
 			m.addMeta.HandleKey(msg)
 			return m, nil
@@ -236,8 +253,12 @@ func (m FilesModel) View() string {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
 	if m.view == filesViewList {
-		m.hintBox.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
+		hb := m.hintBox
+		if m.notesEditing {
+			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
+		}
+		hb.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
 	}
 	return components.Indent(body, 1)
 }
@@ -372,15 +393,21 @@ func (m FilesModel) renderList() string {
 
 	tableView := m.dataTable.View()
 	preview := ""
-	var previewItem *api.File
-	if !m.modeFocus {
-		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
-			previewItem = &m.items[idx]
+	if m.notesEditing {
+		m.notesTextarea.SetWidth(previewWidth - 4)
+		m.notesTextarea.SetHeight(10)
+		preview = m.notesTextarea.View()
+	} else {
+		var previewItem *api.File
+		if !m.modeFocus {
+			if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+				previewItem = &m.items[idx]
+			}
 		}
-	}
-	if previewItem != nil {
-		content := m.renderFilePreview(*previewItem, previewBoxContentWidth(previewWidth))
-		preview = renderPreviewBox(content, previewWidth)
+		if previewItem != nil {
+			content := m.renderFilePreview(*previewItem, previewBoxContentWidth(previewWidth))
+			preview = renderPreviewBox(content, previewWidth)
+		}
 	}
 
 	body := tableView
@@ -493,6 +520,15 @@ func (m FilesModel) handleListKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
 			m.searchBuf = m.searchSuggest
 			m.applyFileSearch()
 		}
+	case isKey(msg, "e"):
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			item := m.items[idx]
+			m.notesEditing = true
+			m.notesDirty = false
+			m.notesTextarea = components.NewNebulaTextarea(36, 10)
+			m.notesTextarea.SetValue(item.Notes)
+			m.notesTextarea.Focus()
+		}
 	default:
 		ch := keyText(msg)
 		if ch != "" {
@@ -529,6 +565,42 @@ func (m FilesModel) handleFilterInput(msg tea.KeyPressMsg) (FilesModel, tea.Cmd)
 		}
 	}
 	return m, nil
+}
+
+// --- Inline Notes Edit ---
+
+// handleNotesEditKeys routes keys to the textarea when inline notes editing is active.
+func (m FilesModel) handleNotesEditKeys(msg tea.KeyPressMsg) (FilesModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.notesEditing = false
+		m.notesDirty = false
+		return m, nil
+	case isKey(msg, "ctrl+s"):
+		return m.saveInlineNotes()
+	}
+	var cmd tea.Cmd
+	m.notesTextarea, cmd = m.notesTextarea.Update(msg)
+	m.notesDirty = true
+	return m, cmd
+}
+
+// saveInlineNotes saves the current textarea content via the API.
+func (m FilesModel) saveInlineNotes() (FilesModel, tea.Cmd) {
+	if idx := m.dataTable.Cursor(); idx < 0 || idx >= len(m.items) {
+		m.notesEditing = false
+		return m, nil
+	}
+	item := m.items[m.dataTable.Cursor()]
+	notes := m.notesTextarea.Value()
+	return m, func() tea.Msg {
+		input := api.UpdateFileInput{Notes: notes}
+		_, err := m.client.UpdateFile(item.ID, input)
+		if err != nil {
+			return errMsg{err}
+		}
+		return fileNotesSavedMsg{}
+	}
 }
 
 // --- Detail View ---

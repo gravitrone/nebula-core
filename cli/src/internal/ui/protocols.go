@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -18,6 +19,7 @@ import (
 type protocolsLoadedMsg struct{ items []api.Protocol }
 type protocolCreatedMsg struct{}
 type protocolUpdatedMsg struct{}
+type protocolNotesSavedMsg struct{}
 type protocolRelationshipsLoadedMsg struct {
 	id            string
 	relationships []api.Relationship
@@ -101,6 +103,11 @@ type ProtocolsModel struct {
 	editApplyBuf  string
 	editMeta      MetadataEditor
 	editSaving    bool
+
+	// inline notes editing (split-pane)
+	notesEditing  bool
+	notesTextarea textarea.Model
+	notesDirty    bool
 
 	hintBox components.HintBox
 }
@@ -205,14 +212,23 @@ func (m ProtocolsModel) Update(msg tea.Msg) (ProtocolsModel, tea.Cmd) {
 			m.detailRels = msg.relationships
 		}
 		return m, nil
+	case protocolNotesSavedMsg:
+		m.notesEditing = false
+		m.notesDirty = false
+		m.loading = true
+		return m, tea.Batch(m.loadProtocols, m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.addSaving = false
 		m.editSaving = false
+		m.notesEditing = false
 		m.addErr = msg.err.Error()
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if m.notesEditing {
+			return m.handleNotesEditKeys(msg)
+		}
 		if m.modeFocus {
 			return m.handleModeKeys(msg)
 		}
@@ -264,8 +280,12 @@ func (m ProtocolsModel) View() string {
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		m.hintBox.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
+		hb := m.hintBox
+		if m.notesEditing {
+			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
+		}
+		hb.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
 	}
 }
 
@@ -383,6 +403,15 @@ func (m ProtocolsModel) handleListKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea
 			m.view = protocolsViewDetail
 			return m, m.loadDetailRelationships(m.items[idx].ID)
 		}
+	case isKey(msg, "e"):
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			item := m.items[idx]
+			m.notesEditing = true
+			m.notesDirty = false
+			m.notesTextarea = components.NewNebulaTextarea(36, 10)
+			m.notesTextarea.SetValue(item.Notes)
+			m.notesTextarea.Focus()
+		}
 	case isKey(msg, "f"):
 		m.filtering = true
 		return m, nil
@@ -421,6 +450,42 @@ func (m ProtocolsModel) handleFilterInput(msg tea.KeyPressMsg) (ProtocolsModel, 
 		}
 	}
 	return m, nil
+}
+
+// --- Inline Notes Edit ---
+
+// handleNotesEditKeys routes keys to the textarea when inline notes editing is active.
+func (m ProtocolsModel) handleNotesEditKeys(msg tea.KeyPressMsg) (ProtocolsModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.notesEditing = false
+		m.notesDirty = false
+		return m, nil
+	case isKey(msg, "ctrl+s"):
+		return m.saveInlineNotes()
+	}
+	var cmd tea.Cmd
+	m.notesTextarea, cmd = m.notesTextarea.Update(msg)
+	m.notesDirty = true
+	return m, cmd
+}
+
+// saveInlineNotes saves the current textarea content via the API.
+func (m ProtocolsModel) saveInlineNotes() (ProtocolsModel, tea.Cmd) {
+	if idx := m.dataTable.Cursor(); idx < 0 || idx >= len(m.items) {
+		m.notesEditing = false
+		return m, nil
+	}
+	item := m.items[m.dataTable.Cursor()]
+	notes := m.notesTextarea.Value()
+	return m, func() tea.Msg {
+		input := api.UpdateProtocolInput{Notes: notes}
+		_, err := m.client.UpdateProtocol(item.Name, input)
+		if err != nil {
+			return errMsg{err}
+		}
+		return protocolNotesSavedMsg{}
+	}
 }
 
 // renderList renders render list.
@@ -511,15 +576,21 @@ func (m ProtocolsModel) renderList() string {
 
 	tableView := m.dataTable.View()
 	preview := ""
-	var previewItem *api.Protocol
-	if !m.modeFocus {
-		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
-			previewItem = &m.items[idx]
+	if m.notesEditing {
+		m.notesTextarea.SetWidth(previewWidth - 4)
+		m.notesTextarea.SetHeight(10)
+		preview = m.notesTextarea.View()
+	} else {
+		var previewItem *api.Protocol
+		if !m.modeFocus {
+			if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+				previewItem = &m.items[idx]
+			}
 		}
-	}
-	if previewItem != nil {
-		content := m.renderProtocolPreview(*previewItem, previewBoxContentWidth(previewWidth))
-		preview = renderPreviewBox(content, previewWidth)
+		if previewItem != nil {
+			content := m.renderProtocolPreview(*previewItem, previewBoxContentWidth(previewWidth))
+			preview = renderPreviewBox(content, previewWidth)
+		}
 	}
 
 	body := tableView

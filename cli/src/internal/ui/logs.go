@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textarea"
 	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
@@ -20,6 +21,7 @@ import (
 type logsLoadedMsg struct{ items []api.Log }
 type logCreatedMsg struct{}
 type logUpdatedMsg struct{}
+type logNotesSavedMsg struct{}
 type logsScopesLoadedMsg struct{ options []string }
 type logRelationshipsLoadedMsg struct {
 	id            string
@@ -80,6 +82,11 @@ type LogsModel struct {
 	editMeta      MetadataEditor
 	editSaving    bool
 
+	// inline notes editing (split-pane)
+	notesEditing  bool
+	notesTextarea textarea.Model
+	notesDirty    bool
+
 	hintBox components.HintBox
 }
 
@@ -95,6 +102,7 @@ func NewLogsModel(client *api.Client) LogsModel {
 			"↑/↓ navigate",
 			"enter view",
 			"a add",
+			"e edit",
 			"/ command",
 			"q quit",
 		}),
@@ -168,13 +176,22 @@ func (m LogsModel) Update(msg tea.Msg) (LogsModel, tea.Cmd) {
 		m.view = logsViewList
 		m.loading = true
 		return m, tea.Batch(m.loadLogs(), m.spinner.Tick)
+	case logNotesSavedMsg:
+		m.notesEditing = false
+		m.notesDirty = false
+		m.loading = true
+		return m, tea.Batch(m.loadLogs(), m.spinner.Tick)
 	case errMsg:
 		m.loading = false
 		m.addSaving = false
 		m.editSaving = false
+		m.notesEditing = false
 		m.errText = msg.err.Error()
 		return m, nil
 	case tea.KeyPressMsg:
+		if m.notesEditing {
+			return m.handleNotesEditKeys(msg)
+		}
 		if m.addValue.Active {
 			m.addValue.HandleKey(msg)
 			return m, nil
@@ -241,8 +258,12 @@ func (m LogsModel) View() string {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
 	if m.view == logsViewList {
-		m.hintBox.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
+		hb := m.hintBox
+		if m.notesEditing {
+			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
+		}
+		hb.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
 	}
 	return components.Indent(body, 1)
 }
@@ -389,13 +410,19 @@ func (m LogsModel) renderList() string {
 
 	tableView := m.dataTable.View()
 	preview := ""
-	var previewItem *api.Log
-	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-	if previewItem != nil {
-		content := m.renderLogPreview(*previewItem, previewBoxContentWidth(previewWidth))
-		preview = renderPreviewBox(content, previewWidth)
+	if m.notesEditing {
+		m.notesTextarea.SetWidth(previewWidth - 4)
+		m.notesTextarea.SetHeight(10)
+		preview = m.notesTextarea.View()
+	} else {
+		var previewItem *api.Log
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			previewItem = &m.items[idx]
+		}
+		if previewItem != nil {
+			content := m.renderLogPreview(*previewItem, previewBoxContentWidth(previewWidth))
+			preview = renderPreviewBox(content, previewWidth)
+		}
 	}
 
 	body := tableView
@@ -500,6 +527,15 @@ func (m LogsModel) handleListKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 			m.searchBuf = m.searchSuggest
 			m.applyLogSearch()
 		}
+	case isKey(msg, "e"):
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			item := m.items[idx]
+			m.notesEditing = true
+			m.notesDirty = false
+			m.notesTextarea = components.NewNebulaTextarea(36, 10)
+			m.notesTextarea.SetValue(item.Notes)
+			m.notesTextarea.Focus()
+		}
 	default:
 		ch := keyText(msg)
 		if ch != "" {
@@ -536,6 +572,42 @@ func (m LogsModel) handleFilterInput(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// --- Inline Notes Edit ---
+
+// handleNotesEditKeys routes keys to the textarea when inline notes editing is active.
+func (m LogsModel) handleNotesEditKeys(msg tea.KeyPressMsg) (LogsModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.notesEditing = false
+		m.notesDirty = false
+		return m, nil
+	case isKey(msg, "ctrl+s"):
+		return m.saveInlineNotes()
+	}
+	var cmd tea.Cmd
+	m.notesTextarea, cmd = m.notesTextarea.Update(msg)
+	m.notesDirty = true
+	return m, cmd
+}
+
+// saveInlineNotes saves the current textarea content via the API.
+func (m LogsModel) saveInlineNotes() (LogsModel, tea.Cmd) {
+	if idx := m.dataTable.Cursor(); idx < 0 || idx >= len(m.items) {
+		m.notesEditing = false
+		return m, nil
+	}
+	item := m.items[m.dataTable.Cursor()]
+	notes := m.notesTextarea.Value()
+	return m, func() tea.Msg {
+		input := api.UpdateLogInput{Notes: notes}
+		_, err := m.client.UpdateLog(item.ID, input)
+		if err != nil {
+			return errMsg{err}
+		}
+		return logNotesSavedMsg{}
+	}
 }
 
 // --- Detail View ---

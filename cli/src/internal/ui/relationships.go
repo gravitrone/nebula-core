@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textarea"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/api"
@@ -18,6 +19,7 @@ import (
 type relTabLoadedMsg struct{ items []api.Relationship }
 type relTabNamesLoadedMsg struct{ names map[string]string }
 type relTabSavedMsg struct{}
+type relTabNotesSavedMsg struct{}
 type relTabScopesLoadedMsg struct{ options []string }
 type relTabEntityCacheLoadedMsg struct{ items []api.Entity }
 type relTabContextCacheLoadedMsg struct{ items []api.Context }
@@ -105,6 +107,11 @@ type RelationshipsModel struct {
 	createLoading     bool
 
 	typeOptions []string
+
+	// inline notes editing (split-pane)
+	notesEditing  bool
+	notesTextarea textarea.Model
+	notesDirty    bool
 
 	hintBox components.HintBox
 }
@@ -207,13 +214,23 @@ func (m RelationshipsModel) Update(msg tea.Msg) (RelationshipsModel, tea.Cmd) {
 		m.view = relsViewList
 		return m, tea.Batch(m.loadRelationships(), m.spinner.Tick)
 
+	case relTabNotesSavedMsg:
+		m.notesEditing = false
+		m.notesDirty = false
+		m.loading = true
+		return m, tea.Batch(m.loadRelationships(), m.spinner.Tick)
+
 	case errMsg:
 		m.loading = false
 		m.editSaving = false
 		m.createLoading = false
+		m.notesEditing = false
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if m.notesEditing {
+			return m.handleNotesEditKeys(msg)
+		}
 		if m.editMeta.Active {
 			m.editMeta.HandleKey(msg)
 			return m, nil
@@ -264,8 +281,12 @@ func (m RelationshipsModel) View() string {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
 	if m.view == relsViewList {
-		m.hintBox.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
+		hb := m.hintBox
+		if m.notesEditing {
+			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
+		}
+		hb.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
 	}
 	return components.Indent(body, 1)
 }
@@ -293,6 +314,14 @@ func (m RelationshipsModel) handleListKeys(msg tea.KeyPressMsg) (RelationshipsMo
 	case isKey(msg, "f"):
 		m.filtering = true
 		return m, nil
+	case isKey(msg, "e"):
+		if rel := m.selectedRelationship(); rel != nil {
+			m.notesEditing = true
+			m.notesDirty = false
+			m.notesTextarea = components.NewNebulaTextarea(36, 10)
+			m.notesTextarea.SetValue(rel.Notes)
+			m.notesTextarea.Focus()
+		}
 	case isKey(msg, "n"):
 		m.startCreate()
 		m.view = relsViewCreateSourceSearch
@@ -325,6 +354,42 @@ func (m RelationshipsModel) handleFilterInput(msg tea.KeyPressMsg) (Relationship
 		}
 	}
 	return m, nil
+}
+
+// --- Inline Notes Edit ---
+
+// handleNotesEditKeys routes keys to the textarea when inline notes editing is active.
+func (m RelationshipsModel) handleNotesEditKeys(msg tea.KeyPressMsg) (RelationshipsModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.notesEditing = false
+		m.notesDirty = false
+		return m, nil
+	case isKey(msg, "ctrl+s"):
+		return m.saveInlineNotes()
+	}
+	var cmd tea.Cmd
+	m.notesTextarea, cmd = m.notesTextarea.Update(msg)
+	m.notesDirty = true
+	return m, cmd
+}
+
+// saveInlineNotes saves the current textarea content via the API.
+func (m RelationshipsModel) saveInlineNotes() (RelationshipsModel, tea.Cmd) {
+	rel := m.selectedRelationship()
+	if rel == nil {
+		m.notesEditing = false
+		return m, nil
+	}
+	notes := m.notesTextarea.Value()
+	return m, func() tea.Msg {
+		input := api.UpdateRelationshipInput{Notes: notes}
+		_, err := m.client.UpdateRelationship(rel.ID, input)
+		if err != nil {
+			return errMsg{err}
+		}
+		return relTabNotesSavedMsg{}
+	}
 }
 
 // --- Mode Line ---
@@ -465,13 +530,19 @@ func (m RelationshipsModel) renderList() string {
 
 	tableView := m.dataTable.View()
 	preview := ""
-	var previewItem *api.Relationship
-	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-	if previewItem != nil {
-		content := m.renderRelationshipPreview(*previewItem, previewBoxContentWidth(previewWidth))
-		preview = renderPreviewBox(content, previewWidth)
+	if m.notesEditing {
+		m.notesTextarea.SetWidth(previewWidth - 4)
+		m.notesTextarea.SetHeight(10)
+		preview = m.notesTextarea.View()
+	} else {
+		var previewItem *api.Relationship
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			previewItem = &m.items[idx]
+		}
+		if previewItem != nil {
+			content := m.renderRelationshipPreview(*previewItem, previewBoxContentWidth(previewWidth))
+			preview = renderPreviewBox(content, previewWidth)
+		}
 	}
 
 	body := tableView

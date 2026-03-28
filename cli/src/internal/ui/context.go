@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/spinner"
 	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textarea"
 	huh "charm.land/huh/v2"
 	"charm.land/lipgloss/v2"
 
@@ -17,6 +18,7 @@ import (
 // --- Messages ---
 
 type contextSavedMsg struct{}
+type contextNotesSavedMsg struct{}
 type contextLinkResultsMsg struct{ items []api.Entity }
 type contextListLoadedMsg struct{ items []api.Context }
 type contextScopesLoadedMsg struct{ names map[string]string }
@@ -112,6 +114,11 @@ type ContextModel struct {
 	width      int
 	height     int
 
+	// inline content editing (split-pane)
+	notesEditing  bool
+	notesTextarea textarea.Model
+	notesDirty    bool
+
 	hintBox components.HintBox
 }
 
@@ -128,6 +135,7 @@ func NewContextModel(client *api.Client) ContextModel {
 			"↑/↓ navigate",
 			"enter view",
 			"a add",
+			"e edit",
 			"l link",
 			"/ command",
 			"q quit",
@@ -249,9 +257,16 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 		m.saved = true
 		return m, nil
 
+	case contextNotesSavedMsg:
+		m.notesEditing = false
+		m.notesDirty = false
+		m.loadingList = true
+		return m, tea.Batch(m.loadContextList(), m.spinner.Tick)
+
 	case errMsg:
 		m.saving = false
 		m.editSaving = false
+		m.notesEditing = false
 		m.errText = msg.err.Error()
 		return m, nil
 	case contextLinkResultsMsg:
@@ -290,6 +305,9 @@ func (m ContextModel) Update(msg tea.Msg) (ContextModel, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if m.notesEditing {
+			return m.handleNotesEditKeys(msg)
+		}
 		if m.view == contextViewList {
 			return m.handleListKeys(msg)
 		}
@@ -424,8 +442,12 @@ func (m ContextModel) View() string {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
 	if m.view == contextViewList {
-		m.hintBox.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
+		hb := m.hintBox
+		if m.notesEditing {
+			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
+		}
+		hb.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
 	}
 	return components.Indent(body, 1)
 }
@@ -552,6 +574,19 @@ func (m ContextModel) handleListKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd
 			m.view = contextViewDetail
 			return m, m.loadContextDetail(itemID)
 		}
+	case isKey(msg, "e"):
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			item := m.items[idx]
+			m.notesEditing = true
+			m.notesDirty = false
+			m.notesTextarea = components.NewNebulaTextarea(36, 10)
+			content := ""
+			if item.Content != nil {
+				content = *item.Content
+			}
+			m.notesTextarea.SetValue(content)
+			m.notesTextarea.Focus()
+		}
 	case isKey(msg, "f"):
 		m.filtering = true
 		return m, nil
@@ -586,6 +621,42 @@ func (m ContextModel) handleFilterInput(msg tea.KeyPressMsg) (ContextModel, tea.
 		}
 	}
 	return m, nil
+}
+
+// --- Inline Content Edit ---
+
+// handleNotesEditKeys routes keys to the textarea when inline content editing is active.
+func (m ContextModel) handleNotesEditKeys(msg tea.KeyPressMsg) (ContextModel, tea.Cmd) {
+	switch {
+	case isBack(msg):
+		m.notesEditing = false
+		m.notesDirty = false
+		return m, nil
+	case isKey(msg, "ctrl+s"):
+		return m.saveInlineNotes()
+	}
+	var cmd tea.Cmd
+	m.notesTextarea, cmd = m.notesTextarea.Update(msg)
+	m.notesDirty = true
+	return m, cmd
+}
+
+// saveInlineNotes saves the current textarea content via the API.
+func (m ContextModel) saveInlineNotes() (ContextModel, tea.Cmd) {
+	if idx := m.dataTable.Cursor(); idx < 0 || idx >= len(m.items) {
+		m.notesEditing = false
+		return m, nil
+	}
+	item := m.items[m.dataTable.Cursor()]
+	content := m.notesTextarea.Value()
+	return m, func() tea.Msg {
+		input := api.UpdateContextInput{Content: &content}
+		_, err := m.client.UpdateContext(item.ID, input)
+		if err != nil {
+			return errMsg{err}
+		}
+		return contextNotesSavedMsg{}
+	}
 }
 
 // handleDetailKeys handles handle detail keys.
@@ -693,13 +764,19 @@ func (m ContextModel) renderList() string {
 
 	tableView := m.dataTable.View()
 	preview := ""
-	var previewItem *api.Context
-	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
-		previewItem = &m.items[idx]
-	}
-	if previewItem != nil {
-		content := m.renderContextPreview(*previewItem, previewBoxContentWidth(previewWidth))
-		preview = renderPreviewBox(content, previewWidth)
+	if m.notesEditing {
+		m.notesTextarea.SetWidth(previewWidth - 4)
+		m.notesTextarea.SetHeight(10)
+		preview = m.notesTextarea.View()
+	} else {
+		var previewItem *api.Context
+		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
+			previewItem = &m.items[idx]
+		}
+		if previewItem != nil {
+			content := m.renderContextPreview(*previewItem, previewBoxContentWidth(previewWidth))
+			preview = renderPreviewBox(content, previewWidth)
+		}
 	}
 
 	body := tableView
