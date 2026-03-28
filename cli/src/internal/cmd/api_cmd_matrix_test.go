@@ -146,7 +146,7 @@ func TestAPICmdReadDetailMatrixAgainstMockServer(t *testing.T) {
 			}}))
 		case r.Method == http.MethodGet && r.URL.Path == "/api/approvals/a1":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": map[string]any{}, "review_details": map[string]any{}, "status": "pending", "created_at": now,
+				"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": "{}", "status": "pending", "created_at": now,
 			}}))
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -200,11 +200,11 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 			_, _ = w.Write([]byte(`{"ok":true}`))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/relationships":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "r1", "source_type": "entity", "source_id": "e1", "target_type": "entity", "target_id": "e2", "relationship_type": "related-to", "properties": map[string]any{}, "created_at": now,
+				"id": "r1", "source_type": "entity", "source_id": "e1", "target_type": "entity", "target_id": "e2", "relationship_type": "related-to", "notes": "", "created_at": now,
 			}}))
 		case r.Method == http.MethodPatch && strings.HasPrefix(r.URL.Path, "/api/relationships/"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
-				"id": "r1", "source_type": "entity", "source_id": "e1", "target_type": "entity", "target_id": "e2", "relationship_type": "related-to", "properties": map[string]any{"phase": "updated"}, "created_at": now,
+				"id": "r1", "source_type": "entity", "source_id": "e1", "target_type": "entity", "target_id": "e2", "relationship_type": "related-to", "notes": "phase: updated", "created_at": now,
 			}}))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/relationships/"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": []map[string]any{}}))
@@ -251,11 +251,11 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/approvals/") && strings.HasSuffix(r.URL.Path, "/diff"):
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"approval_id": "a1", "request_type": "update_entity", "changes": map[string]any{}}}))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/approvals/"):
-			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": map[string]any{}, "review_details": map[string]any{}, "status": "pending", "created_at": now}}))
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": "{}", "status": "pending", "created_at": now}}))
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/approve"):
-			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": map[string]any{}, "review_details": map[string]any{}, "status": "approved", "created_at": now}}))
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": "{}", "status": "approved", "created_at": now}}))
 		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/reject"):
-			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": map[string]any{}, "review_details": map[string]any{}, "status": "rejected", "created_at": now}}))
+			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"id": "a1", "request_type": "update_entity", "requested_by": "u1", "requested_by_name": "u1", "agent_name": "alpha", "change_details": "{}", "status": "rejected", "created_at": now}}))
 		case r.Method == http.MethodPost && r.URL.Path == "/api/agents/register":
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"agent_id": "ag1", "approval_request_id": "a1", "registration_id": "reg1", "enrollment_token": "tok", "status": "pending"}}))
 		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/agents/"):
@@ -301,8 +301,8 @@ func TestAPICmdWriteMatrixAgainstMockServer(t *testing.T) {
 	runAPISubcommand(t, "context", "update", "c1", "--input", `{"title":"Ctx Updated"}`)
 	runAPISubcommand(t, "context", "link", "c1", "--owner-type", "entity", "--owner-id", "e1")
 
-	runAPISubcommand(t, "relationships", "create", "--input", `{"source_type":"entity","source_id":"e1","target_type":"entity","target_id":"e2","relationship_type":"related-to","properties":{}}`)
-	runAPISubcommand(t, "relationships", "update", "r1", "--input", `{"properties":{"phase":"updated"}}`)
+	runAPISubcommand(t, "relationships", "create", "--input", `{"source_type":"entity","source_id":"e1","target_type":"entity","target_id":"e2","relationship_type":"related-to"}`)
+	runAPISubcommand(t, "relationships", "update", "r1", "--input", `{"notes":"phase: updated"}`)
 	runAPISubcommand(t, "relationships", "for-source", "entity", "e1")
 
 	runAPISubcommand(t, "jobs", "create", "--input", `{"title":"Job","status":"pending","priority":"low"}`)

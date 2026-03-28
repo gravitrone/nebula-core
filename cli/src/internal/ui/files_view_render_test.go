@@ -83,7 +83,7 @@ func TestFilesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 		SizeBytes: &size,
 		Status:    "active",
 		Tags:      []string{"docs"},
-		Metadata:  api.JSONMap{"note": "hello"},
+		Notes: "hello",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -92,9 +92,6 @@ func TestFilesDetailViewRendersMetadataWhenExpanded(t *testing.T) {
 	out := model.View()
 	clean := components.SanitizeText(out)
 	assert.Contains(t, clean, "Alpha.txt")
-	assert.Contains(t, clean, "Field")
-	assert.Contains(t, clean, "Value")
-	assert.Contains(t, clean, "note")
 	assert.Contains(t, clean, "hello")
 }
 
@@ -108,7 +105,7 @@ func TestFilesDetailViewRendersRelationshipsSection(t *testing.T) {
 		Filename:  "Alpha.txt",
 		FilePath:  "/tmp/alpha.txt",
 		Status:    "active",
-		Metadata:  api.JSONMap{},
+		Notes: "",
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -204,7 +201,7 @@ func TestFilesEditViewRendersWithTagStr(t *testing.T) {
 		FilePath:  "/tmp/alpha.txt",
 		Status:    "active",
 		Tags:      []string{"alpha"},
-		Metadata:  api.JSONMap{},
+		Notes: "",
 		CreatedAt: time.Now(),
 	}
 	model.startEdit()

@@ -249,7 +249,7 @@ func goldenRelationships() []map[string]any {
 			"target_name":       "BetaModel",
 			"relationship_type": "uses",
 			"status":            "active",
-			"properties":        map[string]any{},
+			"notes":             "",
 			"created_at":        goldenTime1.Format(time.RFC3339),
 		},
 		{
@@ -262,7 +262,7 @@ func goldenRelationships() []map[string]any {
 			"target_name":       "GammaDataset",
 			"relationship_type": "trained-on",
 			"status":            "active",
-			"properties":        map[string]any{},
+			"notes":             "",
 			"created_at":        goldenTime2.Format(time.RFC3339),
 		},
 		{
@@ -275,7 +275,7 @@ func goldenRelationships() []map[string]any {
 			"target_name":       "GammaDataset",
 			"relationship_type": "produces",
 			"status":            "active",
-			"properties":        map[string]any{},
+			"notes":             "",
 			"created_at":        goldenTime3.Format(time.RFC3339),
 		},
 	}

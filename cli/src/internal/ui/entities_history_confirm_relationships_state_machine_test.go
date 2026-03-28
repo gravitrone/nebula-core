@@ -216,7 +216,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 			"target_name":       "Beta",
 			"relationship_type": "uses",
 			"status":            "active",
-			"properties":        map[string]any{},
+			"notes":             "",
 			"created_at":        now,
 		},
 	}
@@ -250,7 +250,7 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 				"target_id":         "ent-2",
 				"relationship_type": "uses",
 				"status":            gotPatchStatus,
-				"properties":        map[string]any{"note": "ok"},
+				"notes":             "ok",
 				"created_at":        now,
 			}}))
 			return
@@ -319,11 +319,11 @@ func TestEntitiesRelationshipsRelateArchiveAndRelEditValidation(t *testing.T) {
 
 	assert.Equal(t, "inactive", gotPatchStatus)
 
-	// Relationship edit validation: invalid JSON blocks save.
+	// Relationship edit: notes is plain text, any value is accepted.
 	model.view = entitiesViewRelationships
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	assert.Equal(t, entitiesViewRelEdit, model.view)
-	model.relEditBuf = "{"
-	model, _ = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	assert.NotEmpty(t, model.errText)
+	model.relEditBuf = "some notes"
+	model, cmd = model.Update(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
+	assert.NotNil(t, cmd)
 }

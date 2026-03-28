@@ -39,8 +39,8 @@ func TestInboxModelLoadsApprovals(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
-				{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
+				{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -61,8 +61,8 @@ func TestInboxModelNavigationKeys(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
-				{"id": "ap-2", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
+				{"id": "ap-2", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -91,7 +91,7 @@ func TestInboxModelEnterShowsDetail(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -121,7 +121,7 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 		case r.URL.Path == "/api/approvals/pending":
 			resp := map[string]any{
 				"data": []map[string]any{
-					{"id": "ap-1", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+					{"id": "ap-1", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 				},
 			}
 			err := json.NewEncoder(w).Encode(resp)
@@ -156,7 +156,7 @@ func TestInboxDetailLoadsDiff(t *testing.T) {
 		t.Fatalf("diff endpoint not called, paths=%v", paths)
 	}
 	require.NotNil(t, model.detail)
-	changes, ok := model.detail.ChangeDetails["changes"].(map[string]any)
+	changes, ok := model.detailChangeMap["changes"].(map[string]any)
 	require.True(t, ok)
 	assert.Contains(t, changes, "status")
 }
@@ -166,7 +166,7 @@ func TestInboxModelEscapeBackFromDetail(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -209,8 +209,8 @@ func TestInboxBulkApproveRequiresConfirm(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
-				{"id": "ap-2", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
+				{"id": "ap-2", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -247,7 +247,7 @@ func TestInboxModelRejectInputHandling(t *testing.T) {
 	_, client := testClient(t, func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 			},
 		}
 		err := json.NewEncoder(w).Encode(resp)
@@ -409,8 +409,8 @@ func TestInboxFilterByAgentAndType(t *testing.T) {
 func TestInboxFilterByTerm(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.items = []api.Approval{
-		{ID: "ap-1", Status: "pending", RequestType: "create_entity", AgentName: "alpha", ChangeDetails: api.JSONMap{"name": "Foo"}, CreatedAt: time.Now()},
-		{ID: "ap-2", Status: "pending", RequestType: "create_entity", AgentName: "beta", ChangeDetails: api.JSONMap{"name": "Bar"}, CreatedAt: time.Now()},
+		{ID: "ap-1", Status: "pending", RequestType: "create_entity", AgentName: "alpha", ChangeDetails: `{"name":"Foo"}`, CreatedAt: time.Now()},
+		{ID: "ap-2", Status: "pending", RequestType: "create_entity", AgentName: "beta", ChangeDetails: `{"name":"Bar"}`, CreatedAt: time.Now()},
 	}
 	model.filterBuf = "foo"
 	model.applyFilter(true)
@@ -427,8 +427,8 @@ func TestInboxBatchApproveSelected(t *testing.T) {
 		case r.URL.Path == "/api/approvals/pending":
 			resp := map[string]any{
 				"data": []map[string]any{
-					{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
-					{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+					{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
+					{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 				},
 			}
 			err := json.NewEncoder(w).Encode(resp)
@@ -475,11 +475,7 @@ func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 						"request_type": "bulk_update_entity_scopes",
 						"agent_name":   "test",
 						"requested_by": "user",
-						"change_details": map[string]any{
-							"entity_ids": []string{"ent-1"},
-							"scopes":     []string{"admin"},
-							"op":         "add",
-						},
+						"change_details": `{"entity_ids":["ent-1"],"scopes":["admin"],"op":"add"}`,
 						"created_at": time.Now(),
 					},
 					{
@@ -488,10 +484,7 @@ func TestInboxApproveAllMixedRequestsStaysDeterministic(t *testing.T) {
 						"request_type": "update_entity",
 						"agent_name":   "test",
 						"requested_by": "user",
-						"change_details": map[string]any{
-							"entity_id": "ent-1",
-							"status":    "active",
-						},
+						"change_details": `{"entity_id":"ent-1","status":"active"}`,
 						"created_at": time.Now(),
 					},
 				},
@@ -537,10 +530,7 @@ func TestInboxApproveRegisterAgentOpensGrantEditor(t *testing.T) {
 					"request_type": "register_agent",
 					"agent_name":   "bootstrap-agent",
 					"requested_by": "agent-id",
-					"change_details": map[string]any{
-						"requested_scopes":            []string{"public", "private"},
-						"requested_requires_approval": false,
-					},
+					"change_details": `{"requested_scopes":["public","private"],"requested_requires_approval":false}`,
 					"created_at": time.Now(),
 				},
 			},
@@ -572,10 +562,7 @@ func TestInboxApproveRegisterAgentSendsGrantPayload(t *testing.T) {
 						"request_type": "register_agent",
 						"agent_name":   "bootstrap-agent",
 						"requested_by": "agent-id",
-						"change_details": map[string]any{
-							"requested_scopes":            []string{"public"},
-							"requested_requires_approval": true,
-						},
+						"change_details": `{"requested_scopes":["public"],"requested_requires_approval":true}`,
 						"created_at": time.Now(),
 					},
 				},
@@ -615,8 +602,8 @@ func TestInboxBatchRejectSelected(t *testing.T) {
 		case r.URL.Path == "/api/approvals/pending":
 			resp := map[string]any{
 				"data": []map[string]any{
-					{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
-					{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": map[string]any{}, "created_at": time.Now()},
+					{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
+					{"id": "ap-2", "status": "pending", "request_type": "update_entity", "agent_name": "test", "requested_by": "user", "change_details": "{}", "created_at": time.Now()},
 				},
 			}
 			err := json.NewEncoder(w).Encode(resp)

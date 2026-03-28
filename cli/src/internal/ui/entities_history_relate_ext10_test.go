@@ -235,16 +235,16 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 
 		assert.Equal(t, "", m.renderRelateEntityPreview(api.Entity{}, 0))
 
-		m.rels = []api.Relationship{{ID: "rel-1", SourceID: "ent-1", TargetID: "ent-2", Type: "", Status: "", Properties: map[string]any{"note": "x"}}}
+		m.rels = []api.Relationship{{ID: "rel-1", SourceID: "ent-1", TargetID: "ent-2", Type: "", Status: "", Notes: "note: x"}}
 		m.relTable.SetRows([]table.Row{{"rel-1"}})
 		m.startRelEdit()
 		m.relEditFocus = relEditFieldStatus
 		out = components.SanitizeText(m.renderRelEdit())
 		assert.Contains(t, out, "Status:")
 
-		m.relEditFocus = relEditFieldProperties
+		m.relEditFocus = relEditFieldNotes
 		out = components.SanitizeText(m.renderRelEdit())
-		assert.Contains(t, out, "Properties (JSON)")
+		assert.Contains(t, out, "Notes:")
 	})
 }
 
@@ -290,7 +290,7 @@ func TestEntitiesRenderRelationshipsPropertiesAndCursorFallback(t *testing.T) {
 			Type:       "uses",
 			Status:     "active",
 			CreatedAt:  time.Now(),
-			Properties: map[string]any{"note": "hi"},
+			Notes: "hi",
 		},
 	}
 	model.relTable.SetRows([]table.Row{{"uses"}})
@@ -298,6 +298,5 @@ func TestEntitiesRenderRelationshipsPropertiesAndCursorFallback(t *testing.T) {
 
 	out := components.SanitizeText(model.renderRelationships())
 	assert.Contains(t, out, "incoming")
-	assert.Contains(t, out, "note")
 	assert.Contains(t, out, "hi")
 }

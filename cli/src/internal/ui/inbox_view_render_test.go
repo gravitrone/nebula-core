@@ -28,21 +28,7 @@ func TestInboxDetailViewRendersSummaryDiffAndNestedObjects(t *testing.T) {
 		JobID:       &jobID,
 		Notes:       &notes,
 		CreatedAt:   now,
-		ChangeDetails: api.JSONMap{
-			"name": "Alpha",
-			"tags": []any{"one", "two"},
-			"metadata": map[string]any{
-				"role": "founder",
-				"yr":   2026,
-			},
-			"changes": map[string]any{
-				"status": map[string]any{"from": "active", "to": "archived"},
-				"metadata": map[string]any{
-					"from": map[string]any{"role": "builder"},
-					"to":   map[string]any{"role": "founder"},
-				},
-			},
-		},
+		ChangeDetails: `{"name":"Alpha","tags":["one","two"],"metadata":{"role":"founder","yr":2026},"changes":{"status":{"from":"active","to":"archived"},"metadata":{"from":{"role":"builder"},"to":{"role":"founder"}}}}`,
 	}
 
 	out := components.SanitizeText(model.View())
@@ -82,9 +68,7 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 				RequestType: "create_entity",
 				AgentName:   "OpenAI",
 				RequestedBy: "agent:openai",
-				ChangeDetails: api.JSONMap{
-					"name": "Alpha",
-				},
+				ChangeDetails: `{"name":"Alpha"}`,
 				CreatedAt: now,
 			},
 			{
@@ -93,9 +77,7 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 				RequestType: "create_entity",
 				AgentName:   "Anthropic",
 				RequestedBy: "agent:anthropic",
-				ChangeDetails: api.JSONMap{
-					"name": "Beta",
-				},
+				ChangeDetails: `{"name":"Beta"}`,
 				CreatedAt: now,
 			},
 		},
@@ -138,25 +120,7 @@ func TestInboxDetailUsesRelationshipEndpointNames(t *testing.T) {
 		RequestedBy: "agent:alpha",
 		AgentName:   "alpha",
 		CreatedAt:   now,
-		ChangeDetails: api.JSONMap{
-			"relationship_type": "owns",
-			"source_type":       "entity",
-			"source_id":         sourceID,
-			"source_name":       "Alpha Entity",
-			"target_type":       "entity",
-			"target_id":         targetID,
-			"target_name":       "Beta Entity",
-			"changes": map[string]any{
-				"source_id": map[string]any{
-					"from": sourceID,
-					"to":   targetID,
-				},
-				"target_id": map[string]any{
-					"from": targetID,
-					"to":   sourceID,
-				},
-			},
-		},
+		ChangeDetails: `{"relationship_type":"owns","source_type":"entity","source_id":"` + sourceID + `","source_name":"Alpha Entity","target_type":"entity","target_id":"` + targetID + `","target_name":"Beta Entity","changes":{"source_id":{"from":"` + sourceID + `","to":"` + targetID + `"},"target_id":{"from":"` + targetID + `","to":"` + sourceID + `"}}}`,
 	}
 
 	out := components.SanitizeText(model.View())
@@ -183,12 +147,7 @@ func TestInboxBulkScopePreviewUsesEntityNames(t *testing.T) {
 			RequestedByName: "agent-alpha",
 			AgentName:       "agent-alpha",
 			CreatedAt:       now,
-			ChangeDetails: api.JSONMap{
-				"entity_ids":   []any{entityID},
-				"entity_names": []any{"Bro"},
-				"scopes":       []any{"public", "admin"},
-				"op":           "add",
-			},
+			ChangeDetails: `{"entity_ids":["` + entityID + `"],"entity_names":["Bro"],"scopes":["public","admin"],"op":"add"}`,
 		},
 	}
 	model.applyFilter(true)

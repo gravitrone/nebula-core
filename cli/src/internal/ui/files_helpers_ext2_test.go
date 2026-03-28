@@ -48,7 +48,7 @@ func TestFilesSaveAddValidationAndCreateCommand(t *testing.T) {
 					"uri":        "file:///tmp/alpha.txt",
 					"status":     "active",
 					"tags":       []string{"docs"},
-					"metadata":   map[string]any{},
+					"notes":      "",
 					"created_at": now,
 					"updated_at": now,
 				},
@@ -76,13 +76,9 @@ func TestFilesSaveAddValidationAndCreateCommand(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Contains(t, updated.addErr, "non-negative")
 
+	// Notes is now plain text, no validation needed.
 	updated.addSize = ""
-	updated.addMeta.Buffer = "invalid"
-	updated, cmd = updated.saveAdd()
-	assert.Nil(t, cmd)
-	assert.Contains(t, updated.addErr, "expected 'key: value'")
-
-	updated.addMeta.Buffer = ""
+	updated.addMeta.Buffer = "some notes"
 	updated.addTagStr = "docs"
 	updated, cmd = updated.saveAdd()
 	require.NotNil(t, cmd)
@@ -105,7 +101,7 @@ func TestFilesSaveEditValidationAndUpdateCommandPaths(t *testing.T) {
 					"uri":        "file:///tmp/alpha.txt",
 					"status":     "active",
 					"tags":       []string{"docs"},
-					"metadata":   map[string]any{},
+					"notes":      "",
 					"created_at": now,
 					"updated_at": now,
 				},
@@ -125,13 +121,9 @@ func TestFilesSaveEditValidationAndUpdateCommandPaths(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Contains(t, updated.errText, "non-negative")
 
+	// Notes is now plain text, no validation needed.
 	updated.editSize = ""
-	updated.editMeta.Buffer = "invalid"
-	updated, cmd = updated.saveEdit()
-	assert.Nil(t, cmd)
-	assert.Contains(t, updated.errText, "expected 'key: value'")
-
-	updated.editMeta.Buffer = ""
+	updated.editMeta.Buffer = "some notes"
 	updated.editTagStr = "docs"
 	updated, cmd = updated.saveEdit()
 	require.NotNil(t, cmd)
@@ -167,7 +159,7 @@ func TestFilesSaveEditIncludesOptionalMimeSizeChecksumFields(t *testing.T) {
 					"file_path":  "/tmp/alpha.txt",
 					"uri":        "file:///tmp/alpha.txt",
 					"status":     "active",
-					"metadata":   map[string]any{},
+					"notes":      "",
 					"created_at": now,
 					"updated_at": now,
 				},

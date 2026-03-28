@@ -21,7 +21,7 @@ func TestInboxViewTinyWidthFilterAndUnsyncedVisibleRows(t *testing.T) {
 			RequestedBy:     "user-1",
 			RequestedByName: "alpha-agent",
 			CreatedAt:       time.Now().UTC(),
-			ChangeDetails:   api.JSONMap{"name": "Alpha"},
+			ChangeDetails:   `{"name":"Alpha"}`,
 		},
 	}
 	model.applyFilter(true)
@@ -46,10 +46,7 @@ func TestInboxViewWideLayoutUsesSideBySidePreview(t *testing.T) {
 			RequestedBy:     "user-wide",
 			RequestedByName: "agent-wide",
 			CreatedAt:       time.Now().UTC(),
-			ChangeDetails: api.JSONMap{
-				"name":   "Wide Entity",
-				"scopes": []any{"public"},
-			},
+			ChangeDetails: `{"name":"Wide Entity","scopes":["public"]}`,
 		},
 	}
 	model.applyFilter(true)

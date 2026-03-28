@@ -26,7 +26,7 @@ func TestFilesStartEditBranchMatrix(t *testing.T) {
 		FilePath: "/tmp/alpha.txt",
 		Status:   "inactive",
 		Tags:     []string{"docs"},
-		Metadata: api.JSONMap{"k": "v"},
+		Notes: "k: v",
 	}
 	model.startEdit()
 	assert.Equal(t, "alpha.txt", model.editName)
@@ -50,7 +50,7 @@ func TestFilesStartEditBranchMatrix(t *testing.T) {
 		MimeType:  &mime,
 		SizeBytes: &size,
 		Checksum:  &checksum,
-		Metadata:  api.JSONMap{"a": 1},
+		Notes: "a: 1",
 	}
 	model.startEdit()
 	assert.Equal(t, "text/plain", model.editMime)

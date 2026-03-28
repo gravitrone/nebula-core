@@ -32,8 +32,8 @@ func TestFormatAuditActor(t *testing.T) {
 func TestBuildAuditDiffRows(t *testing.T) {
 	entry := api.AuditEntry{
 		ChangedFields: []string{"name", "status", "unchanged"},
-		OldData:       api.JSONMap{"name": "old", "status": "active", "unchanged": "same"},
-		NewData:       api.JSONMap{"name": "new", "status": "archived", "unchanged": "same"},
+		OldValues:     `{"name": "old", "status": "active", "unchanged": "same"}`,
+		NewValues:     `{"name": "new", "status": "archived", "unchanged": "same"}`,
 	}
 	rows := buildAuditDiffRows(entry)
 	assert.Len(t, rows, 2)

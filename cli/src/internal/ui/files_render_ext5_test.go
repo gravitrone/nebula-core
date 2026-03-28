@@ -78,7 +78,7 @@ func TestFilesRenderFilePreviewOptionalFieldBranches(t *testing.T) {
 		MimeType:  &mime,
 		Checksum:  &checksum,
 		Tags:      []string{"docs", "notes"},
-		Metadata:  api.JSONMap{"note": "preview"},
+		Notes: "preview",
 		CreatedAt: now,
 	}, 42))
 
@@ -87,7 +87,7 @@ func TestFilesRenderFilePreviewOptionalFieldBranches(t *testing.T) {
 	assert.Contains(t, out, "MIME")
 	assert.Contains(t, out, "SHA")
 	assert.Contains(t, out, "Tags")
-	assert.Contains(t, out, "Preview")
+	assert.Contains(t, out, "Notes")
 }
 
 func TestFilesHandleListKeysSpaceAndEscapeSearchBranches(t *testing.T) {

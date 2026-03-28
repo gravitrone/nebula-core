@@ -187,7 +187,7 @@ func TestFormatFileLineBranchMatrix(t *testing.T) {
 		MimeType:  &mime,
 		SizeBytes: &size,
 		Status:    "active",
-		Metadata:  api.JSONMap{"group": map[string]any{"field": "value"}},
+		Notes: "group field value",
 	})
 	assert.Contains(t, line, "Alpha.txt")
 	assert.Contains(t, line, "text/plain")
@@ -201,13 +201,13 @@ func TestFormatFileLineBranchMatrix(t *testing.T) {
 		Filename: "",
 		MimeType: &emptyMime,
 		Status:   "",
-		Metadata: api.JSONMap{},
+		Notes: "",
 	})
 	assert.Equal(t, "file", line)
 
 	line = formatFileLine(api.File{
 		Filename: "Name",
-		Metadata: api.JSONMap{"k": "v"},
+		Notes: "k: v",
 	})
 	assert.Contains(t, line, "Name")
 	assert.Contains(t, strings.ToLower(line), "v")

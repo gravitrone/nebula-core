@@ -128,8 +128,8 @@ func TestFormatAuditValueMatrix(t *testing.T) {
 
 func TestBuildAuditDiffRowsUsesUnionWhenChangedFieldsMissing(t *testing.T) {
 	entry := api.AuditEntry{
-		OldData: api.JSONMap{"name": "old", "same": "x"},
-		NewData: api.JSONMap{"name": "new", "same": "x", "status": "active"},
+		OldValues: `{"name": "old", "same": "x"}`,
+		NewValues: `{"name": "new", "same": "x", "status": "active"}`,
 	}
 	rows := buildAuditDiffRows(entry)
 	assert.Len(t, rows, 2)
@@ -194,8 +194,8 @@ func TestParseAuditFilterEmptyInputReturnsZeroValue(t *testing.T) {
 func TestBuildAuditDiffRowsSkipsEmptyChangedFieldNames(t *testing.T) {
 	entry := api.AuditEntry{
 		ChangedFields: []string{"", "name"},
-		OldData:       api.JSONMap{"name": "old"},
-		NewData:       api.JSONMap{"name": "new"},
+		OldValues:     `{"name": "old"}`,
+		NewValues:     `{"name": "new"}`,
 	}
 	rows := buildAuditDiffRows(entry)
 	assert.Len(t, rows, 1)

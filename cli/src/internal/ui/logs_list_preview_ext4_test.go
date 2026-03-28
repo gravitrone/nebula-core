@@ -17,21 +17,17 @@ func TestLogsRenderPreviewBranchMatrix(t *testing.T) {
 	assert.Equal(t, "", model.renderLogPreview(api.Log{}, 0))
 
 	now := time.Now().UTC()
-	value := api.JSONMap{"group": map[string]any{"field": "value"}}
-	meta := api.JSONMap{"note": "alpha"}
 	out := components.SanitizeText(model.renderLogPreview(api.Log{
 		ID:        "log-1",
 		LogType:   "",
 		Status:    "",
 		CreatedAt: now,
-		Value:     value,
-		Metadata:  meta,
+		Content:   "group field value",
+		Notes:     "note: alpha",
 	}, 44))
 	assert.Contains(t, out, "Selected")
 	assert.Contains(t, out, "log")
 	assert.Contains(t, out, "Status: -")
-	assert.Contains(t, out, "Value:")
-	assert.Contains(t, out, "Meta:")
 
 	ts := now.Add(-time.Hour)
 	updated := now.Add(-2 * time.Hour)
@@ -156,14 +152,14 @@ func TestLogsHandleDetailAndRenderDetailAdditionalBranches(t *testing.T) {
 	model.detail.UpdatedAt = now.Add(time.Minute)
 	model.detail.Status = "active"
 	model.detail.Tags = []string{"ci"}
-	model.detail.Value = api.JSONMap{"key": "value"}
-	model.detail.Metadata = api.JSONMap{"meta": "yes"}
+	model.detail.Content = "key: value"
+	model.detail.Notes = "meta: yes"
 	model.detailRels = []api.Relationship{{ID: "rel-1", Type: "linked", SourceID: "log-1", SourceType: "log", TargetID: "ent-1", TargetType: "entity", Status: "active", CreatedAt: now}}
 	out = components.SanitizeText(model.renderDetail())
 	assert.Contains(t, out, "Updated")
 	assert.Contains(t, out, "Status")
 	assert.Contains(t, out, "Tags")
-	assert.Contains(t, out, "Value")
+	assert.Contains(t, out, "key: value")
 
 	updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	require.Nil(t, cmd)

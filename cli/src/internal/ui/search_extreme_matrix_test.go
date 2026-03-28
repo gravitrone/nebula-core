@@ -238,7 +238,7 @@ func TestBuildPaletteSearchEntriesLogFallbacks(t *testing.T) {
 
 func TestFilterLogsFilesProtocolsByQuery(t *testing.T) {
 	logs := []api.Log{
-		{ID: "log-1", LogType: "event", Status: "active", Value: api.JSONMap{"message": "deploy ok"}},
+		{ID: "log-1", LogType: "event", Status: "active", Content: "deploy ok"},
 	}
 	filteredLogs := filterLogsByQuery(logs, "deploy")
 	require.Len(t, filteredLogs, 1)

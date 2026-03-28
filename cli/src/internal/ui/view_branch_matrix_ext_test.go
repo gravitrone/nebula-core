@@ -36,7 +36,7 @@ func TestRelationshipsViewDetailBranch(t *testing.T) {
 		TargetName: "Beta",
 		Type:       "related-to",
 		Status:     "active",
-		Properties: api.JSONMap{},
+		Notes: "",
 		CreatedAt:  time.Now().UTC(),
 	}
 	model.detail = &rel
@@ -79,10 +79,10 @@ func TestLogsRenderListAvailableColsFloorBranch(t *testing.T) {
 		ID:        "l1",
 		LogType:   "event",
 		Timestamp: now,
-		Value:     api.JSONMap{"text": "x"},
+		Content: "x",
 		Status:    "active",
 		Tags:      []string{"smoke"},
-		Metadata:  api.JSONMap{},
+		Notes: "",
 		CreatedAt: now,
 		UpdatedAt: now,
 	}}

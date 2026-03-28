@@ -184,8 +184,8 @@ func TestGolden_LogsListView(t *testing.T) {
 	app := goldenApp(t, goldenDataHandler)
 	app = driveToTab(app, 6)
 	app = feedMsg(app, logsLoadedMsg{items: []api.Log{
-		{ID: "log-001", LogType: "training", Timestamp: goldenTime1, Value: api.JSONMap{"epoch": float64(10), "loss": 0.032}, Status: "active", Tags: []string{"ml"}, CreatedAt: goldenTime1, UpdatedAt: goldenTime1},
-		{ID: "log-002", LogType: "deployment", Timestamp: goldenTime2, Value: api.JSONMap{"version": "1.2.0", "env": "staging"}, Status: "active", Tags: []string{"ops"}, CreatedAt: goldenTime2, UpdatedAt: goldenTime2},
+		{ID: "log-001", LogType: "training", Timestamp: goldenTime1, Content: "epoch: 10, loss: 0.032", Status: "active", Tags: []string{"ml"}, CreatedAt: goldenTime1, UpdatedAt: goldenTime1},
+		{ID: "log-002", LogType: "deployment", Timestamp: goldenTime2, Content: "version: 1.2.0, env: staging", Status: "active", Tags: []string{"ops"}, CreatedAt: goldenTime2, UpdatedAt: goldenTime2},
 	}})
 	golden.RequireEqual(t, []byte(viewContent(app)))
 }
@@ -228,8 +228,8 @@ func TestGolden_HistoryListView(t *testing.T) {
 	actorID := "ent-001"
 	actorName := "AlphaAgent"
 	app = feedMsg(app, historyLoadedMsg{items: []api.AuditEntry{
-		{ID: "audit-001", TableName: "entities", RecordID: "ent-002", Action: "UPDATE", ChangedByType: &actorType, ChangedByID: &actorID, ActorName: &actorName, OldData: api.JSONMap{"status": "draft"}, NewData: api.JSONMap{"status": "active"}, ChangedFields: []string{"status"}, ChangedAt: goldenTime1},
-		{ID: "audit-002", TableName: "context_items", RecordID: "ctx-001", Action: "INSERT", ChangedByType: &actorType, ChangedByID: &actorID, ActorName: &actorName, NewData: api.JSONMap{"title": "Architecture Overview"}, ChangedFields: []string{"title", "source_type"}, ChangedAt: goldenTime2},
+		{ID: "audit-001", TableName: "entities", RecordID: "ent-002", Action: "UPDATE", ChangedByType: &actorType, ChangedByID: &actorID, ActorName: &actorName, OldValues: `{"status":"draft"}`, NewValues: `{"status":"active"}`, ChangedFields: []string{"status"}, ChangedAt: goldenTime1},
+		{ID: "audit-002", TableName: "context_items", RecordID: "ctx-001", Action: "INSERT", ChangedByType: &actorType, ChangedByID: &actorID, ActorName: &actorName, NewValues: `{"title":"Architecture Overview"}`, ChangedFields: []string{"title", "source_type"}, ChangedAt: goldenTime2},
 	}})
 	golden.RequireEqual(t, []byte(viewContent(app)))
 }
@@ -347,7 +347,7 @@ func TestGolden_InboxDetail(t *testing.T) {
 		RequestedBy:     "ent-agent-01",
 		RequestedByName: "ResearchBot",
 		AgentName:       "ResearchBot",
-		ChangeDetails:   api.JSONMap{"name": "NewEntity", "type": "dataset"},
+		ChangeDetails:   `{"name":"NewEntity","type":"dataset"}`,
 		Status:          "pending",
 		CreatedAt:       goldenTime1,
 	}

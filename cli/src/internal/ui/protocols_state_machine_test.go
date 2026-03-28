@@ -90,7 +90,7 @@ func TestProtocolsDetailRendersRelationshipsSection(t *testing.T) {
 		Title:     "Policy",
 		Content:   &content,
 		Status:    "active",
-		Metadata:  api.JSONMap{},
+		Notes: "",
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -312,7 +312,7 @@ func TestProtocolsRenderHelpersCoverListAddAndEdit(t *testing.T) {
 			ProtocolType: &typ,
 			AppliesTo:    []string{"entity"},
 			Tags:         []string{"core"},
-			Metadata:     api.JSONMap{"scope": "public"},
+			Notes: "scope: public",
 			CreatedAt:    now,
 			UpdatedAt:    now,
 		},

@@ -172,7 +172,7 @@ func TestRenderTaxonomyPreviewIncludesOptionalFields(t *testing.T) {
 		IsBuiltin:   true,
 		IsActive:    false,
 		IsSymmetric: &symmetric,
-		Metadata:    map[string]any{"owner": "alxx"},
+		Notes: "owner: alxx",
 	}
 
 	assert.Equal(t, "", model.renderTaxonomyPreview(item, 0))
@@ -181,5 +181,5 @@ func TestRenderTaxonomyPreviewIncludesOptionalFields(t *testing.T) {
 	assert.Contains(t, preview, "inactive")
 	assert.Contains(t, preview, "Builtin")
 	assert.Contains(t, preview, "Symmetric")
-	assert.Contains(t, preview, "Meta")
+	assert.Contains(t, preview, "Notes")
 }

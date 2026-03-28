@@ -20,7 +20,7 @@ func TestInboxLoadApprovalsLimitFallbackAndError(t *testing.T) {
 		limits = append(limits, r.URL.Query().Get("limit"))
 		require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 			"data": []map[string]any{
-				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "agent", "requested_by": "entity-id", "change_details": map[string]any{}, "created_at": time.Now()},
+				{"id": "ap-1", "status": "pending", "request_type": "create_entity", "agent_name": "agent", "requested_by": "entity-id", "change_details": "{}", "created_at": time.Now()},
 			},
 		}))
 	})
@@ -236,27 +236,8 @@ func TestInboxRenderDetailAdditionalBranches(t *testing.T) {
 		RequestedBy: "entity-id",
 		CreatedAt:   time.Now(),
 		JobID:       &jobID,
-		Notes:       &notes,
-		ReviewDetails: api.JSONMap{
-			"grant_scopes": []any{"public", "admin"},
-		},
-		ChangeDetails: api.JSONMap{
-			"source_id":   sourceID,
-			"source_name": "Source A",
-			"target_id":   targetID,
-			"target_name": "Target B",
-			"entity_ids":  []any{entityOne, entityTwo},
-			"Settings": map[string]any{
-				"Mode": "strict",
-			},
-			"MeTaDaTa": map[string]any{
-				"role": "builder",
-			},
-			"changes": map[string]any{
-				"status": map[string]any{"from": "pending", "to": "approved"},
-				"same":   map[string]any{"from": "x", "to": "x"},
-			},
-		},
+		Notes: &notes,
+		ChangeDetails: `{"source_id":"` + sourceID + `","source_name":"Source A","target_id":"` + targetID + `","target_name":"Target B","entity_ids":["` + entityOne + `","` + entityTwo + `"],"Settings":{"Mode":"strict"},"MeTaDaTa":{"role":"builder"},"changes":{"status":{"from":"pending","to":"approved"},"same":{"from":"x","to":"x"}}}`,
 	}
 
 	out := components.SanitizeText(model.renderDetail())
@@ -282,17 +263,7 @@ func TestInboxRenderApprovalPreviewBranches(t *testing.T) {
 		AgentName:       "agent-alpha",
 		RequestedByName: "agent-alpha",
 		CreatedAt:       time.Now(),
-		ChangeDetails: api.JSONMap{
-			"name":              "Rel One",
-			"scopes":            []any{"public", "admin"},
-			"tags":              []any{"x", "y"},
-			"type":              "relation",
-			"relationship_type": "owns",
-			"source_id":         sourceID,
-			"target_id":         targetID,
-			"entity_ids":        []any{entityID},
-			"log_type":          "event",
-		},
+		ChangeDetails: `{"name":"Rel One","scopes":["public","admin"],"tags":["x","y"],"type":"relation","relationship_type":"owns","source_id":"` + sourceID + `","target_id":"` + targetID + `","entity_ids":["` + entityID + `"],"log_type":"event"}`,
 	}
 
 	out := components.SanitizeText(renderApprovalPreview(a, true, 52))
@@ -323,10 +294,7 @@ func TestInboxViewAdditionalBranches(t *testing.T) {
 			RequestedBy:     "entity-id",
 			RequestedByName: "agent",
 			CreatedAt:       now,
-			ChangeDetails: api.JSONMap{
-				"name":   "Alpha",
-				"scopes": []any{"public"},
-			},
+			ChangeDetails: `{"name":"Alpha","scopes":["public"]}`,
 		},
 	}
 	model.applyFilter(true)

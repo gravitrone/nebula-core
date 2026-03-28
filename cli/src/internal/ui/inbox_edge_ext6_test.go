@@ -13,7 +13,7 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 	t.Run("relationship type without endpoints returns type", func(t *testing.T) {
 		approval := api.Approval{
 			RequestType:   "update_relationship",
-			ChangeDetails: api.JSONMap{"relationship_type": "depends-on"},
+			ChangeDetails: `{"relationship_type":"depends-on"}`,
 		}
 		assert.Equal(t, "depends-on", approvalTitle(approval))
 	})
@@ -21,7 +21,7 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 	t.Run("bulk update with one entity name", func(t *testing.T) {
 		approval := api.Approval{
 			RequestType:   "bulk_update_entity_scopes",
-			ChangeDetails: api.JSONMap{"entity_names": []any{"Alpha"}},
+			ChangeDetails: `{"entity_names":["Alpha"]}`,
 		}
 		title := approvalTitle(approval)
 		assert.Contains(t, title, "Bulk Update Entity Scopes")
@@ -31,7 +31,7 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 	t.Run("bulk update falls back to entity id and entity count", func(t *testing.T) {
 		approval := api.Approval{
 			RequestType:   "bulk_update_entity_tags",
-			ChangeDetails: api.JSONMap{"entity_ids": []any{"ent-1234567890"}},
+			ChangeDetails: `{"entity_ids":["ent-1234567890"]}`,
 		}
 		title := approvalTitle(approval)
 		assert.Contains(t, title, "Bulk Update Entity Tags")
@@ -39,24 +39,24 @@ func TestApprovalTitleAdditionalFallbackBranches(t *testing.T) {
 
 		approval = api.Approval{
 			RequestType:   "bulk_update_entity_tags",
-			ChangeDetails: api.JSONMap{"entity_ids": []any{"ent-1", "ent-2", "ent-3"}},
+			ChangeDetails: `{"entity_ids":["ent-1","ent-2","ent-3"]}`,
 		}
 		title = approvalTitle(approval)
 		assert.Contains(t, title, "3 entities")
 	})
 
 	t.Run("log type fallback and empty request fallback", func(t *testing.T) {
-		approval := api.Approval{RequestType: "create_log", ChangeDetails: api.JSONMap{}}
+		approval := api.Approval{RequestType: "create_log", ChangeDetails: "{}"}
 		assert.Equal(t, "Create Log", approvalTitle(approval))
 
-		approval = api.Approval{RequestType: "   ", ChangeDetails: api.JSONMap{}}
+		approval = api.Approval{RequestType: "   ", ChangeDetails: "{}"}
 		assert.Equal(t, "", approvalTitle(approval))
 	})
 }
 
 func TestRequestedRequiresApprovalAndParseStringListAdditionalBranches(t *testing.T) {
 	approval := api.Approval{
-		ChangeDetails: api.JSONMap{"requested_requires_approval": "false"},
+		ChangeDetails: `{"requested_requires_approval":"false"}`,
 	}
 	assert.True(t, requestedRequiresApprovalFromApproval(approval))
 
@@ -92,29 +92,21 @@ func TestApproveDiffRowsGuardAndEndpointMappingBranches(t *testing.T) {
 	model := NewInboxModel(nil)
 	assert.Nil(t, model.approveDiffRows())
 
-	model.detail = &api.Approval{ChangeDetails: api.JSONMap{}}
+	model.detail = &api.Approval{ChangeDetails: "{}"}
 	assert.Nil(t, model.approveDiffRows())
 
-	model.detail = &api.Approval{ChangeDetails: api.JSONMap{"changes": "bad"}}
+	model.detail = &api.Approval{ChangeDetails: `{"changes":"bad"}`}
 	assert.Nil(t, model.approveDiffRows())
 
 	model.detail = &api.Approval{
-		ChangeDetails: api.JSONMap{
-			"source_name": "Source A",
-			"target_name": "Target B",
-			"changes": map[string]any{
-				"bad":       "nope",
-				"unchanged": map[string]any{"from": "x", "to": "x"},
-				"status":    map[string]any{"from": "pending", "to": "approved"},
-			},
-		},
+		ChangeDetails: `{"source_name":"Source A","target_name":"Target B","changes":{"bad":"nope","unchanged":{"from":"x","to":"x"},"status":{"from":"pending","to":"approved"}}}`,
 	}
 
 	rows := model.approveDiffRows()
 	require.Len(t, rows, 1)
 	assert.Equal(t, "status", strings.ToLower(rows[0].Label))
 
-	details := model.detail.ChangeDetails
+	details := parseApprovalChangeDetails(model.detail.ChangeDetails)
 	assert.Equal(t, "Source A", approvalDiffValue(details, "source_id", "src-1"))
 	assert.Equal(t, "Target B", approvalDiffValue(details, "target_id", "tgt-1"))
 }

@@ -103,10 +103,7 @@ func TestInboxHandleDetailAndGrantInputBranches(t *testing.T) {
 	model.items = []api.Approval{{
 		ID:          "ap-1",
 		RequestType: "register_agent",
-		ChangeDetails: api.JSONMap{
-			"requested_scopes":            []string{"public"},
-			"requested_requires_approval": false,
-		},
+		ChangeDetails: `{"requested_scopes":["public"],"requested_requires_approval":false}`,
 	}}
 	model.filtered = []int{0}
 	model.dataTable.SetRows([]table.Row{{"ap-1"}})

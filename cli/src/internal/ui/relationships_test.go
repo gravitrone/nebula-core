@@ -30,7 +30,7 @@ func TestRelationshipsInitLoadsNames(t *testing.T) {
 		case "/api/relationships":
 			resp := map[string]any{
 				"data": []map[string]any{
-					{"id": "rel-1", "source_id": "ent-1", "target_id": "ent-2", "relationship_type": "uses", "properties": map[string]any{}},
+					{"id": "rel-1", "source_id": "ent-1", "target_id": "ent-2", "relationship_type": "uses", "notes": ""},
 				},
 			}
 			require.NoError(t, json.NewEncoder(w).Encode(resp))
@@ -181,7 +181,7 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 					"target_name":       "Beta",
 					"relationship_type": "uses",
 					"status":            "active",
-					"properties":        map[string]any{},
+					"notes":             "",
 					"created_at":        now,
 				},
 			}}))
@@ -205,7 +205,7 @@ func TestRelationshipsInitViewDetailEditAndConfirmFlow(t *testing.T) {
 				"target_id":         "ent-2",
 				"relationship_type": "uses",
 				"status":            "archived",
-				"properties":        map[string]any{},
+				"notes":             "",
 				"created_at":        now,
 			}}))
 			return
@@ -292,7 +292,7 @@ func TestRelationshipsEditPropertiesUsesMetadataPreviewTable(t *testing.T) {
 		Type:       "owns",
 		Status:     "active",
 	}
-	model.editFocus = relsEditFieldProperties
+	model.editFocus = relsEditFieldNotes
 	model.editMeta.Buffer = "profile | timezone | Europe/Warsaw"
 
 	out := components.SanitizeText(model.renderEdit())
@@ -424,7 +424,7 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 				"target_id":         "ent-2",
 				"relationship_type": "related-to",
 				"status":            "active",
-				"properties":        map[string]any{"note": "ok"},
+				"notes":             "ok",
 				"created_at":        now,
 			}}))
 			return
@@ -444,7 +444,7 @@ func TestRelationshipsEditAndCreatePreviewHelpers(t *testing.T) {
 		TargetName: "Beta",
 		Type:       "related-to",
 		Status:     "active",
-		Properties: api.JSONMap{"note": "ok"},
+		Notes: "ok",
 		CreatedAt:  now,
 	}
 

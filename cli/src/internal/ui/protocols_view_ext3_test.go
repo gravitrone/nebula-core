@@ -37,7 +37,7 @@ func TestProtocolsViewSwitchesAcrossListAddDetailAndEdit(t *testing.T) {
 		Tags:         []string{"tag-a"},
 		AppliesTo:    []string{"entity"},
 		SourcePath:   &sourcePath,
-		Metadata:     api.JSONMap{"note": "hello"},
+		Notes: "hello",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
@@ -97,7 +97,7 @@ func TestProtocolsRenderDetailIncludesOptionalSectionsAndRelationships(t *testin
 		Tags:         []string{"ops", "prod"},
 		AppliesTo:    []string{"entity", "job"},
 		SourcePath:   &sourcePath,
-		Metadata:     api.JSONMap{"owner": "platform"},
+		Notes: "owner: platform",
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}

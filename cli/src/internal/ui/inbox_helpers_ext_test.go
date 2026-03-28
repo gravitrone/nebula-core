@@ -49,32 +49,32 @@ func TestDetailLabelAndHumanizeApprovalType(t *testing.T) {
 }
 
 func TestApprovalTitleFallbackMatrix(t *testing.T) {
-	approval := api.Approval{ChangeDetails: api.JSONMap{"name": "Alpha"}}
+	approval := api.Approval{ChangeDetails: `{"name":"Alpha"}`}
 	assert.Equal(t, "Alpha", approvalTitle(approval))
 
-	approval = api.Approval{ChangeDetails: api.JSONMap{"title": "Task A"}}
+	approval = api.Approval{ChangeDetails: `{"title":"Task A"}`}
 	assert.Equal(t, "Task A", approvalTitle(approval))
 
-	approval = api.Approval{ChangeDetails: api.JSONMap{"entity_name": "Entity A"}}
+	approval = api.Approval{ChangeDetails: `{"entity_name":"Entity A"}`}
 	assert.Equal(t, "Entity A", approvalTitle(approval))
 
 	approval = api.Approval{
 		RequestType:   "create_relationship",
-		ChangeDetails: api.JSONMap{"relationship_type": "owns", "source_name": "A", "target_name": "B"},
+		ChangeDetails: `{"relationship_type":"owns","source_name":"A","target_name":"B"}`,
 	}
 	assert.Equal(t, "owns (A -> B)", approvalTitle(approval))
 
 	approval = api.Approval{
 		RequestType:   "bulk_update_entity_tags",
-		ChangeDetails: api.JSONMap{"entity_names": []any{"A", "B", "C"}},
+		ChangeDetails: `{"entity_names":["A","B","C"]}`,
 	}
 	assert.Contains(t, approvalTitle(approval), "Bulk Update Entity Tags")
 	assert.Contains(t, approvalTitle(approval), "A, B +1")
 
-	approval = api.Approval{RequestType: "create_log", ChangeDetails: api.JSONMap{"log_type": "note"}}
+	approval = api.Approval{RequestType: "create_log", ChangeDetails: `{"log_type":"note"}`}
 	assert.Equal(t, "log: note", approvalTitle(approval))
 
-	approval = api.Approval{RequestType: "update_entity", ChangeDetails: api.JSONMap{}}
+	approval = api.Approval{RequestType: "update_entity", ChangeDetails: "{}"}
 	assert.Equal(t, "Update Entity", approvalTitle(approval))
 }
 
@@ -117,14 +117,14 @@ func TestApprovalEndpointLabelAndScopeParsers(t *testing.T) {
 }
 
 func TestRequestedScopesAndRequiresApprovalMatrix(t *testing.T) {
-	approval := api.Approval{ChangeDetails: api.JSONMap{"requested_scopes": []any{"private", "admin"}}}
+	approval := api.Approval{ChangeDetails: `{"requested_scopes":["private","admin"]}`}
 	assert.Equal(t, []string{"private", "admin"}, requestedScopesFromApproval(approval))
 
-	approval = api.Approval{ChangeDetails: api.JSONMap{}}
+	approval = api.Approval{ChangeDetails: "{}"}
 	assert.Equal(t, []string{"public"}, requestedScopesFromApproval(approval))
 	assert.True(t, requestedRequiresApprovalFromApproval(approval))
 
-	approval = api.Approval{ChangeDetails: api.JSONMap{"requested_requires_approval": false}}
+	approval = api.Approval{ChangeDetails: `{"requested_requires_approval":false}`}
 	assert.False(t, requestedRequiresApprovalFromApproval(approval))
 }
 
@@ -154,14 +154,7 @@ func TestInboxSelectionAndSummaryHelpers(t *testing.T) {
 func TestApproveDiffRowsAndDiffValueMatrix(t *testing.T) {
 	model := NewInboxModel(nil)
 	model.detail = &api.Approval{
-		ChangeDetails: api.JSONMap{
-			"source_name": "Source A",
-			"changes": map[string]any{
-				"source_id": map[string]any{"from": "src-1", "to": "src-2"},
-				"status":    map[string]any{"from": "pending", "to": "approved"},
-				"same":      map[string]any{"from": "x", "to": "x"},
-			},
-		},
+		ChangeDetails: `{"source_name":"Source A","changes":{"source_id":{"from":"src-1","to":"src-2"},"status":{"from":"pending","to":"approved"},"same":{"from":"x","to":"x"}}}`,
 	}
 
 	rows := model.approveDiffRows()

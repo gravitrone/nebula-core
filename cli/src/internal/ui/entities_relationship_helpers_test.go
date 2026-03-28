@@ -89,7 +89,7 @@ func TestEntitiesRelationshipRenderAndEditHelpers(t *testing.T) {
 	model.startRelEdit()
 	model.view = entitiesViewRelEdit
 	edit := components.SanitizeText(model.renderRelEdit())
-	assert.Contains(t, edit, "Properties")
+	assert.Contains(t, edit, "Notes")
 }
 
 // TestEntitiesSaveRelEditSendsPatchPayload handles test entities save rel edit sends patch payload.
@@ -110,7 +110,7 @@ func TestEntitiesSaveRelEditSendsPatchPayload(t *testing.T) {
 				"target_id":         "ent-2",
 				"relationship_type": "related-to",
 				"status":            "active",
-				"properties":        map[string]any{"note": "ok"},
+				"notes":             "ok",
 				"created_at":        now,
 			}})
 			return
@@ -122,7 +122,7 @@ func TestEntitiesSaveRelEditSendsPatchPayload(t *testing.T) {
 	model := NewEntitiesModel(api.NewClient(srv.URL, "test-key"))
 	model.relEditID = "rel-1"
 	model.relEditStatusIdx = 0
-	model.relEditBuf = `{"note":"ok"}`
+	model.relEditBuf = "ok"
 
 	updated, cmd := model.saveRelEdit()
 	require.NotNil(t, cmd)
@@ -135,5 +135,5 @@ func TestEntitiesSaveRelEditSendsPatchPayload(t *testing.T) {
 	assert.Equal(t, "rel-1", capturedID)
 	require.NotNil(t, captured.Status)
 	assert.Equal(t, "active", *captured.Status)
-	assert.Equal(t, "ok", captured.Properties["note"])
+	assert.Equal(t, "ok", captured.Notes)
 }

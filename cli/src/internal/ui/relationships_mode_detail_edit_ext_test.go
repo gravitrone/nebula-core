@@ -72,7 +72,7 @@ func TestRelationshipsHandleDetailKeysBranchMatrix(t *testing.T) {
 	t.Run("edit and confirm branches", func(t *testing.T) {
 		model := NewRelationshipsModel(nil)
 		model.view = relsViewDetail
-		model.detail = &api.Relationship{ID: "rel-1", Status: "active", Properties: api.JSONMap{}, CreatedAt: now}
+		model.detail = &api.Relationship{ID: "rel-1", Status: "active", Notes: "", CreatedAt: now}
 
 		updated, cmd := model.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 		require.Nil(t, cmd)
@@ -125,9 +125,8 @@ func TestRelationshipsRenderDetailBranchMatrix(t *testing.T) {
 	out = model.renderDetail()
 	assert.Contains(t, out, "depends-on")
 
-	model.detail.Properties = api.JSONMap{"note": "hello world"}
+	model.detail.Notes = "hello world"
 	out = model.renderDetail()
-	assert.Contains(t, out, "note")
 	assert.Contains(t, out, "hello world")
 }
 
@@ -167,7 +166,7 @@ func TestRelationshipsHandleEditKeysBranchMatrix(t *testing.T) {
 
 		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 		require.Nil(t, cmd)
-		assert.Equal(t, relsEditFieldProperties, updated.editFocus)
+		assert.Equal(t, relsEditFieldNotes, updated.editFocus)
 
 		updated, cmd = updated.handleEditKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.Nil(t, cmd)
@@ -187,24 +186,12 @@ func TestRelationshipsHandleEditKeysBranchMatrix(t *testing.T) {
 		assert.Equal(t, relsViewDetail, updated.view)
 	})
 
-	t.Run("save branch with parse error", func(t *testing.T) {
+	t.Run("save branch with notes text", func(t *testing.T) {
 		model := NewRelationshipsModel(nil)
 		model.view = relsViewEdit
 		model.detail = &api.Relationship{ID: "rel-1", CreatedAt: now}
-		model.editFocus = relsEditFieldProperties
-		model.editMeta.Buffer = "bad metadata line"
-
-		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-		require.Nil(t, cmd)
-		assert.False(t, updated.editSaving)
-	})
-
-	t.Run("save branch with valid metadata", func(t *testing.T) {
-		model := NewRelationshipsModel(nil)
-		model.view = relsViewEdit
-		model.detail = &api.Relationship{ID: "rel-1", CreatedAt: now}
-		model.editFocus = relsEditFieldProperties
-		model.editMeta.Buffer = "note: ok"
+		model.editFocus = relsEditFieldNotes
+		model.editMeta.Buffer = "some notes text"
 
 		updated, cmd := model.handleEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 		require.NotNil(t, cmd)

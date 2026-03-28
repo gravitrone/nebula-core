@@ -163,8 +163,8 @@ func TestLogsDetailRendersRelationshipsSection(t *testing.T) {
 		ID:        "log-1",
 		LogType:   "event",
 		Status:    "active",
-		Value:     api.JSONMap{"note": "x"},
-		Metadata:  api.JSONMap{},
+		Content: "note: x",
+		Notes:   "",
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -212,8 +212,8 @@ func TestLogsAddFlowCommitsTagsAndSaves(t *testing.T) {
 				"timestamp":  now,
 				"status":     created.Status,
 				"tags":       created.Tags,
-				"value":      created.Value,
-				"metadata":   created.Metadata,
+				"content":    created.Content,
+				"notes":      created.Notes,
 				"created_at": now,
 				"updated_at": now,
 			}})
@@ -392,8 +392,8 @@ func TestLogsRenderAddEditAndTagHelpers(t *testing.T) {
 		LogType:   "event",
 		Status:    "active",
 		Tags:      []string{"core"},
-		Value:     api.JSONMap{"k": "v"},
-		Metadata:  api.JSONMap{"scope": "public"},
+		Content: "k: v",
+		Notes:   "scope: public",
 		Timestamp: now,
 	}
 	model.startEdit()

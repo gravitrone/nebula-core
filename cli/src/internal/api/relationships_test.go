@@ -93,7 +93,7 @@ func TestUpdateRelationship(t *testing.T) {
 	})
 
 	rel, err := client.UpdateRelationship("rel-1", UpdateRelationshipInput{
-		Properties: map[string]any{"status": "active"},
+		Notes: "status: active",
 	})
 	require.NoError(t, err)
 	assert.Equal(t, "rel-1", rel.ID)

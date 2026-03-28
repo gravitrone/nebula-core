@@ -321,31 +321,14 @@ func TestLogsSaveAddAndEditValidationBranches(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Contains(t, updated.addErr, "timestamp")
 
+	// Content and notes are now plain text strings, no JSON validation needed.
+	// Verify that text values are accepted without errors.
 	model.addTimestamp = ""
-	model.addValue.Buffer = "invalid"
+	model.addValue.Buffer = "some content"
+	model.addMeta.Buffer = "some notes"
 	updated, cmd = model.saveAdd()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.addErr)
-
-	model.addValue.Buffer = "meta | field | value"
-	model.addMeta.Buffer = "invalid"
-	updated, cmd = model.saveAdd()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.addErr)
-
-	model = NewLogsModel(nil)
-	model.detail = &api.Log{ID: "log-1", Timestamp: time.Now()}
-	model.startEdit()
-	model.editValue.Buffer = "invalid"
-	updated, cmd = model.saveEdit()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.errText)
-
-	model.editValue.Buffer = ""
-	model.editMeta.Buffer = "invalid"
-	updated, cmd = model.saveEdit()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.errText)
+	assert.NotNil(t, cmd)
+	assert.Empty(t, updated.addErr)
 }
 
 func TestLogsStartEditNilDetailAndSaveEditRequestError(t *testing.T) {
@@ -403,7 +386,7 @@ func TestLogsSearchHelpersAndFormatLine(t *testing.T) {
 		LogType:   "audit",
 		Status:    "",
 		Timestamp: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC),
-		Metadata:  api.JSONMap{"owner": "alxx"},
+		Notes: "owner: alxx",
 	}))
 	assert.Contains(t, noStatus, "audit")
 	assert.Contains(t, noStatus, "2026-03-01")

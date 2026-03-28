@@ -296,11 +296,13 @@ func TestProtocolsSaveAddValidationAndMetadataError(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Equal(t, "Content is required", updated.addErr)
 
+	// Notes is now plain text, no validation needed.
+	updated.addErr = ""
 	updated.addFields[protoFieldContent].value = "rules"
-	updated.addMeta.Buffer = "invalid"
+	updated.addMeta.Buffer = "some notes"
 	updated, cmd = updated.saveAdd()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.addErr)
+	assert.NotNil(t, cmd)
+	assert.True(t, updated.addSaving)
 }
 
 func TestProtocolsSaveEditNilDetailAndMetadataError(t *testing.T) {
@@ -309,13 +311,14 @@ func TestProtocolsSaveEditNilDetailAndMetadataError(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Nil(t, updated.detail)
 
+	// Notes is now plain text, no validation needed on edit.
 	content := "rules"
 	model.detail = &api.Protocol{ID: "proto-1", Name: "p1", Title: "Protocol", Content: &content, Status: "active"}
 	model.startEdit()
-	model.editMeta.Buffer = "invalid"
+	model.editMeta.Buffer = "some notes"
 	updated, cmd = model.saveEdit()
-	assert.Nil(t, cmd)
-	assert.NotEmpty(t, updated.addErr)
+	assert.NotNil(t, cmd)
+	assert.Empty(t, updated.addErr)
 }
 
 func TestProtocolsViewOverlayBranches(t *testing.T) {

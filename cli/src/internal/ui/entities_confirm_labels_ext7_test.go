@@ -67,8 +67,8 @@ func TestEntitiesRenderConfirmAndRelationshipLabelBranches(t *testing.T) {
 		TableName: "entities",
 		RecordID:  "ent-1",
 		Action:    "update",
-		OldData:   map[string]any{"status": "active"},
-		NewData:   map[string]any{"status": "inactive"},
+		OldValues: `{"status": "active"}`,
+		NewValues: `{"status": "inactive"}`,
 		ChangedAt: time.Now(),
 	}
 

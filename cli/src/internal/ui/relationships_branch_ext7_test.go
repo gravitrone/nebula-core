@@ -43,7 +43,7 @@ func TestRelationshipsUpdateAdditionalBranches(t *testing.T) {
 
 	updated.editMeta.Active = false
 	updated.view = relsViewEdit
-	updated.detail = &api.Relationship{ID: "rel-1", Status: "active", Properties: api.JSONMap{}}
+	updated.detail = &api.Relationship{ID: "rel-1", Status: "active", Notes: ""}
 	updated.editFocus = relsEditFieldStatus
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
@@ -54,7 +54,7 @@ func TestRelationshipsViewAndListFilterRouteBranches(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 84
 	model.view = relsViewEdit
-	model.detail = &api.Relationship{ID: "rel-1", Status: "active", Properties: api.JSONMap{}}
+	model.detail = &api.Relationship{ID: "rel-1", Status: "active", Notes: ""}
 
 	model.view = relsViewList
 	model.filtering = true
@@ -94,13 +94,13 @@ func TestRelationshipsRenderEditFallbackAndSaveErrorBranch(t *testing.T) {
 	model := NewRelationshipsModel(client)
 	model.width = 92
 	model.detail = &api.Relationship{ID: "rel-1", Status: "active"}
-	model.editFocus = relsEditFieldProperties
+	model.editFocus = relsEditFieldNotes
 	model.editMeta.Buffer = ""
 	model.editSaving = true
 
 	rendered := components.SanitizeText(model.renderEdit())
 	assert.Contains(t, rendered, "Saving...")
-	assert.Contains(t, rendered, "-")
+	assert.Contains(t, rendered, "No notes")
 
 	model.editSaving = false
 	model.editMeta.Buffer = "note: ok"
@@ -117,14 +117,14 @@ func TestRelationshipsRenderEditNormalizesEmptyPreviewToDash(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 92
 	model.detail = &api.Relationship{ID: "rel-1", Status: "active"}
-	model.editFocus = relsEditFieldProperties
+	model.editFocus = relsEditFieldNotes
 	model.editMeta.Buffer = "\x00"
 
 	preview := renderMetadataEditorPreview(model.editMeta.Buffer, model.editMeta.Scopes, model.width, 6)
 	assert.Equal(t, "", strings.TrimSpace(components.SanitizeText(preview)))
 
 	rendered := components.SanitizeText(model.renderEdit())
-	assert.Contains(t, rendered, "Properties:")
+	assert.Contains(t, rendered, "Notes:")
 }
 
 func TestRelationshipsCreateKeyAdditionalBranches(t *testing.T) {

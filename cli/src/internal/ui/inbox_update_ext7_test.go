@@ -24,8 +24,8 @@ func TestInboxUpdateDiffInitConfirmNoopAndListEscClear(t *testing.T) {
 	})
 	require.Nil(t, cmd)
 	require.NotNil(t, updated.detail)
-	require.NotNil(t, updated.detail.ChangeDetails)
-	assert.Equal(t, "approved", updated.detail.ChangeDetails["changes"].(map[string]any)["status"])
+	require.NotNil(t, updated.detailChangeMap)
+	assert.Equal(t, "approved", updated.detailChangeMap["changes"].(map[string]any)["status"])
 
 	updated.confirming = true
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
@@ -79,10 +79,7 @@ func TestInboxRenderDetailEntityNamesAndFormatAnyEmptySlice(t *testing.T) {
 		AgentName:   "agent",
 		RequestedBy: "entity-id",
 		CreatedAt:   time.Now(),
-		ChangeDetails: api.JSONMap{
-			"entity_ids":   []any{"ent-1", "ent-2"},
-			"entity_names": []any{"Alpha", "Beta"},
-		},
+		ChangeDetails: `{"entity_ids":["ent-1","ent-2"],"entity_names":["Alpha","Beta"]}`,
 	}
 
 	out := components.SanitizeText(model.renderDetail())
@@ -96,9 +93,7 @@ func TestInboxPreviewScopeFallbackAndStartRejectNoSelection(t *testing.T) {
 		Status:      "pending",
 		AgentName:   "agent",
 		CreatedAt:   time.Now(),
-		ChangeDetails: api.JSONMap{
-			"scope": "public",
-		},
+		ChangeDetails: `{"scope":"public"}`,
 	}
 	preview := components.SanitizeText(renderApprovalPreview(approval, false, 44))
 	assert.Contains(t, preview, "Scope")

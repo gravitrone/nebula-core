@@ -23,8 +23,8 @@ func TestHistoryViewRendersListAndFiltersLine(t *testing.T) {
 				TableName: "entities",
 				RecordID:  "entity-1",
 				Action:    "create",
-				OldData:   api.JSONMap{},
-				NewData:   api.JSONMap{"name": "Alpha"},
+				OldValues: "",
+				NewValues: `{"name": "Alpha"}`,
 				ChangedAt: now,
 			},
 		},
@@ -79,8 +79,8 @@ func TestHistoryViewRendersScopesActorsAndDetail(t *testing.T) {
 		TableName: "entities",
 		RecordID:  "entity-1",
 		Action:    "update",
-		OldData:   api.JSONMap{"status": "inactive"},
-		NewData:   api.JSONMap{"status": "active"},
+		OldValues: `{"status": "inactive"}`,
+		NewValues: `{"status": "active"}`,
 		ChangedAt: now,
 		ChangeReason: func() *string {
 			return &reason
@@ -139,8 +139,8 @@ func TestHistoryViewLoadingAndRevertBranches(t *testing.T) {
 		TableName: "entities",
 		RecordID:  "ent-1",
 		Action:    "update",
-		OldData:   api.JSONMap{"status": "inactive"},
-		NewData:   api.JSONMap{"status": "active"},
+		OldValues: `{"status": "inactive"}`,
+		NewValues: `{"status": "active"}`,
 		ChangedAt: now,
 	}
 	model.reverting = true
@@ -164,21 +164,8 @@ func TestHistoryDetailMetadataDiffRendersStructuredRows(t *testing.T) {
 		TableName: "entities",
 		RecordID:  "ent-1",
 		Action:    "update",
-		OldData: api.JSONMap{
-			"metadata": map[string]any{
-				"context_segments": []any{
-					map[string]any{"text": "public", "scopes": []any{"public"}},
-				},
-			},
-		},
-		NewData: api.JSONMap{
-			"metadata": map[string]any{
-				"context_segments": []any{
-					map[string]any{"text": "public", "scopes": []any{"public"}},
-					map[string]any{"text": "secret", "scopes": []any{"private"}},
-				},
-			},
-		},
+		OldValues: `{"metadata": {"context_segments": [{"text": "public", "scopes": ["public"]}]}}`,
+		NewValues: `{"metadata": {"context_segments": [{"text": "public", "scopes": ["public"]}, {"text": "secret", "scopes": ["private"]}]}}`,
 		ChangedAt: now,
 	}
 
@@ -217,8 +204,8 @@ func TestHistoryRenderRevertConfirmAndUnknownLabelHelper(t *testing.T) {
 		TableName: "entities",
 		RecordID:  "ent-9f0d",
 		Action:    "update",
-		OldData:   api.JSONMap{"status": "inactive"},
-		NewData:   api.JSONMap{"status": "active"},
+		OldValues: `{"status": "inactive"}`,
+		NewValues: `{"status": "active"}`,
 		ChangedAt: now,
 	}
 

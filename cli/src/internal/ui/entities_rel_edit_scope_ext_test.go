@@ -160,7 +160,7 @@ func TestEntitiesRelationshipLoadHelpersBranchMatrix(t *testing.T) {
 func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	now := time.Now().UTC()
 	var patchedStatus string
-	var patchedProperties map[string]any
+	var patchedNotes string
 
 	_, client := testEntitiesClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/relationships/") && r.Method == http.MethodPatch {
@@ -169,7 +169,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 			if input.Status != nil {
 				patchedStatus = *input.Status
 			}
-			patchedProperties = input.Properties
+			patchedNotes = input.Notes
 			require.NoError(t, json.NewEncoder(w).Encode(map[string]any{
 				"data": map[string]any{
 					"id":                "rel-1",
@@ -179,7 +179,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 					"target_id":         "ent-2",
 					"relationship_type": "depends-on",
 					"status":            patchedStatus,
-					"properties":        patchedProperties,
+					"notes":             patchedNotes,
 					"created_at":        now,
 				},
 			}))
@@ -202,7 +202,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 			TargetID:   "ent-2",
 			Type:       "depends-on",
 			Status:     "active",
-			Properties: api.JSONMap{},
+			Notes: "",
 			CreatedAt:  now,
 		},
 	}
@@ -226,16 +226,16 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 
 	// Focus movement and properties input.
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
-	assert.Equal(t, relEditFieldProperties, updated.relEditFocus)
+	assert.Equal(t, relEditFieldNotes, updated.relEditFocus)
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyDown})
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
-	updated.relEditFocus = relEditFieldProperties
+	updated.relEditFocus = relEditFieldNotes
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyUp})
 	assert.Equal(t, relEditFieldStatus, updated.relEditFocus)
 
-	updated.relEditFocus = relEditFieldProperties
+	updated.relEditFocus = relEditFieldNotes
 	updated.relEditBuf = "a"
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	assert.Equal(t, "", updated.relEditBuf)
@@ -244,16 +244,9 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	updated, _ = updated.handleRelEditKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	assert.Equal(t, "{ ", updated.relEditBuf)
 
-	// Save invalid JSON branch.
-	updated.relEditBuf = "{"
-	updated, cmd = updated.handleRelEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
-	require.Nil(t, cmd)
-	assert.NotEmpty(t, updated.errText)
-
-	// Save valid branch.
-	updated.errText = ""
+	// Save with notes text (no JSON validation needed, notes is plain text).
 	updated.relEditStatusIdx = 0
-	updated.relEditBuf = `{"note":"ok"}`
+	updated.relEditBuf = "note: ok"
 	updated, cmd = updated.handleRelEditKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -261,7 +254,7 @@ func TestEntitiesStartRelEditAndHandleRelEditKeysBranchMatrix(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "rel-1", relMsg.rel.ID)
 	assert.Equal(t, "active", patchedStatus)
-	assert.Equal(t, "ok", patchedProperties["note"])
+	assert.Equal(t, "note: ok", patchedNotes)
 
 	// Back exits to relationships view.
 	updated.view = entitiesViewRelEdit

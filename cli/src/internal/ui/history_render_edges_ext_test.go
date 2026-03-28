@@ -40,8 +40,8 @@ func TestHistoryRenderDetailKeepsFieldsRowWhenDiffIsEmpty(t *testing.T) {
 		Action:        "update",
 		ChangedAt:     time.Now().UTC(),
 		ChangedFields: []string{"status"},
-		OldData:       api.JSONMap{"status": "active"},
-		NewData:       api.JSONMap{"status": "active"},
+		OldValues:     `{"status": "active"}`,
+		NewValues:     `{"status": "active"}`,
 	}))
 
 	assert.Contains(t, out, "Fields")

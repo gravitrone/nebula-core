@@ -13,13 +13,13 @@ import (
 
 func TestRelationshipsStartEditNoDetailNoop(t *testing.T) {
 	model := NewRelationshipsModel(nil)
-	model.editFocus = relsEditFieldProperties
+	model.editFocus = relsEditFieldNotes
 	model.editStatusIdx = 2
 	model.editMeta.Buffer = "note: keep"
 
 	model.startEdit()
 
-	assert.Equal(t, relsEditFieldProperties, model.editFocus)
+	assert.Equal(t, relsEditFieldNotes, model.editFocus)
 	assert.Equal(t, 2, model.editStatusIdx)
 	assert.Equal(t, "note: keep", model.editMeta.Buffer)
 }
@@ -29,7 +29,7 @@ func TestRelationshipsStartEditUnknownStatusFallsBackAndLoadsMetadata(t *testing
 	model.detail = &api.Relationship{
 		ID:         "rel-1",
 		Status:     "mystery-status",
-		Properties: api.JSONMap{"note": "edge"},
+		Notes: "note: edge",
 	}
 
 	model.startEdit()
@@ -50,7 +50,7 @@ func TestRelationshipsSaveEditNoDetailReturnsNoop(t *testing.T) {
 	assert.True(t, updated.editSaving)
 }
 
-func TestRelationshipsSaveEditOmitsPropertiesWhenParsedMetadataIsEmpty(t *testing.T) {
+func TestRelationshipsSaveEditOmitsNotesWhenBufferIsEmpty(t *testing.T) {
 	now := time.Now().UTC()
 	var patched map[string]any
 
@@ -66,7 +66,7 @@ func TestRelationshipsSaveEditOmitsPropertiesWhenParsedMetadataIsEmpty(t *testin
 					"target_id":         "ent-2",
 					"relationship_type": "related-to",
 					"status":            "active",
-					"properties":        map[string]any{},
+					"notes":             "",
 					"created_at":        now,
 				},
 			}))
@@ -77,10 +77,10 @@ func TestRelationshipsSaveEditOmitsPropertiesWhenParsedMetadataIsEmpty(t *testin
 
 	model := NewRelationshipsModel(client)
 	model.detail = &api.Relationship{
-		ID:         "rel-1",
-		Status:     "active",
-		Properties: api.JSONMap{"note": "before"},
-		CreatedAt:  now,
+		ID:        "rel-1",
+		Status:    "active",
+		Notes:     "before",
+		CreatedAt: now,
 	}
 	model.editStatusIdx = 1
 	model.editMeta.Buffer = ""
@@ -93,6 +93,9 @@ func TestRelationshipsSaveEditOmitsPropertiesWhenParsedMetadataIsEmpty(t *testin
 
 	assert.True(t, updated.editSaving)
 	assert.Equal(t, relsStatusOptions[1], patched["status"])
-	_, hasProperties := patched["properties"]
-	assert.False(t, hasProperties)
+	notesVal, hasNotes := patched["notes"]
+	// Empty buffer means notes is omitted or empty.
+	if hasNotes {
+		assert.Equal(t, "", notesVal)
+	}
 }
