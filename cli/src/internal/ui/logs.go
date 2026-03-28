@@ -79,6 +79,8 @@ type LogsModel struct {
 	editValue     MetadataEditor
 	editMeta      MetadataEditor
 	editSaving    bool
+
+	hintBox components.HintBox
 }
 
 // NewLogsModel builds the logs UI model.
@@ -89,6 +91,13 @@ func NewLogsModel(client *api.Client) LogsModel {
 		dataTable: components.NewNebulaTable(nil, 12),
 		view:      logsViewList,
 		addStatus: "active",
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter view",
+			"a add",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -230,6 +239,10 @@ func (m LogsModel) View() string {
 	}
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
+	}
+	if m.view == logsViewList {
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 	return components.Indent(body, 1)
 }

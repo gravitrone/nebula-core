@@ -101,6 +101,8 @@ type ProtocolsModel struct {
 	editApplyBuf  string
 	editMeta      MetadataEditor
 	editSaving    bool
+
+	hintBox components.HintBox
 }
 
 // NewProtocolsModel builds the protocols UI model.
@@ -133,6 +135,14 @@ func NewProtocolsModel(client *api.Client) ProtocolsModel {
 			{label: "Notes"},
 			{label: "Source Path"},
 		},
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter view",
+			"a add",
+			"e edit",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -254,7 +264,8 @@ func (m ProtocolsModel) View() string {
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		return components.Indent(body, 1)
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 }
 

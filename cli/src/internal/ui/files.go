@@ -84,6 +84,8 @@ type FilesModel struct {
 	editChecksum string
 	editMeta     MetadataEditor
 	editSaving   bool
+
+	hintBox components.HintBox
 }
 
 // NewFilesModel builds the files UI model.
@@ -94,6 +96,13 @@ func NewFilesModel(client *api.Client) FilesModel {
 		dataTable: components.NewNebulaTable(nil, 12),
 		view:      filesViewList,
 		addStatus: "active",
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter view",
+			"a add",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -225,6 +234,10 @@ func (m FilesModel) View() string {
 	}
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
+	}
+	if m.view == filesViewList {
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 	return components.Indent(body, 1)
 }

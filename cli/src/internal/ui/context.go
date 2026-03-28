@@ -111,6 +111,8 @@ type ContextModel struct {
 	scopeNames map[string]string
 	width      int
 	height     int
+
+	hintBox components.HintBox
 }
 
 // NewContextModel builds the context UI model.
@@ -122,6 +124,14 @@ func NewContextModel(client *api.Client) ContextModel {
 		dataTable: components.NewNebulaTable(nil, 10),
 		addType:   "note",
 		editType:  "note",
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter view",
+			"a add",
+			"l link",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -412,6 +422,10 @@ func (m ContextModel) View() string {
 	}
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
+	}
+	if m.view == contextViewList {
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 	return components.Indent(body, 1)
 }

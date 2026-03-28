@@ -105,6 +105,8 @@ type RelationshipsModel struct {
 	createLoading     bool
 
 	typeOptions []string
+
+	hintBox components.HintBox
 }
 
 // NewRelationshipsModel builds the relationships UI model.
@@ -117,6 +119,14 @@ func NewRelationshipsModel(client *api.Client) RelationshipsModel {
 		createTypeTable: components.NewNebulaTable(nil, 6),
 		view:           relsViewList,
 		names:          map[string]string{},
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter view",
+			"a add",
+			"e edit",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -252,6 +262,10 @@ func (m RelationshipsModel) View() string {
 	}
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
+	}
+	if m.view == relsViewList {
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 	return components.Indent(body, 1)
 }

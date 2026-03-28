@@ -53,6 +53,8 @@ type InboxModel struct {
 	pendingLimit  int
 	width         int
 	height        int
+
+	hintBox components.HintBox
 }
 
 // NewInboxModel builds the inbox UI model.
@@ -63,6 +65,14 @@ func NewInboxModel(client *api.Client) InboxModel {
 		dataTable:    components.NewNebulaTable(nil, 15),
 		selected:     make(map[string]bool),
 		pendingLimit: 500,
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter review",
+			"a approve",
+			"r reject",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -323,7 +333,8 @@ func (m InboxModel) View() string {
 	}
 
 	content := countLine + "\n\n" + body + "\n"
-	return components.Indent(components.TitledBox(title, content, m.width), 1)
+	m.hintBox.SetWidth(m.width)
+	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox(title, content, m.width), 1), m.hintBox.View())
 }
 
 // --- Helpers ---

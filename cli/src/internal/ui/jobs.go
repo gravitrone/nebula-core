@@ -94,6 +94,8 @@ type JobsModel struct {
 	editPriority string
 	editDesc     string
 	editSaving   bool
+
+	hintBox components.HintBox
 }
 
 // NewJobsModel builds the jobs UI model.
@@ -106,6 +108,14 @@ func NewJobsModel(client *api.Client) JobsModel {
 		view:        jobsViewList,
 		addStatus:   "pending",
 		addPriority: "",
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter view",
+			"a add",
+			"s status",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -287,6 +297,10 @@ func (m JobsModel) View() string {
 	}
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
+	}
+	if m.view == jobsViewList {
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 	return components.Indent(body, 1)
 }

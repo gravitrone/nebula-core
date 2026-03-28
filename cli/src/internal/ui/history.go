@@ -63,6 +63,8 @@ type HistoryModel struct {
 	scopeTable table.Model
 	actorTable table.Model
 	reverting  bool
+
+	hintBox components.HintBox
 }
 
 // NewHistoryModel builds the audit history UI model.
@@ -74,6 +76,13 @@ func NewHistoryModel(client *api.Client) HistoryModel {
 		scopeTable: components.NewNebulaTable(nil, 10),
 		actorTable: components.NewNebulaTable(nil, 10),
 		view:       historyViewList,
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter diff",
+			"v revert",
+			"/ command",
+			"q quit",
+		}),
 	}
 }
 
@@ -202,7 +211,8 @@ func (m HistoryModel) View() string {
 	if m.view == historyViewActors {
 		return m.renderActors()
 	}
-	return m.renderList()
+	m.hintBox.SetWidth(m.width)
+	return lipgloss.JoinVertical(lipgloss.Left, m.renderList(), m.hintBox.View())
 }
 
 // canRevertAuditEntry handles can revert audit entry.
