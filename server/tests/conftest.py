@@ -40,6 +40,16 @@ MUTABLE_TABLES = [
     "external_refs",
 ]
 
+# Taxonomy tables have seed data (is_builtin=true) that must be preserved.
+# Only test-created rows (is_builtin=false) are cleaned up after each test.
+TAXONOMY_TABLES = [
+    "entity_types",
+    "log_types",
+    "privacy_scopes",
+    "relationship_types",
+    "statuses",
+]
+
 
 def _admin_dsn(port: str | None = None) -> str:
     """DSN to connect to the default 'postgres' database for admin ops."""
@@ -154,3 +164,7 @@ async def clean_test_data(request, db_pool):
     async with db_pool.acquire() as conn:
         for table in MUTABLE_TABLES:
             await conn.execute(f"TRUNCATE {table} CASCADE")
+        for table in TAXONOMY_TABLES:
+            await conn.execute(
+                f"DELETE FROM {table} WHERE is_builtin = false"
+            )

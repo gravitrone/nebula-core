@@ -314,10 +314,26 @@ async def test_taxonomy_log_type_archive_conflict_when_referenced(api_admin, db_
     assert resp.status_code == 409
 
 
+@pytest.fixture
+async def seed_legacy_scopes(db_pool):
+    """Seed inactive legacy scopes so the activation test has rows to work with."""
+
+    for name in LEGACY_SCOPE_NAMES:
+        await db_pool.execute(
+            """
+            INSERT INTO privacy_scopes (name, description, is_builtin, is_active)
+            VALUES ($1, $2, false, false)
+            ON CONFLICT (name) DO NOTHING
+            """,
+            name,
+            f"Legacy scope: {name}",
+        )
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("legacy_scope", LEGACY_SCOPE_NAMES)
 async def test_legacy_scope_rejected_until_activated_via_taxonomy(
-    api, api_admin, db_pool, legacy_scope
+    api, api_admin, db_pool, legacy_scope, seed_legacy_scopes
 ):
     """Legacy scopes stay invalid until explicitly activated in taxonomy."""
 

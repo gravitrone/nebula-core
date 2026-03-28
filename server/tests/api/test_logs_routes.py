@@ -59,13 +59,12 @@ async def _insert_job(db_pool, enums, title: str, scopes: list[str]) -> dict:
     scope_ids = [enums.scopes.name_to_id[s] for s in scopes]
     row = await db_pool.fetchrow(
         """
-        INSERT INTO jobs (title, description, job_type, status_id, priority, privacy_scope_ids)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO jobs (title, description, status_id, priority, privacy_scope_ids)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING *
         """,
         title,
         "desc",
-        "task",
         status_id,
         "medium",
         scope_ids,
