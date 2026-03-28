@@ -622,11 +622,8 @@ func (m RelationshipsModel) renderEdit() string {
 		b.WriteString(MutedStyle.Render("  Notes:"))
 	}
 	b.WriteString("\n")
-	props := renderMetadataEditorPreview(m.editMeta.Buffer, m.editMeta.Scopes, m.width, 6)
-	if strings.TrimSpace(props) == "" {
-		props = "-"
-	}
-	b.WriteString(NormalStyle.Render("  " + props))
+	notesPreview := renderNotesEditorPreview(m.editMeta.Buffer, m.width, 6)
+	b.WriteString(NormalStyle.Render("  " + notesPreview))
 
 	if m.editSaving {
 		b.WriteString("\n\n" + MutedStyle.Render("Saving..."))

@@ -553,6 +553,64 @@ func sanitizeMetadataValue(value any) any {
 	}
 }
 
+// --- Notes Rendering ---
+
+// renderNotesBlock renders a markdown notes string inside a titled box.
+// If the notes string is empty, a muted "No notes" placeholder is shown.
+func renderNotesBlock(title string, notes string, width int) string {
+	if strings.TrimSpace(notes) == "" {
+		return components.TitledBox(title,
+			MutedStyle.Render("No notes"),
+			width)
+	}
+	rendered := components.RenderMarkdown(notes, components.BoxContentWidth(width))
+	if strings.TrimSpace(rendered) == "" {
+		rendered = components.SanitizeText(notes)
+	}
+	return components.TitledBox(title, strings.TrimRight(rendered, "\n"), width)
+}
+
+// renderNotesPreview returns a short plain-text preview of a notes string,
+// truncated to maxLen characters.
+func renderNotesPreview(notes string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	trimmed := strings.TrimSpace(notes)
+	if trimmed == "" {
+		return ""
+	}
+	// Collapse newlines into spaces for a single-line preview.
+	collapsed := strings.Join(strings.Fields(trimmed), " ")
+	return truncateString(components.SanitizeOneLine(collapsed), maxLen)
+}
+
+// renderNotesEditorPreview renders a preview of notes text for the edit form.
+// This replaces renderMetadataEditorPreview for the notes-as-string model.
+func renderNotesEditorPreview(notes string, width int, maxLines int) string {
+	trimmed := strings.TrimSpace(notes)
+	if trimmed == "" {
+		return MutedStyle.Render("No notes")
+	}
+	if maxLines < 1 {
+		maxLines = 1
+	}
+	lines := strings.Split(trimmed, "\n")
+	remaining := 0
+	if len(lines) > maxLines {
+		remaining = len(lines) - maxLines
+		lines = lines[:maxLines]
+	}
+	for i, line := range lines {
+		lines[i] = components.SanitizeText(line)
+	}
+	result := strings.Join(lines, "\n")
+	if remaining > 0 {
+		result += "\n" + MutedStyle.Render(fmt.Sprintf("+%d more lines", remaining))
+	}
+	return result
+}
+
 // renderMetadataBlock renders render metadata block.
 func renderMetadataBlock(data map[string]any, width int, expanded bool) string {
 	return renderMetadataBlockWithTitle("Metadata", data, width, expanded)

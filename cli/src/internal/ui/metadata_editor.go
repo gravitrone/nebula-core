@@ -47,6 +47,28 @@ func (m *MetadataEditor) Open(initial map[string]any) {
 	m.Load(initial)
 }
 
+// OpenNotes activates the editor with a plain notes string.
+func (m *MetadataEditor) OpenNotes(notes string) {
+	m.Active = true
+	m.LoadNotes(notes)
+}
+
+// LoadNotes loads a plain notes string into the editor, replacing the
+// map-based Load for the markdown-first data model.
+func (m *MetadataEditor) LoadNotes(notes string) {
+	m.Buffer = notes
+	m.Scopes = nil
+	m.rows = nil
+	m.selected = map[int]bool{}
+	m.entryMode = false
+	m.entryBuf = ""
+	m.entryEditIdx = -1
+	m.inspectMode = false
+	m.inspectRowIdx = 0
+	m.inspectOffset = 0
+	m.notice = ""
+}
+
 // Reset handles reset.
 func (m *MetadataEditor) Reset() {
 	m.Active = false
