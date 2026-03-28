@@ -179,6 +179,8 @@ type EntitiesModel struct {
 	bulkBuf      string
 	bulkRunning  bool
 	bulkTarget   bulkTarget
+
+	hintBox components.HintBox
 }
 
 // NewEntitiesModel builds the entities UI model.
@@ -197,6 +199,15 @@ func NewEntitiesModel(client *api.Client) EntitiesModel {
 		filterTypes:  map[string]bool{},
 		filterStatus: map[string]bool{},
 		filterScopes: map[string]bool{},
+		hintBox: components.NewHintBox([]string{
+			"↑/↓ navigate",
+			"enter select",
+			"a add",
+			"e edit",
+			"/ command",
+			"? help",
+			"q quit",
+		}),
 	}
 }
 
@@ -459,7 +470,8 @@ func (m EntitiesModel) View() string {
 		if modeLine != "" {
 			body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 		}
-		return components.Indent(body, 1)
+		m.hintBox.SetWidth(m.width)
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
 	}
 }
 
