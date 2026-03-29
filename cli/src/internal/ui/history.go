@@ -64,7 +64,6 @@ type HistoryModel struct {
 	actorTable table.Model
 	reverting  bool
 
-	hintBox components.HintBox
 }
 
 // NewHistoryModel builds the audit history UI model.
@@ -76,13 +75,6 @@ func NewHistoryModel(client *api.Client) HistoryModel {
 		scopeTable: components.NewNebulaTable(nil, 10),
 		actorTable: components.NewNebulaTable(nil, 10),
 		view:       historyViewList,
-		hintBox: components.NewHintBox([]string{
-			"↑/↓ navigate",
-			"enter diff",
-			"v revert",
-			"/ command",
-			"q quit",
-		}),
 	}
 }
 
@@ -211,8 +203,21 @@ func (m HistoryModel) View() string {
 	if m.view == historyViewActors {
 		return m.renderActors()
 	}
-	m.hintBox.SetWidth(m.width)
-	return lipgloss.JoinVertical(lipgloss.Left, m.renderList(), m.hintBox.View())
+	return lipgloss.JoinVertical(lipgloss.Left, m.renderList(), m.renderStatusHints())
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m HistoryModel) renderStatusHints() string {
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("?", "Help"),
+		components.Hint("q", "Quit"),
+		components.Hint("\u2191/\u2193", "Scroll"),
+		components.Hint("enter", "Diff"),
+		components.Hint("v", "Revert"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // canRevertAuditEntry handles can revert audit entry.

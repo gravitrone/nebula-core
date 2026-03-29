@@ -113,7 +113,6 @@ type RelationshipsModel struct {
 	notesTextarea textarea.Model
 	notesDirty    bool
 
-	hintBox components.HintBox
 }
 
 // NewRelationshipsModel builds the relationships UI model.
@@ -126,14 +125,6 @@ func NewRelationshipsModel(client *api.Client) RelationshipsModel {
 		createTypeTable: components.NewNebulaTable(nil, 6),
 		view:           relsViewList,
 		names:          map[string]string{},
-		hintBox: components.NewHintBox([]string{
-			"↑/↓ navigate",
-			"enter view",
-			"a add",
-			"e edit",
-			"/ command",
-			"q quit",
-		}),
 	}
 }
 
@@ -281,14 +272,31 @@ func (m RelationshipsModel) View() string {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
 	if m.view == relsViewList {
-		hb := m.hintBox
-		if m.notesEditing {
-			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
-		}
-		hb.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
 	}
 	return components.Indent(body, 1)
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m RelationshipsModel) renderStatusHints() string {
+	if m.notesEditing {
+		hints := []string{
+			components.Hint("esc", "Cancel"),
+			components.Hint("ctrl+s", "Save"),
+		}
+		return components.StatusBar(hints, m.width)
+	}
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("?", "Help"),
+		components.Hint("q", "Quit"),
+		components.Hint("\u2191/\u2193", "Scroll"),
+		components.Hint("enter", "View"),
+		components.Hint("a", "Add"),
+		components.Hint("e", "Edit"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // --- List ---

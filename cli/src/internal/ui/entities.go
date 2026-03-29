@@ -180,7 +180,6 @@ type EntitiesModel struct {
 	bulkRunning  bool
 	bulkTarget   bulkTarget
 
-	hintBox components.HintBox
 }
 
 // NewEntitiesModel builds the entities UI model.
@@ -199,15 +198,6 @@ func NewEntitiesModel(client *api.Client) EntitiesModel {
 		filterTypes:  map[string]bool{},
 		filterStatus: map[string]bool{},
 		filterScopes: map[string]bool{},
-		hintBox: components.NewHintBox([]string{
-			"↑/↓ navigate",
-			"enter select",
-			"a add",
-			"e edit",
-			"/ command",
-			"? help",
-			"q quit",
-		}),
 	}
 }
 
@@ -470,9 +460,23 @@ func (m EntitiesModel) View() string {
 		if modeLine != "" {
 			body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 		}
-		m.hintBox.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.hintBox.View())
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
 	}
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m EntitiesModel) renderStatusHints() string {
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("?", "Help"),
+		components.Hint("q", "Quit"),
+		components.Hint("\u2191/\u2193", "Scroll"),
+		components.Hint("enter", "Select"),
+		components.Hint("a", "Add"),
+		components.Hint("e", "Edit"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // --- List View ---

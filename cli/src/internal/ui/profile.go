@@ -63,7 +63,6 @@ type ProfileModel struct {
 	width  int
 	height int
 
-	hintBox components.HintBox
 }
 
 // NewProfileModel builds the profile UI model.
@@ -74,12 +73,6 @@ func NewProfileModel(client *api.Client, cfg *config.Config) ProfileModel {
 		keyList:   components.NewNebulaTable(nil, 10),
 		agentList: components.NewNebulaTable(nil, 10),
 		taxList:   components.NewNebulaTable(nil, 12),
-		hintBox: components.NewHintBox([]string{
-			"tab switch",
-			"e edit",
-			"/ command",
-			"q quit",
-		}),
 	}
 }
 
@@ -390,8 +383,19 @@ func (m ProfileModel) View() string {
 		b.WriteString(m.renderTaxonomy())
 	}
 
-	m.hintBox.SetWidth(m.width)
-	return lipgloss.JoinVertical(lipgloss.Left, b.String(), m.hintBox.View())
+	return lipgloss.JoinVertical(lipgloss.Left, b.String(), m.renderStatusHints())
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m ProfileModel) renderStatusHints() string {
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("q", "Quit"),
+		components.Hint("tab", "Switch"),
+		components.Hint("e", "Edit"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // --- Helpers ---

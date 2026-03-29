@@ -119,7 +119,6 @@ type ContextModel struct {
 	notesTextarea textarea.Model
 	notesDirty    bool
 
-	hintBox components.HintBox
 }
 
 // NewContextModel builds the context UI model.
@@ -131,15 +130,6 @@ func NewContextModel(client *api.Client) ContextModel {
 		dataTable: components.NewNebulaTable(nil, 10),
 		addType:   "note",
 		editType:  "note",
-		hintBox: components.NewHintBox([]string{
-			"↑/↓ navigate",
-			"enter view",
-			"a add",
-			"e edit",
-			"l link",
-			"/ command",
-			"q quit",
-		}),
 	}
 }
 
@@ -442,14 +432,32 @@ func (m ContextModel) View() string {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
 	if m.view == contextViewList {
-		hb := m.hintBox
-		if m.notesEditing {
-			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
-		}
-		hb.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
 	}
 	return components.Indent(body, 1)
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m ContextModel) renderStatusHints() string {
+	if m.notesEditing {
+		hints := []string{
+			components.Hint("esc", "Cancel"),
+			components.Hint("ctrl+s", "Save"),
+		}
+		return components.StatusBar(hints, m.width)
+	}
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("?", "Help"),
+		components.Hint("q", "Quit"),
+		components.Hint("\u2191/\u2193", "Scroll"),
+		components.Hint("enter", "View"),
+		components.Hint("a", "Add"),
+		components.Hint("e", "Edit"),
+		components.Hint("l", "Link"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // renderAdd renders the add context form.

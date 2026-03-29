@@ -54,7 +54,6 @@ type InboxModel struct {
 	width         int
 	height        int
 
-	hintBox components.HintBox
 }
 
 // NewInboxModel builds the inbox UI model.
@@ -65,14 +64,6 @@ func NewInboxModel(client *api.Client) InboxModel {
 		dataTable:    components.NewNebulaTable(nil, 15),
 		selected:     make(map[string]bool),
 		pendingLimit: 500,
-		hintBox: components.NewHintBox([]string{
-			"↑/↓ navigate",
-			"enter review",
-			"a approve",
-			"r reject",
-			"/ command",
-			"q quit",
-		}),
 	}
 }
 
@@ -333,8 +324,22 @@ func (m InboxModel) View() string {
 	}
 
 	content := countLine + "\n\n" + body + "\n"
-	m.hintBox.SetWidth(m.width)
-	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox(title, content, m.width), 1), m.hintBox.View())
+	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox(title, content, m.width), 1), m.renderStatusHints())
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m InboxModel) renderStatusHints() string {
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("?", "Help"),
+		components.Hint("q", "Quit"),
+		components.Hint("\u2191/\u2193", "Scroll"),
+		components.Hint("enter", "Review"),
+		components.Hint("a", "Approve"),
+		components.Hint("r", "Reject"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // --- Helpers ---

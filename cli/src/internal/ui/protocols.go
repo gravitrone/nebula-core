@@ -109,7 +109,6 @@ type ProtocolsModel struct {
 	notesTextarea textarea.Model
 	notesDirty    bool
 
-	hintBox components.HintBox
 }
 
 // NewProtocolsModel builds the protocols UI model.
@@ -142,14 +141,6 @@ func NewProtocolsModel(client *api.Client) ProtocolsModel {
 			{label: "Notes"},
 			{label: "Source Path"},
 		},
-		hintBox: components.NewHintBox([]string{
-			"↑/↓ navigate",
-			"enter view",
-			"a add",
-			"e edit",
-			"/ command",
-			"q quit",
-		}),
 	}
 }
 
@@ -280,13 +271,30 @@ func (m ProtocolsModel) View() string {
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		hb := m.hintBox
-		if m.notesEditing {
-			hb = components.NewHintBox([]string{"esc cancel", "ctrl+s save"})
-		}
-		hb.SetWidth(m.width)
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), hb.View())
+		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
 	}
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m ProtocolsModel) renderStatusHints() string {
+	if m.notesEditing {
+		hints := []string{
+			components.Hint("esc", "Cancel"),
+			components.Hint("ctrl+s", "Save"),
+		}
+		return components.StatusBar(hints, m.width)
+	}
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Command"),
+		components.Hint("?", "Help"),
+		components.Hint("q", "Quit"),
+		components.Hint("\u2191/\u2193", "Scroll"),
+		components.Hint("enter", "View"),
+		components.Hint("a", "Add"),
+		components.Hint("e", "Edit"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // --- Loading ---

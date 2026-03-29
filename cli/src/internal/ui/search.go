@@ -58,7 +58,6 @@ type SearchModel struct {
 	items     []searchEntry
 	width     int
 
-	hintBox components.HintBox
 }
 
 const (
@@ -77,12 +76,6 @@ func NewSearchModel(client *api.Client) SearchModel {
 		spinner:   components.NewNebulaSpinner(),
 		mode:      searchModeText,
 		dataTable: components.NewNebulaTable(nil, 12),
-		hintBox: components.NewHintBox([]string{
-			"/ search",
-			"enter select",
-			"tab switch",
-			"q quit",
-		}),
 	}
 }
 
@@ -289,8 +282,19 @@ func (m SearchModel) View() string {
 		b.WriteString(body)
 	}
 
-	m.hintBox.SetWidth(m.width)
-	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox("Search", b.String(), m.width), 1), m.hintBox.View())
+	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox("Search", b.String(), m.width), 1), m.renderStatusHints())
+}
+
+// renderStatusHints builds the bottom status bar with keycap pill hints.
+func (m SearchModel) renderStatusHints() string {
+	hints := []string{
+		components.Hint("1-9/0", "Tabs"),
+		components.Hint("/", "Search"),
+		components.Hint("q", "Quit"),
+		components.Hint("enter", "Select"),
+		components.Hint("tab", "Switch"),
+	}
+	return components.StatusBar(hints, m.width)
 }
 
 // renderSearchPreview renders render search preview.
