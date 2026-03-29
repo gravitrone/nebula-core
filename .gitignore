@@ -46,3 +46,4 @@ package-lock.json
 experiments/vhs/baselines/*.gif
 .autoresearch-work/
 experiments/autoresearch/autoresearch
+.claude/launch.json
