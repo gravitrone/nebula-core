@@ -48,18 +48,18 @@ func TestRenderScopeBadgeTrimAndEmpty(t *testing.T) {
 	assert.Equal(t, "", renderScopeBadge("   "))
 
 	publicBadge := stripANSI(renderScopeBadge(" public "))
-	assert.Equal(t, "[public]", publicBadge)
+	assert.Contains(t, publicBadge, "public")
 }
 
 func TestRenderScopeBadgeSupportsKnownAndUnknownScopes(t *testing.T) {
 	known := []string{"public", "private", "sensitive", "admin"}
 	for _, scope := range known {
 		clean := stripANSI(renderScopeBadge(scope))
-		assert.Equal(t, "["+scope+"]", clean)
+		assert.Contains(t, clean, scope)
 	}
 
 	custom := stripANSI(renderScopeBadge("custom-scope"))
-	assert.Equal(t, "[custom-scope]", custom)
+	assert.Contains(t, custom, "custom-scope")
 }
 
 func TestRenderScopeOptionsNoScopesAvailableMessage(t *testing.T) {

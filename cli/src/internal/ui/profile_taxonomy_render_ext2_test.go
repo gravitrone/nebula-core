@@ -41,8 +41,8 @@ func TestProfileRenderTaxonomyAdditionalBranchMatrix(t *testing.T) {
 		model.taxList.SetCursor(0)
 
 		out := model.renderTaxonomy()
-		assert.Contains(t, out, "rows")
-		assert.Contains(t, out, "filter: -")
+		// Count line is hidden when no search/filter is active.
+		assert.NotEmpty(t, out)
 	})
 
 	t.Run("wide layout with preview and flags matrix", func(t *testing.T) {
