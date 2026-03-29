@@ -397,6 +397,9 @@ func (m JobsModel) renderList() string {
 	if titleWidth < 12 {
 		titleWidth = 12
 	}
+	if titleWidth > 40 {
+		titleWidth = 40
+	}
 
 	tableRows := make([]table.Row, len(m.items))
 	for i, j := range m.items {
@@ -452,7 +455,7 @@ func (m JobsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	var previewItem *api.Job
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {

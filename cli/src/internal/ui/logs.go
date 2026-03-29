@@ -367,6 +367,9 @@ func (m LogsModel) renderList() string {
 			typeWidth = 12
 		}
 	}
+	if valueWidth > 40 {
+		valueWidth = 40
+	}
 
 	tableRows := make([]table.Row, len(m.items))
 	for i, l := range m.items {
@@ -416,7 +419,7 @@ func (m LogsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)

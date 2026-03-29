@@ -609,6 +609,9 @@ func (m ProfileModel) renderKeys() string {
 			ownerWidth = 12
 		}
 	}
+	if nameWidth > 40 {
+		nameWidth = 40
+	}
 
 	tableRows := make([]table.Row, 0, len(m.keys))
 	for _, k := range m.keys {
@@ -653,7 +656,7 @@ func (m ProfileModel) renderKeys() string {
 
 	title := "API Keys"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d keys", len(m.keys)))
-	tableView := components.TableBaseStyle.Render(m.keyList.View())
+	tableView := m.keyList.View()
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
 		content := m.renderKeyPreview(*previewItem, previewBoxContentWidth(previewWidth))
@@ -743,6 +746,9 @@ func (m ProfileModel) renderAgents() string {
 			scopesWidth = 14
 		}
 	}
+	if nameWidth > 40 {
+		nameWidth = 40
+	}
 
 	tableRows := make([]table.Row, 0, len(m.agents))
 	for _, a := range m.agents {
@@ -787,7 +793,7 @@ func (m ProfileModel) renderAgents() string {
 
 	title := "Agents"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d agents", len(m.agents)))
-	tableView := components.TableBaseStyle.Render(m.agentList.View())
+	tableView := m.agentList.View()
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
 		content := m.renderAgentPreview(*previewItem, previewBoxContentWidth(previewWidth))

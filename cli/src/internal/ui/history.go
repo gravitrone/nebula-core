@@ -456,6 +456,9 @@ func (m HistoryModel) renderList() string {
 			tableNameWidth = 10
 		}
 	}
+	if actorWidth > 40 {
+		actorWidth = 40
+	}
 
 	tableRows := make([]table.Row, len(m.items))
 	for i, entry := range m.items {
@@ -493,7 +496,7 @@ func (m HistoryModel) renderList() string {
 		filterLine = MutedStyle.Render(filterLine)
 	}
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	var previewItem *api.AuditEntry
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
@@ -618,7 +621,7 @@ func (m HistoryModel) renderScopes() string {
 	m.scopeTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.scopes)))
-	tableView := components.TableBaseStyle.Render(m.scopeTable.View())
+	tableView := m.scopeTable.View()
 	preview := ""
 	var previewItem *api.AuditScope
 	if idx := m.scopeTable.Cursor(); idx >= 0 && idx < len(m.scopes) {
@@ -719,7 +722,7 @@ func (m HistoryModel) renderActors() string {
 	m.actorTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.actors)))
-	tableView := components.TableBaseStyle.Render(m.actorTable.View())
+	tableView := m.actorTable.View()
 	preview := ""
 	var previewItem *api.AuditActor
 	if idx := m.actorTable.Cursor(); idx >= 0 && idx < len(m.actors) {

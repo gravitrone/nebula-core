@@ -227,6 +227,9 @@ func (m SearchModel) View() string {
 				infoWidth = 14
 			}
 		}
+		if titleWidth > 40 {
+			titleWidth = 40
+		}
 
 		tableRows := make([]table.Row, len(m.items))
 		for i, entry := range m.items {
@@ -259,7 +262,7 @@ func (m SearchModel) View() string {
 		m.dataTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.items)))
-		tableView := components.TableBaseStyle.Render(m.dataTable.View())
+		tableView := m.dataTable.View()
 		preview := ""
 		var previewItem *searchEntry
 		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {

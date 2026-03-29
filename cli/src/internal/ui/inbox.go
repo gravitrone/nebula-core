@@ -261,6 +261,9 @@ func (m InboxModel) View() string {
 	if titleWidth < 12 {
 		titleWidth = 12
 	}
+	if titleWidth > 40 {
+		titleWidth = 40
+	}
 
 	showCheckboxes := len(m.selected) > 0
 	tableRows := make([]table.Row, 0, len(m.filtered))
@@ -304,7 +307,7 @@ func (m InboxModel) View() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	var previewItem *api.Approval
 	if item, ok := m.selectedItem(); ok {

@@ -536,7 +536,7 @@ func (m RelationshipsModel) renderList() string {
 	}
 	countLine := MutedStyle.Render(count)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -1063,6 +1063,9 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 				kindWidth = 12
 			}
 		}
+		if nameWidth > 40 {
+			nameWidth = 40
+		}
 
 		tableRows := make([]table.Row, len(m.createResults))
 		for i, candidate := range m.createResults {
@@ -1098,7 +1101,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 		m.createTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.createResults)))
-		tableView := components.TableBaseStyle.Render(m.createTable.View())
+		tableView := m.createTable.View()
 		preview := ""
 		var previewItem *relationshipCreateCandidate
 		if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
@@ -1165,7 +1168,7 @@ func (m RelationshipsModel) renderCreateType() string {
 		m.createTypeTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d suggestions", len(m.createTypeResults)))
-		tableView := components.TableBaseStyle.Render(m.createTypeTable.View())
+		tableView := m.createTypeTable.View()
 		preview := ""
 		var selectedSuggestion string
 		if idx := m.createTypeTable.Cursor(); idx >= 0 && idx < len(m.createTypeResults) {

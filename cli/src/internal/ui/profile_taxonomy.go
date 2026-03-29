@@ -369,7 +369,7 @@ func (m ProfileModel) renderTaxonomy() string {
 		}
 	}
 
-	tableView := components.TableBaseStyle.Render(m.taxList.View())
+	tableView := m.taxList.View()
 	preview := ""
 	if previewItem != nil {
 		content := m.renderTaxonomyPreview(*previewItem, previewBoxContentWidth(previewWidth))

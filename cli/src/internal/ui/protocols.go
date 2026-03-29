@@ -539,6 +539,9 @@ func (m ProtocolsModel) renderList() string {
 			nameWidth = 12
 		}
 	}
+	if titleWidth > 40 {
+		titleWidth = 40
+	}
 
 	tableRows := make([]table.Row, len(m.items))
 	for i, p := range m.items {
@@ -582,7 +585,7 @@ func (m ProtocolsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)

@@ -1152,12 +1152,15 @@ func (m EntitiesModel) renderList() string {
 		availableCols = 30
 	}
 
-	typeWidth := 12
-	statusWidth := 11
+	typeWidth := 14
+	statusWidth := 12
 	atWidth := compactTimeColumnWidth
 	nameWidth := availableCols - (typeWidth + statusWidth + atWidth)
 	if nameWidth < 12 {
 		nameWidth = 12
+	}
+	if nameWidth > 40 {
+		nameWidth = 40
 	}
 
 	// Build rows from current items for the table.
@@ -1221,7 +1224,7 @@ func (m EntitiesModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	var previewItem *api.Entity
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
@@ -1745,7 +1748,7 @@ func (m EntitiesModel) renderHistory() string {
 	m.historyTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d entries", len(m.history)))
-	tableView := components.TableBaseStyle.Render(m.historyTable.View())
+	tableView := m.historyTable.View()
 	preview := ""
 	var previewItem *api.AuditEntry
 	if idx := m.historyTable.Cursor(); idx >= 0 && idx < len(m.history) {
@@ -2314,7 +2317,7 @@ func (m EntitiesModel) renderRelate() string {
 		m.relateTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.relateResults)))
-		tableView := components.TableBaseStyle.Render(m.relateTable.View())
+		tableView := m.relateTable.View()
 		preview := ""
 		var previewItem *api.Entity
 		if idx := m.relateTable.Cursor(); idx >= 0 && idx < len(m.relateResults) {

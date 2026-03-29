@@ -358,6 +358,9 @@ func (m FilesModel) renderList() string {
 	if fileWidth < 12 {
 		fileWidth = 12
 	}
+	if fileWidth > 40 {
+		fileWidth = 40
+	}
 
 	tableRows := make([]table.Row, len(m.items))
 	for i, f := range m.items {
@@ -399,7 +402,7 @@ func (m FilesModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := components.TableBaseStyle.Render(m.dataTable.View())
+	tableView := m.dataTable.View()
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
