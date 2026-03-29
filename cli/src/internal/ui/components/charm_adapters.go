@@ -51,20 +51,17 @@ func NewNebulaTable(cols []table.Column, height int) table.Model {
 	if cols == nil {
 		cols = []table.Column{{Title: "", Width: 40}}
 	}
-	s := table.Styles{
-		Header: lipgloss.NewStyle().
-			Bold(true).
-			Foreground(themeText).
-			Padding(0, 1),
-		Cell: lipgloss.NewStyle().
-			Foreground(themeText).
-			Padding(0, 1),
-		Selected: lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#eef2ff")).
-			Background(lipgloss.Color("#2a3348")).
-			Padding(0, 1),
-	}
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("#273540")).
+		BorderBottom(true).
+		Foreground(themeText).
+		Bold(true)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("#eef2ff")).
+		Background(themePrimary).
+		Bold(false)
 	t := table.New(
 		table.WithColumns(cols),
 		table.WithHeight(height),
