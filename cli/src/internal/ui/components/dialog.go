@@ -141,7 +141,12 @@ func renderSummaryRows(rows []TableRow, width int) string {
 
 // renderDiffRows renders render diff rows.
 func renderDiffRows(rows []DiffRow, width int) string {
-	return renderDiffGrid(rows, width)
+	lines := DiffRowsToLines(rows)
+	w := BoxContentWidth(width)
+	if w <= 0 {
+		w = 60
+	}
+	return RenderDiffView(lines, w)
 }
 
 // renderDiffValue is kept for test/backward compatibility with prefix-based diff formatting.

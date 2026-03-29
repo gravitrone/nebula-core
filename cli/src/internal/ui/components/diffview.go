@@ -261,6 +261,22 @@ func ParseUnifiedDiff(rawLines []string) []DiffLine {
 	return result
 }
 
+// DiffRowsToLines converts []DiffRow (label/from/to) into []DiffLine for RenderDiffView.
+// Changed fields produce a DiffDelete + DiffAdd pair; identical fields produce DiffContext.
+// Labels and values are sanitized to single lines so markdown/multi-line content renders cleanly.
+func DiffRowsToLines(rows []DiffRow) []DiffLine {
+	fields := make([]string, len(rows))
+	before := make(map[string]string, len(rows))
+	after := make(map[string]string, len(rows))
+	for i, r := range rows {
+		label := SanitizeOneLine(r.Label)
+		fields[i] = label
+		before[label] = SanitizeOneLine(r.From)
+		after[label] = SanitizeOneLine(r.To)
+	}
+	return BuildFieldDiff(fields, before, after)
+}
+
 // BuildFieldDiff creates diff lines from before/after field value maps.
 // This is for nebula's audit/approval diffs where we compare field values.
 func BuildFieldDiff(fields []string, before, after map[string]string) []DiffLine {

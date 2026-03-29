@@ -45,8 +45,8 @@ func TestConfirmPreviewDialogIncludesSummaryAndChanges(t *testing.T) {
 	assert.Contains(t, clean, "Alpha")
 	assert.Contains(t, clean, "Changes")
 	assert.Contains(t, clean, "status")
-	assert.Contains(t, clean, "- active")
-	assert.Contains(t, clean, "+ archived")
+	assert.Contains(t, clean, "- status: active")
+	assert.Contains(t, clean, "+ status: archived")
 	assert.Equal(t, 1, strings.Count(clean, "╭"))
 	assert.Equal(t, 1, strings.Count(clean, "╮"))
 }
@@ -86,17 +86,14 @@ func TestRenderDiffRowsBranchMatrix(t *testing.T) {
 		{Label: "\x1b[31mstatus\x1b[0m", From: "active\nold", To: "archived\nnew"},
 		{Label: "owner", From: "  ", To: "--"},
 	}
-	out := renderDiffRows(rows, 0) // contentWidth fallback branch
+	out := renderDiffRows(rows, 0) // width=0 uses fallback of 60
 	clean := SanitizeText(out)
 
 	assert.Contains(t, clean, "status")
 	assert.Contains(t, clean, "owner")
-	assert.Contains(t, clean, "Field")
-	assert.Contains(t, clean, "Before")
-	assert.Contains(t, clean, "After")
-	assert.Contains(t, clean, "- active")
-	assert.Contains(t, clean, "+ archived")
-	assert.Contains(t, clean, "None")
+	// crush-style: delete lines start with "- ", add lines with "+ "
+	assert.Contains(t, clean, "- status:")
+	assert.Contains(t, clean, "+ status:")
 	assert.GreaterOrEqual(t, strings.Count(clean, "owner"), 1)
 }
 
@@ -139,11 +136,11 @@ func TestRenderDiffRowsMinimumValueWidthBranch(t *testing.T) {
 		},
 	}
 
-	// width=10 => content width is positive but tiny, so valueWidth clamps to 8.
+	// width=10 => tiny content width, codeW clamps to 10 minimum; text truncated.
 	out := renderDiffRows(rows, 10)
 	clean := SanitizeText(out)
 
 	assert.Contains(t, clean, "status")
-	assert.Contains(t, clean, "- active")
-	assert.Contains(t, clean, "+ archive")
+	assert.Contains(t, clean, "- status:")
+	assert.Contains(t, clean, "+ status:")
 }

@@ -709,9 +709,10 @@ func (m InboxModel) renderDetail() string {
 			}
 		}
 
-		// Diff table for update requests.
+		// Diff view for update requests.
 		if len(diffRows) > 0 {
-			sections = append(sections, components.RenderDiffInfoTable(diffRows, m.width))
+			diffLines := components.DiffRowsToLines(diffRows)
+			sections = append(sections, components.RenderDiffView(diffLines, m.width))
 		}
 	}
 

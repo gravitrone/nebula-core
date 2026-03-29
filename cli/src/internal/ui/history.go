@@ -824,61 +824,15 @@ func (m HistoryModel) renderDetail(entry api.AuditEntry) string {
 	infoTable.Blur()
 	section := components.TableBaseStyle.Render(infoTable.View())
 
-	// --- Diff table ---
+	// --- Diff view ---
 	diffRows := buildAuditDiffRows(entry)
 	if len(diffRows) > 0 {
-		fieldW := 15
-		changeW := 9
-		valueW := 25
-		if m.width > 0 {
-			avail := components.BoxContentWidth(m.width) - fieldW - changeW - 8
-			if avail > valueW*2 {
-				valueW = avail / 2
-			}
+		diffW := m.width
+		if diffW <= 0 {
+			diffW = 80
 		}
-
-		diffCols := []table.Column{
-			{Title: "Field", Width: fieldW},
-			{Title: "Change", Width: changeW},
-			{Title: "Before", Width: valueW},
-			{Title: "After", Width: valueW},
-		}
-
-		addedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#34d399")).Bold(true)
-		removedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#fb7185")).Bold(true)
-		updatedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#fbbf24")).Bold(true)
-		sameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9ba0bf"))
-
-		tableRows := make([]table.Row, 0, len(diffRows))
-		for _, dr := range diffRows {
-			kind := detailDiffChangeKind(dr.From, dr.To)
-			var kindStyled string
-			switch kind {
-			case "added":
-				kindStyled = addedStyle.Render(kind)
-			case "removed":
-				kindStyled = removedStyle.Render(kind)
-			case "updated":
-				kindStyled = updatedStyle.Render(kind)
-			default:
-				kindStyled = sameStyle.Render(kind)
-			}
-			tableRows = append(tableRows, table.Row{
-				dr.Label,
-				kindStyled,
-				dr.From,
-				dr.To,
-			})
-		}
-
-		diffTable := table.New(
-			table.WithColumns(diffCols),
-			table.WithRows(tableRows),
-			table.WithHeight(len(tableRows)+1),
-			table.WithStyles(sNoHL),
-		)
-		diffTable.Blur()
-		diff := components.TableBaseStyle.Render(diffTable.View())
+		diffLines := components.DiffRowsToLines(diffRows)
+		diff := components.RenderDiffView(diffLines, components.BoxContentWidth(diffW))
 		section = section + "\n\n" + diff
 	}
 	return components.Indent(section, 1)
