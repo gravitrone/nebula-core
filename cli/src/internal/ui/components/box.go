@@ -179,7 +179,12 @@ func EmptyStateBox(title, message string, actions []string, width int) string {
 		}
 	}
 
-	return TitledBox(SanitizeOneLine(title), b.String(), width)
+	// Use compact width for empty states - max 60 chars content (+ 6 for border+padding overhead).
+	compactWidth := 60 + 6
+	if width > 0 && width < compactWidth {
+		compactWidth = width
+	}
+	return renderBox(boxBorder, compactWidth, b.String())
 }
 
 // TitledBox renders a box with a header title.

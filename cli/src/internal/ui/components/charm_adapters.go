@@ -85,6 +85,199 @@ func NewNebulaTable(cols []table.Column, height int) table.Model {
 	return t
 }
 
+// InfoTableRow is a key-value pair for RenderInfoTable.
+type InfoTableRow struct {
+	Key   string
+	Value string
+}
+
+// RenderInfoTable renders key-value pairs as a read-only 2-column bubbles table
+// with no selection highlight. This replaces the old components.Table() pattern.
+func RenderInfoTable(rows []InfoTableRow, width int) string {
+	if len(rows) == 0 || width <= 0 {
+		return ""
+	}
+
+	// Subtract border overhead from TableBaseStyle (2 for left+right border).
+	innerWidth := width - 2
+	if innerWidth < 20 {
+		innerWidth = 20
+	}
+
+	keyWidth := 0
+	for _, r := range rows {
+		w := lipgloss.Width(SanitizeOneLine(r.Key))
+		if w > keyWidth {
+			keyWidth = w
+		}
+	}
+	if keyWidth > 24 {
+		keyWidth = 24
+	}
+	if keyWidth < 6 {
+		keyWidth = 6
+	}
+
+	valWidth := innerWidth - keyWidth - (2 * 2) // 2 columns * 2 cell padding
+	if valWidth < 10 {
+		valWidth = 10
+	}
+
+	tableRows := make([]table.Row, len(rows))
+	for i, r := range rows {
+		tableRows[i] = table.Row{
+			ClampTextWidthEllipsis(SanitizeOneLine(r.Key), keyWidth),
+			ClampTextWidthEllipsis(SanitizeOneLine(r.Value), valWidth),
+		}
+	}
+
+	cols := []table.Column{
+		{Title: "Field", Width: keyWidth},
+		{Title: "Value", Width: valWidth},
+	}
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(themeBorder).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = lipgloss.NewStyle()
+
+	actualW := keyWidth + valWidth + (2 * 2)
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithRows(tableRows),
+		table.WithHeight(len(rows)+1),
+		table.WithWidth(actualW),
+		table.WithStyles(s),
+	)
+	t.Blur()
+
+	return TableBaseStyle.Render(t.View())
+}
+
+// RenderDiffInfoTable renders a before/after diff as a read-only 4-column bubbles table.
+// This replaces the old components.DiffTable() pattern.
+func RenderDiffInfoTable(rows []DiffRow, width int) string {
+	if len(rows) == 0 || width <= 0 {
+		return ""
+	}
+
+	innerWidth := width - 2
+	if innerWidth < 40 {
+		innerWidth = 40
+	}
+
+	fieldWidth := innerWidth / 6
+	if fieldWidth < 8 {
+		fieldWidth = 8
+	}
+	if fieldWidth > 20 {
+		fieldWidth = 20
+	}
+	changeWidth := 9
+	remaining := innerWidth - fieldWidth - changeWidth - (4 * 2) // 4 columns * 2 padding
+	valWidth := remaining / 2
+	if valWidth < 8 {
+		valWidth = 8
+	}
+
+	tableRows := make([]table.Row, 0, len(rows))
+	for _, r := range rows {
+		from := SanitizeOneLine(r.From)
+		to := SanitizeOneLine(r.To)
+		kind := diffChangeKind(from, to)
+		tableRows = append(tableRows, table.Row{
+			ClampTextWidthEllipsis(SanitizeOneLine(r.Label), fieldWidth),
+			kind,
+			ClampTextWidthEllipsis(from, valWidth),
+			ClampTextWidthEllipsis(to, valWidth),
+		})
+	}
+
+	cols := []table.Column{
+		{Title: "Field", Width: fieldWidth},
+		{Title: "Change", Width: changeWidth},
+		{Title: "Before", Width: valWidth},
+		{Title: "After", Width: valWidth},
+	}
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(themeBorder).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = lipgloss.NewStyle()
+
+	actualW := fieldWidth + changeWidth + (2 * valWidth) + (4 * 2)
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithRows(tableRows),
+		table.WithHeight(len(rows)+1),
+		table.WithWidth(actualW),
+		table.WithStyles(s),
+	)
+	t.Blur()
+
+	return TableBaseStyle.Render(t.View())
+}
+
+// RenderGridTable renders a multi-column read-only bubbles table from column
+// definitions and string rows. This replaces the old TableGrid() pattern.
+func RenderGridTable(columns []TableColumn, rows [][]string, width int) string {
+	if len(columns) == 0 || width <= 0 {
+		return ""
+	}
+
+	cols := make([]table.Column, len(columns))
+	for i, c := range columns {
+		cols[i] = table.Column{Title: c.Header, Width: c.Width}
+	}
+
+	tableRows := make([]table.Row, len(rows))
+	for i, row := range rows {
+		cells := make(table.Row, len(columns))
+		for j := range columns {
+			if j < len(row) {
+				cells[j] = ClampTextWidthEllipsis(SanitizeOneLine(row[j]), columns[j].Width)
+			}
+		}
+		tableRows[i] = cells
+	}
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(themeBorder).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = lipgloss.NewStyle()
+
+	actualW := 0
+	for _, c := range columns {
+		actualW += c.Width + 2 // cell padding
+	}
+
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithRows(tableRows),
+		table.WithHeight(len(rows)+1),
+		table.WithWidth(actualW),
+		table.WithStyles(s),
+	)
+	t.Blur()
+
+	return t.View()
+}
+
+// RenderCompactBox renders content inside a compact bordered box (width 66).
+// This replaces the old components.Box() pattern for loading/empty states.
+func RenderCompactBox(content string) string {
+	return renderBox(boxBorder, 66, content)
+}
+
 // NewNebulaViewport returns a viewport.Model with the given dimensions.
 func NewNebulaViewport(width, height int) viewport.Model {
 	return viewport.New(
