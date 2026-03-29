@@ -21,6 +21,7 @@ class Job(Base, TimestampMixin):
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
+    job_type: Mapped[str | None] = mapped_column(Text)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     agent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("agents.id"))
     status_id: Mapped[uuid.UUID | None] = mapped_column(
