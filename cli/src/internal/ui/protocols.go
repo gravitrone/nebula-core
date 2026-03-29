@@ -876,7 +876,7 @@ func (m ProtocolsModel) saveAdd() (ProtocolsModel, tea.Cmd) {
 
 // --- Edit ---
 
-func (m ProtocolsModel) startEdit() {
+func (m *ProtocolsModel) startEdit() {
 	if m.detail == nil {
 		return
 	}

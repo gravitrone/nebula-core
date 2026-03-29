@@ -98,8 +98,7 @@ func (m ProfileModel) selectedTaxonomy() *api.TaxonomyEntry {
 // openTaxPrompt handles open tax prompt.
 func (m *ProfileModel) openTaxPrompt(mode taxonomyPromptMode, defaultValue string) {
 	m.taxPromptMode = mode
-	m.taxPromptInput.SetValue(defaultValue)
-	m.taxPromptInput.Focus()
+	m.taxPromptBuf = defaultValue
 }
 
 // taxonomyPromptTitle handles taxonomy prompt title.
@@ -125,18 +124,23 @@ func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyPressMsg) (ProfileModel, t
 	switch {
 	case isBack(msg):
 		m.taxPromptMode = taxPromptNone
-		m.taxPromptInput.Reset()
-		m.taxPromptInput.Blur()
+		m.taxPromptBuf = ""
 		m.taxPendingName = ""
 		m.taxPendingDesc = ""
 		m.taxEditID = ""
 		return m, nil
 	case isEnter(msg):
 		return m.submitTaxonomyPrompt()
+	case isKey(msg, "backspace"):
+		if len(m.taxPromptBuf) > 0 {
+			m.taxPromptBuf = m.taxPromptBuf[:len(m.taxPromptBuf)-1]
+		}
+		return m, nil
 	default:
-		var cmd tea.Cmd
-		m.taxPromptInput, cmd = m.taxPromptInput.Update(msg)
-		return m, cmd
+		if ch := keyText(msg); ch != "" {
+			m.taxPromptBuf += ch
+		}
+		return m, nil
 	}
 }
 
@@ -144,24 +148,24 @@ func (m ProfileModel) handleTaxonomyPrompt(msg tea.KeyPressMsg) (ProfileModel, t
 func (m ProfileModel) submitTaxonomyPrompt() (ProfileModel, tea.Cmd) {
 	switch m.taxPromptMode {
 	case taxPromptCreateName:
-		name := strings.TrimSpace(m.taxPromptInput.Value())
+		name := strings.TrimSpace(m.taxPromptBuf)
 		if name == "" {
 			m.taxPromptMode = taxPromptNone
-			m.taxPromptInput.Reset()
+			m.taxPromptBuf = ""
 			return m, func() tea.Msg { return errMsg{fmt.Errorf("taxonomy name required")} }
 		}
 		m.taxPendingName = name
 		m.openTaxPrompt(taxPromptCreateDescription, "")
 		return m, nil
 	case taxPromptCreateDescription:
-		desc := strings.TrimSpace(m.taxPromptInput.Value())
+		desc := strings.TrimSpace(m.taxPromptBuf)
 		input := api.CreateTaxonomyInput{
 			Name:        m.taxPendingName,
 			Description: desc,
 		}
 		kind := m.taxonomyKindPath()
 		m.taxPromptMode = taxPromptNone
-		m.taxPromptInput.Reset()
+		m.taxPromptBuf = ""
 		m.taxPendingName = ""
 		m.taxPendingDesc = ""
 		m.taxLoading = true
@@ -172,10 +176,10 @@ func (m ProfileModel) submitTaxonomyPrompt() (ProfileModel, tea.Cmd) {
 			return taxonomyActionDoneMsg{}
 		}
 	case taxPromptEditName:
-		name := strings.TrimSpace(m.taxPromptInput.Value())
+		name := strings.TrimSpace(m.taxPromptBuf)
 		if name == "" {
 			m.taxPromptMode = taxPromptNone
-			m.taxPromptInput.Reset()
+			m.taxPromptBuf = ""
 			return m, func() tea.Msg { return errMsg{fmt.Errorf("taxonomy name required")} }
 		}
 		m.taxPendingName = name
@@ -183,11 +187,11 @@ func (m ProfileModel) submitTaxonomyPrompt() (ProfileModel, tea.Cmd) {
 		return m, nil
 	case taxPromptEditDescription:
 		name := m.taxPendingName
-		desc := strings.TrimSpace(m.taxPromptInput.Value())
+		desc := strings.TrimSpace(m.taxPromptBuf)
 		id := m.taxEditID
 		kind := m.taxonomyKindPath()
 		m.taxPromptMode = taxPromptNone
-		m.taxPromptInput.Reset()
+		m.taxPromptBuf = ""
 		m.taxPendingName = ""
 		m.taxPendingDesc = ""
 		m.taxEditID = ""
@@ -203,9 +207,9 @@ func (m ProfileModel) submitTaxonomyPrompt() (ProfileModel, tea.Cmd) {
 			return taxonomyActionDoneMsg{}
 		}
 	case taxPromptFilter:
-		m.taxSearch = strings.TrimSpace(m.taxPromptInput.Value())
+		m.taxSearch = strings.TrimSpace(m.taxPromptBuf)
 		m.taxPromptMode = taxPromptNone
-		m.taxPromptInput.Reset()
+		m.taxPromptBuf = ""
 		m.taxLoading = true
 		return m, m.loadTaxonomy
 	default:
@@ -262,7 +266,7 @@ func (m ProfileModel) renderTaxonomy() string {
 
 	if m.taxPromptMode != taxPromptNone {
 		return b.String() + components.Indent(
-			components.TextInputDialog(m.taxonomyPromptTitle(), m.taxPromptInput.View()),
+			components.InputDialog(m.taxonomyPromptTitle(), m.taxPromptBuf),
 			1,
 		)
 	}

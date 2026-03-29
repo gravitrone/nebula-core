@@ -2708,14 +2708,6 @@ func compactJSON(data map[string]any) string {
 	return string(b)
 }
 
-// parseJSONMap parses parse jsonmap.
-func parseJSONMap(input string) (map[string]any, error) {
-	var data map[string]any
-	if err := json.Unmarshal([]byte(input), &data); err != nil {
-		return nil, fmt.Errorf("invalid json: %w", err)
-	}
-	return data, nil
-}
 
 // shortID handles short id.
 func shortID(id string) string {

@@ -51,25 +51,9 @@ func goldenAppNoData(t *testing.T) App {
 
 // driveToTab sends a numeric key to switch to the given tab index (1-based).
 func driveToTab(app App, tabIdx int) App {
-	ch := rune('0' + tabIdx)
+	ch := rune('0' + rune(tabIdx)) //nolint:gosec // tabIdx is always 0-9
 	model, _ := app.Update(tea.KeyPressMsg{Code: ch, Text: string(ch)})
 	return model.(App)
-}
-
-// driveCmd executes a Cmd and feeds all resulting messages back through Update.
-func driveCmd(app App, cmd tea.Cmd) App {
-	if cmd == nil {
-		return app
-	}
-	msgs := runCmd(cmd)
-	for _, msg := range msgs {
-		if msg == nil || isFrameworkMsg(msg) {
-			continue
-		}
-		m, _ := app.Update(msg)
-		app = m.(App)
-	}
-	return app
 }
 
 // feedMsg sends a message through Update and returns the updated App.

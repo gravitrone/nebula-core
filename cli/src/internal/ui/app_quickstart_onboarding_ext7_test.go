@@ -43,27 +43,27 @@ func TestHandleQuickstartKeysNavigationBoundaryMatrix(t *testing.T) {
 func TestHandleOnboardingKeysBusyQuitAndEnterBranches(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
-	app.onboardingInput.SetValue("alxx")
+	app.onboardingName = "alxx"
 	app.onboardingBusy = true
 
 	model, cmd := app.handleOnboardingKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
 	updated := model.(App)
 	require.Nil(t, cmd)
-	assert.Equal(t, "alxx", updated.onboardingInput.Value())
+	assert.Equal(t, "alxx", updated.onboardingName)
 
 	updated.onboardingBusy = false
 	model, cmd = updated.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	updated = model.(App)
-	// textinput may return cursor blink cmd
-	assert.Equal(t, "alx", updated.onboardingInput.Value())
+	require.Nil(t, cmd)
+	assert.Equal(t, "alx", updated.onboardingName)
 
-	updated.onboardingInput.SetValue("")
+	updated.onboardingName = ""
 	model, cmd = updated.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	updated = model.(App)
-	// textinput may return cursor blink cmd
-	assert.Equal(t, "", updated.onboardingInput.Value())
+	require.Nil(t, cmd)
+	assert.Equal(t, "", updated.onboardingName)
 
-	updated.onboardingInput.SetValue("nebula-user")
+	updated.onboardingName = "nebula-user"
 	model, cmd = updated.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	updated = model.(App)
 	require.NotNil(t, cmd)

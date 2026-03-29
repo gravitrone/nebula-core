@@ -7,7 +7,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"image/color"
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
