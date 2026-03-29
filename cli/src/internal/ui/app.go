@@ -668,8 +668,6 @@ func (a App) View() tea.View {
 		content = centerBlockUniform(content, a.width)
 	}
 
-	hints := a.renderHelpBar()
-
 	feedback := ""
 	if a.err != "" {
 		message := a.err
@@ -707,7 +705,7 @@ func (a App) View() tea.View {
 		}
 		// Calculate available height for viewport.
 		const spacerLines = 2
-		vpHeight := a.height - countViewLines(top) - countViewLines(hints) - reservedFeedbackLines - spacerLines
+		vpHeight := a.height - countViewLines(top) - reservedFeedbackLines - spacerLines
 		if vpHeight < 6 {
 			vpHeight = 6
 		}
@@ -726,7 +724,7 @@ func (a App) View() tea.View {
 		body = body + "\n\n" + feedback
 	}
 
-	v := tea.NewView(fmt.Sprintf("%s\n\n%s\n\n%s", top, body, hints))
+	v := tea.NewView(fmt.Sprintf("%s\n\n%s", top, body))
 	v.AltScreen = true
 	return v
 }
