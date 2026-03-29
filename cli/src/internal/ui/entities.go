@@ -1248,8 +1248,19 @@ func (m EntitiesModel) renderList() string {
 	if countLine != "" {
 		body += "\n" + countLine
 	}
-	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body)
-	return components.TitledBox("Entities", centered, m.width)
+
+	// Calculate tight box width: table border (2) + table content + gap + preview border (2) + preview + outer box padding (6).
+	tableBorderW := 2 // TableBaseStyle left+right border
+	boxWidth := actualTableWidth + tableBorderW
+	if sideBySide && preview != "" {
+		boxWidth += gap + previewWidth + tableBorderW
+	}
+	boxWidth += 6 // TitledBox padding + border overhead
+	if boxWidth > m.width {
+		boxWidth = m.width
+	}
+
+	return components.TitledBox("Entities", body, boxWidth)
 }
 
 // renderEntityPreview renders entity preview as a styled table.
