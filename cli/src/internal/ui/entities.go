@@ -410,7 +410,7 @@ func (m EntitiesModel) View() string {
 			return "  " + MutedStyle.Render("Saving...")
 		}
 		if m.addSaved {
-			return components.Indent(components.Box(SuccessStyle.Render("Entity saved! Press Esc to add another."), m.width), 1)
+			return components.Indent(components.RenderCompactBox(SuccessStyle.Render("Entity saved! Press Esc to add another.")), 1)
 		}
 		body := m.renderAdd()
 		modeLine := m.renderModeLine()
@@ -460,23 +460,25 @@ func (m EntitiesModel) View() string {
 		if modeLine != "" {
 			body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 		}
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
+		return components.Indent(body, 1)
 	}
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m EntitiesModel) renderStatusHints() string {
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "Select"),
-		components.Hint("a", "Add"),
-		components.Hint("e", "Edit"),
+// Hints returns the hint items for the current view state.
+func (m EntitiesModel) Hints() []components.HintItem {
+	if m.view != entitiesViewList || m.filtering || m.bulkPrompt != "" {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "Select"},
+		{Key: "a", Desc: "Add"},
+		{Key: "e", Desc: "Edit"},
+	}
 }
 
 // --- List View ---
@@ -1124,16 +1126,17 @@ func (m EntitiesModel) renderList() string {
 		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading entities...")
 	}
 
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Entities",
 			"No entities found.",
 			[]string{"Type to live-search", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 	showCheckboxes := m.bulkCount() > 0
 
 	previewWidth := preferredPreviewWidth(contentWidth)
@@ -1589,31 +1592,31 @@ func (m EntitiesModel) renderDetail() string {
 	}
 
 	e := m.detail
-	rows := []components.TableRow{
-		{Label: "ID", Value: e.ID},
-		{Label: "Name", Value: e.Name},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: e.ID},
+		{Key: "Name", Value: e.Name},
 	}
 	if e.Type != "" {
-		rows = append(rows, components.TableRow{Label: "Type", Value: e.Type})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Type", Value: e.Type})
 	}
 	if e.Status != "" {
-		rows = append(rows, components.TableRow{Label: "Status", Value: e.Status})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Status", Value: e.Status})
 	}
 	if len(e.Tags) > 0 {
-		rows = append(rows, components.TableRow{Label: "Tags", Value: strings.Join(e.Tags, ", ")})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Tags", Value: strings.Join(e.Tags, ", ")})
 	}
 	if len(e.PrivacyScopeIDs) > 0 {
-		rows = append(rows, components.TableRow{Label: "Scopes", Value: m.formatEntityScopes(e.PrivacyScopeIDs)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Scopes", Value: m.formatEntityScopes(e.PrivacyScopeIDs)})
 	}
-	rows = append(rows, components.TableRow{Label: "Created", Value: formatLocalTimeFull(e.CreatedAt)})
+	infoRows = append(infoRows, components.InfoTableRow{Key: "Created", Value: formatLocalTimeFull(e.CreatedAt)})
 	if !e.UpdatedAt.IsZero() {
-		rows = append(rows, components.TableRow{Label: "Updated", Value: formatLocalTimeFull(e.UpdatedAt)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Updated", Value: formatLocalTimeFull(e.UpdatedAt)})
 	}
 	if e.SourcePath != nil && *e.SourcePath != "" {
-		rows = append(rows, components.TableRow{Label: "Source Path", Value: *e.SourcePath})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Source Path", Value: *e.SourcePath})
 	}
 
-	sections := []string{components.Table("Entity", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if m.contextLoading {
 		sections = append(sections, components.TitledBox("Context Items", MutedStyle.Render("Loading..."), m.width))
 	} else {
@@ -1685,7 +1688,7 @@ func (m EntitiesModel) renderHistory() string {
 	}
 	if len(m.history) == 0 {
 		content := MutedStyle.Render("No history entries yet.")
-		return components.Indent(components.Box(content, m.width), 1)
+		return components.Indent(components.RenderCompactBox(content), 1)
 	}
 	title := "History"
 	if m.detail != nil {
@@ -2148,7 +2151,7 @@ func (m EntitiesModel) renderRelationships() string {
 
 	if len(m.rels) == 0 {
 		content := MutedStyle.Render("No relationships yet.")
-		return components.Indent(components.Box(content, m.width), 1)
+		return components.Indent(components.RenderCompactBox(content), 1)
 	}
 
 	idx := m.relTable.Cursor()
@@ -2158,16 +2161,16 @@ func (m EntitiesModel) renderRelationships() string {
 	rel := m.rels[idx]
 	direction, other := m.relationshipDirection(rel)
 
-	rows := []components.TableRow{
-		{Label: "Index", Value: fmt.Sprintf("%d of %d", idx+1, len(m.rels))},
-		{Label: "Type", Value: rel.Type},
-		{Label: "Status", Value: rel.Status},
-		{Label: "Direction", Value: direction},
-		{Label: "Other", Value: other},
-		{Label: "Created", Value: formatLocalTimeFull(rel.CreatedAt)},
+	infoRows := []components.InfoTableRow{
+		{Key: "Index", Value: fmt.Sprintf("%d of %d", idx+1, len(m.rels))},
+		{Key: "Type", Value: rel.Type},
+		{Key: "Status", Value: rel.Status},
+		{Key: "Direction", Value: direction},
+		{Key: "Other", Value: other},
+		{Key: "Created", Value: formatLocalTimeFull(rel.CreatedAt)},
 	}
 
-	sections := []string{components.Table("Relationship", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if rel.Notes != "" {
 		sections = append(sections, components.TitledBox("Notes", rel.Notes, m.width))
 	}
@@ -2265,7 +2268,7 @@ func (m EntitiesModel) renderRelate() string {
 		}
 		if len(m.relateResults) == 0 {
 			content := MutedStyle.Render("No matches. Press Esc to go back.")
-			return components.Indent(components.Box(content, m.width), 1)
+			return components.Indent(components.RenderCompactBox(content), 1)
 		}
 
 		contentWidth := components.BoxContentWidth(m.width)

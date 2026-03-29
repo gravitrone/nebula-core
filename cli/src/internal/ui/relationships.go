@@ -271,32 +271,33 @@ func (m RelationshipsModel) View() string {
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
-	if m.view == relsViewList {
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
-	}
 	return components.Indent(body, 1)
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m RelationshipsModel) renderStatusHints() string {
+// Hints returns the hint items for the current view state.
+func (m RelationshipsModel) Hints() []components.HintItem {
+	if m.editMeta.Active || m.filtering {
+		return nil
+	}
 	if m.notesEditing {
-		hints := []string{
-			components.Hint("esc", "Cancel"),
-			components.Hint("ctrl+s", "Save"),
+		return []components.HintItem{
+			{Key: "esc", Desc: "Cancel"},
+			{Key: "ctrl+s", Desc: "Save"},
 		}
-		return components.StatusBar(hints, m.width)
 	}
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "View"),
-		components.Hint("a", "Add"),
-		components.Hint("e", "Edit"),
+	if m.view != relsViewList {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "View"},
+		{Key: "a", Desc: "Add"},
+		{Key: "e", Desc: "Edit"},
+	}
 }
 
 // --- List ---
@@ -463,16 +464,17 @@ func (m RelationshipsModel) renderList() string {
 		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading relationships...")
 	}
 
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Relationships",
 			"No relationships found.",
 			[]string{"Press n to create", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -594,16 +596,16 @@ func (m RelationshipsModel) renderDetail() string {
 		return m.renderList()
 	}
 	rel := m.detail
-	rows := []components.TableRow{
-		{Label: "ID", Value: rel.ID},
-		{Label: "Type", Value: rel.Type},
-		{Label: "Status", Value: rel.Status},
-		{Label: "Source", Value: m.displayNode(rel.SourceID, rel.SourceType, rel.SourceName)},
-		{Label: "Target", Value: m.displayNode(rel.TargetID, rel.TargetType, rel.TargetName)},
-		{Label: "Created", Value: formatLocalTimeFull(rel.CreatedAt)},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: rel.ID},
+		{Key: "Type", Value: rel.Type},
+		{Key: "Status", Value: rel.Status},
+		{Key: "Source", Value: m.displayNode(rel.SourceID, rel.SourceType, rel.SourceName)},
+		{Key: "Target", Value: m.displayNode(rel.TargetID, rel.TargetType, rel.TargetName)},
+		{Key: "Created", Value: formatLocalTimeFull(rel.CreatedAt)},
 	}
 
-	sections := []string{components.Table("Relationship", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if rel.Notes != "" {
 		sections = append(sections, components.TitledBox("Notes", rel.Notes, m.width))
 	}

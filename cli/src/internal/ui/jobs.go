@@ -289,25 +289,27 @@ func (m JobsModel) View() string {
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
-	if m.view == jobsViewList {
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
-	}
 	return components.Indent(body, 1)
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m JobsModel) renderStatusHints() string {
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "View"),
-		components.Hint("a", "Add"),
-		components.Hint("s", "Status"),
+// Hints returns the hint items for the current view state.
+func (m JobsModel) Hints() []components.HintItem {
+	if m.changingSt || m.filtering {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	if m.view != jobsViewList {
+		return nil
+	}
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "View"},
+		{Key: "a", Desc: "Add"},
+		{Key: "s", Desc: "Status"},
+	}
 }
 
 // --- Mode Line ---
@@ -364,15 +366,17 @@ func (m JobsModel) renderList() string {
 	if m.loading {
 		return m.spinner.View() + " " + MutedStyle.Render("Loading jobs...")
 	}
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Jobs",
 			"No jobs found.",
 			[]string{"Press tab to switch Add/Library", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -1304,19 +1308,19 @@ func (m JobsModel) renderDetail() string {
 	j := m.detail
 	var sections []string
 
-	rows := []components.TableRow{
-		{Label: "ID", Value: j.ID},
-		{Label: "Title", Value: j.Title},
-		{Label: "Status", Value: j.Status},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: j.ID},
+		{Key: "Title", Value: j.Title},
+		{Key: "Status", Value: j.Status},
 	}
 	if j.Priority != nil && strings.TrimSpace(*j.Priority) != "" {
-		rows = append(rows, components.TableRow{Label: "Priority", Value: *j.Priority})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Priority", Value: *j.Priority})
 	}
-	rows = append(rows, components.TableRow{Label: "Created", Value: formatLocalTimeFull(j.CreatedAt)})
+	infoRows = append(infoRows, components.InfoTableRow{Key: "Created", Value: formatLocalTimeFull(j.CreatedAt)})
 	if !j.UpdatedAt.IsZero() {
-		rows = append(rows, components.TableRow{Label: "Updated", Value: formatLocalTimeFull(j.UpdatedAt)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Updated", Value: formatLocalTimeFull(j.UpdatedAt)})
 	}
-	sections = append(sections, components.Table("Job", rows, m.width))
+	sections = append(sections, components.RenderInfoTable(infoRows, m.width))
 
 	if j.Description != nil && strings.TrimSpace(*j.Description) != "" {
 		sections = append(

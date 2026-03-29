@@ -203,21 +203,26 @@ func (m HistoryModel) View() string {
 	if m.view == historyViewActors {
 		return m.renderActors()
 	}
-	return lipgloss.JoinVertical(lipgloss.Left, m.renderList(), m.renderStatusHints())
+	return m.renderList()
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m HistoryModel) renderStatusHints() string {
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "Diff"),
-		components.Hint("v", "Revert"),
+// Hints returns the hint items for the current view state.
+func (m HistoryModel) Hints() []components.HintItem {
+	if m.filtering || m.loading || m.errText != "" {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	if m.view != historyViewList {
+		return nil
+	}
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "Diff"},
+		{Key: "v", Desc: "Revert"},
+	}
 }
 
 // canRevertAuditEntry handles can revert audit entry.
@@ -417,18 +422,19 @@ func (m HistoryModel) loadActors() tea.Cmd {
 
 // renderList renders render list.
 func (m HistoryModel) renderList() string {
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.Indent(components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Audit Log",
 			"No audit entries yet.",
 			[]string{"Make changes to entities or context to generate audit entries", "Press f to filter by table or action"},
 			m.width,
-		), 1)
+		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
 
 	filterLine := formatAuditFilters(m.filter)
-
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -771,27 +777,134 @@ func (m HistoryModel) renderDetail(entry api.AuditEntry) string {
 	if len(entry.ChangedFields) > 0 {
 		fields = strings.Join(entry.ChangedFields, ", ")
 	}
-	rows := []components.TableRow{
-		{Label: "Table", Value: entry.TableName},
-		{Label: "Action", Value: entry.Action},
-		{Label: "Record", Value: entry.RecordID},
-		{Label: "Actor", Value: actor},
-		{Label: "At", Value: when},
+
+	// --- Info table ---
+	infoRows := []table.Row{
+		{"Table", entry.TableName},
+		{"Action", entry.Action},
+		{"Record", entry.RecordID},
+		{"Actor", actor},
+		{"At", when},
 	}
 	if fields != "" {
-		rows = append(rows, components.TableRow{Label: "Fields", Value: fields})
+		infoRows = append(infoRows, table.Row{"Fields", fields})
 	}
 	if entry.ChangeReason != nil && *entry.ChangeReason != "" {
-		rows = append(rows, components.TableRow{Label: "Reason", Value: *entry.ChangeReason})
+		infoRows = append(infoRows, table.Row{"Reason", *entry.ChangeReason})
 	}
-	section := components.Table("Audit Entry", rows, m.width)
 
+	fieldColWidth := 8
+	valueColWidth := 50
+	if m.width > 0 {
+		avail := components.BoxContentWidth(m.width) - fieldColWidth - 4
+		if avail > valueColWidth {
+			valueColWidth = avail
+		}
+	}
+
+	infoCols := []table.Column{
+		{Title: "Field", Width: fieldColWidth},
+		{Title: "Value", Width: valueColWidth},
+	}
+
+	sNoHL := table.DefaultStyles()
+	sNoHL.Header = sNoHL.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(ColorBorder).
+		BorderBottom(true).
+		Bold(false)
+	sNoHL.Selected = lipgloss.NewStyle()
+
+	infoTable := table.New(
+		table.WithColumns(infoCols),
+		table.WithRows(infoRows),
+		table.WithHeight(len(infoRows)+1),
+		table.WithStyles(sNoHL),
+	)
+	infoTable.Blur()
+	section := components.TableBaseStyle.Render(infoTable.View())
+
+	// --- Diff table ---
 	diffRows := buildAuditDiffRows(entry)
 	if len(diffRows) > 0 {
-		diff := components.DiffTable("Changes", diffRows, m.width)
+		fieldW := 15
+		changeW := 9
+		valueW := 25
+		if m.width > 0 {
+			avail := components.BoxContentWidth(m.width) - fieldW - changeW - 8
+			if avail > valueW*2 {
+				valueW = avail / 2
+			}
+		}
+
+		diffCols := []table.Column{
+			{Title: "Field", Width: fieldW},
+			{Title: "Change", Width: changeW},
+			{Title: "Before", Width: valueW},
+			{Title: "After", Width: valueW},
+		}
+
+		addedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#34d399")).Bold(true)
+		removedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#fb7185")).Bold(true)
+		updatedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#fbbf24")).Bold(true)
+		sameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9ba0bf"))
+
+		tableRows := make([]table.Row, 0, len(diffRows))
+		for _, dr := range diffRows {
+			kind := detailDiffChangeKind(dr.From, dr.To)
+			var kindStyled string
+			switch kind {
+			case "added":
+				kindStyled = addedStyle.Render(kind)
+			case "removed":
+				kindStyled = removedStyle.Render(kind)
+			case "updated":
+				kindStyled = updatedStyle.Render(kind)
+			default:
+				kindStyled = sameStyle.Render(kind)
+			}
+			tableRows = append(tableRows, table.Row{
+				dr.Label,
+				kindStyled,
+				dr.From,
+				dr.To,
+			})
+		}
+
+		diffTable := table.New(
+			table.WithColumns(diffCols),
+			table.WithRows(tableRows),
+			table.WithHeight(len(tableRows)+1),
+			table.WithStyles(sNoHL),
+		)
+		diffTable.Blur()
+		diff := components.TableBaseStyle.Render(diffTable.View())
 		section = section + "\n\n" + diff
 	}
 	return components.Indent(section, 1)
+}
+
+// detailDiffChangeKind classifies a diff row as added/removed/updated/same.
+func detailDiffChangeKind(from, to string) string {
+	normalize := func(v string) string {
+		v = strings.TrimSpace(v)
+		if v == "" || v == "<nil>" || v == "-" || v == "--" {
+			return "None"
+		}
+		return v
+	}
+	before := normalize(from)
+	after := normalize(to)
+	switch {
+	case before == "None" && after != "None":
+		return "added"
+	case before != "None" && after == "None":
+		return "removed"
+	case before == after:
+		return "same"
+	default:
+		return "updated"
+	}
 }
 
 // parseAuditFilter parses parse audit filter.

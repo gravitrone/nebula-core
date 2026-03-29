@@ -271,30 +271,34 @@ func (m ProtocolsModel) View() string {
 		if mode != "" {
 			body = components.CenterLine(mode, m.width) + "\n\n" + body
 		}
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
+		return components.Indent(body, 1)
 	}
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m ProtocolsModel) renderStatusHints() string {
+// Hints returns the hint items for the current view state.
+func (m ProtocolsModel) Hints() []components.HintItem {
+	if m.addMeta.Active || m.editMeta.Active || m.filtering {
+		return nil
+	}
 	if m.notesEditing {
-		hints := []string{
-			components.Hint("esc", "Cancel"),
-			components.Hint("ctrl+s", "Save"),
+		return []components.HintItem{
+			{Key: "esc", Desc: "Cancel"},
+			{Key: "ctrl+s", Desc: "Save"},
 		}
-		return components.StatusBar(hints, m.width)
 	}
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "View"),
-		components.Hint("a", "Add"),
-		components.Hint("e", "Edit"),
+	if m.view != protocolsViewList {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "View"},
+		{Key: "a", Desc: "Add"},
+		{Key: "e", Desc: "Edit"},
+	}
 }
 
 // --- Loading ---
@@ -501,16 +505,17 @@ func (m ProtocolsModel) renderList() string {
 	if m.loading {
 		return components.CenterLine(m.spinner.View()+" Loading protocols...", m.width)
 	}
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Protocols",
 			"No protocols found.",
 			[]string{"Press n to create", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -694,34 +699,34 @@ func (m ProtocolsModel) renderDetail() string {
 		return m.renderList()
 	}
 	p := m.detail
-	rows := []components.TableRow{
-		{Label: "Name", Value: p.Name},
-		{Label: "Title", Value: p.Title},
+	infoRows := []components.InfoTableRow{
+		{Key: "Name", Value: p.Name},
+		{Key: "Title", Value: p.Title},
 	}
 	if p.Version != nil && *p.Version != "" {
-		rows = append(rows, components.TableRow{Label: "Version", Value: *p.Version})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Version", Value: *p.Version})
 	}
 	if p.ProtocolType != nil && *p.ProtocolType != "" {
-		rows = append(rows, components.TableRow{Label: "Type", Value: *p.ProtocolType})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Type", Value: *p.ProtocolType})
 	}
 	if len(p.AppliesTo) > 0 {
-		rows = append(rows, components.TableRow{Label: "Applies To", Value: strings.Join(p.AppliesTo, ", ")})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Applies To", Value: strings.Join(p.AppliesTo, ", ")})
 	}
 	if p.Status != "" {
-		rows = append(rows, components.TableRow{Label: "Status", Value: p.Status})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Status", Value: p.Status})
 	}
 	if len(p.Tags) > 0 {
-		rows = append(rows, components.TableRow{Label: "Tags", Value: strings.Join(p.Tags, ", ")})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Tags", Value: strings.Join(p.Tags, ", ")})
 	}
 	if p.SourcePath != nil && *p.SourcePath != "" {
-		rows = append(rows, components.TableRow{Label: "Source Path", Value: *p.SourcePath})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Source Path", Value: *p.SourcePath})
 	}
-	rows = append(rows, components.TableRow{Label: "Created", Value: formatLocalTimeFull(p.CreatedAt)})
+	infoRows = append(infoRows, components.InfoTableRow{Key: "Created", Value: formatLocalTimeFull(p.CreatedAt)})
 	if !p.UpdatedAt.IsZero() {
-		rows = append(rows, components.TableRow{Label: "Updated", Value: formatLocalTimeFull(p.UpdatedAt)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Updated", Value: formatLocalTimeFull(p.UpdatedAt)})
 	}
 
-	sections := []string{components.Table("Protocol", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if p.Content != nil && strings.TrimSpace(*p.Content) != "" {
 		rendered := strings.TrimSpace(components.RenderMarkdown(
 			components.SanitizeText(*p.Content), m.width-6,

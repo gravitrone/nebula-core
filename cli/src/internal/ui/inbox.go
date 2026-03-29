@@ -218,25 +218,27 @@ func (m InboxModel) View() string {
 		return m.renderDetail()
 	}
 
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.Indent(components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Inbox",
 			"No pending approvals.",
 			[]string{"Switch tabs with 1-9/0", "Open command palette with /"},
 			m.width,
-		), 1)
+		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
 
 	if len(m.filtered) == 0 {
-		return components.Indent(components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Inbox",
 			"No approvals match the filter.",
 			[]string{"Press f to update filter", "Press esc to clear"},
 			m.width,
-		), 1)
+		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 	previewWidth := preferredPreviewWidth(contentWidth)
 
 	gap := 3
@@ -335,22 +337,27 @@ func (m InboxModel) View() string {
 		result += "\n" + countLine
 	}
 	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
-	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(centered, 1), m.renderStatusHints())
+	return components.Indent(centered, 1)
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m InboxModel) renderStatusHints() string {
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "Review"),
-		components.Hint("a", "Approve"),
-		components.Hint("r", "Reject"),
+// Hints returns the hint items for the current view state.
+func (m InboxModel) Hints() []components.HintItem {
+	if m.loading || m.confirming || m.rejectPreview || m.grantEditing || m.rejecting || m.filtering || m.detail != nil {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	if len(m.items) == 0 || len(m.filtered) == 0 {
+		return nil
+	}
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "Review"},
+		{Key: "a", Desc: "Approve"},
+		{Key: "r", Desc: "Reject"},
+	}
 }
 
 // --- Helpers ---
@@ -567,21 +574,21 @@ func (m InboxModel) renderDetail() string {
 	var sections []string
 
 	// Approval info table
-	rows := []components.TableRow{
-		{Label: "ID", Value: a.ID},
-		{Label: "Type", Value: a.RequestType},
-		{Label: "Status", Value: a.Status},
-		{Label: "Agent", Value: a.AgentName},
-		{Label: "Requested By", Value: approvalRequestedBy(*a)},
-		{Label: "Created", Value: formatLocalTimeFull(a.CreatedAt)},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: a.ID},
+		{Key: "Type", Value: a.RequestType},
+		{Key: "Status", Value: a.Status},
+		{Key: "Agent", Value: a.AgentName},
+		{Key: "Requested By", Value: approvalRequestedBy(*a)},
+		{Key: "Created", Value: formatLocalTimeFull(a.CreatedAt)},
 	}
 	if a.JobID != nil {
-		rows = append(rows, components.TableRow{Label: "Job ID", Value: *a.JobID})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Job ID", Value: *a.JobID})
 	}
 	if a.Notes != nil && *a.Notes != "" {
-		rows = append(rows, components.TableRow{Label: "Review Notes", Value: *a.Notes})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Review Notes", Value: *a.Notes})
 	}
-	sections = append(sections, components.Table("Approval Request", rows, m.width))
+	sections = append(sections, components.RenderInfoTable(infoRows, m.width))
 
 	// Change details
 	cd := m.detailChangeMap
@@ -589,7 +596,7 @@ func (m InboxModel) renderDetail() string {
 		cd = parseApprovalChangeDetails(a.ChangeDetails)
 	}
 	if len(cd) > 0 {
-		var summaryRows []components.TableRow
+		var summaryRows []components.InfoTableRow
 		var diffRows []components.DiffRow
 		metadata, hasMetadata := map[string]any(nil), false
 		nested := make(map[string]map[string]any)
@@ -662,8 +669,8 @@ func (m InboxModel) renderDetail() string {
 					}
 				}
 			}
-			summaryRows = append(summaryRows, components.TableRow{
-				Label: detailLabel(k),
+			summaryRows = append(summaryRows, components.InfoTableRow{
+				Key:   detailLabel(k),
 				Value: display,
 			})
 		}
@@ -673,7 +680,7 @@ func (m InboxModel) renderDetail() string {
 		}
 
 		if len(summaryRows) > 0 {
-			sections = append(sections, components.Table("Change Details", summaryRows, m.width))
+			sections = append(sections, components.RenderInfoTable(summaryRows, m.width))
 		}
 
 		nestedKeys := make([]string, 0, len(nested))
@@ -685,26 +692,26 @@ func (m InboxModel) renderDetail() string {
 		// Render each nested object as its own titled table.
 		for _, k := range nestedKeys {
 			obj := nested[k]
-			var nestedRows []components.TableRow
+			var nestedRows []components.InfoTableRow
 			objKeys := make([]string, 0, len(obj))
 			for sk := range obj {
 				objKeys = append(objKeys, sk)
 			}
 			sort.Strings(objKeys)
 			for _, sk := range objKeys {
-				nestedRows = append(nestedRows, components.TableRow{
-					Label: detailLabel(sk),
+				nestedRows = append(nestedRows, components.InfoTableRow{
+					Key:   detailLabel(sk),
 					Value: formatAny(obj[sk]),
 				})
 			}
 			if len(nestedRows) > 0 {
-				sections = append(sections, components.Table(detailLabel(k), nestedRows, m.width))
+				sections = append(sections, components.RenderInfoTable(nestedRows, m.width))
 			}
 		}
 
 		// Diff table for update requests.
 		if len(diffRows) > 0 {
-			sections = append(sections, components.DiffTable("Changes", diffRows, m.width))
+			sections = append(sections, components.RenderDiffInfoTable(diffRows, m.width))
 		}
 	}
 

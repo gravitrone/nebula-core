@@ -50,7 +50,7 @@ func renderContextSummaryTable(items []api.Context, maxRows, width int) string {
 		})
 	}
 
-	content := components.TableGrid(columns, gridRows, contentWidth)
+	content := components.RenderGridTable(columns, gridRows, contentWidth)
 	return components.TitledBox("Context Items", content, width)
 }
 

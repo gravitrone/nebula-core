@@ -243,32 +243,33 @@ func (m FilesModel) View() string {
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
-	if m.view == filesViewList {
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
-	}
 	return components.Indent(body, 1)
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m FilesModel) renderStatusHints() string {
+// Hints returns the hint items for the current view state.
+func (m FilesModel) Hints() []components.HintItem {
+	if m.addMeta.Active || m.editMeta.Active || m.filtering {
+		return nil
+	}
 	if m.notesEditing {
-		hints := []string{
-			components.Hint("esc", "Cancel"),
-			components.Hint("ctrl+s", "Save"),
+		return []components.HintItem{
+			{Key: "esc", Desc: "Cancel"},
+			{Key: "ctrl+s", Desc: "Save"},
 		}
-		return components.StatusBar(hints, m.width)
 	}
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "View"),
-		components.Hint("a", "Add"),
-		components.Hint("e", "Edit"),
+	if m.view != filesViewList {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "View"},
+		{Key: "a", Desc: "Add"},
+		{Key: "e", Desc: "Edit"},
+	}
 }
 
 // --- Mode Line ---
@@ -324,16 +325,17 @@ func (m FilesModel) renderList() string {
 	if m.loading {
 		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading files...")
 	}
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Files",
 			"No files found.",
 			[]string{"Press tab to switch Add/Library", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -644,32 +646,32 @@ func (m FilesModel) renderDetail() string {
 		return m.renderList()
 	}
 	f := m.detail
-	rows := []components.TableRow{
-		{Label: "ID", Value: f.ID},
-		{Label: "Filename", Value: f.Filename},
-		{Label: "Path", Value: f.FilePath},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: f.ID},
+		{Key: "Filename", Value: f.Filename},
+		{Key: "Path", Value: f.FilePath},
 	}
 	if f.MimeType != nil && *f.MimeType != "" {
-		rows = append(rows, components.TableRow{Label: "MIME", Value: *f.MimeType})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "MIME", Value: *f.MimeType})
 	}
 	if f.SizeBytes != nil {
-		rows = append(rows, components.TableRow{Label: "Size", Value: formatFileSize(*f.SizeBytes)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Size", Value: formatFileSize(*f.SizeBytes)})
 	}
 	if f.Checksum != nil && *f.Checksum != "" {
-		rows = append(rows, components.TableRow{Label: "Checksum", Value: *f.Checksum})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Checksum", Value: *f.Checksum})
 	}
 	if f.Status != "" {
-		rows = append(rows, components.TableRow{Label: "Status", Value: f.Status})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Status", Value: f.Status})
 	}
 	if len(f.Tags) > 0 {
-		rows = append(rows, components.TableRow{Label: "Tags", Value: strings.Join(f.Tags, ", ")})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Tags", Value: strings.Join(f.Tags, ", ")})
 	}
-	rows = append(rows, components.TableRow{Label: "Created", Value: formatLocalTimeFull(f.CreatedAt)})
+	infoRows = append(infoRows, components.InfoTableRow{Key: "Created", Value: formatLocalTimeFull(f.CreatedAt)})
 	if !f.UpdatedAt.IsZero() {
-		rows = append(rows, components.TableRow{Label: "Updated", Value: formatLocalTimeFull(f.UpdatedAt)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Updated", Value: formatLocalTimeFull(f.UpdatedAt)})
 	}
 
-	sections := []string{components.Table("File", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if f.Notes != "" {
 		sections = append(sections, components.TitledBox("Notes", f.Notes, m.width))
 	}

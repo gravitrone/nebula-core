@@ -50,7 +50,7 @@ func renderRelationshipSummaryTable(nodeType, nodeID string, rels []api.Relation
 		})
 	}
 
-	content := components.TableGrid(columns, gridRows, contentWidth)
+	content := components.RenderGridTable(columns, gridRows, contentWidth)
 	return components.TitledBox("Relationships", content, width)
 }
 

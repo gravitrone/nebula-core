@@ -124,12 +124,14 @@ type ContextModel struct {
 // NewContextModel builds the context UI model.
 func NewContextModel(client *api.Client) ContextModel {
 	return ContextModel{
-		client:    client,
-		spinner:   components.NewNebulaSpinner(),
-		linkTable: components.NewNebulaTable(nil, 6),
-		dataTable: components.NewNebulaTable(nil, 10),
-		addType:   "note",
-		editType:  "note",
+		client:      client,
+		spinner:     components.NewNebulaSpinner(),
+		linkTable:   components.NewNebulaTable(nil, 6),
+		dataTable:   components.NewNebulaTable(nil, 10),
+		view:        contextViewList,
+		loadingList: true,
+		addType:     "note",
+		editType:    "note",
 	}
 }
 
@@ -202,7 +204,7 @@ func (m ContextModel) Init() tea.Cmd {
 	m.saved = false
 	m.errText = ""
 	m.modeFocus = false
-	m.view = contextViewAdd
+	m.view = contextViewList
 	m.linkSearching = false
 	m.linkLoading = false
 	m.linkQuery = ""
@@ -212,7 +214,7 @@ func (m ContextModel) Init() tea.Cmd {
 	m.filtering = false
 	m.filterBuf = ""
 	m.detail = nil
-	m.loadingList = false
+	m.loadingList = true
 	m.editSaving = false
 	m.contentExpanded = false
 	m.sourcePathExpanded = false
@@ -230,8 +232,7 @@ func (m ContextModel) Init() tea.Cmd {
 	m.addScopeStr = ""
 	m.addNotes = ""
 	m.addForm = nil
-	m.initAddForm()
-	return tea.Batch(m.addForm.Init(), m.loadScopeNames())
+	return tea.Batch(m.loadContextList(), m.loadScopeNames(), m.spinner.Tick)
 }
 
 // Update updates update.
@@ -406,7 +407,7 @@ func (m ContextModel) View() string {
 	}
 
 	if m.saved {
-		return components.Indent(components.Box(SuccessStyle.Render("Context saved! Press Esc to add another."), m.width), 1)
+		return components.Indent(components.RenderCompactBox(SuccessStyle.Render("Context saved! Press Esc to add another.")), 1)
 	}
 
 	if m.linkSearching {
@@ -419,55 +420,59 @@ func (m ContextModel) View() string {
 	modeLine := m.renderModeLine()
 	var body string
 	switch m.view {
-	case contextViewList:
-		body = m.renderList()
+	case contextViewAdd:
+		body = m.renderAdd()
 	case contextViewDetail:
 		body = m.renderDetail()
 	case contextViewEdit:
 		body = m.renderEdit()
 	default:
-		body = m.renderAdd()
+		body = m.renderList()
 	}
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
-	if m.view == contextViewList {
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
-	}
 	return components.Indent(body, 1)
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m ContextModel) renderStatusHints() string {
+// Hints returns the hint items for the current view state.
+func (m ContextModel) Hints() []components.HintItem {
+	if m.filtering || m.linkSearching {
+		return nil
+	}
 	if m.notesEditing {
-		hints := []string{
-			components.Hint("esc", "Cancel"),
-			components.Hint("ctrl+s", "Save"),
+		return []components.HintItem{
+			{Key: "esc", Desc: "Cancel"},
+			{Key: "ctrl+s", Desc: "Save"},
 		}
-		return components.StatusBar(hints, m.width)
 	}
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "View"),
-		components.Hint("a", "Add"),
-		components.Hint("e", "Edit"),
-		components.Hint("l", "Link"),
+	if m.view != contextViewList {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "View"},
+		{Key: "a", Desc: "Add"},
+		{Key: "e", Desc: "Edit"},
+		{Key: "l", Desc: "Link"},
+	}
 }
 
 // renderAdd renders the add context form.
 func (m ContextModel) renderAdd() string {
-	var content string
 	if m.addForm == nil {
-		content = MutedStyle.Render("  Initializing...")
-	} else {
-		content = m.addForm.View()
+		compactWidth := 60 + 6
+		if m.width > 0 && m.width < compactWidth {
+			compactWidth = m.width
+		}
+		return components.TitledBox("Add Context", MutedStyle.Render("  Initializing..."), compactWidth)
 	}
+
+	content := m.addForm.View()
 
 	linked := m.renderLinkedEntities()
 	if linked != "" {
@@ -691,20 +696,21 @@ func (m ContextModel) handleDetailKeys(msg tea.KeyPressMsg) (ContextModel, tea.C
 
 // renderList renders render list.
 func (m ContextModel) renderList() string {
+	contentWidth := components.BoxContentWidth(m.width)
 	if m.loadingList {
-		return components.Box(m.spinner.View()+" "+MutedStyle.Render("Loading context..."), m.width)
+		box := components.RenderCompactBox(m.spinner.View() + " " + MutedStyle.Render("Loading context..."))
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
 
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Context",
 			"No context found.",
 			[]string{"Press tab to switch Add/Library", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -811,38 +817,38 @@ func (m ContextModel) renderDetail() string {
 	}
 
 	k := m.detail
-	rows := []components.TableRow{
-		{Label: "ID", Value: k.ID},
-		{Label: "Title", Value: contextTitle(*k)},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: k.ID},
+		{Key: "Title", Value: contextTitle(*k)},
 	}
 	if k.SourceType != "" {
-		rows = append(rows, components.TableRow{Label: "Type", Value: k.SourceType})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Type", Value: k.SourceType})
 	}
 	if k.Status != "" {
-		rows = append(rows, components.TableRow{Label: "Status", Value: k.Status})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Status", Value: k.Status})
 	}
 	if k.URL != nil && strings.TrimSpace(*k.URL) != "" {
-		rows = append(rows, components.TableRow{Label: "URL", Value: *k.URL})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "URL", Value: *k.URL})
 	}
 	if len(k.PrivacyScopeIDs) > 0 {
-		rows = append(rows, components.TableRow{Label: "Scopes", Value: m.formatContextScopes(k.PrivacyScopeIDs)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Scopes", Value: m.formatContextScopes(k.PrivacyScopeIDs)})
 	}
 	if len(k.Tags) > 0 {
-		rows = append(rows, components.TableRow{Label: "Tags", Value: strings.Join(k.Tags, ", ")})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Tags", Value: strings.Join(k.Tags, ", ")})
 	}
-	rows = append(rows, components.TableRow{Label: "Created", Value: formatLocalTimeFull(k.CreatedAt)})
+	infoRows = append(infoRows, components.InfoTableRow{Key: "Created", Value: formatLocalTimeFull(k.CreatedAt)})
 	if !k.UpdatedAt.IsZero() {
-		rows = append(rows, components.TableRow{Label: "Updated", Value: formatLocalTimeFull(k.UpdatedAt)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Updated", Value: formatLocalTimeFull(k.UpdatedAt)})
 	}
 	if k.SourcePath != nil && strings.TrimSpace(*k.SourcePath) != "" {
 		path := *k.SourcePath
 		if !m.sourcePathExpanded {
 			path = truncateString(path, 60)
 		}
-		rows = append(rows, components.TableRow{Label: "Source Path", Value: path})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Source Path", Value: path})
 	}
 
-	sections := []string{components.Table("Context", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if k.Content != nil && strings.TrimSpace(*k.Content) != "" {
 		content := strings.TrimSpace(components.SanitizeText(*k.Content))
 		if !m.contentExpanded {

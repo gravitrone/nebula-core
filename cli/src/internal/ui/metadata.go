@@ -617,7 +617,7 @@ func renderMetadataBlockWithTitle(title string, data map[string]any, width int, 
 			metadataGridRowsWrapped(group, field, row.value, groupWidth, fieldWidth, valueWidth)...,
 		)
 	}
-	rendered := components.TableGrid(columns, gridRows, contentWidth)
+	rendered := components.RenderGridTable(columns, gridRows, contentWidth)
 	return components.TitledBox(title, colorizeScopeBadges(rendered), width)
 }
 

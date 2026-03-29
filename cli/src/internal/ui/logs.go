@@ -248,32 +248,33 @@ func (m LogsModel) View() string {
 	if modeLine != "" {
 		body = components.CenterLine(modeLine, m.width) + "\n\n" + body
 	}
-	if m.view == logsViewList {
-		return lipgloss.JoinVertical(lipgloss.Left, components.Indent(body, 1), m.renderStatusHints())
-	}
 	return components.Indent(body, 1)
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m LogsModel) renderStatusHints() string {
+// Hints returns the hint items for the current view state.
+func (m LogsModel) Hints() []components.HintItem {
+	if m.addValue.Active || m.addMeta.Active || m.editValue.Active || m.editMeta.Active || m.filtering {
+		return nil
+	}
 	if m.notesEditing {
-		hints := []string{
-			components.Hint("esc", "Cancel"),
-			components.Hint("ctrl+s", "Save"),
+		return []components.HintItem{
+			{Key: "esc", Desc: "Cancel"},
+			{Key: "ctrl+s", Desc: "Save"},
 		}
-		return components.StatusBar(hints, m.width)
 	}
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("?", "Help"),
-		components.Hint("q", "Quit"),
-		components.Hint("\u2191/\u2193", "Scroll"),
-		components.Hint("enter", "View"),
-		components.Hint("a", "Add"),
-		components.Hint("e", "Edit"),
+	if m.view != logsViewList {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "?", Desc: "Help"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "\u2191/\u2193", Desc: "Scroll"},
+		{Key: "enter", Desc: "View"},
+		{Key: "a", Desc: "Add"},
+		{Key: "e", Desc: "Edit"},
+	}
 }
 
 // --- Mode Line ---
@@ -329,16 +330,17 @@ func (m LogsModel) renderList() string {
 	if m.loading {
 		return "  " + m.spinner.View() + " " + MutedStyle.Render("Loading logs...")
 	}
+	contentWidth := components.BoxContentWidth(m.width)
+
 	if len(m.items) == 0 {
-		return components.EmptyStateBox(
+		box := components.EmptyStateBox(
 			"Logs",
 			"No logs found.",
 			[]string{"Press tab to switch Add/Library", "Press / for command palette"},
 			m.width,
 		)
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, box)
 	}
-
-	contentWidth := components.BoxContentWidth(m.width)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -654,23 +656,23 @@ func (m LogsModel) renderDetail() string {
 		return m.renderList()
 	}
 	l := m.detail
-	rows := []components.TableRow{
-		{Label: "ID", Value: l.ID},
-		{Label: "Type", Value: l.LogType},
-		{Label: "Timestamp", Value: formatLocalTimeFull(l.Timestamp)},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: l.ID},
+		{Key: "Type", Value: l.LogType},
+		{Key: "Timestamp", Value: formatLocalTimeFull(l.Timestamp)},
 	}
 	if l.Status != "" {
-		rows = append(rows, components.TableRow{Label: "Status", Value: l.Status})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Status", Value: l.Status})
 	}
 	if len(l.Tags) > 0 {
-		rows = append(rows, components.TableRow{Label: "Tags", Value: strings.Join(l.Tags, ", ")})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Tags", Value: strings.Join(l.Tags, ", ")})
 	}
-	rows = append(rows, components.TableRow{Label: "Created", Value: formatLocalTimeFull(l.CreatedAt)})
+	infoRows = append(infoRows, components.InfoTableRow{Key: "Created", Value: formatLocalTimeFull(l.CreatedAt)})
 	if !l.UpdatedAt.IsZero() {
-		rows = append(rows, components.TableRow{Label: "Updated", Value: formatLocalTimeFull(l.UpdatedAt)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Updated", Value: formatLocalTimeFull(l.UpdatedAt)})
 	}
 
-	sections := []string{components.Table("Log", rows, m.width)}
+	sections := []string{components.RenderInfoTable(infoRows, m.width)}
 	if l.Content != "" {
 		sections = append(sections, components.TitledBox("Content", l.Content, m.width))
 	}

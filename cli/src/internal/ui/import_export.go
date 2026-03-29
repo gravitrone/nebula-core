@@ -139,7 +139,7 @@ func (m ImportExportModel) View() string {
 		if m.mode == exportMode {
 			label = "Exporting..."
 		}
-		return components.Indent(components.Box(MutedStyle.Render(label), m.width), 1)
+		return components.Indent(components.RenderCompactBox(MutedStyle.Render(label)), 1)
 	case stepResult:
 		if m.errText != "" {
 			return components.Indent(components.ErrorBox("Import/Export Failed", m.errText, m.width), 1)

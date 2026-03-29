@@ -333,10 +333,10 @@ func (m ProfileModel) View() string {
 	var b strings.Builder
 
 	// User info table
-	b.WriteString(components.Indent(components.Table("Settings", []components.TableRow{
-		{Label: "User", Value: m.config.Username},
-		{Label: "API Key", Value: maskedAPIKey(m.config.APIKey)},
-		{Label: "Pending Queue", Value: fmt.Sprintf("%d", m.config.PendingLimit)},
+	b.WriteString(components.Indent(components.RenderInfoTable([]components.InfoTableRow{
+		{Key: "User", Value: m.config.Username},
+		{Key: "API Key", Value: maskedAPIKey(m.config.APIKey)},
+		{Key: "Pending Queue", Value: fmt.Sprintf("%d", m.config.PendingLimit)},
 	}, m.width), 1))
 	b.WriteString("\n\n")
 
@@ -383,19 +383,21 @@ func (m ProfileModel) View() string {
 		b.WriteString(m.renderTaxonomy())
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, b.String(), m.renderStatusHints())
+	return b.String()
 }
 
-// renderStatusHints builds the bottom status bar with keycap pill hints.
-func (m ProfileModel) renderStatusHints() string {
-	hints := []string{
-		components.Hint("1-9/0", "Tabs"),
-		components.Hint("/", "Command"),
-		components.Hint("q", "Quit"),
-		components.Hint("tab", "Switch"),
-		components.Hint("e", "Edit"),
+// Hints returns the hint items for the current view state.
+func (m ProfileModel) Hints() []components.HintItem {
+	if m.loading || m.editAPIKey || m.editPendingLimit || m.creating || m.createdKey != "" || m.agentDetail != nil {
+		return nil
 	}
-	return components.StatusBar(hints, m.width)
+	return []components.HintItem{
+		{Key: "1-9/0", Desc: "Tabs"},
+		{Key: "/", Desc: "Command"},
+		{Key: "q", Desc: "Quit"},
+		{Key: "tab", Desc: "Switch"},
+		{Key: "e", Desc: "Edit"},
+	}
 }
 
 // --- Helpers ---
@@ -578,7 +580,7 @@ func (m ProfileModel) toggleTrust() (ProfileModel, tea.Cmd) {
 // renderKeys renders render keys.
 func (m ProfileModel) renderKeys() string {
 	if len(m.keys) == 0 {
-		return components.Indent(components.Box(MutedStyle.Render("No API keys."), m.width), 1)
+		return components.Indent(components.RenderCompactBox(MutedStyle.Render("No API keys.")), 1)
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
@@ -713,7 +715,7 @@ func (m ProfileModel) renderKeyPreview(k api.APIKey, width int) string {
 // renderAgents renders render agents.
 func (m ProfileModel) renderAgents() string {
 	if len(m.agents) == 0 {
-		return components.Indent(components.Box(MutedStyle.Render("No agents registered."), m.width), 1)
+		return components.Indent(components.RenderCompactBox(MutedStyle.Render("No agents registered.")), 1)
 	}
 
 	contentWidth := components.BoxContentWidth(m.width)
@@ -866,20 +868,20 @@ func (m ProfileModel) renderAgentDetail() string {
 	if len(agent.Capabilities) > 0 {
 		caps = strings.Join(agent.Capabilities, ", ")
 	}
-	rows := []components.TableRow{
-		{Label: "ID", Value: agent.ID},
-		{Label: "Name", Value: agent.Name},
-		{Label: "Status", Value: agent.Status},
-		{Label: "Trust", Value: trust},
-		{Label: "Scopes", Value: scopes},
-		{Label: "Capabilities", Value: caps},
-		{Label: "Created", Value: formatLocalTimeFull(agent.CreatedAt)},
-		{Label: "Updated", Value: formatLocalTimeFull(agent.UpdatedAt)},
+	infoRows := []components.InfoTableRow{
+		{Key: "ID", Value: agent.ID},
+		{Key: "Name", Value: agent.Name},
+		{Key: "Status", Value: agent.Status},
+		{Key: "Trust", Value: trust},
+		{Key: "Scopes", Value: scopes},
+		{Key: "Capabilities", Value: caps},
+		{Key: "Created", Value: formatLocalTimeFull(agent.CreatedAt)},
+		{Key: "Updated", Value: formatLocalTimeFull(agent.UpdatedAt)},
 	}
 	if agent.Description != nil && strings.TrimSpace(*agent.Description) != "" {
-		rows = append(rows, components.TableRow{Label: "Description", Value: strings.TrimSpace(*agent.Description)})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Description", Value: strings.TrimSpace(*agent.Description)})
 	}
-	return components.Indent(components.Table("Agent Details", rows, m.width), 1)
+	return components.Indent(components.RenderInfoTable(infoRows, m.width), 1)
 }
 
 // handleAgentDetailKeys handles handle agent detail keys.

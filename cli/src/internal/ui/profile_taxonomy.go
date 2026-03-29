@@ -273,14 +273,14 @@ func (m ProfileModel) renderTaxonomy() string {
 
 	if m.taxLoading {
 		return b.String() + components.Indent(
-			components.Box(MutedStyle.Render("Loading taxonomy..."), m.width),
+			components.RenderCompactBox(MutedStyle.Render("Loading taxonomy...")),
 			1,
 		)
 	}
 
 	if len(m.taxItems) == 0 {
 		return b.String() + components.Indent(
-			components.Box(MutedStyle.Render("No taxonomy rows found."), m.width),
+			components.RenderCompactBox(MutedStyle.Render("No taxonomy rows found.")),
 			1,
 		)
 	}
