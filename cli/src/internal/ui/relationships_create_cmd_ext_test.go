@@ -93,12 +93,12 @@ func TestRelationshipsSelectedRelationshipEmptyAndWhitespaceFilterBranches(t *te
 	assert.Nil(t, model.selectedRelationship())
 
 	model.allItems = []api.Relationship{{ID: "rel-1", Type: "depends-on"}}
-	model.filterInput.SetValue("   ")
+	model.filterBuf = "   "
 	model.applyListFilter()
 	require.Len(t, model.items, 1)
 	assert.Equal(t, "rel-1", model.items[0].ID)
 
-	model.filterInput.SetValue(strings.Repeat(" ", 4))
+	model.filterBuf = strings.Repeat(" ", 4)
 	model.applyListFilter()
 	require.Len(t, model.items, 1)
 }

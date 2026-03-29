@@ -25,7 +25,7 @@ func TestInboxViewTinyWidthFilterAndUnsyncedVisibleRows(t *testing.T) {
 		},
 	}
 	model.applyFilter(true)
-	model.filterInput.SetValue("agent:alpha")
+	model.filterBuf = "agent:alpha"
 
 	out := components.SanitizeText(model.View())
 

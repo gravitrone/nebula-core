@@ -35,7 +35,7 @@ func TestJobsRenderListLoadingEmptyAndPreviewBranches(t *testing.T) {
 	model.dataTable.SetRows([]table.Row{{"alpha"}, {"beta"}})
 	model.dataTable.SetCursor(0)
 	model.selected = map[string]bool{"job-1": true}
-	model.searchInput.SetValue("a")
+	model.searchBuf = "a"
 	model.searchSuggest = "alpha"
 	model.width = 84 // stacked layout branch
 	out = components.SanitizeText(model.renderList())
@@ -68,11 +68,11 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Empty(t, updated.selected)
 
-	updated.searchInput.SetValue("alpha")
+	updated.searchBuf = "alpha"
 	updated.searchSuggest = "alpha"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchInput.Value())
+	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
@@ -80,10 +80,10 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.True(t, updated.filtering)
 
 	updated.filtering = false
-	updated.searchInput.SetValue("x")
+	updated.searchBuf = "x"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyDelete})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchInput.Value())
+	assert.Equal(t, "", updated.searchBuf)
 
 	updated.items = nil
 	updated.dataTable.SetRows(nil)
@@ -94,10 +94,10 @@ func TestJobsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.False(t, updated.changingSt)
 	assert.Nil(t, updated.statusTargets)
 
-	updated.searchInput.SetValue("")
+	updated.searchBuf = ""
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: ' ', Text: " "})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchInput.Value())
+	assert.Equal(t, "", updated.searchBuf)
 }
 
 func TestJobsSaveEditNilDetailAndSuccess(t *testing.T) {

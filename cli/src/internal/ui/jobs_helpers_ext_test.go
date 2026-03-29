@@ -150,19 +150,19 @@ func TestJobsHandleEditKeysAdditionalBranchMatrix(t *testing.T) {
 func TestJobsHandleStatusInputBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.changingSt = true
-	model.statusInput.SetValue("act")
+	model.statusBuf = "act"
 
 	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "ac", updated.statusInput.Value())
+	assert.Equal(t, "ac", updated.statusBuf)
 
-	updated.statusInput.SetValue("active")
+	updated.statusBuf = "active"
 	updated.statusTargets = nil
 	updated.detail = nil
 	updated, cmd = updated.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.False(t, updated.changingSt)
-	assert.Empty(t, updated.statusInput.Value())
+	assert.Empty(t, updated.statusBuf)
 }
 
 func TestJobsHandleStatusInputEnterWithTargetsReturnsCommand(t *testing.T) {
@@ -179,7 +179,7 @@ func TestJobsHandleStatusInputEnterWithTargetsReturnsCommand(t *testing.T) {
 
 	model := NewJobsModel(client)
 	model.changingSt = true
-	model.statusInput.SetValue("active")
+	model.statusBuf = "active"
 	model.statusTargets = []string{"job-1"}
 	model.selected = map[string]bool{"job-1": true}
 
@@ -196,7 +196,7 @@ func TestJobsHandleLinkInputInvalidAndBackspaceBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.detail = &api.Job{ID: "job-1"}
 	model.linkingRel = true
-	model.linkInput.SetValue("entity-only")
+	model.linkBuf = "entity-only"
 
 	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -204,24 +204,24 @@ func TestJobsHandleLinkInputInvalidAndBackspaceBranches(t *testing.T) {
 	_, ok := msg.(errMsg)
 	require.True(t, ok)
 	assert.False(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkInput.Value())
+	assert.Equal(t, "", updated.linkBuf)
 
 	updated.linkingRel = true
-	updated.linkInput.SetValue("ab")
+	updated.linkBuf = "ab"
 	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.linkInput.Value())
+	assert.Equal(t, "a", updated.linkBuf)
 }
 
 func TestJobsHandleUnlinkInputNilDetailAndDirectIDBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.unlinkingRel = true
-	model.unlinkInput.SetValue("1")
+	model.unlinkBuf = "1"
 
 	updated, cmd := model.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd)
 	assert.False(t, updated.unlinkingRel)
-	assert.Equal(t, "", updated.unlinkInput.Value())
+	assert.Equal(t, "", updated.unlinkBuf)
 
 	var updatedID string
 	_, client := testJobsClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +237,7 @@ func TestJobsHandleUnlinkInputNilDetailAndDirectIDBranches(t *testing.T) {
 	model = NewJobsModel(client)
 	model.detail = &api.Job{ID: "job-1"}
 	model.unlinkingRel = true
-	model.unlinkInput.SetValue("rel-custom")
+	model.unlinkBuf = "rel-custom"
 	updated, cmd = model.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()

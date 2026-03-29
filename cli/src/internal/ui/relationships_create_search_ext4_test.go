@@ -11,7 +11,7 @@ import (
 func TestRelationshipsRenderCreateSearchSideBySidePreviewBranch(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 220
-	model.createQueryInput.SetValue("alpha")
+	model.createQuery = "alpha"
 	model.createResults = []relationshipCreateCandidate{
 		{ID: "ent-1", NodeType: "entity", Name: "Alpha", Kind: "entity/person", Status: "active"},
 		{ID: "ctx-1", NodeType: "context", Name: "Note", Kind: "context/note", Status: "inactive"},
@@ -29,7 +29,7 @@ func TestRelationshipsRenderCreateSearchSideBySidePreviewBranch(t *testing.T) {
 func TestRelationshipsRenderCreateSearchNoPreviewWhenCursorOutOfRange(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 220
-	model.createQueryInput.SetValue("alpha")
+	model.createQuery = "alpha"
 	model.createResults = []relationshipCreateCandidate{
 		{ID: "ent-1", NodeType: "entity", Name: "Alpha", Kind: "entity/person", Status: "active"},
 	}
@@ -47,7 +47,7 @@ func TestRelationshipsRenderCreateSearchNoPreviewWhenCursorOutOfRange(t *testing
 func TestRelationshipsRenderCreateSearchVeryNarrowWidthColumnFallbacks(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 30
-	model.createQueryInput.SetValue("a")
+	model.createQuery = "a"
 	model.createResults = []relationshipCreateCandidate{
 		{ID: "ent-1", NodeType: "", Name: "", Kind: "", Status: ""},
 	}

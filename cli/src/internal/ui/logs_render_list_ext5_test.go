@@ -45,7 +45,7 @@ func TestLogsRenderListLoadingEmptyAndLayoutBranches(t *testing.T) {
 	model.dataTable.SetRows([]table.Row{{"log-1"}, {"log-2"}})
 	model.dataTable.SetCursor(0)
 	model.width = 84 // stacked preview layout
-	model.searchInput.SetValue("dep")
+	model.searchBuf = "dep"
 	model.searchSuggest = "deploy"
 	out = components.SanitizeText(model.renderList())
 	assert.Contains(t, out, "2 total")
@@ -54,7 +54,7 @@ func TestLogsRenderListLoadingEmptyAndLayoutBranches(t *testing.T) {
 	assert.Contains(t, out, "log")
 	assert.Contains(t, out, "Selected")
 
-	model.searchInput.SetValue("deploy")
+	model.searchBuf = "deploy"
 	model.searchSuggest = "deploy"
 	out = components.SanitizeText(model.renderList())
 	assert.NotContains(t, out, "next: ")
@@ -82,30 +82,30 @@ func TestLogsHandleListKeysTabBackAndSpaceOutOfRange(t *testing.T) {
 	}
 	model.applyLogSearch()
 
-	model.searchInput.SetValue("wo")
+	model.searchBuf = "wo"
 	model.searchSuggest = "workout"
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "workout", updated.searchInput.Value())
+	assert.Equal(t, "workout", updated.searchBuf)
 
-	updated.searchInput.SetValue("workout")
+	updated.searchBuf = "workout"
 	updated.searchSuggest = "workout"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "workout", updated.searchInput.Value())
+	assert.Equal(t, "workout", updated.searchBuf)
 
-	updated.searchInput.SetValue("abc")
+	updated.searchBuf = "abc"
 	updated.searchSuggest = "abc"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchInput.Value())
+	assert.Equal(t, "", updated.searchBuf)
 	assert.Equal(t, "", updated.searchSuggest)
 
-	updated.searchInput.SetValue("")
+	updated.searchBuf = ""
 	updated.searchSuggest = ""
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchInput.Value())
+	assert.Equal(t, "", updated.searchBuf)
 
 	updated.items = nil
 	updated.dataTable.SetRows(nil)
@@ -116,9 +116,9 @@ func TestLogsHandleListKeysTabBackAndSpaceOutOfRange(t *testing.T) {
 	assert.Nil(t, updated.detail)
 
 	updated.filtering = true
-	updated.searchInput.SetValue("x")
+	updated.searchBuf = "x"
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "x", updated.searchInput.Value())
+	assert.Equal(t, "x", updated.searchBuf)
 }

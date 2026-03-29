@@ -42,12 +42,12 @@ func TestJobsHandleDetailKeysMatrix(t *testing.T) {
 	updated, cmd = base.handleDetailKeys(tea.KeyPressMsg{Code: 'l', Text: "l"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkInput.Value())
+	assert.Equal(t, "", updated.linkBuf)
 
 	updated, cmd = base.handleDetailKeys(tea.KeyPressMsg{Code: 'u', Text: "u"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.unlinkingRel)
-	assert.Equal(t, "", updated.unlinkInput.Value())
+	assert.Equal(t, "", updated.unlinkBuf)
 
 	updated, cmd = base.handleDetailKeys(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
@@ -108,20 +108,20 @@ func TestJobsHandleLinkAndUnlinkInputAdditionalBranches(t *testing.T) {
 
 	// Back exits link mode.
 	model.linkingRel = true
-	model.linkInput.SetValue("entity ent-1 owns")
+	model.linkBuf = "entity ent-1 owns"
 	updated, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.linkingRel)
-	assert.Equal(t, "", updated.linkInput.Value())
+	assert.Equal(t, "", updated.linkBuf)
 
 	// Default append branch.
 	updated.linkingRel = true
 	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: 'e', Text: "e"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "e", updated.linkInput.Value())
+	assert.Equal(t, "e", updated.linkBuf)
 
 	// Successful link create.
-	updated.linkInput.SetValue("entity ent-1 owns")
+	updated.linkBuf = "entity ent-1 owns"
 	updated, cmd = updated.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -134,23 +134,23 @@ func TestJobsHandleLinkAndUnlinkInputAdditionalBranches(t *testing.T) {
 
 	// Back exits unlink mode.
 	updated.unlinkingRel = true
-	updated.unlinkInput.SetValue("1")
+	updated.unlinkBuf = "1"
 	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.unlinkingRel)
-	assert.Equal(t, "", updated.unlinkInput.Value())
+	assert.Equal(t, "", updated.unlinkBuf)
 
 	// Enter with empty value exits without cmd.
 	updated.unlinkingRel = true
-	updated.unlinkInput.SetValue("   ")
+	updated.unlinkBuf = "   "
 	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.unlinkingRel)
-	assert.Equal(t, "", updated.unlinkInput.Value())
+	assert.Equal(t, "", updated.unlinkBuf)
 
 	// List-index unlink maps row number to relationship ID.
 	updated.unlinkingRel = true
-	updated.unlinkInput.SetValue("2")
+	updated.unlinkBuf = "2"
 	updated, cmd = updated.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()

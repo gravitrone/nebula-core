@@ -17,26 +17,26 @@ func TestProfileHandleAPIKeyInputBranches(t *testing.T) {
 	require.Nil(t, cmd)
 	updated, _ = updated.handleAPIKeyInput(tea.KeyPressMsg{Code: 'b', Text: "b"})
 	updated, _ = updated.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "nb ", updated.apiKeyInput.Value())
+	assert.Equal(t, "nb ", updated.apiKeyBuf)
 
 	updated, _ = updated.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyUp})
-	assert.Equal(t, "nb ", updated.apiKeyInput.Value())
+	assert.Equal(t, "nb ", updated.apiKeyBuf)
 
 	updated, _ = updated.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "nb", updated.apiKeyInput.Value())
+	assert.Equal(t, "nb", updated.apiKeyBuf)
 
 	updated, _ = updated.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyDelete})
-	assert.Equal(t, "n", updated.apiKeyInput.Value())
+	assert.Equal(t, "n", updated.apiKeyBuf)
 
 	updated, _ = updated.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.editAPIKey)
-	assert.Equal(t, "", updated.apiKeyInput.Value())
+	assert.Equal(t, "", updated.apiKeyBuf)
 }
 
 func TestProfileHandleAPIKeyInputEnterEmptyReturnsErrMsg(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx", APIKey: "nbl_old"})
 	model.editAPIKey = true
-	model.apiKeyInput.SetValue("   ")
+	model.apiKeyBuf = "   "
 
 	updated, cmd := model.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -51,23 +51,23 @@ func TestProfileHandlePendingLimitInputBranches(t *testing.T) {
 
 	updated, cmd := model.handlePendingLimitInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.pendingLimitInput.Value())
+	assert.Equal(t, "", updated.pendingLimitBuf)
 
 	updated, _ = updated.handlePendingLimitInput(tea.KeyPressMsg{Code: '4', Text: "4"})
 	updated, _ = updated.handlePendingLimitInput(tea.KeyPressMsg{Code: '2', Text: "2"})
-	assert.Equal(t, "42", updated.pendingLimitInput.Value())
+	assert.Equal(t, "42", updated.pendingLimitBuf)
 
 	updated, _ = updated.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyDelete})
-	assert.Equal(t, "4", updated.pendingLimitInput.Value())
+	assert.Equal(t, "4", updated.pendingLimitBuf)
 
-	updated.pendingLimitInput.SetValue("0")
+	updated.pendingLimitBuf = "0"
 	updated, cmd = updated.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	_, ok := cmd().(errMsg)
 	assert.True(t, ok)
 
-	updated.pendingLimitInput.SetValue("123")
+	updated.pendingLimitBuf = "123"
 	updated, _ = updated.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.editPendingLimit)
-	assert.Equal(t, "", updated.pendingLimitInput.Value())
+	assert.Equal(t, "", updated.pendingLimitBuf)
 }

@@ -72,30 +72,30 @@ func TestNormalizeBulkScopesExtended(t *testing.T) {
 func TestEntitiesHandleBulkPromptKeysBranchMatrix(t *testing.T) {
 	model := NewEntitiesModel(nil)
 	model.bulkPrompt = "bulk tags"
-	model.bulkInput.SetValue("abc")
+	model.bulkBuf = "abc"
 
 	updated, cmd := model.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, "", updated.bulkPrompt)
-	assert.Equal(t, "", updated.bulkInput.Value())
+	assert.Equal(t, "", updated.bulkBuf)
 
-	updated.bulkInput.SetValue("ab")
+	updated.bulkBuf = "ab"
 	updated, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.bulkInput.Value())
+	assert.Equal(t, "a", updated.bulkBuf)
 
-	updated.bulkInput.SetValue("abc")
+	updated.bulkBuf = "abc"
 	updated, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.bulkInput.Value())
+	assert.Equal(t, "", updated.bulkBuf)
 
 	updated, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "x", updated.bulkInput.Value())
+	assert.Equal(t, "x", updated.bulkBuf)
 	updated, _ = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "x ", updated.bulkInput.Value())
+	assert.Equal(t, "x ", updated.bulkBuf)
 
-	updated.bulkInput.SetValue("   ")
+	updated.bulkBuf = "   "
 	_, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -103,7 +103,7 @@ func TestEntitiesHandleBulkPromptKeysBranchMatrix(t *testing.T) {
 	require.True(t, ok)
 	require.Error(t, em.err)
 
-	updated.bulkInput.SetValue("add:")
+	updated.bulkBuf = "add:"
 	_, cmd = updated.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()
@@ -117,17 +117,17 @@ func TestEntitiesHandleBulkPromptKeysRoutesToTagsAndScopes(t *testing.T) {
 	model.items = []api.Entity{{ID: "ent-1"}}
 	model.bulkSelected = map[string]bool{"ent-1": true}
 	model.bulkPrompt = "bulk tags"
-	model.bulkInput.SetValue("set:alpha,beta")
+	model.bulkBuf = "set:alpha,beta"
 	model.bulkTarget = bulkTargetTags
 
 	updated, cmd := model.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.Equal(t, "", updated.bulkPrompt)
-	assert.Equal(t, "", updated.bulkInput.Value())
+	assert.Equal(t, "", updated.bulkBuf)
 	assert.True(t, updated.bulkRunning)
 
 	model.bulkPrompt = "bulk scopes"
-	model.bulkInput.SetValue("set:public,private")
+	model.bulkBuf = "set:public,private"
 	model.bulkTarget = bulkTargetScopes
 	updated, cmd = model.handleBulkPromptKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)

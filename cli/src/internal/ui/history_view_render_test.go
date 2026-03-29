@@ -102,7 +102,7 @@ func TestHistoryViewRendersFilterDialogAndErrorBox(t *testing.T) {
 	model.width = 80
 
 	model.filtering = true
-	model.filterInput.SetValue("table:entities")
+	model.filterBuf = "table:entities"
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Filter Audit Log")
 	assert.Contains(t, out, "table:entities")

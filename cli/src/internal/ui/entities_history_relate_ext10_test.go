@@ -126,18 +126,18 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSearch, next.view)
 
-		next.relateQueryInput.SetValue("be")
+		next.relateQuery = "be"
 		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.NotNil(t, cmd)
 		assert.Equal(t, entitiesViewRelateSelect, next.view)
 		assert.True(t, next.relateLoading)
 
 		next.view = entitiesViewRelateSearch
-		next.relateQueryInput.SetValue("be")
+		next.relateQuery = "be"
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, "b", next.relateQueryInput.Value())
+		assert.Equal(t, "b", next.relateQuery)
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeySpace})
-		assert.Equal(t, "b ", next.relateQueryInput.Value())
+		assert.Equal(t, "b ", next.relateQuery)
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.Equal(t, entitiesViewRelationships, next.view)
 	})
@@ -179,7 +179,7 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: 'k', Text: "k"})
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-		assert.Equal(t, "k", next.relateTypeInput.Value())
+		assert.Equal(t, "k", next.relateType)
 		next, _ = next.handleRelateKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		require.NotNil(t, cmd)
@@ -188,7 +188,7 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 
 		next.view = entitiesViewRelateType
 		next.relateTarget = nil
-		next.relateTypeInput.SetValue("knows")
+		next.relateType = "knows"
 		next, cmd = next.handleRelateKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.Equal(t, entitiesViewRelateType, next.view)
@@ -226,7 +226,7 @@ func TestEntitiesRelateAndRelEditBranchMatrix(t *testing.T) {
 		assert.Contains(t, out, "Beta")
 
 		m.view = entitiesViewRelateType
-		m.relateTypeInput.SetValue("knows")
+		m.relateType = "knows"
 		out = components.SanitizeText(m.renderRelate())
 		assert.Contains(t, out, "Relationship Type")
 

@@ -12,31 +12,31 @@ func TestProtocolsHandleTagInputAdditionalBranchMatrix(t *testing.T) {
 	model := NewProtocolsModel(nil)
 
 	// delete/backspace branch in edit mode with existing buffer
-	model.editTagInput.SetValue("ab")
+	model.editTagBuf = "ab"
 	updated, cmd := model.handleTagInput(tea.KeyPressMsg{Code: tea.KeyDelete}, false)
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.editTagInput.Value())
+	assert.Equal(t, "a", updated.editTagBuf)
 
 	// backspace branch with empty buffer keeps state stable
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyBackspace}, false)
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.editTagInput.Value())
+	assert.Equal(t, "", updated.editTagBuf)
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyBackspace}, false)
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.editTagInput.Value())
+	assert.Equal(t, "", updated.editTagBuf)
 
 	// comma/space commit branches
-	updated.addTagInput.SetValue("Tag-One")
+	updated.addTagBuf = "Tag-One"
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: ',', Text: ","}, true)
 	require.Nil(t, cmd)
 	assert.Equal(t, []string{"tag-one"}, updated.addTags)
-	assert.Equal(t, "", updated.addTagInput.Value())
+	assert.Equal(t, "", updated.addTagBuf)
 
-	updated.editTagInput.SetValue("Tag Two")
+	updated.editTagBuf = "Tag Two"
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeySpace}, false)
 	require.Nil(t, cmd)
 	assert.Equal(t, []string{"tag-two"}, updated.editTags)
-	assert.Equal(t, "", updated.editTagInput.Value())
+	assert.Equal(t, "", updated.editTagBuf)
 
 	// non-printable/no-op branch (len(msg.String()) != 1 and not handled key)
 	tagsBefore := updated.addTags
@@ -47,5 +47,5 @@ func TestProtocolsHandleTagInputAdditionalBranchMatrix(t *testing.T) {
 	// printable branch in edit mode appends rune
 	updated, cmd = updated.handleTagInput(tea.KeyPressMsg{Code: 'x', Text: "x"}, false)
 	require.Nil(t, cmd)
-	assert.Equal(t, "x", updated.editTagInput.Value())
+	assert.Equal(t, "x", updated.editTagBuf)
 }

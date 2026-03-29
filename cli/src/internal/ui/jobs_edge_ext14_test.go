@@ -38,7 +38,7 @@ func TestJobsHandleListKeysDelegatesWhenFiltering(t *testing.T) {
 
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.searchInput.Value())
+	assert.Equal(t, "a", updated.searchBuf)
 	assert.True(t, updated.filtering)
 }
 
@@ -55,14 +55,14 @@ func TestJobsHandleStatusInputFallsBackToDetailWhenTargetsEmpty(t *testing.T) {
 
 	model := NewJobsModel(client)
 	model.detail = &api.Job{ID: "job-1", Title: "Alpha", Status: "pending"}
-	model.statusInput.SetValue("done")
+	model.statusBuf = "done"
 	model.statusTargets = nil
 	model.changingSt = true
 
 	updated, cmd := model.handleStatusInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.changingSt)
-	assert.Equal(t, "", updated.statusInput.Value())
+	assert.Equal(t, "", updated.statusBuf)
 	assert.Nil(t, updated.statusTargets)
 
 	msg := cmd()

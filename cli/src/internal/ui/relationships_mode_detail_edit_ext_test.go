@@ -223,39 +223,39 @@ func TestRelationshipsHandleFilterInputBranchMatrix(t *testing.T) {
 
 	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.filterInput.Value())
+	assert.Equal(t, "a", updated.filterBuf)
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a ", updated.filterInput.Value())
+	assert.Equal(t, "a ", updated.filterBuf)
 
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.filterInput.Value())
+	assert.Equal(t, "a", updated.filterBuf)
 
-	updated.filterInput.SetValue("")
+	updated.filterBuf = ""
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.filterInput.Value())
+	assert.Equal(t, "", updated.filterBuf)
 
-	updated.filterInput.SetValue("")
+	updated.filterBuf = ""
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.filterInput.Value())
+	assert.Equal(t, "", updated.filterBuf)
 
-	updated.filterInput.SetValue("dep")
+	updated.filterBuf = "dep"
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.filterInput.Value())
+	assert.Equal(t, "", updated.filterBuf)
 	require.Len(t, updated.items, 1)
 
 	updated.filtering = true
-	updated.filterInput.SetValue("x")
+	updated.filterBuf = "x"
 	updated, cmd = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.Nil(t, cmd)
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "x", updated.filterInput.Value())
+	assert.Equal(t, "x", updated.filterBuf)
 }
 
 func TestRelationshipsRenderModeLineStateVariants(t *testing.T) {
@@ -513,7 +513,7 @@ func TestRelationshipsHandleListKeysAdditionalBranches(t *testing.T) {
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'n', Text: "n"})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateSourceSearch, updated.view)
-	assert.Equal(t, "", updated.createQueryInput.Value())
+	assert.Equal(t, "", updated.createQuery)
 }
 
 func TestRelationshipsViewBranchMatrix(t *testing.T) {

@@ -88,7 +88,7 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 	for _, r := range "agent:openai" {
 		model, _ = model.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 	}
-	assert.Equal(t, "agent:openai", model.filterInput.Value())
+	assert.Equal(t, "agent:openai", model.filterBuf)
 	assert.Len(t, model.filtered, 1)
 
 	// Enter applies and exits filtering.
@@ -100,7 +100,7 @@ func TestInboxFilterInputAppliesAndClears(t *testing.T) {
 	model.filtering = true
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.filtering)
-	assert.Equal(t, "", model.filterInput.Value())
+	assert.Equal(t, "", model.filterBuf)
 	assert.Len(t, model.filtered, 2)
 }
 

@@ -144,7 +144,7 @@ func TestEntitiesLiveSearchTriggersQuery(t *testing.T) {
 	model, _ = model.Update(runCmdFirst(cmd))
 
 	assert.Equal(t, "a", searchText)
-	assert.Equal(t, "a", model.searchInput.Value())
+	assert.Equal(t, "a", model.searchBuf)
 }
 
 // TestNormalizeEntityNameType handles test normalize entity name type.
@@ -199,7 +199,7 @@ func TestEntitiesSearchSuggestTabAccepts(t *testing.T) {
 	})
 
 	model := NewEntitiesModel(client)
-	model.searchInput.SetValue("al")
+	model.searchBuf = "al"
 	model.searchSuggest = "alxx"
 
 	var cmd tea.Cmd
@@ -207,7 +207,7 @@ func TestEntitiesSearchSuggestTabAccepts(t *testing.T) {
 	require.NotNil(t, cmd)
 	model, _ = model.Update(runCmdFirst(cmd))
 
-	assert.Equal(t, "alxx", model.searchInput.Value())
+	assert.Equal(t, "alxx", model.searchBuf)
 	assert.Equal(t, "alxx", searchText)
 }
 

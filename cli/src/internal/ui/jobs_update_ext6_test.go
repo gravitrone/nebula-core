@@ -40,24 +40,24 @@ func TestJobsUpdateMessageBranchesMatrix(t *testing.T) {
 	require.NotNil(t, cmd)
 
 	model.changingSt = true
-	model.statusInput.SetValue("active")
+	model.statusBuf = "active"
 	model.statusTargets = []string{"job-1"}
 	model.detail = &api.Job{ID: "job-1"}
 	model, cmd = model.Update(jobStatusUpdatedMsg{})
 	require.NotNil(t, cmd)
 	assert.False(t, model.changingSt)
 	assert.Nil(t, model.detail)
-	assert.Empty(t, model.statusInput.Value())
+	assert.Empty(t, model.statusBuf)
 	assert.Nil(t, model.statusTargets)
 
 	model.creatingSubtask = true
-	model.subtaskInput.SetValue("Subtask")
+	model.subtaskBuf = "Subtask"
 	model.detail = &api.Job{ID: "job-1"}
 	model, cmd = model.Update(subtaskCreatedMsg{})
 	require.NotNil(t, cmd)
 	assert.False(t, model.creatingSubtask)
 	assert.Nil(t, model.detail)
-	assert.Empty(t, model.subtaskInput.Value())
+	assert.Empty(t, model.subtaskBuf)
 
 	model.addSaving = true
 	model, cmd = model.Update(jobCreatedMsg{})
@@ -91,31 +91,31 @@ func TestJobsUpdateKeyRoutingBranches(t *testing.T) {
 	model := NewJobsModel(nil)
 
 	model.creatingSubtask = true
-	model.subtaskInput.SetValue("a")
+	model.subtaskBuf = "a"
 	updated, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Empty(t, updated.subtaskInput.Value())
+	assert.Empty(t, updated.subtaskBuf)
 
 	model = NewJobsModel(nil)
 	model.linkingRel = true
-	model.linkInput.SetValue("ab")
+	model.linkBuf = "ab"
 	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.linkInput.Value())
+	assert.Equal(t, "a", updated.linkBuf)
 
 	model = NewJobsModel(nil)
 	model.unlinkingRel = true
-	model.unlinkInput.SetValue("ab")
+	model.unlinkBuf = "ab"
 	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.unlinkInput.Value())
+	assert.Equal(t, "a", updated.unlinkBuf)
 
 	model = NewJobsModel(nil)
 	model.changingSt = true
-	model.statusInput.SetValue("ab")
+	model.statusBuf = "ab"
 	updated, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.statusInput.Value())
+	assert.Equal(t, "a", updated.statusBuf)
 
 	model = NewJobsModel(nil)
 	model.modeFocus = true
@@ -156,7 +156,7 @@ func TestJobsViewBranchMatrix(t *testing.T) {
 	model.width = 90
 	model.creatingSubtask = true
 	model.detail = &api.Job{ID: "job-1"}
-	model.subtaskInput.SetValue("Subtask")
+	model.subtaskBuf = "Subtask"
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "New Subtask Title")
 
@@ -177,7 +177,7 @@ func TestJobsViewBranchMatrix(t *testing.T) {
 	model = NewJobsModel(nil)
 	model.width = 90
 	model.changingSt = true
-	model.statusInput.SetValue("active")
+	model.statusBuf = "active"
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "New Status")
 
@@ -185,7 +185,7 @@ func TestJobsViewBranchMatrix(t *testing.T) {
 	model.width = 90
 	model.filtering = true
 	model.view = jobsViewList
-	model.searchInput.SetValue("alpha")
+	model.searchBuf = "alpha"
 	out = components.SanitizeText(model.View())
 	assert.Contains(t, out, "Filter Jobs")
 }

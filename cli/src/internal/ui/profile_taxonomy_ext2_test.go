@@ -17,7 +17,7 @@ import (
 func TestSubmitTaxonomyPromptEditNameEmptyReturnsError(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{})
 	model.taxPromptMode = taxPromptEditName
-	model.taxPromptInput.SetValue("   ")
+	model.taxPromptBuf = "   "
 
 	updated, cmd := model.submitTaxonomyPrompt()
 	require.NotNil(t, cmd)
@@ -25,7 +25,7 @@ func TestSubmitTaxonomyPromptEditNameEmptyReturnsError(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, msg.err.Error(), "taxonomy name required")
 	assert.Equal(t, taxPromptNone, updated.taxPromptMode)
-	assert.Equal(t, "", updated.taxPromptInput.Value())
+	assert.Equal(t, "", updated.taxPromptBuf)
 }
 
 func TestSubmitTaxonomyPromptCreateDescriptionCommandSuccessAndError(t *testing.T) {
@@ -53,7 +53,7 @@ func TestSubmitTaxonomyPromptCreateDescriptionCommandSuccessAndError(t *testing.
 	model := NewProfileModel(okClient, &config.Config{})
 	model.taxPromptMode = taxPromptCreateDescription
 	model.taxPendingName = "public"
-	model.taxPromptInput.SetValue("desc")
+	model.taxPromptBuf = "desc"
 	model.taxKind = 0
 
 	updated, cmd := model.submitTaxonomyPrompt()
@@ -75,7 +75,7 @@ func TestSubmitTaxonomyPromptCreateDescriptionCommandSuccessAndError(t *testing.
 	model = NewProfileModel(failingClient, &config.Config{})
 	model.taxPromptMode = taxPromptCreateDescription
 	model.taxPendingName = "private"
-	model.taxPromptInput.SetValue("desc")
+	model.taxPromptBuf = "desc"
 	model.taxKind = 0
 
 	_, cmd = model.submitTaxonomyPrompt()
@@ -119,7 +119,7 @@ func TestSubmitTaxonomyPromptEditDescriptionCommandSuccessAndError(t *testing.T)
 	model := NewProfileModel(okClient, &config.Config{})
 	model.taxPromptMode = taxPromptEditDescription
 	model.taxPendingName = "renamed"
-	model.taxPromptInput.SetValue("updated desc")
+	model.taxPromptBuf = "updated desc"
 	model.taxEditID = "scope-1"
 	model.taxKind = 0
 
@@ -146,7 +146,7 @@ func TestSubmitTaxonomyPromptEditDescriptionCommandSuccessAndError(t *testing.T)
 	model = NewProfileModel(failingClient, &config.Config{})
 	model.taxPromptMode = taxPromptEditDescription
 	model.taxPendingName = "renamed"
-	model.taxPromptInput.SetValue("desc")
+	model.taxPromptBuf = "desc"
 	model.taxEditID = "scope-1"
 	model.taxKind = 0
 

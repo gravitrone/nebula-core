@@ -14,7 +14,7 @@ import (
 
 func TestContextUpdateLinkSearchClearsAndStartsLoading(t *testing.T) {
 	model := NewContextModel(nil)
-	model.linkQueryInput.SetValue("   ")
+	model.linkQuery = "   "
 	model.linkLoading = true
 	model.linkResults = []api.Entity{{ID: "ent-1"}}
 	model.linkTable.SetRows([]table.Row{{"existing"}})
@@ -25,7 +25,7 @@ func TestContextUpdateLinkSearchClearsAndStartsLoading(t *testing.T) {
 	assert.Nil(t, model.linkResults)
 	assert.Empty(t, model.linkTable.Rows())
 
-	model.linkQueryInput.SetValue("alpha")
+	model.linkQuery = "alpha"
 	cmd = model.updateLinkSearch()
 	require.NotNil(t, cmd)
 	assert.True(t, model.linkLoading)
