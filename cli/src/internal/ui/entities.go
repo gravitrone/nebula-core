@@ -1248,7 +1248,8 @@ func (m EntitiesModel) renderList() string {
 	if countLine != "" {
 		body += "\n" + countLine
 	}
-	return components.TitledBox("Entities", body, m.width)
+	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body)
+	return components.TitledBox("Entities", centered, m.width)
 }
 
 // renderEntityPreview renders entity preview as a styled table.
