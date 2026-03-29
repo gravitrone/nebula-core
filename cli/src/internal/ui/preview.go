@@ -298,12 +298,25 @@ func renderPreviewTable(title string, kvs []previewKV, width int) string {
 		{Title: title, Width: valWidth},
 	}
 
-	t := components.NewNebulaTable(cols, len(kvs)+1)
-	t.SetColumns(cols)
-	t.SetRows(rows)
+	// Build a read-only table with no selection highlight.
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(ColorBorder).
+		BorderBottom(true).
+		Bold(false)
+	// Selected style matches Cell so no row gets visually highlighted.
+	s.Selected = s.Cell
+
 	actualW := keyWidth + valWidth + (2 * 2)
-	t.SetWidth(actualW)
-	t.Blur() // Preview table is not interactive.
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithRows(rows),
+		table.WithHeight(len(kvs)+1),
+		table.WithWidth(actualW),
+		table.WithStyles(s),
+	)
+	t.Blur()
 
 	return components.TableBaseStyle.Render(t.View())
 }
