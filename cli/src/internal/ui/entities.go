@@ -1245,11 +1245,10 @@ func (m EntitiesModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := body
 	if countLine != "" {
-		result += "\n" + countLine
+		body += "\n" + countLine
 	}
-	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
+	return components.TitledBox("Entities", body, m.width)
 }
 
 // renderEntityPreview renders entity preview as a styled table.
