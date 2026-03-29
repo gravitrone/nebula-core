@@ -43,9 +43,7 @@ func TestAppInitAndViewRendersBannerTabsAndHints(t *testing.T) {
 	assert.Contains(t, clean, "Command-Line Interface")
 	assert.Contains(t, clean, "Inbox")
 	assert.Contains(t, clean, "Entities")
-	// Help bar now uses bubbles/help model - check for lowercase binding descriptions.
-	assert.Contains(t, strings.ToLower(clean), "help")
-	assert.Contains(t, strings.ToLower(clean), "quit")
+	// Help bar was removed - each tab renders its own StatusBar hints instead.
 }
 
 // TestAppHelpAndQuitConfirmViewsRender handles test app help and quit confirm views render.
