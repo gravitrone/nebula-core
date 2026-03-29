@@ -439,10 +439,10 @@ func (m JobsModel) renderList() string {
 		{Title: "Priority", Width: prioWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := titleWidth + statusWidth + prioWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	title := "Jobs"
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if selected := m.selectedCount(); selected > 0 {
 		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
@@ -455,7 +455,7 @@ func (m JobsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	var previewItem *api.Job
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
@@ -473,8 +473,7 @@ func (m JobsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox(title, content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // renderJobPreview renders render job preview.

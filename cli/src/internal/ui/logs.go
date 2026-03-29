@@ -407,7 +407,8 @@ func (m LogsModel) renderList() string {
 		{Title: "Status", Width: statusWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := typeWidth + valueWidth + statusWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
@@ -419,7 +420,7 @@ func (m LogsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -443,8 +444,7 @@ func (m LogsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox("Logs", content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // renderLogPreview renders render log preview.

@@ -294,10 +294,10 @@ func (m InboxModel) View() string {
 		{Title: "Who", Width: whoWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := titleWidth + actionWidth + whoWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	title := "Inbox"
 	countLine := fmt.Sprintf("%d pending", len(m.items))
 	if m.filterBuf != "" {
 		countLine = fmt.Sprintf("%s · filter: %s", countLine, m.filterBuf)
@@ -307,7 +307,7 @@ func (m InboxModel) View() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	var previewItem *api.Approval
 	if item, ok := m.selectedItem(); ok {
@@ -326,8 +326,7 @@ func (m InboxModel) View() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox(title, content, m.width), 1), m.renderStatusHints())
+	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(countLine+"\n\n"+body, 1), m.renderStatusHints())
 }
 
 // renderStatusHints builds the bottom status bar with keycap pill hints.

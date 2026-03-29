@@ -488,7 +488,8 @@ func (m HistoryModel) renderList() string {
 		{Title: "Table", Width: tableNameWidth},
 		{Title: "Actor", Width: actorWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := atWidth + actionWidth + tableNameWidth + actorWidth + (numCols * 2)
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.items)))
@@ -496,7 +497,7 @@ func (m HistoryModel) renderList() string {
 		filterLine = MutedStyle.Render(filterLine)
 	}
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	var previewItem *api.AuditEntry
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
@@ -519,9 +520,8 @@ func (m HistoryModel) renderList() string {
 		parts = append(parts, filterLine)
 	}
 	parts = append(parts, countLine, body)
-	content := strings.Join(parts, "\n\n") + "\n"
 
-	return components.Indent(components.TitledBox("History", content, m.width), 1)
+	return components.Indent(strings.Join(parts, "\n\n"), 1)
 }
 
 // renderAuditPreview renders render audit preview.
@@ -617,11 +617,12 @@ func (m HistoryModel) renderScopes() string {
 		{Title: "Entities", Width: entitiesWidth},
 		{Title: "Context", Width: contextWidth},
 	})
-	m.scopeTable.SetWidth(tableWidth)
+	actualTableWidth := scopeWidth + agentsWidth + entitiesWidth + contextWidth + (numCols * 2)
+	m.scopeTable.SetWidth(actualTableWidth)
 	m.scopeTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.scopes)))
-	tableView := m.scopeTable.View()
+	tableView := components.TableBaseStyle.Render(m.scopeTable.View())
 	preview := ""
 	var previewItem *api.AuditScope
 	if idx := m.scopeTable.Cursor(); idx >= 0 && idx < len(m.scopes) {
@@ -639,8 +640,7 @@ func (m HistoryModel) renderScopes() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.Indent(components.TitledBox("Scopes", content, m.width), 1)
+	return components.Indent(countLine+"\n\n"+body, 1)
 }
 
 // renderScopePreview renders render scope preview.
@@ -718,11 +718,12 @@ func (m HistoryModel) renderActors() string {
 		{Title: "Actions", Width: actionsWidth},
 		{Title: "Last", Width: lastWidth},
 	})
-	m.actorTable.SetWidth(tableWidth)
+	actualTableWidth := actorWidth + actionsWidth + lastWidth + (numCols * 2)
+	m.actorTable.SetWidth(actualTableWidth)
 	m.actorTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.actors)))
-	tableView := m.actorTable.View()
+	tableView := components.TableBaseStyle.Render(m.actorTable.View())
 	preview := ""
 	var previewItem *api.AuditActor
 	if idx := m.actorTable.Cursor(); idx >= 0 && idx < len(m.actors) {
@@ -740,8 +741,7 @@ func (m HistoryModel) renderActors() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.Indent(components.TitledBox("Actors", content, m.width), 1)
+	return components.Indent(countLine+"\n\n"+body, 1)
 }
 
 // renderActorPreview renders render actor preview.

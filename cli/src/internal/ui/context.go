@@ -764,7 +764,8 @@ func (m ContextModel) renderList() string {
 		{Title: "Status", Width: statusWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := titleWidth + typeWidth + statusWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
@@ -773,7 +774,7 @@ func (m ContextModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -797,8 +798,7 @@ func (m ContextModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox("Context", content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // renderDetail renders render detail.
@@ -1377,7 +1377,8 @@ func (m ContextModel) renderLinkSearch() string {
 			{Title: "Type", Width: typeWidth},
 			{Title: "Status", Width: statusWidth},
 		})
-		m.linkTable.SetWidth(tableWidth)
+		actualTableWidth := nameWidth + typeWidth + statusWidth + cellPadding
+		m.linkTable.SetWidth(actualTableWidth)
 		m.linkTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.linkResults)))

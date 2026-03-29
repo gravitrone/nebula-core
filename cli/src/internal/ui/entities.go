@@ -1204,10 +1204,10 @@ func (m EntitiesModel) renderList() string {
 		{Title: "Status", Width: statusWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := nameWidth + typeWidth + statusWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	title := "Entities"
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if selected := m.bulkCount(); selected > 0 {
 		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
@@ -1224,7 +1224,7 @@ func (m EntitiesModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	var previewItem *api.Entity
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
@@ -1242,8 +1242,7 @@ func (m EntitiesModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox(title, content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // renderEntityPreview renders render entity preview.
@@ -1744,7 +1743,8 @@ func (m EntitiesModel) renderHistory() string {
 		{Title: "Action", Width: actionWidth},
 		{Title: "Fields", Width: fieldsWidth},
 	})
-	m.historyTable.SetWidth(tableWidth)
+	actualTableWidth := atWidth + actionWidth + fieldsWidth + cellPadding
+	m.historyTable.SetWidth(actualTableWidth)
 	m.historyTable.SetRows(tableRows)
 
 	countLine := MutedStyle.Render(fmt.Sprintf("%d entries", len(m.history)))
@@ -2313,7 +2313,8 @@ func (m EntitiesModel) renderRelate() string {
 			{Title: "Type", Width: typeWidth},
 			{Title: "Status", Width: statusWidth},
 		})
-		m.relateTable.SetWidth(tableWidth)
+		actualTableWidth := nameWidth + typeWidth + statusWidth + cellPadding
+		m.relateTable.SetWidth(actualTableWidth)
 		m.relateTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.relateResults)))

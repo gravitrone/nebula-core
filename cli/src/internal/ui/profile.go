@@ -646,7 +646,8 @@ func (m ProfileModel) renderKeys() string {
 		{Title: "Owner", Width: ownerWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.keyList.SetWidth(tableWidth)
+	actualTableWidth := prefixWidth + nameWidth + ownerWidth + atWidth + (4 * 2)
+	m.keyList.SetWidth(actualTableWidth)
 	m.keyList.SetRows(tableRows)
 
 	var previewItem *api.APIKey
@@ -783,7 +784,8 @@ func (m ProfileModel) renderAgents() string {
 		{Title: "Status", Width: statusWidth},
 		{Title: "Scopes", Width: scopesWidth},
 	})
-	m.agentList.SetWidth(tableWidth)
+	actualTableWidth := nameWidth + trustWidth + statusWidth + scopesWidth + (4 * 2)
+	m.agentList.SetWidth(actualTableWidth)
 	m.agentList.SetRows(tableRows)
 
 	var previewItem *api.Agent
@@ -791,9 +793,8 @@ func (m ProfileModel) renderAgents() string {
 		previewItem = &m.agents[idx]
 	}
 
-	title := "Agents"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d agents", len(m.agents)))
-	tableView := m.agentList.View()
+	tableView := components.TableBaseStyle.Render(m.agentList.View())
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
 		content := m.renderAgentPreview(*previewItem, previewBoxContentWidth(previewWidth))
@@ -807,8 +808,7 @@ func (m ProfileModel) renderAgents() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.Indent(components.TitledBox(title, content, m.width), 1)
+	return components.Indent(countLine+"\n\n"+body, 1)
 }
 
 // renderAgentPreview renders render agent preview.

@@ -255,7 +255,7 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	}
 	rows := m.rows
 	if len(rows) == 0 {
-		body := components.TitledBox("Metadata", MutedStyle.Render("No metadata rows. Press n to add one."), width)
+		body := MutedStyle.Render("No metadata rows. Press n to add one.")
 		scopeBox := m.renderScopeBox(width)
 		footer := MutedStyle.Render("n new · e edit · d delete · space select · b all · enter inspect · c copy values · s scopes · esc back")
 		if m.notice != "" {
@@ -307,7 +307,16 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	}
 
 	m.list.SetColumns(tableCols)
-	m.list.SetWidth(contentWidth)
+	actualTableWidth := groupWidth + fieldWidth + valueWidth
+	if showSelectionColumn {
+		actualTableWidth += 4
+	}
+	numCols := 3
+	if showSelectionColumn {
+		numCols = 4
+	}
+	actualTableWidth += numCols * 2
+	m.list.SetWidth(actualTableWidth)
 	m.list.SetHeight(metadataPanelPageSize(false))
 	m.list.SetRows(tableRows)
 
@@ -319,9 +328,9 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	if m.notice != "" {
 		footer += "\n" + MutedStyle.Render(m.notice)
 	}
-	tableView := colorizeScopeBadges(m.list.View())
+	tableView := components.TableBaseStyle.Render(colorizeScopeBadges(m.list.View()))
 	body := tableView + "\n\n" + MutedStyle.Render(info) + "\n" + MutedStyle.Render(footer)
-	return components.Indent(components.TitledBox("Metadata", body, width)+"\n\n"+m.renderScopeBox(width), 1)
+	return components.Indent(body+"\n\n"+m.renderScopeBox(width), 1)
 }
 
 // renderEntryMode renders render entry mode.

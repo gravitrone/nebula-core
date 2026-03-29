@@ -526,17 +526,17 @@ func (m RelationshipsModel) renderList() string {
 		{Title: "Status", Width: statusWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := relWidth + edgeWidth + statusWidth + atWidth + (numCols * 2)
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	title := "Relationships"
 	count := fmt.Sprintf("%d total", len(m.items))
 	if query := strings.TrimSpace(m.filterBuf); query != "" {
 		count = fmt.Sprintf("%s · filter: %s", count, query)
 	}
 	countLine := MutedStyle.Render(count)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -560,8 +560,7 @@ func (m RelationshipsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox(title, content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // --- Detail ---
@@ -1097,11 +1096,12 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 			{Title: "Kind", Width: kindWidth},
 			{Title: "Status", Width: statusWidth},
 		})
-		m.createTable.SetWidth(tableWidth)
+		actualTableWidth := nameWidth + kindWidth + statusWidth + (numCols * 2)
+		m.createTable.SetWidth(actualTableWidth)
 		m.createTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.createResults)))
-		tableView := m.createTable.View()
+		tableView := components.TableBaseStyle.Render(m.createTable.View())
 		preview := ""
 		var previewItem *relationshipCreateCandidate
 		if idx := m.createTable.Cursor(); idx >= 0 && idx < len(m.createResults) {
@@ -1124,7 +1124,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 		b.WriteString(body)
 	}
 
-	return components.TitledBox(title, b.String(), m.width)
+	return b.String()
 }
 
 // renderCreateType renders render create type.
@@ -1164,11 +1164,12 @@ func (m RelationshipsModel) renderCreateType() string {
 		m.createTypeTable.SetColumns([]table.Column{
 			{Title: "Suggestion", Width: tableWidth},
 		})
-		m.createTypeTable.SetWidth(tableWidth)
+		actualTableWidth := tableWidth + (1 * 2)
+		m.createTypeTable.SetWidth(actualTableWidth)
 		m.createTypeTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d suggestions", len(m.createTypeResults)))
-		tableView := m.createTypeTable.View()
+		tableView := components.TableBaseStyle.Render(m.createTypeTable.View())
 		preview := ""
 		var selectedSuggestion string
 		if idx := m.createTypeTable.Cursor(); idx >= 0 && idx < len(m.createTypeResults) {
@@ -1191,7 +1192,7 @@ func (m RelationshipsModel) renderCreateType() string {
 		b.WriteString(body)
 	}
 
-	return components.TitledBox("Relationship Type", b.String(), m.width)
+	return b.String()
 }
 
 // renderCreateNodePreview renders render create node preview.

@@ -390,7 +390,8 @@ func (m FilesModel) renderList() string {
 		{Title: "Size", Width: sizeWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := fileWidth + statusWidth + sizeWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
 	countLine := fmt.Sprintf("%d total", len(m.items))
@@ -402,7 +403,7 @@ func (m FilesModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -428,8 +429,7 @@ func (m FilesModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox("Files", content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // renderFilePreview renders render file preview.

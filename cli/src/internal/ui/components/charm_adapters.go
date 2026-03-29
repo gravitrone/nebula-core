@@ -45,16 +45,18 @@ func NewNebulaSpinner() spinner.Model {
 	return s
 }
 
-// TableBaseStyle wraps a table.View() in a bordered box exactly like the
-// bubbles table example: NormalBorder + color 240 border foreground.
+// TableBaseStyle wraps a table.View() in a bordered box matching the
+// bubbles table example pattern (NormalBorder + visible gray border).
 var TableBaseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-// NewNebulaTable returns a table.Model styled identically to the bubbles
-// table example (charmbracelet/bubbletea/examples/table). Uses the exact
-// same style pattern: DefaultStyles base, header with bottom border,
-// vivid purple selected row.
+// NewNebulaTable returns a table.Model styled like the charmbracelet
+// bubbles table example with nebula theme colors. Pattern:
+//   - DefaultStyles() as base (Cell has Padding(0,1))
+//   - Header: bottom border separator, not bold
+//   - Selected: nebula purple background, white foreground, full-width
+//   - Keybindings disabled (nebula tabs handle their own nav)
 //
 // When cols is nil a single placeholder column is used so that SetRows
 // does not panic before the caller sets proper columns.
@@ -70,8 +72,8 @@ func NewNebulaTable(cols []table.Column, height int) table.Model {
 		BorderBottom(true).
 		Bold(false)
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
+		Foreground(lipgloss.Color("#ffffff")).
+		Background(themePrimary).
 		Bold(false)
 
 	t := table.New(

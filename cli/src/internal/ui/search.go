@@ -258,11 +258,12 @@ func (m SearchModel) View() string {
 			{Title: "Kind", Width: kindWidth},
 			{Title: "Info", Width: infoWidth},
 		})
-		m.dataTable.SetWidth(tableWidth)
+		actualTableWidth := titleWidth + kindWidth + infoWidth + cellPadding
+		m.dataTable.SetWidth(actualTableWidth)
 		m.dataTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.items)))
-		tableView := m.dataTable.View()
+		tableView := components.TableBaseStyle.Render(m.dataTable.View())
 		preview := ""
 		var previewItem *searchEntry
 		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {
@@ -285,7 +286,7 @@ func (m SearchModel) View() string {
 		b.WriteString(body)
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(components.TitledBox("Search", b.String(), m.width), 1), m.renderStatusHints())
+	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(b.String(), 1), m.renderStatusHints())
 }
 
 // renderStatusHints builds the bottom status bar with keycap pill hints.

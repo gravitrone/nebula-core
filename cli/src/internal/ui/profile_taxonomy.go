@@ -359,7 +359,8 @@ func (m ProfileModel) renderTaxonomy() string {
 		{Title: "Flags", Width: flagsWidth},
 		{Title: "Description", Width: descWidth},
 	})
-	m.taxList.SetWidth(tableWidth)
+	actualTableWidth := nameWidth + flagsWidth + descWidth + (3 * 2)
+	m.taxList.SetWidth(actualTableWidth)
 	m.taxList.SetRows(tableRows)
 
 	var previewItem *api.TaxonomyEntry
@@ -369,7 +370,7 @@ func (m ProfileModel) renderTaxonomy() string {
 		}
 	}
 
-	tableView := m.taxList.View()
+	tableView := components.TableBaseStyle.Render(m.taxList.View())
 	preview := ""
 	if previewItem != nil {
 		content := m.renderTaxonomyPreview(*previewItem, previewBoxContentWidth(previewWidth))
@@ -383,9 +384,7 @@ func (m ProfileModel) renderTaxonomy() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := MutedStyle.Render(info) + "\n\n" + body + "\n"
-	title := fmt.Sprintf("%s Taxonomy", taxonomyKinds[m.taxKind].Label)
-	return b.String() + components.Indent(components.TitledBox(title, content, m.width), 1)
+	return b.String() + components.Indent(MutedStyle.Render(info)+"\n\n"+body, 1)
 }
 
 // renderTaxonomyPreview renders render taxonomy preview.

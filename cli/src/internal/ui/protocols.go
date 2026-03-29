@@ -575,17 +575,17 @@ func (m ProtocolsModel) renderList() string {
 		{Title: "Status", Width: statusWidth},
 		{Title: "At", Width: atWidth},
 	})
-	m.dataTable.SetWidth(tableWidth)
+	actualTableWidth := nameWidth + titleWidth + statusWidth + atWidth + cellPadding
+	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	title := "Protocols"
 	countLine := fmt.Sprintf("%d total", len(m.items))
 	if strings.TrimSpace(m.searchBuf) != "" {
 		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -611,8 +611,7 @@ func (m ProtocolsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.TitledBox(title, content, m.width)
+	return countLine + "\n\n" + body
 }
 
 // renderProtocolPreview renders render protocol preview.
