@@ -429,7 +429,8 @@ func (m FilesModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	return countLine + "\n\n" + body
+	result := countLine + "\n\n" + body
+	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 
 // renderFilePreview renders render file preview.

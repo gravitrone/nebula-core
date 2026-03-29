@@ -326,7 +326,9 @@ func (m InboxModel) View() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(countLine+"\n\n"+body, 1), m.renderStatusHints())
+	result := countLine + "\n\n" + body
+	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
+	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(centered, 1), m.renderStatusHints())
 }
 
 // renderStatusHints builds the bottom status bar with keycap pill hints.

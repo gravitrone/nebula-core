@@ -521,7 +521,8 @@ func (m HistoryModel) renderList() string {
 	}
 	parts = append(parts, countLine, body)
 
-	return components.Indent(strings.Join(parts, "\n\n"), 1)
+	result := strings.Join(parts, "\n\n")
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 
 // renderAuditPreview renders render audit preview.
@@ -640,7 +641,8 @@ func (m HistoryModel) renderScopes() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	return components.Indent(countLine+"\n\n"+body, 1)
+	result := countLine + "\n\n" + body
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 
 // renderScopePreview renders render scope preview.
@@ -741,7 +743,8 @@ func (m HistoryModel) renderActors() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	return components.Indent(countLine+"\n\n"+body, 1)
+	result := countLine + "\n\n" + body
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 
 // renderActorPreview renders render actor preview.

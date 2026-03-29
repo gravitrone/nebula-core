@@ -384,7 +384,8 @@ func (m ProfileModel) renderTaxonomy() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	return b.String() + components.Indent(MutedStyle.Render(info)+"\n\n"+body, 1)
+	result := MutedStyle.Render(info) + "\n\n" + body
+	return b.String() + components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 
 // renderTaxonomyPreview renders render taxonomy preview.

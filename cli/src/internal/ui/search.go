@@ -281,9 +281,8 @@ func (m SearchModel) View() string {
 			body = tableView + "\n\n" + preview
 		}
 
-		b.WriteString(countLine)
-		b.WriteString("\n\n")
-		b.WriteString(body)
+		result := countLine + "\n\n" + body
+		b.WriteString(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(b.String(), 1), m.renderStatusHints())

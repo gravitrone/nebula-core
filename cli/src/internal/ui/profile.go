@@ -671,8 +671,9 @@ func (m ProfileModel) renderKeys() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	content := countLine + "\n\n" + body + "\n"
-	return components.Indent(components.TitledBox(title, content, m.width), 1)
+	result := countLine + "\n\n" + body
+	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
+	return components.Indent(components.TitledBox(title, centered+"\n", m.width), 1)
 }
 
 // renderKeyPreview renders render key preview.
@@ -808,7 +809,8 @@ func (m ProfileModel) renderAgents() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	return components.Indent(countLine+"\n\n"+body, 1)
+	result := countLine + "\n\n" + body
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 
 // renderAgentPreview renders render agent preview.
