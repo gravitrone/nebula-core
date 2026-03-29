@@ -2,7 +2,7 @@ package ui
 
 import "time"
 
-const compactTimeColumnWidth = 15
+const compactTimeColumnWidth = 18
 
 // formatLocalTimeCompact handles format local time compact.
 func formatLocalTimeCompact(ts time.Time) string {
