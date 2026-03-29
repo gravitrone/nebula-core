@@ -81,12 +81,12 @@ func TestProtocolsApplySearchByNameAndTitle(t *testing.T) {
 		{Name: "beta", Title: "ops policy"},
 	}
 
-	model.searchBuf = "ops"
+	model.searchInput.SetValue("ops")
 	model.applySearch()
 	assert.Len(t, model.items, 1)
 	assert.Equal(t, "beta", model.items[0].Name)
 
-	model.searchBuf = ""
+	model.searchInput.SetValue("")
 	model.applySearch()
 	assert.Len(t, model.items, 2)
 }

@@ -24,7 +24,7 @@ func TestRelationshipsUpdateAdditionalBranches(t *testing.T) {
 	require.NotNil(t, updated.names)
 	assert.Equal(t, "Alpha", updated.names["ent-1"])
 
-	updated.createQuery = "fresh"
+	updated.createQueryInput.SetValue("fresh")
 	updated.createLoading = true
 	updated.createResults = []relationshipCreateCandidate{{ID: "old"}}
 	updated, cmd = updated.Update(relTabResultsMsg{
@@ -60,7 +60,7 @@ func TestRelationshipsViewAndListFilterRouteBranches(t *testing.T) {
 	model.filtering = true
 	updated, cmd := model.handleListKeys(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "x", updated.filterBuf)
+	assert.Equal(t, "x", updated.filterInput.Value())
 }
 
 func TestRelationshipsRenderListTinyWidthAndPreviewGuardBranches(t *testing.T) {
@@ -133,10 +133,10 @@ func TestRelationshipsCreateKeyAdditionalBranches(t *testing.T) {
 
 	updated, cmd := model.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 
 	updated.view = relsViewCreateTargetSearch
-	updated.createQuery = "ab"
+	updated.createQueryInput.SetValue("ab")
 	updated.createResults = []relationshipCreateCandidate{{ID: "ent-1"}}
 	updated.createTable.SetRows([]table.Row{{"ent-1"}})
 	updated.createLoading = true
@@ -144,22 +144,22 @@ func TestRelationshipsCreateKeyAdditionalBranches(t *testing.T) {
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	require.Nil(t, cmd)
 	assert.Equal(t, relsViewCreateTargetSearch, updated.view)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 	assert.Empty(t, updated.createResults)
 	assert.Empty(t, updated.createTable.Rows())
 	assert.False(t, updated.createLoading)
 
 	updated.entityCache = []api.Entity{{ID: "ent-1", Name: "alpha", Type: "person", Status: "active"}}
-	updated.createQuery = "al"
+	updated.createQueryInput.SetValue("al")
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.createQuery)
+	assert.Equal(t, "a", updated.createQueryInput.Value())
 	assert.NotEmpty(t, updated.createResults)
 
-	updated.createQuery = ""
+	updated.createQueryInput.SetValue("")
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.createQuery)
+	assert.Equal(t, "", updated.createQueryInput.Value())
 
 	updated.view = relsViewCreateType
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
@@ -168,12 +168,12 @@ func TestRelationshipsCreateKeyAdditionalBranches(t *testing.T) {
 
 	updated.view = relsViewCreateType
 	updated.typeOptions = []string{"depends-on"}
-	updated.createType = "de"
+	updated.createTypeInput.SetValue("de")
 	updated.createTypeNav = true
 	updated.resetTypeSuggestions()
 	updated, cmd = updated.handleCreateKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "d", updated.createType)
+	assert.Equal(t, "d", updated.createTypeInput.Value())
 	assert.False(t, updated.createTypeNav)
 }
 

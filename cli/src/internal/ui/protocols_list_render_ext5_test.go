@@ -39,24 +39,24 @@ func TestProtocolsHandleListKeysAdditionalBranches(t *testing.T) {
 	assert.Equal(t, protocolsViewList, updated.view)
 	assert.Nil(t, updated.detail)
 
-	updated.searchBuf = ""
+	updated.searchInput.SetValue("")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
 	require.Nil(t, cmd)
 	assert.Equal(t, protocolsViewAdd, updated.view)
 
 	updated.view = protocolsViewList
-	updated.searchBuf = ""
+	updated.searchInput.SetValue("")
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.searchBuf)
+	assert.Equal(t, "a", updated.searchInput.Value())
 	require.NotEmpty(t, updated.items)
 }
 
@@ -64,7 +64,7 @@ func TestProtocolsRenderListFallbackAndPreviewLayout(t *testing.T) {
 	now := time.Now().UTC()
 	model := NewProtocolsModel(nil)
 	model.width = 84 // forces stacked table+preview layout.
-	model.searchBuf = "  alpha  "
+	model.searchInput.SetValue("  alpha  ")
 	model.items = []api.Protocol{
 		{
 			ID:        "proto-1",

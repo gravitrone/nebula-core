@@ -55,10 +55,10 @@ func TestImportExportHandlePathKeysMatrix(t *testing.T) {
 
 	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: 'b', Text: "b"})
-	assert.Equal(t, "ab", updated.path)
+	assert.Equal(t, "ab", updated.pathInput.Value())
 
 	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "a", updated.path)
+	assert.Equal(t, "a", updated.pathInput.Value())
 
 	updated, _ = updated.handlePathKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, stepFormat, updated.step)

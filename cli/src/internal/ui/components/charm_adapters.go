@@ -19,9 +19,11 @@ var (
 )
 
 // NewNebulaTextInput returns a textinput.Model styled to match the Nebula theme.
+// The input is focused by default so it immediately accepts key events.
 func NewNebulaTextInput(placeholder string) textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
+	ti.Focus()
 
 	styles := textinput.DefaultDarkStyles()
 	styles.Focused.Placeholder = lipgloss.NewStyle().Foreground(themeMuted)

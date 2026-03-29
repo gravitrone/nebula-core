@@ -178,16 +178,16 @@ func TestJobsModelStatusInputHandling(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'c', Text: "c"})
 	model, _ = model.Update(tea.KeyPressMsg{Code: 't', Text: "t"})
-	assert.Equal(t, "act", model.statusBuf)
+	assert.Equal(t, "act", model.statusInput.Value())
 
 	// Backspace
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "ac", model.statusBuf)
+	assert.Equal(t, "ac", model.statusInput.Value())
 
 	// Escape to cancel
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, model.changingSt)
-	assert.Equal(t, "", model.statusBuf)
+	assert.Equal(t, "", model.statusInput.Value())
 }
 
 // TestJobsModelRenderEmpty handles test jobs model render empty.
@@ -286,7 +286,7 @@ func TestJobsModelCreateSubtask(t *testing.T) {
 func TestJobsSearchFiltersList(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.allItems = []api.Job{{ID: "job-1", Title: "Alpha", Status: "pending"}, {ID: "job-2", Title: "Beta", Status: "active"}}
-	model.searchBuf = "al"
+	model.searchInput.SetValue("al")
 	model.applyJobSearch()
 
 	assert.Len(t, model.items, 1)
@@ -319,7 +319,7 @@ func TestJobsLinkInputCreatesRelationship(t *testing.T) {
 	model := NewJobsModel(client)
 	model.detail = &api.Job{ID: "job-1", Title: "Job"}
 	model.linkingRel = true
-	model.linkBuf = "entity ent-1 about"
+	model.linkInput.SetValue("entity ent-1 about")
 
 	model, cmd := model.handleLinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
@@ -362,7 +362,7 @@ func TestJobsUnlinkInputSupportsRowIndex(t *testing.T) {
 		{ID: "rel-1", SourceType: "job", SourceID: "job-1", TargetType: "entity", TargetID: "ent-1", Type: "about"},
 	}
 	model.unlinkingRel = true
-	model.unlinkBuf = "1"
+	model.unlinkInput.SetValue("1")
 
 	model, cmd := model.handleUnlinkInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)

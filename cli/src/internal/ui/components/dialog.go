@@ -48,6 +48,20 @@ func InputDialog(title, input string) string {
 	return dialogStyle.Render(header + "\n\n" + field + hint)
 }
 
+// TextInputDialog renders a dialog with a bubbles textinput view.
+func TextInputDialog(title, inputView string) string {
+	header := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#7f57b4")).
+		Bold(true).
+		Render(title)
+
+	hint := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#9ba0bf")).
+		Render("\nenter: submit | esc: cancel")
+
+	return dialogStyle.Render(header + "\n\n" + inputView + hint)
+}
+
 // ConfirmPreviewDialog renders a confirmation with summary rows and optional diffs.
 func ConfirmPreviewDialog(title string, summary []TableRow, diffs []DiffRow, width int) string {
 	sections := make([]string, 0, 4)

@@ -11,7 +11,7 @@ import (
 func TestRelationshipsRenderCreateTypeShowsPreviewForSelectedSuggestion(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 220
-	model.createType = "dep"
+	model.createTypeInput.SetValue("dep")
 	model.createTypeResults = []string{"depends-on", "related-to"}
 	model.createTypeTable.SetRows([]table.Row{{"depends-on"}, {"related-to"}})
 	model.createTypeTable.SetCursor(0)
@@ -26,7 +26,7 @@ func TestRelationshipsRenderCreateTypeShowsPreviewForSelectedSuggestion(t *testi
 func TestRelationshipsRenderCreateTypeBlankSuggestionFallbackBranch(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 220
-	model.createType = "x"
+	model.createTypeInput.SetValue("x")
 	model.createTypeResults = []string{""}
 	model.createTypeTable.SetRows([]table.Row{{""}})
 	model.createTypeTable.SetCursor(0)
@@ -41,7 +41,7 @@ func TestRelationshipsRenderCreateTypeBlankSuggestionFallbackBranch(t *testing.T
 func TestRelationshipsRenderCreateTypeSkipsOutOfRangeVisibleRows(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 220
-	model.createType = "dep"
+	model.createTypeInput.SetValue("dep")
 	model.createTypeResults = []string{"depends-on"}
 	// Keep list items longer than createTypeResults so RelToAbs produces
 	// out-of-range indexes for part of visible rows.

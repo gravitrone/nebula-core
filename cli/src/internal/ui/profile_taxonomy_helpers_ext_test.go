@@ -61,24 +61,24 @@ func TestTaxonomyPromptTitleModeMatrix(t *testing.T) {
 func TestHandleTaxonomyPromptBackspaceRuneAndBack(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{})
 	model.taxPromptMode = taxPromptCreateName
-	model.taxPromptBuf = "alxx"
+	model.taxPromptInput.SetValue("alxx")
 	model.taxPendingName = "pending"
 	model.taxPendingDesc = "desc"
 	model.taxEditID = "scope-1"
 
 	updated, cmd := model.handleTaxonomyPrompt(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "alx", updated.taxPromptBuf)
+	assert.Equal(t, "alx", updated.taxPromptInput.Value())
 
 	updated, _ = updated.handleTaxonomyPrompt(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "alx ", updated.taxPromptBuf)
+	assert.Equal(t, "alx ", updated.taxPromptInput.Value())
 
 	updated, _ = updated.handleTaxonomyPrompt(tea.KeyPressMsg{Code: 'z', Text: "z"})
-	assert.Equal(t, "alx z", updated.taxPromptBuf)
+	assert.Equal(t, "alx z", updated.taxPromptInput.Value())
 
 	updated, _ = updated.handleTaxonomyPrompt(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.Equal(t, taxPromptNone, updated.taxPromptMode)
-	assert.Equal(t, "", updated.taxPromptBuf)
+	assert.Equal(t, "", updated.taxPromptInput.Value())
 	assert.Equal(t, "", updated.taxPendingName)
 	assert.Equal(t, "", updated.taxPendingDesc)
 	assert.Equal(t, "", updated.taxEditID)
@@ -88,7 +88,7 @@ func TestSubmitTaxonomyPromptValidationAndTransitions(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{})
 
 	model.taxPromptMode = taxPromptCreateName
-	model.taxPromptBuf = "   "
+	model.taxPromptInput.SetValue("   ")
 	updated, cmd := model.submitTaxonomyPrompt()
 	require.NotNil(t, cmd)
 	msg := cmd().(errMsg) //nolint:forcetypeassert
@@ -96,26 +96,26 @@ func TestSubmitTaxonomyPromptValidationAndTransitions(t *testing.T) {
 	assert.Equal(t, taxPromptNone, updated.taxPromptMode)
 
 	model.taxPromptMode = taxPromptCreateName
-	model.taxPromptBuf = "  scopes-custom  "
+	model.taxPromptInput.SetValue("  scopes-custom  ")
 	updated, cmd = model.submitTaxonomyPrompt()
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptCreateDescription, updated.taxPromptMode)
 	assert.Equal(t, "scopes-custom", updated.taxPendingName)
 
 	model.taxPromptMode = taxPromptEditName
-	model.taxPromptBuf = "  renamed  "
+	model.taxPromptInput.SetValue("  renamed  ")
 	model.taxPendingDesc = "desc"
 	updated, cmd = model.submitTaxonomyPrompt()
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptEditDescription, updated.taxPromptMode)
 	assert.Equal(t, "renamed", updated.taxPendingName)
-	assert.Equal(t, "desc", updated.taxPromptBuf)
+	assert.Equal(t, "desc", updated.taxPromptInput.Value())
 }
 
 func TestSubmitTaxonomyPromptFilterAndDefault(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{})
 	model.taxPromptMode = taxPromptFilter
-	model.taxPromptBuf = "  private only "
+	model.taxPromptInput.SetValue("  private only ")
 
 	updated, cmd := model.submitTaxonomyPrompt()
 	require.NotNil(t, cmd)
@@ -146,7 +146,7 @@ func TestRenderTaxonomyStateMessages(t *testing.T) {
 	model.taxKind = 0
 
 	model.taxPromptMode = taxPromptFilter
-	model.taxPromptBuf = "scope"
+	model.taxPromptInput.SetValue("scope")
 	out := model.renderTaxonomy()
 	assert.Contains(t, out, "Taxonomy Filter")
 

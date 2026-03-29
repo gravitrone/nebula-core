@@ -26,11 +26,11 @@ func TestProfileUpdateMessageMatrixBranches(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx", APIKey: "nbl_key"})
 	model.loading = true
 	model.creating = true
-	model.createBuf = "draft"
+	model.createInput.SetValue("draft")
 	model.editAPIKey = true
-	model.apiKeyBuf = "draft"
+	model.apiKeyInput.SetValue("draft")
 	model.editPendingLimit = true
-	model.pendingLimitBuf = "42"
+	model.pendingLimitInput.SetValue("42")
 	model.taxLoading = false
 
 	updated, cmd := model.Update(keysLoadedMsg{
@@ -53,7 +53,7 @@ func TestProfileUpdateMessageMatrixBranches(t *testing.T) {
 	updated, cmd = updated.Update(keyCreatedMsg{resp: &api.CreateKeyResponse{APIKey: "nbl_created"}})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.creating)
-	assert.Equal(t, "", updated.createBuf)
+	assert.Equal(t, "", updated.createInput.Value())
 	assert.Equal(t, "nbl_created", updated.createdKey)
 
 	updated, cmd = updated.Update(keyRevokedMsg{})
@@ -65,12 +65,12 @@ func TestProfileUpdateMessageMatrixBranches(t *testing.T) {
 	updated, cmd = updated.Update(apiKeySavedMsg{})
 	require.Nil(t, cmd)
 	assert.False(t, updated.editAPIKey)
-	assert.Equal(t, "", updated.apiKeyBuf)
+	assert.Equal(t, "", updated.apiKeyInput.Value())
 
 	updated, cmd = updated.Update(pendingLimitSavedMsg{limit: 100})
 	require.Nil(t, cmd)
 	assert.False(t, updated.editPendingLimit)
-	assert.Equal(t, "", updated.pendingLimitBuf)
+	assert.Equal(t, "", updated.pendingLimitInput.Value())
 
 	updated.taxItems = []api.TaxonomyEntry{{ID: "tx-1", Name: "public"}}
 	updated.taxKind = 0 // scopes
@@ -138,21 +138,21 @@ func TestProfileUpdateTaxonomyHotkeysReturnLoadCommands(t *testing.T) {
 func TestProfileHandleCreateInputBackAndDeleteBranches(t *testing.T) {
 	model := NewProfileModel(nil, &config.Config{Username: "alxx"})
 	model.creating = true
-	model.createBuf = "abc"
+	model.createInput.SetValue("abc")
 
 	updated, cmd := model.handleCreateInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "ab", updated.createBuf)
+	assert.Equal(t, "ab", updated.createInput.Value())
 
 	updated, _ = updated.handleCreateInput(tea.KeyPressMsg{Code: tea.KeySpace})
-	assert.Equal(t, "ab ", updated.createBuf)
+	assert.Equal(t, "ab ", updated.createInput.Value())
 
 	updated, _ = updated.handleCreateInput(tea.KeyPressMsg{Code: 'x', Text: "x"})
-	assert.Equal(t, "ab x", updated.createBuf)
+	assert.Equal(t, "ab x", updated.createInput.Value())
 
 	updated, _ = updated.handleCreateInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.creating)
-	assert.Equal(t, "", updated.createBuf)
+	assert.Equal(t, "", updated.createInput.Value())
 }
 
 func TestProfileHandleCreateInputEnterReturnsErrorMessage(t *testing.T) {
@@ -167,12 +167,12 @@ func TestProfileHandleCreateInputEnterReturnsErrorMessage(t *testing.T) {
 
 	model := NewProfileModel(client, &config.Config{Username: "alxx"})
 	model.creating = true
-	model.createBuf = "key-name"
+	model.createInput.SetValue("key-name")
 
 	updated, cmd := model.handleCreateInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.False(t, updated.creating)
-	assert.Equal(t, "", updated.createBuf)
+	assert.Equal(t, "", updated.createInput.Value())
 	_, ok := cmd().(errMsg)
 	assert.True(t, ok)
 }
@@ -288,7 +288,7 @@ func TestProfileUpdateSectionTwoEnterOpensEditPrompt(t *testing.T) {
 	require.Nil(t, cmd)
 	assert.Equal(t, taxPromptEditName, updated.taxPromptMode)
 	assert.Equal(t, "scope-1", updated.taxEditID)
-	assert.Equal(t, "public", updated.taxPromptBuf)
+	assert.Equal(t, "public", updated.taxPromptInput.Value())
 }
 
 func TestProfileUpdateHandlesTaxonomyLoadedMatch(t *testing.T) {
@@ -329,7 +329,7 @@ func TestProfileHandleAPIKeyInputSavePathWithClientUpdate(t *testing.T) {
 
 	model := NewProfileModel(client, cfg)
 	model.editAPIKey = true
-	model.apiKeyBuf = "nbl_new"
+	model.apiKeyInput.SetValue("nbl_new")
 	updated, cmd := model.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editAPIKey)

@@ -92,7 +92,7 @@ func TestRelationshipsCreateSubmitCallsAPI(t *testing.T) {
 	model.view = relsViewCreateType
 	model.createSource = &relationshipCreateCandidate{ID: "ent-1", NodeType: "entity", Kind: "entity/tool"}
 	model.createTarget = &relationshipCreateCandidate{ID: "job-2", NodeType: "job", Kind: "job/high"}
-	model.createType = "uses"
+	model.createTypeInput.SetValue("uses")
 
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)

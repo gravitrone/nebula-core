@@ -77,7 +77,7 @@ func TestFilesViewCoversMetadataAndFilterBranches(t *testing.T) {
 	model.editMeta.Active = false
 
 	model.filtering = true
-	model.searchBuf = "mime:text"
+	model.searchInput.SetValue("mime:text")
 	out := components.SanitizeText(model.View())
 	assert.Contains(t, out, "Filter Files")
 	assert.Contains(t, out, "mime:text")
@@ -166,22 +166,22 @@ func TestFilesHandleFilterInputCoversSpaceBackspaceEnterAndBack(t *testing.T) {
 
 	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: tea.KeySpace})
 	require.Nil(t, cmd)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: 'w', Text: "w"})
-	assert.Equal(t, "w", updated.searchBuf)
+	assert.Equal(t, "w", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
 
 	updated.filtering = true
-	updated.searchBuf = "x"
+	updated.searchInput.SetValue("x")
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 	assert.Equal(t, "", updated.searchSuggest)
 }
 
@@ -206,24 +206,24 @@ func TestFilesHandleListKeysSearchModeAndEnterMatrix(t *testing.T) {
 	assert.Equal(t, 0, updated.dataTable.Cursor())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'w', Text: "w"})
-	assert.Equal(t, "w", updated.searchBuf)
+	assert.Equal(t, "w", updated.searchInput.Value())
 	assert.Equal(t, "workout.txt", updated.searchSuggest)
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, "workout.txt", updated.searchBuf)
+	assert.Equal(t, "workout.txt", updated.searchInput.Value())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "workout.tx", updated.searchBuf)
+	assert.Equal(t, "workout.tx", updated.searchInput.Value())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'u', Mod: tea.ModCtrl})
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	assert.True(t, updated.filtering)
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, cmd = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)

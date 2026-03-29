@@ -19,7 +19,7 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applyContextFilter()
 
 		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
-		assert.Equal(t, "a", updated.filterBuf)
+		assert.Equal(t, "a", updated.filterInput.Value())
 		assert.True(t, updated.filtering)
 
 		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -56,11 +56,11 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applyFileSearch()
 
 		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
-		assert.Equal(t, "a", updated.searchBuf)
+		assert.Equal(t, "a", updated.searchInput.Value())
 
 		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
-		assert.Equal(t, "", updated.searchBuf)
+		assert.Equal(t, "", updated.searchInput.Value())
 	})
 
 	t.Run("jobs", func(t *testing.T) {
@@ -70,7 +70,7 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applyJobSearch()
 
 		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
-		assert.Equal(t, "a", updated.searchBuf)
+		assert.Equal(t, "a", updated.searchInput.Value())
 
 		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
@@ -84,7 +84,7 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applyLogSearch()
 
 		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'e', Text: "e"})
-		assert.Equal(t, "e", updated.searchBuf)
+		assert.Equal(t, "e", updated.searchInput.Value())
 
 		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
@@ -99,7 +99,7 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applySearch()
 
 		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
-		assert.Equal(t, "a", updated.searchBuf)
+		assert.Equal(t, "a", updated.searchInput.Value())
 
 		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
@@ -122,10 +122,10 @@ func TestFilterInputAcrossTabs(t *testing.T) {
 		model.applyListFilter()
 
 		updated, _ := model.handleFilterInput(tea.KeyPressMsg{Code: 'r', Text: "r"})
-		assert.Equal(t, "r", updated.filterBuf)
+		assert.Equal(t, "r", updated.filterInput.Value())
 
 		updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 		assert.False(t, updated.filtering)
-		assert.Equal(t, "", updated.filterBuf)
+		assert.Equal(t, "", updated.filterInput.Value())
 	})
 }

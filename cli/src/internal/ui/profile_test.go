@@ -76,7 +76,7 @@ func TestProfileSetAPIKeyPersistsAndUpdatesClient(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
 	require.True(t, model.editAPIKey)
 
-	model.apiKeyBuf = "nbl_newkey"
+	model.apiKeyInput.SetValue("nbl_newkey")
 	model, cmd := model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
@@ -266,14 +266,14 @@ func TestProfileHandlePendingLimitInputAndRenderAgentDetail(t *testing.T) {
 	model := NewProfileModel(nil, cfg)
 
 	model.editPendingLimit = true
-	model.pendingLimitBuf = ""
+	model.pendingLimitInput.SetValue("")
 	_, cmd := model.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg := cmd()
 	_, ok := msg.(errMsg)
 	assert.True(t, ok)
 
-	model.pendingLimitBuf = "6001"
+	model.pendingLimitInput.SetValue("6001")
 	_, cmd = model.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	msg = cmd()

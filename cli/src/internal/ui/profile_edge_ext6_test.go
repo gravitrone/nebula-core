@@ -35,7 +35,7 @@ func TestProfileUpdateDownAndPendingLimitConfigBranches(t *testing.T) {
 	updated, cmd = updated.Update(tea.KeyPressMsg{Code: 'p', Text: "p"})
 	require.Nil(t, cmd)
 	assert.True(t, updated.editPendingLimit)
-	assert.Equal(t, "777", updated.pendingLimitBuf)
+	assert.Equal(t, "777", updated.pendingLimitInput.Value())
 }
 
 func TestProfileViewSectionFocusTabBranches(t *testing.T) {
@@ -98,7 +98,7 @@ func TestProfileHandleInputsSaveErrorBranches(t *testing.T) {
 	model := NewProfileModel(nil, cfg)
 
 	model.editAPIKey = true
-	model.apiKeyBuf = "nbl_new"
+	model.apiKeyInput.SetValue("nbl_new")
 	updated, cmd := model.handleAPIKeyInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editAPIKey)
@@ -108,7 +108,7 @@ func TestProfileHandleInputsSaveErrorBranches(t *testing.T) {
 	assert.Error(t, errMsgVal.err)
 
 	model.editPendingLimit = true
-	model.pendingLimitBuf = "900"
+	model.pendingLimitInput.SetValue("900")
 	updated, cmd = model.handlePendingLimitInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
 	assert.True(t, updated.editPendingLimit)

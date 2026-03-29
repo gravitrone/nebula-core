@@ -70,9 +70,9 @@ func TestProtocolsHandleListKeysBranches(t *testing.T) {
 	assert.Equal(t, "proto-1", updated.detail.ID)
 
 	updated.view = protocolsViewList
-	updated.searchBuf = "a"
+	updated.searchInput.SetValue("a")
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated, _ = updated.handleListKeys(tea.KeyPressMsg{Code: 'f', Text: "f"})
 	assert.True(t, updated.filtering)
@@ -93,21 +93,21 @@ func TestProtocolsHandleFilterInputBranches(t *testing.T) {
 
 	updated, cmd := model.handleFilterInput(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	require.Nil(t, cmd)
-	assert.Equal(t, "a", updated.searchBuf)
+	assert.Equal(t, "a", updated.searchInput.Value())
 
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyBackspace})
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
-	updated.searchBuf = "abc"
+	updated.searchInput.SetValue("abc")
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEscape})
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "", updated.searchBuf)
+	assert.Equal(t, "", updated.searchInput.Value())
 
 	updated.filtering = true
-	updated.searchBuf = "xy"
+	updated.searchInput.SetValue("xy")
 	updated, _ = updated.handleFilterInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.False(t, updated.filtering)
-	assert.Equal(t, "xy", updated.searchBuf)
+	assert.Equal(t, "xy", updated.searchInput.Value())
 }
 
 func TestProtocolsHandleAddKeysStatusTagsApplyMetadataAndBack(t *testing.T) {
@@ -189,25 +189,25 @@ func TestProtocolsTagAndApplyInputHelpers(t *testing.T) {
 
 	updated, cmd := model.handleTagInput(tea.KeyPressMsg{Code: 'A', Text: "A"}, true)
 	require.Nil(t, cmd)
-	assert.Equal(t, "A", updated.addTagBuf)
+	assert.Equal(t, "A", updated.addTagInput.Value())
 
 	updated, _ = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyBackspace}, true)
-	assert.Equal(t, "", updated.addTagBuf)
+	assert.Equal(t, "", updated.addTagInput.Value())
 
-	updated.addTagBuf = "#Tag"
+	updated.addTagInput.SetValue("#Tag")
 	updated, _ = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyEnter}, true)
 	assert.Equal(t, []string{"tag"}, updated.addTags)
 
-	updated.editTagBuf = "edit-tag"
+	updated.editTagInput.SetValue("edit-tag")
 	updated, _ = updated.handleTagInput(tea.KeyPressMsg{Code: tea.KeyEnter}, false)
 	assert.Equal(t, []string{"edit-tag"}, updated.editTags)
 
 	updated, _ = updated.handleApplyInput(tea.KeyPressMsg{Code: 'e', Text: "e"}, true)
-	assert.Equal(t, "e", updated.addApplyBuf)
+	assert.Equal(t, "e", updated.addApplyInput.Value())
 	updated, _ = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyEnter}, true)
 	assert.Equal(t, []string{"e"}, updated.addApplies)
 
-	updated.editApplyBuf = "job"
+	updated.editApplyInput.SetValue("job")
 	updated, _ = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyEnter}, false)
 	assert.Equal(t, []string{"job"}, updated.editApplies)
 }
@@ -215,25 +215,25 @@ func TestProtocolsTagAndApplyInputHelpers(t *testing.T) {
 func TestProtocolsCommitTagEmptyAndNormalizeBranches(t *testing.T) {
 	model := NewProtocolsModel(nil)
 
-	model.addTagBuf = "   "
+	model.addTagInput.SetValue("   ")
 	model.commitTag(true)
 	assert.Empty(t, model.addTags)
-	assert.Equal(t, "   ", model.addTagBuf)
+	assert.Equal(t, "   ", model.addTagInput.Value())
 
-	model.addTagBuf = "#"
+	model.addTagInput.SetValue("#")
 	model.commitTag(true)
 	assert.Empty(t, model.addTags)
-	assert.Equal(t, "", model.addTagBuf)
+	assert.Equal(t, "", model.addTagInput.Value())
 
-	model.editTagBuf = "  Mixed Case Tag  "
+	model.editTagInput.SetValue("  Mixed Case Tag  ")
 	model.commitTag(false)
 	assert.Equal(t, []string{"mixed-case-tag"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 
-	model.editTagBuf = "#"
+	model.editTagInput.SetValue("#")
 	model.commitTag(false)
 	assert.Equal(t, []string{"mixed-case-tag"}, model.editTags)
-	assert.Equal(t, "", model.editTagBuf)
+	assert.Equal(t, "", model.editTagInput.Value())
 }
 
 func TestProtocolsHandleEditKeysAdditionalBranches(t *testing.T) {
@@ -342,37 +342,37 @@ func TestProtocolsViewOverlayBranches(t *testing.T) {
 func TestProtocolsHandleApplyInputAdditionalBranches(t *testing.T) {
 	model := NewProtocolsModel(nil)
 
-	model.addApplyBuf = "entity"
+	model.addApplyInput.SetValue("entity")
 	updated, cmd := model.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyDelete}, true)
 	require.Nil(t, cmd)
-	assert.Equal(t, "entit", updated.addApplyBuf)
+	assert.Equal(t, "entit", updated.addApplyInput.Value())
 
-	updated.editApplyBuf = "job"
+	updated.editApplyInput.SetValue("job")
 	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyBackspace}, false)
 	require.Nil(t, cmd)
-	assert.Equal(t, "jo", updated.editApplyBuf)
+	assert.Equal(t, "jo", updated.editApplyInput.Value())
 
-	updated.addApplyBuf = "context"
+	updated.addApplyInput.SetValue("context")
 	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: ',', Text: ","}, true)
 	require.Nil(t, cmd)
 	assert.Contains(t, updated.addApplies, "context")
-	assert.Equal(t, "", updated.addApplyBuf)
+	assert.Equal(t, "", updated.addApplyInput.Value())
 
-	updated.editApplyBuf = "file"
+	updated.editApplyInput.SetValue("file")
 	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeySpace}, false)
 	require.Nil(t, cmd)
 	assert.Contains(t, updated.editApplies, "file")
-	assert.Equal(t, "", updated.editApplyBuf)
+	assert.Equal(t, "", updated.editApplyInput.Value())
 
 	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: 'x', Text: "x"}, false)
 	require.Nil(t, cmd)
-	assert.Equal(t, "x", updated.editApplyBuf)
+	assert.Equal(t, "x", updated.editApplyInput.Value())
 
 	// Non-char keys should leave buffers unchanged.
-	beforeAdd := updated.addApplyBuf
-	beforeEdit := updated.editApplyBuf
+	beforeAdd := updated.addApplyInput.Value()
+	beforeEdit := updated.editApplyInput.Value()
 	updated, cmd = updated.handleApplyInput(tea.KeyPressMsg{Code: tea.KeyUp}, true)
 	require.Nil(t, cmd)
-	assert.Equal(t, beforeAdd, updated.addApplyBuf)
-	assert.Equal(t, beforeEdit, updated.editApplyBuf)
+	assert.Equal(t, beforeAdd, updated.addApplyInput.Value())
+	assert.Equal(t, beforeEdit, updated.editApplyInput.Value())
 }

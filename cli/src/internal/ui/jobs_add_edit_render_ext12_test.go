@@ -70,14 +70,14 @@ func TestJobsRenderAddAndEditStateBranches(t *testing.T) {
 func TestJobsHandleSubtaskInputNilDetailEnterIsSafe(t *testing.T) {
 	model := NewJobsModel(nil)
 	model.creatingSubtask = true
-	model.subtaskBuf = "Child task"
+	model.subtaskInput.SetValue("Child task")
 	model.detail = nil
 
 	require.NotPanics(t, func() {
 		updated, cmd := model.handleSubtaskInput(tea.KeyPressMsg{Code: tea.KeyEnter})
 		assert.Nil(t, cmd)
 		assert.False(t, updated.creatingSubtask)
-		assert.Equal(t, "", updated.subtaskBuf)
+		assert.Equal(t, "", updated.subtaskInput.Value())
 	})
 }
 

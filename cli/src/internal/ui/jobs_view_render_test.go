@@ -73,7 +73,7 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model, _ = model.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	assert.Equal(t, "Alpha Job", model.searchSuggest)
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyTab})
-	assert.Equal(t, "Alpha Job", strings.TrimSpace(model.searchBuf))
+	assert.Equal(t, "Alpha Job", strings.TrimSpace(model.searchInput.Value()))
 
 	// Toggle to Add via modeFocus.
 	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyUp})

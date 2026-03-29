@@ -39,7 +39,7 @@ func TestRelationshipsRenderCreateTypePreviewGuardAndFallbacks(t *testing.T) {
 func TestRelationshipsRenderCreateSearchWithNarrowWidthStillShowsResults(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 40
-	model.createQuery = "alpha"
+	model.createQueryInput.SetValue("alpha")
 	model.createResults = []relationshipCreateCandidate{
 		{ID: "ent-1", NodeType: "entity", Name: "Alpha", Kind: "entity/person", Status: "active"},
 	}
@@ -53,7 +53,7 @@ func TestRelationshipsRenderCreateSearchWithNarrowWidthStillShowsResults(t *test
 func TestRelationshipsRenderCreateTypeWithSelectedSuggestionPreview(t *testing.T) {
 	model := NewRelationshipsModel(nil)
 	model.width = 88
-	model.createType = "dep"
+	model.createTypeInput.SetValue("dep")
 	model.createTypeResults = []string{"depends-on"}
 	model.createTypeTable.SetRows([]table.Row{{"depends-on"}})
 	model.createTypeTable.SetCursor(0)

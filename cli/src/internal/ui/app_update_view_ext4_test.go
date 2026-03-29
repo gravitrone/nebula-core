@@ -115,7 +115,7 @@ func TestUpdateKeyFlowRecoveryAndGlobalBranches(t *testing.T) {
 	app.onboarding = true
 	model, _ := app.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	updated := model.(App)
-	assert.Equal(t, "a", updated.onboardingName)
+	assert.Equal(t, "a", updated.onboardingInput.Value())
 
 	app = NewApp(nil, &config.Config{})
 	app.importExportOpen = true

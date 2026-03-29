@@ -30,15 +30,15 @@ func TestHandleOnboardingKeysRequiresUsername(t *testing.T) {
 func TestHandleOnboardingKeysEditsUsernameBuffer(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.onboarding = true
-	app.onboardingName = "ab"
+	app.onboardingInput.SetValue("ab")
 
 	model, _ := app.handleOnboardingKeys(tea.KeyPressMsg{Code: tea.KeyBackspace})
 	updated := model.(App)
-	assert.Equal(t, "a", updated.onboardingName)
+	assert.Equal(t, "a", updated.onboardingInput.Value())
 
 	model, _ = updated.handleOnboardingKeys(tea.KeyPressMsg{Code: 'z', Text: "z"})
 	updated = model.(App)
-	assert.Equal(t, "az", updated.onboardingName)
+	assert.Equal(t, "az", updated.onboardingInput.Value())
 }
 
 // TestOnboardingLoginCmdReturnsLoginPayload handles test onboarding login cmd returns login payload.
@@ -80,7 +80,7 @@ func TestRenderOnboardingSanitizesAndShowsBusyState(t *testing.T) {
 	app := NewApp(nil, nil)
 	app.width = 80
 	app.onboarding = true
-	app.onboardingName = "a\x1b]0;evil\x07\u202E"
+	app.onboardingInput.SetValue("a\x1b]0;evil\x07\u202E")
 
 	out := app.renderOnboarding()
 	clean := stripANSI(out)
