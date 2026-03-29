@@ -591,7 +591,7 @@ func (m ProfileModel) renderKeys() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	// 4 columns, 2 padding chars each = 8 padding total.
@@ -726,7 +726,7 @@ func (m ProfileModel) renderAgents() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	// 4 columns, 2 padding chars each = 8 padding total.

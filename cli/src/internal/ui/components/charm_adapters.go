@@ -51,6 +51,9 @@ var TableBaseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderForeground(themeBorder)
 
+// TableBaseBorderWidth is the horizontal frame size of TableBaseStyle (left+right border).
+const TableBaseBorderWidth = 2
+
 // NewNebulaTable returns a table.Model styled like the charmbracelet
 // bubbles table example with nebula theme colors. Pattern:
 //   - DefaultStyles() as base (Cell has Padding(0,1))

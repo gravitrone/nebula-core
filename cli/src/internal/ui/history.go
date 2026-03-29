@@ -442,7 +442,7 @@ func (m HistoryModel) renderList() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	numCols := 4
@@ -588,7 +588,7 @@ func (m HistoryModel) renderScopes() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	numCols := 4
@@ -689,7 +689,7 @@ func (m HistoryModel) renderActors() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	numCols := 3

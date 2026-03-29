@@ -718,7 +718,7 @@ func (m ContextModel) renderList() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	// Each table cell has Padding(0,1) = 2 chars. 4 columns = 8 chars of padding.
@@ -1338,7 +1338,7 @@ func (m ContextModel) renderLinkSearch() string {
 		tableWidth := contentWidth
 		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
-			tableWidth = contentWidth - previewWidth - gap
+			tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 		}
 
 		// Each table cell has Padding(0,1) = 2 chars. 3 columns = 6 chars of padding.

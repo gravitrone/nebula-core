@@ -207,7 +207,7 @@ func (m SearchModel) View() string {
 		tableWidth := contentWidth
 		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
-			tableWidth = contentWidth - previewWidth - gap
+			tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 		}
 
 		// Each table cell has Padding(0,1) = 2 chars. 3 columns = 6 chars of padding.

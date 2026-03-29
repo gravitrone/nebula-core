@@ -482,7 +482,7 @@ func (m RelationshipsModel) renderList() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	numCols := 4
@@ -1048,7 +1048,7 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 		tableWidth := contentWidth
 		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
-			tableWidth = contentWidth - previewWidth - gap
+			tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 		}
 
 		numCols := 3
@@ -1156,7 +1156,7 @@ func (m RelationshipsModel) renderCreateType() string {
 		tableWidth := contentWidth
 		sideBySide := contentWidth >= minSideBySideContentWidth
 		if sideBySide {
-			tableWidth = contentWidth - previewWidth - gap
+			tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 		}
 
 		tableRows := make([]table.Row, len(m.createTypeResults))

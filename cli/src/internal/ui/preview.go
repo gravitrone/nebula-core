@@ -273,8 +273,8 @@ func renderPreviewTable(title string, kvs []previewKV, width int) string {
 		return ""
 	}
 
-	// Subtract border overhead from TableBaseStyle (2 for left+right border).
-	innerWidth := width - 2
+	// Subtract border overhead from TableBaseStyle (left+right border).
+	innerWidth := width - components.TableBaseBorderWidth
 	if innerWidth < 20 {
 		innerWidth = 20
 	}

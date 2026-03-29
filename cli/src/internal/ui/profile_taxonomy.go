@@ -305,7 +305,7 @@ func (m ProfileModel) renderTaxonomy() string {
 	tableWidth := contentWidth
 	sideBySide := contentWidth >= minSideBySideContentWidth
 	if sideBySide {
-		tableWidth = contentWidth - previewWidth - gap
+		tableWidth = contentWidth - previewWidth - gap - components.TableBaseBorderWidth
 	}
 
 	// 3 columns, 2 padding chars each = 6 padding total.
