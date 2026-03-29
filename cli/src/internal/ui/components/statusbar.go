@@ -18,6 +18,21 @@ var (
 	statusBarBorder = lipgloss.NewStyle()
 )
 
+// HintItem represents a single keybind hint with a key and description.
+type HintItem struct {
+	Key  string
+	Desc string
+}
+
+// StatusBarFromItems renders a StatusBar from a slice of HintItem.
+func StatusBarFromItems(items []HintItem, width int) string {
+	hints := make([]string, len(items))
+	for i, item := range items {
+		hints[i] = Hint(item.Key, item.Desc)
+	}
+	return StatusBar(hints, width)
+}
+
 // StatusBar renders the bottom hint bar separated from content by a border line.
 func StatusBar(hints []string, width int) string {
 	segments := make([]string, 0, len(hints))

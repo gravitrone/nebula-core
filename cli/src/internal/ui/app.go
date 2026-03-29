@@ -697,6 +697,41 @@ func (a App) View() tea.View {
 			feedback = toastRendered
 		}
 	}
+	// Build status bar from active tab hints (rendered outside viewport).
+	var hintItems []components.HintItem
+	switch a.tab {
+	case tabInbox:
+		hintItems = a.inbox.Hints()
+	case tabEntities:
+		hintItems = a.entities.Hints()
+	case tabRelations:
+		hintItems = a.rels.Hints()
+	case tabKnow:
+		hintItems = a.know.Hints()
+	case tabJobs:
+		hintItems = a.jobs.Hints()
+	case tabLogs:
+		hintItems = a.logs.Hints()
+	case tabFiles:
+		hintItems = a.files.Hints()
+	case tabProtocols:
+		hintItems = a.protocols.Hints()
+	case tabHistory:
+		hintItems = a.history.Hints()
+	case tabProfile:
+		hintItems = a.profile.Hints()
+	}
+
+	statusBar := ""
+	if len(hintItems) > 0 && !a.helpOpen && !a.quitConfirm && !a.paletteOpen && !a.importExportOpen && !a.onboarding && !a.quickstartOpen {
+		statusBar = centerBlockUniform(components.StatusBarFromItems(hintItems, a.width), a.width)
+	}
+
+	statusBarLines := 0
+	if statusBar != "" {
+		statusBarLines = countViewLines(statusBar) + 1
+	}
+
 	top := fmt.Sprintf("%s\n%s%s", banner, tabs, startupPanel)
 	body := content
 	if a.height > 0 && !a.helpOpen && !a.quitConfirm && !a.paletteOpen && !a.importExportOpen {
@@ -706,7 +741,7 @@ func (a App) View() tea.View {
 		}
 		// Calculate available height for viewport.
 		const spacerLines = 2
-		vpHeight := a.height - countViewLines(top) - reservedFeedbackLines - spacerLines
+		vpHeight := a.height - countViewLines(top) - reservedFeedbackLines - statusBarLines - spacerLines
 		if vpHeight < 6 {
 			vpHeight = 6
 		}
@@ -723,6 +758,9 @@ func (a App) View() tea.View {
 	}
 	if feedback != "" {
 		body = body + "\n\n" + feedback
+	}
+	if statusBar != "" {
+		body = body + "\n" + statusBar
 	}
 
 	v := tea.NewView(fmt.Sprintf("%s\n\n%s", top, body))
@@ -1197,12 +1235,12 @@ func (a App) renderToast() string {
 
 // renderStartupPanel renders render startup panel.
 func (a App) renderStartupPanel() string {
-	rows := []components.TableRow{
-		{Label: "API", Value: a.startup.API, ValueColor: startupStatusColor(a.startup.API)},
-		{Label: "Auth", Value: a.startup.Auth, ValueColor: startupStatusColor(a.startup.Auth)},
-		{Label: "Taxonomy", Value: a.startup.Taxonomy, ValueColor: startupStatusColor(a.startup.Taxonomy)},
+	infoRows := []components.InfoTableRow{
+		{Key: "API", Value: a.startup.API},
+		{Key: "Auth", Value: a.startup.Auth},
+		{Key: "Taxonomy", Value: a.startup.Taxonomy},
 	}
-	return components.Table("Startup Checks", rows, a.width)
+	return components.RenderInfoTable(infoRows, a.width)
 }
 
 // toastCmdForMsg handles toast cmd for msg.
