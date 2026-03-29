@@ -259,7 +259,7 @@ func (m SearchModel) View() string {
 		m.dataTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.items)))
-		tableView := m.dataTable.View()
+		tableView := components.TableBaseStyle.Render(m.dataTable.View())
 		preview := ""
 		var previewItem *searchEntry
 		if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {

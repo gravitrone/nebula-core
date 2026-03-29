@@ -582,7 +582,7 @@ func (m ProtocolsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)

@@ -452,7 +452,7 @@ func (m JobsModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	var previewItem *api.Job
 	if idx := m.dataTable.Cursor(); idx >= 0 && idx < len(m.items) {

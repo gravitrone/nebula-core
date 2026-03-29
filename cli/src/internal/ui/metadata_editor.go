@@ -319,7 +319,7 @@ func (m MetadataEditor) renderTableMode(width int) string {
 	if m.notice != "" {
 		footer += "\n" + MutedStyle.Render(m.notice)
 	}
-	tableView := colorizeScopeBadges(m.list.View())
+	tableView := components.TableBaseStyle.Render(colorizeScopeBadges(m.list.View()))
 	body := tableView + "\n\n" + MutedStyle.Render(info) + "\n" + MutedStyle.Render(footer)
 	return components.Indent(components.TitledBox("Metadata", body, width)+"\n\n"+m.renderScopeBox(width), 1)
 }

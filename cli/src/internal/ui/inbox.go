@@ -304,7 +304,7 @@ func (m InboxModel) View() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	var previewItem *api.Approval
 	if item, ok := m.selectedItem(); ok {

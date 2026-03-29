@@ -653,7 +653,7 @@ func (m ProfileModel) renderKeys() string {
 
 	title := "API Keys"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d keys", len(m.keys)))
-	tableView := m.keyList.View()
+	tableView := components.TableBaseStyle.Render(m.keyList.View())
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
 		content := m.renderKeyPreview(*previewItem, previewBoxContentWidth(previewWidth))
@@ -787,7 +787,7 @@ func (m ProfileModel) renderAgents() string {
 
 	title := "Agents"
 	countLine := MutedStyle.Render(fmt.Sprintf("%d agents", len(m.agents)))
-	tableView := m.agentList.View()
+	tableView := components.TableBaseStyle.Render(m.agentList.View())
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
 		content := m.renderAgentPreview(*previewItem, previewBoxContentWidth(previewWidth))

@@ -770,7 +770,7 @@ func (m ContextModel) renderList() string {
 	}
 	countLine = MutedStyle.Render(countLine)
 
-	tableView := m.dataTable.View()
+	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
 	if m.notesEditing {
 		m.notesTextarea.SetWidth(previewWidth - 4)
@@ -1378,7 +1378,7 @@ func (m ContextModel) renderLinkSearch() string {
 		m.linkTable.SetRows(tableRows)
 
 		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.linkResults)))
-		tableView := m.linkTable.View()
+		tableView := components.TableBaseStyle.Render(m.linkTable.View())
 		preview := ""
 		var previewItem *api.Entity
 		if idx := m.linkTable.Cursor(); idx >= 0 && idx < len(m.linkResults) {
