@@ -2,14 +2,14 @@ package ui
 
 import "time"
 
-const compactTimeColumnWidth = 18
+const compactTimeColumnWidth = 14
 
 // formatLocalTimeCompact handles format local time compact.
 func formatLocalTimeCompact(ts time.Time) string {
 	if ts.IsZero() {
 		return "None"
 	}
-	return ts.Local().Format("01-02 15:04 MST")
+	return ts.Local().Format("01-02 15:04")
 }
 
 // formatLocalTimeFull handles format local time full.

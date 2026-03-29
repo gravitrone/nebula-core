@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/table"
 	"charm.land/lipgloss/v2"
 
 	"github.com/gravitrone/nebula-core/cli/internal/ui/components"
@@ -257,4 +258,52 @@ func padPreviewLines(lines []string, width int) string {
 		padded = append(padded, line)
 	}
 	return strings.Join(padded, "\n")
+}
+
+// previewKV is a key-value pair for the preview table.
+type previewKV struct {
+	key   string
+	value string
+}
+
+// renderPreviewTable renders a preview panel as a 2-column bubbles table
+// with the same styling as the main data tables.
+func renderPreviewTable(title string, kvs []previewKV, width int) string {
+	if width <= 0 || len(kvs) == 0 {
+		return ""
+	}
+
+	// Subtract border overhead from TableBaseStyle (2 for left+right border).
+	innerWidth := width - 2
+	if innerWidth < 20 {
+		innerWidth = 20
+	}
+
+	keyWidth := 10
+	valWidth := innerWidth - keyWidth - (2 * 2) // 2 columns * 2 padding each
+	if valWidth < 10 {
+		valWidth = 10
+	}
+
+	rows := make([]table.Row, len(kvs))
+	for i, kv := range kvs {
+		rows[i] = table.Row{
+			components.ClampTextWidthEllipsis(kv.key, keyWidth),
+			components.ClampTextWidthEllipsis(kv.value, valWidth),
+		}
+	}
+
+	cols := []table.Column{
+		{Title: "Field", Width: keyWidth},
+		{Title: title, Width: valWidth},
+	}
+
+	t := components.NewNebulaTable(cols, len(kvs)+1)
+	t.SetColumns(cols)
+	t.SetRows(rows)
+	actualW := keyWidth + valWidth + (2 * 2)
+	t.SetWidth(actualW)
+	t.Blur() // Preview table is not interactive.
+
+	return components.TableBaseStyle.Render(t.View())
 }

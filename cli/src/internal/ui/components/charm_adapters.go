@@ -46,10 +46,10 @@ func NewNebulaSpinner() spinner.Model {
 }
 
 // TableBaseStyle wraps a table.View() in a bordered box matching the
-// bubbles table example pattern (NormalBorder + visible gray border).
+// bubbles table example pattern with nebula border color.
 var TableBaseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
-	BorderForeground(lipgloss.Color("240"))
+	BorderForeground(themeBorder)
 
 // NewNebulaTable returns a table.Model styled like the charmbracelet
 // bubbles table example with nebula theme colors. Pattern:
@@ -68,7 +68,7 @@ func NewNebulaTable(cols []table.Column, height int) table.Model {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(themeBorder).
 		BorderBottom(true).
 		Bold(false)
 	s.Selected = s.Selected.

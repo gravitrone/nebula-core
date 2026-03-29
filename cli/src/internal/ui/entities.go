@@ -1231,8 +1231,7 @@ func (m EntitiesModel) renderList() string {
 		previewItem = &m.items[idx]
 	}
 	if previewItem != nil {
-		content := m.renderEntityPreview(*previewItem, previewBoxContentWidth(previewWidth))
-		preview = renderPreviewBox(content, previewWidth)
+		preview = m.renderEntityPreview(*previewItem, previewWidth)
 	}
 
 	body := tableView
@@ -1246,7 +1245,7 @@ func (m EntitiesModel) renderList() string {
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 
-// renderEntityPreview renders render entity preview.
+// renderEntityPreview renders entity preview as a styled table.
 func (m EntitiesModel) renderEntityPreview(e api.Entity, width int) string {
 	if width <= 0 {
 		return ""
@@ -1268,31 +1267,25 @@ func (m EntitiesModel) renderEntityPreview(e api.Entity, width int) string {
 		at = e.CreatedAt
 	}
 
-	var lines []string
-	lines = append(lines, MetaKeyStyle.Render("Selected"))
-	for _, part := range wrapPreviewText(name, width) {
-		lines = append(lines, SelectedStyle.Render(part))
+	kvs := []previewKV{
+		{"Type", typ},
+		{"Status", status},
+		{"At", formatLocalTimeCompact(at)},
 	}
-	lines = append(lines, "")
-
-	lines = append(lines, renderPreviewRow("Type", typ, width))
-	lines = append(lines, renderPreviewRow("Status", status, width))
-	lines = append(lines, renderPreviewRow("At", formatLocalTimeCompact(at), width))
-
 	if len(e.PrivacyScopeIDs) > 0 {
-		lines = append(lines, renderPreviewRow("Scopes", m.formatEntityScopes(e.PrivacyScopeIDs), width))
+		kvs = append(kvs, previewKV{"Scopes", m.formatEntityScopes(e.PrivacyScopeIDs)})
 	}
 	if len(e.Tags) > 0 {
-		lines = append(lines, renderPreviewRow("Tags", strings.Join(e.Tags, ", "), width))
+		kvs = append(kvs, previewKV{"Tags", strings.Join(e.Tags, ", ")})
 	}
 	if m.detail != nil && m.detail.ID == e.ID && len(m.detailRels) > 0 {
-		lines = append(lines, renderPreviewRow("Links", fmt.Sprintf("%d", len(m.detailRels)), width))
+		kvs = append(kvs, previewKV{"Links", fmt.Sprintf("%d", len(m.detailRels))})
 	}
 	if m.detail != nil && m.detail.ID == e.ID && len(m.detailContext) > 0 {
-		lines = append(lines, renderPreviewRow("Context", fmt.Sprintf("%d", len(m.detailContext)), width))
+		kvs = append(kvs, previewKV{"Context", fmt.Sprintf("%d", len(m.detailContext))})
 	}
 
-	return padPreviewLines(lines, width)
+	return renderPreviewTable(name, kvs, width)
 }
 
 // updateSearchSuggest updates update search suggest.
