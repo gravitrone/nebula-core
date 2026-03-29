@@ -1208,21 +1208,25 @@ func (m EntitiesModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := fmt.Sprintf("%d total", len(m.items))
-	if selected := m.bulkCount(); selected > 0 {
-		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
-	}
-	if strings.TrimSpace(m.searchBuf) != "" {
-		query := strings.TrimSpace(m.searchBuf)
-		countLine = fmt.Sprintf("%s · search: %s", countLine, query)
-		if m.searchSuggest != "" && !strings.EqualFold(query, strings.TrimSpace(m.searchSuggest)) {
-			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
+	// Only show count line when search/filter/bulk-select is active.
+	countLine := ""
+	hasContext := m.bulkCount() > 0 || strings.TrimSpace(m.searchBuf) != "" || m.hasActiveEntityFilters()
+	if hasContext {
+		parts := []string{fmt.Sprintf("%d total", len(m.items))}
+		if selected := m.bulkCount(); selected > 0 {
+			parts = append(parts, fmt.Sprintf("selected: %d", selected))
 		}
+		if query := strings.TrimSpace(m.searchBuf); query != "" {
+			parts = append(parts, fmt.Sprintf("search: %s", query))
+			if m.searchSuggest != "" && !strings.EqualFold(query, strings.TrimSpace(m.searchSuggest)) {
+				parts = append(parts, fmt.Sprintf("next: %s", strings.TrimSpace(m.searchSuggest)))
+			}
+		}
+		if m.hasActiveEntityFilters() {
+			parts = append(parts, "filters active")
+		}
+		countLine = MutedStyle.Render(strings.Join(parts, " · "))
 	}
-	if m.hasActiveEntityFilters() {
-		countLine = fmt.Sprintf("%s · filters active", countLine)
-	}
-	countLine = MutedStyle.Render(countLine)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -1241,7 +1245,10 @@ func (m EntitiesModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 
