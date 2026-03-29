@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/table"
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
@@ -983,13 +984,49 @@ func (a App) renderHelpBar() string {
 
 // renderHelp renders the help overlay using the bubbles help component.
 func (a App) renderHelp() string {
-	h := a.helpModel
-	h.ShowAll = true
-	if a.width > 4 {
-		h.SetWidth(a.width - 4)
+	// Render keybindings as a table matching the rest of the UI.
+	groups := a.keys.FullHelp()
+	var rows []table.Row
+	for _, group := range groups {
+		for _, binding := range group {
+			if !binding.Enabled() {
+				continue
+			}
+			keys := binding.Help().Key
+			desc := binding.Help().Desc
+			rows = append(rows, table.Row{keys, desc})
+		}
 	}
-	body := MutedStyle.Render("esc to close") + "\n\n" + h.View(a.keys)
-	return components.Indent(components.TitledBox("Help", body, a.width), 1)
+
+	keyWidth := 12
+	descWidth := 20
+	cols := []table.Column{
+		{Title: "Key", Width: keyWidth},
+		{Title: "Action", Width: descWidth},
+	}
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(ColorBorder).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = lipgloss.NewStyle() // no highlight
+
+	actualW := keyWidth + descWidth + (2 * 2)
+	t := table.New(
+		table.WithColumns(cols),
+		table.WithRows(rows),
+		table.WithHeight(len(rows)+1),
+		table.WithWidth(actualW),
+		table.WithStyles(s),
+	)
+	t.Blur()
+
+	helpTable := components.TableBaseStyle.Render(t.View())
+	body := MutedStyle.Render("esc to close") + "\n\n" + helpTable
+	contentWidth := components.BoxContentWidth(a.width)
+	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body)
 }
 
 // renderQuitConfirm renders render quit confirm.
