@@ -419,7 +419,7 @@ async def list_context_by_owner(
     else:
         await _require_job_read_access(pool, enums, auth, owner_id)
 
-    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
+    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or None)
     type_id = require_relationship_type("context-of", enums)
     rows = await pool.fetch(
         QUERIES["context/by_owner"],

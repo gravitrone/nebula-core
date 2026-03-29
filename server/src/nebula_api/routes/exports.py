@@ -331,7 +331,7 @@ async def export_relationships(
 
     pool = request.app.state.pool
     enums = request.app.state.enums
-    scope_ids = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
+    scope_ids = None if _is_admin(auth, enums) else (auth.get("scopes", []) or None)
     scope_names = _visible_scope_names(auth, enums, scope_ids)
 
     rows = await pool.fetch(
@@ -394,7 +394,7 @@ async def export_jobs(
     pool = request.app.state.pool
     enums = request.app.state.enums
     agent_filter = agent_id
-    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
+    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or None)
 
     rows = await pool.fetch(
         QUERIES["jobs/query"],
@@ -438,7 +438,7 @@ async def export_snapshot(
 
     pool = request.app.state.pool
     enums = request.app.state.enums
-    scope_ids = auth.get("scopes", []) or []
+    scope_ids = auth.get("scopes", []) or None
     scope_filter = None if _is_admin(auth, enums) else scope_ids
 
     entities_rows = await pool.fetch(
@@ -470,7 +470,7 @@ async def export_snapshot(
         scope_filter,
     )
     job_agent_filter = None
-    scope_filter = None if _is_admin(auth, enums) else (scope_ids or [])
+    scope_filter = None if _is_admin(auth, enums) else (scope_ids or None)
     jobs_rows = await pool.fetch(
         QUERIES["jobs/query"],
         None,

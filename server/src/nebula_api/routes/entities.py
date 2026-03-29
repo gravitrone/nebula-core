@@ -57,7 +57,7 @@ def _is_admin(auth: dict, enums: Any) -> bool:
     return bool(scope_ids.intersection(allowed_ids))
 
 
-def _list_scope_ids(auth: dict, enums: Any) -> list:
+def _list_scope_ids(auth: dict, enums: Any) -> list | None:
     """Return scopes used for list/search filtering.
 
     Use caller scopes directly so list/search visibility matches
@@ -73,7 +73,7 @@ def _list_scope_ids(auth: dict, enums: Any) -> list:
         # Keep a safe fallback for legacy keys with missing scope bindings.
         return [public_id]
 
-    return scope_ids
+    return None
 
 
 def _has_write_scopes(agent_scopes: list, node_scopes: list) -> bool:

@@ -994,7 +994,7 @@ async def test_get_context_not_found_raises(monkeypatch, mock_enums):
         "nebula_mcp.server.require_context",
         AsyncMock(return_value=(pool, mock_enums, agent)),
     )
-    monkeypatch.setattr("nebula_mcp.server._scope_filter_ids", lambda _agent, _enums: [])
+    monkeypatch.setattr("nebula_mcp.server._scope_filter_ids", lambda _agent, _enums: None)
 
     with pytest.raises(ValueError, match="Context not found"):
         await get_context(payload, _ctx(pool, mock_enums, agent))

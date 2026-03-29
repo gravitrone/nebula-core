@@ -325,10 +325,10 @@ def test_visible_scope_names_uses_agent_scopes_when_scope_ids_omitted(mock_enums
 
 
 def test_scope_filter_ids_handles_missing_scope_list(mock_enums):
-    """Missing scopes normalize to an empty filter for non-admin users."""
+    """Missing scopes normalize to None (full access) for non-admin users."""
 
     no_scope_agent = {"id": str(uuid4()), "scopes": None}
-    assert _scope_filter_ids(no_scope_agent, mock_enums) == []
+    assert _scope_filter_ids(no_scope_agent, mock_enums) is None
 
 
 def test_require_admin_with_minimal_enums_shape():

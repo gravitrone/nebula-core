@@ -49,11 +49,11 @@ def test_semantic_body_rejects_non_string_query_payload():
         SemanticSearchBody(query=123)  # type: ignore[arg-type]
 
 
-def test_scope_filter_ids_agent_without_scopes_returns_empty_list(mock_enums):
-    """Agent callers without scopes should return empty scope filter list."""
+def test_scope_filter_ids_agent_without_scopes_returns_none(mock_enums):
+    """Agent callers without scopes should return None for full access."""
 
     auth = {"caller_type": "agent"}
-    assert _scope_filter_ids(auth, mock_enums) == []
+    assert _scope_filter_ids(auth, mock_enums) is None
 
 
 def test_context_candidate_truncates_long_snippet():

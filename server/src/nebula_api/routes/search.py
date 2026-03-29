@@ -83,7 +83,7 @@ def _scope_filter_ids(auth: dict, enums: Any) -> list[str] | None:
         public_id = enums.scopes.name_to_id.get("public")
         return [public_id] if public_id else []
     scopes = auth.get("scopes", [])
-    return scopes if scopes else []
+    return scopes if scopes else None
 
 
 def _entity_candidate(row: dict[str, Any]) -> dict[str, Any]:

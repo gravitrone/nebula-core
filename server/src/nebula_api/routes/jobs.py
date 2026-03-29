@@ -298,7 +298,7 @@ async def query_jobs(
     except ValueError as exc:
         api_error("INVALID_INPUT", str(exc), 400)
     agent_filter = agent_id
-    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or [])
+    scope_filter = None if _is_admin(auth, enums) else (auth.get("scopes", []) or None)
 
     rows = await pool.fetch(
         QUERIES["jobs/query"],

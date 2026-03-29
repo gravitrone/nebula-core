@@ -423,7 +423,8 @@ def _scope_filter_ids(agent: dict, enums: Any) -> list | None:
 
     if _is_admin(agent, enums):
         return None
-    return agent.get("scopes", []) or []
+    scopes = agent.get("scopes", []) or []
+    return scopes if scopes else None
 
 
 def _visible_scope_names(agent: dict, enums: Any, scope_ids: list | None = None) -> list[str]:
