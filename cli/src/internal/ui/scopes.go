@@ -70,29 +70,34 @@ func renderScopePills(scopes []string, focused bool) string {
 	return b.String()
 }
 
-// scopeBadgeStyle handles scope badge style.
+// scopeBadgeStyle returns a pill-style badge for a scope name.
 func scopeBadgeStyle(scope string) lipgloss.Style {
+	base := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#ffffff")).
+		Bold(true).
+		Padding(0, 1)
+
 	switch strings.ToLower(strings.TrimSpace(scope)) {
 	case "public":
-		return lipgloss.NewStyle().Foreground(ColorSuccess).Bold(true)
+		return base.Background(ColorSuccess)
 	case "private":
-		return lipgloss.NewStyle().Foreground(ColorWarning).Bold(true)
+		return base.Background(ColorWarning)
 	case "sensitive":
-		return lipgloss.NewStyle().Foreground(ColorError).Bold(true)
+		return base.Background(ColorError)
 	case "admin":
-		return lipgloss.NewStyle().Foreground(ColorPrimary).Bold(true)
+		return base.Background(ColorPrimary)
 	default:
-		return lipgloss.NewStyle().Foreground(ColorSecondary).Bold(true)
+		return base.Background(ColorSecondary)
 	}
 }
 
-// renderScopeBadge renders render scope badge.
+// renderScopeBadge renders a scope as a styled pill badge.
 func renderScopeBadge(scope string) string {
 	scope = strings.TrimSpace(scope)
 	if scope == "" {
 		return ""
 	}
-	return scopeBadgeStyle(scope).Render("[" + scope + "]")
+	return scopeBadgeStyle(scope).Render(scope)
 }
 
 // renderScopeOptions renders render scope options.

@@ -1249,17 +1249,7 @@ func (m EntitiesModel) renderList() string {
 		body += "\n" + countLine
 	}
 
-	// Use 90% of terminal width for the outer box, capped to content needs.
-	boxWidth := m.width * 9 / 10
-	if boxWidth < contentWidth+6 {
-		boxWidth = contentWidth + 6
-	}
-	if boxWidth > m.width {
-		boxWidth = m.width
-	}
-
-	centered := lipgloss.PlaceHorizontal(components.BoxContentWidth(boxWidth), lipgloss.Center, body)
-	return components.TitledBox("Entities", centered, boxWidth)
+	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body)
 }
 
 // renderEntityPreview renders entity preview as a styled table.
