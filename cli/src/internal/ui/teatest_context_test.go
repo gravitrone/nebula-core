@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -62,7 +61,7 @@ func TestContextTabShowsData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Context tab (key "4" -> index 3).
@@ -70,7 +69,7 @@ func TestContextTabShowsData(t *testing.T) {
 
 	// Context tab renders with Add/Library mode selector.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Context"))
+		return containsText(out, "Context")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -82,7 +81,7 @@ func TestContextAddForm(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Context tab.
@@ -91,7 +90,7 @@ func TestContextAddForm(t *testing.T) {
 	// The add form is the default view - it should show "Add" in mode line.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		out2 := out
-		return bytes.Contains(out2, []byte("Add"))
+		return containsText(out2, "Add")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -103,14 +102,14 @@ func TestContextFilterFlow(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Context tab.
 	tm.Send(tea.KeyPressMsg{Code: '4', Text: "4"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Context"))
+		return containsText(out, "Context")
 	}, teatest.WithDuration(waitDur))
 
 	// Press Tab to switch to Library mode.
@@ -124,7 +123,7 @@ func TestContextFilterFlow(t *testing.T) {
 
 	// The tab should still be responsive (renders Context tab content).
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Context"))
+		return containsText(out, "Context")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -136,7 +135,7 @@ func TestContextEmptyState(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Context tab.
@@ -150,7 +149,7 @@ func TestContextEmptyState(t *testing.T) {
 
 	// With no data, should show empty state text.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("No context found.")) ||
-			bytes.Contains(out, []byte("Context"))
+		return containsText(out, "No context found.") ||
+			containsText(out, "Context")
 	}, teatest.WithDuration(waitDur))
 }

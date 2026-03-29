@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -91,14 +90,14 @@ func TestEntitiesTabShowsLoadedData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Entities tab and wait for entity data to load.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -110,13 +109,13 @@ func TestEntitiesTableNavigation(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area: Down (tabNav -> modeFocus), Down (modeFocus -> table).
@@ -126,7 +125,7 @@ func TestEntitiesTableNavigation(t *testing.T) {
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestModel"))
+		return containsText(out, "TestModel")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -138,13 +137,13 @@ func TestEntitiesDetailView(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area (tabNav -> modeFocus -> table).
@@ -155,7 +154,7 @@ func TestEntitiesDetailView(t *testing.T) {
 
 	// Detail view renders entity ID.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("ent-001"))
+		return containsText(out, "ent-001")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -167,13 +166,13 @@ func TestEntitiesSearchFilter(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area.
@@ -184,7 +183,7 @@ func TestEntitiesSearchFilter(t *testing.T) {
 
 	// The search buffer indicator "search: x" confirms the search was triggered.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("search: x"))
+		return containsText(out, "search: x")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -195,13 +194,13 @@ func TestEntitiesAddFormOpens(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Down exits tabNav into modeFocus (mode line focused).
@@ -213,7 +212,7 @@ func TestEntitiesAddFormOpens(t *testing.T) {
 
 	// The Add Entity form renders huh form fields including Name and Type.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Name"))
+		return containsText(out, "Name")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -225,13 +224,13 @@ func TestEntitiesAddFormAbort(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter modeFocus (Down exits tab nav and focuses the mode line).
@@ -243,14 +242,14 @@ func TestEntitiesAddFormAbort(t *testing.T) {
 
 	// Wait for the add form to render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Name")) || bytes.Contains(out, []byte("Initializing"))
+		return containsText(out, "Name") || containsText(out, "Initializing")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Jobs tab to prove global tab keys work from within a form.
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Jobs"))
+		return containsText(out, "Jobs")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -262,12 +261,12 @@ func TestEntitiesEmptyState(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("entities found"))
+		return containsText(out, "entities found")
 	}, teatest.WithDuration(waitDur))
 }

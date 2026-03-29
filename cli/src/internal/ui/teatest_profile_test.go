@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -18,14 +17,14 @@ func TestProfileTabRendersSettings(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Profile/Settings tab (key "0" = tab index 9).
 	tm.Send(tea.KeyPressMsg{Code: '0', Text: "0"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Settings"))
+		return containsText(out, "Settings")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -37,7 +36,7 @@ func TestProfileShowsAPIKeySection(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Settings tab.
@@ -45,7 +44,7 @@ func TestProfileShowsAPIKeySection(t *testing.T) {
 
 	// API Keys section should appear in the profile view.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("API Keys"))
+		return containsText(out, "API Keys")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -57,7 +56,7 @@ func TestProfileShowsTaxonomy(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Settings tab.
@@ -65,6 +64,6 @@ func TestProfileShowsTaxonomy(t *testing.T) {
 
 	// Taxonomy section should appear in the profile view.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Taxonomy"))
+		return containsText(out, "Taxonomy")
 	}, teatest.WithDuration(waitDur))
 }

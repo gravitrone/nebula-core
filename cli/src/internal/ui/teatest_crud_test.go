@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -137,7 +136,7 @@ func TestEntityCRUDCycle(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Entities tab.
@@ -145,7 +144,7 @@ func TestEntityCRUDCycle(t *testing.T) {
 
 	// Seed entity appears in the list.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("SeedEntity"))
+		return containsText(out, "SeedEntity")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area: Down (tabNav -> modeFocus), Down (modeFocus -> table).
@@ -159,14 +158,14 @@ func TestEntityCRUDCycle(t *testing.T) {
 
 	// Detail view renders the entity ID.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("ent-seed"))
+		return containsText(out, "ent-seed")
 	}, teatest.WithDuration(waitDur))
 
 	// Go back to list.
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("SeedEntity"))
+		return containsText(out, "SeedEntity")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -210,14 +209,14 @@ func TestEntityAddFormPOSTsToServer(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Entities tab.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter modeFocus (Down exits tab nav).
@@ -229,7 +228,7 @@ func TestEntityAddFormPOSTsToServer(t *testing.T) {
 
 	// Add form renders "Name" field.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Name")) || bytes.Contains(out, []byte("Initializing"))
+		return containsText(out, "Name") || containsText(out, "Initializing")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -245,7 +244,7 @@ func TestJobCRUDCycle(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Jobs tab (key "5").
@@ -253,7 +252,7 @@ func TestJobCRUDCycle(t *testing.T) {
 
 	// Seed job appears.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("SeedJob"))
+		return containsText(out, "SeedJob")
 	}, teatest.WithDuration(waitDur))
 
 	// Navigate into content area.
@@ -267,14 +266,14 @@ func TestJobCRUDCycle(t *testing.T) {
 
 	// Detail view renders job ID.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("2026Q1-0001"))
+		return containsText(out, "2026Q1-0001")
 	}, teatest.WithDuration(waitDur))
 
 	// Go back to list.
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("SeedJob"))
+		return containsText(out, "SeedJob")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -286,12 +285,12 @@ func TestJobAddFormOpens(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Jobs"))
+		return containsText(out, "Jobs")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter modeFocus.
@@ -304,9 +303,9 @@ func TestJobAddFormOpens(t *testing.T) {
 	// Add form renders job fields.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		out2 := out
-		return bytes.Contains(out2, []byte("Add")) ||
-			bytes.Contains(out2, []byte("Title")) ||
-			bytes.Contains(out2, []byte("Initializing"))
+		return containsText(out2, "Add") ||
+			containsText(out2, "Title") ||
+			containsText(out2, "Initializing")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -321,7 +320,7 @@ func TestContextCRUDCycle(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Context tab (key "4").
@@ -329,18 +328,18 @@ func TestContextCRUDCycle(t *testing.T) {
 
 	// Context tab renders.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Context"))
+		return containsText(out, "Context")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Entities tab, then back to Context to confirm round-trip.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '4', Text: "4"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Context"))
+		return containsText(out, "Context")
 	}, teatest.WithDuration(waitDur))
 }
 

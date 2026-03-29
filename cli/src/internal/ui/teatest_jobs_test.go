@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -89,14 +88,14 @@ func TestJobsTabShowsLoadedData(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Jobs tab and wait for data.
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Train model"))
+		return containsText(out, "Train model")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -107,13 +106,13 @@ func TestJobsTableNavigation(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Train model"))
+		return containsText(out, "Train model")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area: Down (tabNav -> modeFocus), Down (modeFocus -> table).
@@ -123,7 +122,7 @@ func TestJobsTableNavigation(t *testing.T) {
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyDown})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Deploy pipeline"))
+		return containsText(out, "Deploy pipeline")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -135,13 +134,13 @@ func TestJobsDetailView(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Train model"))
+		return containsText(out, "Train model")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area (tabNav -> modeFocus -> table).
@@ -152,7 +151,7 @@ func TestJobsDetailView(t *testing.T) {
 
 	// Detail view should show the job ID.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("2026Q1-0001"))
+		return containsText(out, "2026Q1-0001")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -163,13 +162,13 @@ func TestJobsAddFormOpens(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Train model"))
+		return containsText(out, "Train model")
 	}, teatest.WithDuration(waitDur))
 
 	// Down exits tabNav into modeFocus (mode line focused).
@@ -181,7 +180,7 @@ func TestJobsAddFormOpens(t *testing.T) {
 
 	// The Add view initially shows "Initializing..." until a key triggers form init.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Initializing"))
+		return containsText(out, "Initializing")
 	}, teatest.WithDuration(waitDur))
 
 	// Send Down to trigger huh form initialization.
@@ -189,7 +188,7 @@ func TestJobsAddFormOpens(t *testing.T) {
 
 	// After init, the form renders with field titles.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Description"))
+		return containsText(out, "Description")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -201,13 +200,13 @@ func TestJobsFilterFlow(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Train model"))
+		return containsText(out, "Train model")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area (tabNav -> modeFocus -> table).
@@ -220,7 +219,7 @@ func TestJobsFilterFlow(t *testing.T) {
 
 	// "Deploy pipeline" should match (case-insensitive).
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Deploy"))
+		return containsText(out, "Deploy")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -232,12 +231,12 @@ func TestJobsEmptyState(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("No jobs found"))
+		return containsText(out, "No jobs found")
 	}, teatest.WithDuration(waitDur))
 }

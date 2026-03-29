@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
@@ -19,7 +18,7 @@ func TestTableEmptyCursorDoesNotPanic(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to entities (empty).
@@ -37,7 +36,7 @@ func TestTableEmptyCursorDoesNotPanic(t *testing.T) {
 	// If we get here without panic, verify app is still alive.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -49,12 +48,12 @@ func TestTableNavigationBoundsCheck(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area.
@@ -69,7 +68,7 @@ func TestTableNavigationBoundsCheck(t *testing.T) {
 	// App should still be alive and responsive.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -81,13 +80,13 @@ func TestTableAfterDataReload(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to entities, verify data shows.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Rapidly switch tabs back and forth 5 times.
@@ -100,7 +99,7 @@ func TestTableAfterDataReload(t *testing.T) {
 
 	// Verify entities tab still renders data after all the switching.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -114,12 +113,12 @@ func TestFormSubmitWithEmptyFields(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter modeFocus (Down exits tab nav).
@@ -129,7 +128,7 @@ func TestFormSubmitWithEmptyFields(t *testing.T) {
 	// Toggle to Add mode.
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyLeft})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Name")) || bytes.Contains(out, []byte("Initializing"))
+		return containsText(out, "Name") || containsText(out, "Initializing")
 	}, teatest.WithDuration(waitDur))
 
 	// Immediately press Enter to submit empty form.
@@ -139,7 +138,7 @@ func TestFormSubmitWithEmptyFields(t *testing.T) {
 	// App should still be alive.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -151,12 +150,12 @@ func TestFormOpenCloseRapidly(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// 3 cycles of open/close add form.
@@ -178,7 +177,7 @@ func TestFormOpenCloseRapidly(t *testing.T) {
 	// Verify app is still functional.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -190,12 +189,12 @@ func TestFormTypingSpecialCharacters(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter modeFocus -> Add mode.
@@ -203,7 +202,7 @@ func TestFormTypingSpecialCharacters(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyLeft})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Name")) || bytes.Contains(out, []byte("Initializing"))
+		return containsText(out, "Name") || containsText(out, "Initializing")
 	}, teatest.WithDuration(waitDur))
 
 	// Type unicode characters.
@@ -215,7 +214,7 @@ func TestFormTypingSpecialCharacters(t *testing.T) {
 	// Verify app is still alive.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -229,7 +228,7 @@ func TestViewportWithZeroHeight(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Send zero-height resize.
@@ -243,7 +242,7 @@ func TestViewportWithZeroHeight(t *testing.T) {
 	// Switch tab to prove app is alive.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -255,7 +254,7 @@ func TestViewportWithTinyTerminal(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Resize to tiny terminal.
@@ -270,7 +269,7 @@ func TestViewportWithTinyTerminal(t *testing.T) {
 	tm.Send(tea.WindowSizeMsg{Width: 120, Height: 40})
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -282,7 +281,7 @@ func TestViewportWithHugeTerminal(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Send huge terminal resize.
@@ -292,7 +291,7 @@ func TestViewportWithHugeTerminal(t *testing.T) {
 	// Switch tabs to exercise render with huge dimensions.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -306,7 +305,7 @@ func TestEscapeFromEveryView(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// tabNames: Inbox(1), Entities(2), Relationships(3), Context(4), Jobs(5),
@@ -329,7 +328,7 @@ func TestEscapeFromEveryView(t *testing.T) {
 	// Return to Inbox and verify app is alive.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -341,19 +340,19 @@ func TestDoubleEnterOnDetail(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter content area and open detail.
 	enterEntitiesContent(tm)
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("ent-001"))
+		return containsText(out, "ent-001")
 	}, teatest.WithDuration(waitDur))
 
 	// Press Enter again inside detail view - should not panic.
@@ -365,7 +364,7 @@ func TestDoubleEnterOnDetail(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -377,12 +376,12 @@ func TestTabSwitchDuringFormEdit(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("TestAgent"))
+		return containsText(out, "TestAgent")
 	}, teatest.WithDuration(waitDur))
 
 	// Enter modeFocus -> Add mode.
@@ -390,7 +389,7 @@ func TestTabSwitchDuringFormEdit(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyLeft})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Name")) || bytes.Contains(out, []byte("Initializing"))
+		return containsText(out, "Name") || containsText(out, "Initializing")
 	}, teatest.WithDuration(waitDur))
 
 	// Type some text in the form name field.
@@ -406,7 +405,7 @@ func TestTabSwitchDuringFormEdit(t *testing.T) {
 	// Verify app is still functional by switching tabs.
 	tm.Send(tea.KeyPressMsg{Code: '5', Text: "5"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Jobs"))
+		return containsText(out, "Jobs")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -420,7 +419,7 @@ func TestRapidKeyFlood(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Send 50 mixed keys rapidly.
@@ -445,7 +444,7 @@ func TestRapidKeyFlood(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -457,13 +456,13 @@ func TestAlternatingPaletteAndHelp(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Palette open/close.
 	tm.Send(tea.KeyPressMsg{Code: '/', Text: "/"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Command"))
+		return containsText(out, "Command")
 	}, teatest.WithDuration(waitDur))
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
 	time.Sleep(100 * time.Millisecond)
@@ -471,7 +470,7 @@ func TestAlternatingPaletteAndHelp(t *testing.T) {
 	// Help open/close.
 	tm.Send(tea.KeyPressMsg{Code: '?', Text: "?"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("esc to close"))
+		return containsText(out, "esc to close")
 	}, teatest.WithDuration(waitDur))
 	tm.Send(tea.KeyPressMsg{Code: '?', Text: "?"})
 	time.Sleep(100 * time.Millisecond)
@@ -479,7 +478,7 @@ func TestAlternatingPaletteAndHelp(t *testing.T) {
 	// Palette again.
 	tm.Send(tea.KeyPressMsg{Code: '/', Text: "/"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Command"))
+		return containsText(out, "Command")
 	}, teatest.WithDuration(waitDur))
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
 	time.Sleep(100 * time.Millisecond)
@@ -487,7 +486,7 @@ func TestAlternatingPaletteAndHelp(t *testing.T) {
 	// Verify normal operation.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -501,7 +500,7 @@ func TestAllTabsRenderWithoutPanic(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Test first 5 tabs.
@@ -521,7 +520,7 @@ func TestAllTabsRenderWithoutPanic(t *testing.T) {
 		tm.Send(tea.KeyPressMsg{Code: tc.key, Text: tc.text})
 		name := tc.name
 		teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-			return bytes.Contains(out, []byte(name))
+			return containsText(out, name)
 		}, teatest.WithDuration(waitDur))
 	}
 
@@ -541,7 +540,7 @@ func TestAllTabsRenderWithoutPanic(t *testing.T) {
 		tm.Send(tea.KeyPressMsg{Code: tc.key, Text: tc.text})
 		name := tc.name
 		teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-			return bytes.Contains(out, []byte(name))
+			return containsText(out, name)
 		}, teatest.WithDuration(waitDur))
 	}
 }

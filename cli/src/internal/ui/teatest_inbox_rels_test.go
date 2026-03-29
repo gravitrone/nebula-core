@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -17,7 +16,7 @@ func TestInboxTabRendersOnStart(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -30,7 +29,7 @@ func TestInboxEmptyState(t *testing.T) {
 
 	// Wait for the empty inbox state - approvals load quickly from the stub server.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("No pending approvals"))
+		return containsText(out, "No pending approvals")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -42,7 +41,7 @@ func TestInboxTableNavigation(t *testing.T) {
 
 	// Wait for inbox to render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Navigate with j/down - should not crash.
@@ -51,7 +50,7 @@ func TestInboxTableNavigation(t *testing.T) {
 
 	// App should still be rendering inbox.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -65,14 +64,14 @@ func TestRelationshipsTabShowsData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Relationships tab (key "3" = tab index 2).
 	tm.Send(tea.KeyPressMsg{Code: '3', Text: "3"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Relationships"))
+		return containsText(out, "Relationships")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -84,7 +83,7 @@ func TestRelationshipsEmptyState(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Relationships tab.
@@ -92,7 +91,7 @@ func TestRelationshipsEmptyState(t *testing.T) {
 
 	// With empty data the tab header still shows.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Relationships"))
+		return containsText(out, "Relationships")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -104,13 +103,13 @@ func TestRelationshipsTableNavigation(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Relationships tab.
 	tm.Send(tea.KeyPressMsg{Code: '3', Text: "3"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Relationships"))
+		return containsText(out, "Relationships")
 	}, teatest.WithDuration(waitDur))
 
 	// Navigate with j/k (vi keys) - these are consumed by the tab content, not tab nav.
@@ -119,7 +118,7 @@ func TestRelationshipsTableNavigation(t *testing.T) {
 
 	// App should still be on Relationships tab.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Relationships"))
+		return containsText(out, "Relationships")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -133,14 +132,14 @@ func TestHistoryTabShowsData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to History tab (key "9" = tab index 8).
 	tm.Send(tea.KeyPressMsg{Code: '9', Text: "9"})
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("History"))
+		return containsText(out, "History")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -152,7 +151,7 @@ func TestHistoryEmptyState(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to History tab.
@@ -160,7 +159,7 @@ func TestHistoryEmptyState(t *testing.T) {
 
 	// History tab header should appear.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("History"))
+		return containsText(out, "History")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -174,7 +173,7 @@ func TestScrollingWorks(t *testing.T) {
 
 	// Wait for initial render then send scroll keys.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Send PgDown/PgUp - should not crash.
@@ -184,7 +183,7 @@ func TestScrollingWorks(t *testing.T) {
 	// Navigate to a named tab to confirm the app is still alive and renders.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -196,20 +195,20 @@ func TestImportExportOpens(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Open command palette.
 	tm.Send(tea.KeyPressMsg{Code: '/', Text: "/"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Command"))
+		return containsText(out, "Command")
 	}, teatest.WithDuration(waitDur))
 
 	// Close palette with ESC, then navigate to prove app is still live.
 	tm.Send(tea.KeyPressMsg{Code: tea.KeyEscape})
 	tm.Send(tea.KeyPressMsg{Code: '3', Text: "3"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Relationships"))
+		return containsText(out, "Relationships")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -221,7 +220,7 @@ func TestWindowResizeHandling(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Send a window resize.
@@ -230,7 +229,7 @@ func TestWindowResizeHandling(t *testing.T) {
 	// Navigate to confirm the app still responds after resize.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -242,7 +241,7 @@ func TestRapidKeyInput(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Rapidly send tab switching keys.
@@ -253,6 +252,6 @@ func TestRapidKeyInput(t *testing.T) {
 	// Send a known-good key and wait for it to be processed.
 	tm.Send(tea.KeyPressMsg{Code: '2', Text: "2"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }

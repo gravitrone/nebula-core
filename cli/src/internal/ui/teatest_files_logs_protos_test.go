@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -18,7 +17,7 @@ func TestFilesTabShowsData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Files tab (key "7" -> index 6).
@@ -26,7 +25,7 @@ func TestFilesTabShowsData(t *testing.T) {
 
 	// Files tab renders with Add/Library mode selector.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Files"))
+		return containsText(out, "Files")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -38,7 +37,7 @@ func TestFilesAddForm(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Files tab.
@@ -46,7 +45,7 @@ func TestFilesAddForm(t *testing.T) {
 
 	// Tab to switch to Library then back to Add (or just verify Add text visible).
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Add")) || bytes.Contains(out, []byte("Files"))
+		return containsText(out, "Add") || containsText(out, "Files")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -58,7 +57,7 @@ func TestFilesEmptyState(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Files tab.
@@ -72,8 +71,8 @@ func TestFilesEmptyState(t *testing.T) {
 
 	// With no data, should show empty state or Files tab name.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("No files found.")) ||
-			bytes.Contains(out, []byte("Files"))
+		return containsText(out, "No files found.") ||
+			containsText(out, "Files")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -87,7 +86,7 @@ func TestLogsTabShowsData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Logs tab (key "6" -> index 5).
@@ -95,7 +94,7 @@ func TestLogsTabShowsData(t *testing.T) {
 
 	// Logs tab renders with Add/Library mode selector.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Logs"))
+		return containsText(out, "Logs")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -107,7 +106,7 @@ func TestLogsAddForm(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Logs tab.
@@ -115,7 +114,7 @@ func TestLogsAddForm(t *testing.T) {
 
 	// The default view shows the add form or mode selector.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Add")) || bytes.Contains(out, []byte("Logs"))
+		return containsText(out, "Add") || containsText(out, "Logs")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -127,7 +126,7 @@ func TestLogsEmptyState(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Logs tab.
@@ -141,8 +140,8 @@ func TestLogsEmptyState(t *testing.T) {
 
 	// With no data, should show empty state or Logs tab name.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("No logs found.")) ||
-			bytes.Contains(out, []byte("Logs"))
+		return containsText(out, "No logs found.") ||
+			containsText(out, "Logs")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -156,7 +155,7 @@ func TestProtocolsTabShowsData(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Protocols tab (key "8" -> index 7).
@@ -164,7 +163,7 @@ func TestProtocolsTabShowsData(t *testing.T) {
 
 	// Protocols tab renders.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Protocols"))
+		return containsText(out, "Protocols")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -176,7 +175,7 @@ func TestProtocolsAddForm(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Protocols tab.
@@ -184,7 +183,7 @@ func TestProtocolsAddForm(t *testing.T) {
 
 	// The default view shows the add form or mode selector.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Add")) || bytes.Contains(out, []byte("Protocols"))
+		return containsText(out, "Add") || containsText(out, "Protocols")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -196,7 +195,7 @@ func TestProtocolsEmptyState(t *testing.T) {
 
 	// Wait for initial render.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Switch to Protocols tab.
@@ -210,7 +209,7 @@ func TestProtocolsEmptyState(t *testing.T) {
 
 	// With no data, should show empty state or Protocols tab name.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("No protocols found.")) ||
-			bytes.Contains(out, []byte("Protocols"))
+		return containsText(out, "No protocols found.") ||
+			containsText(out, "Protocols")
 	}, teatest.WithDuration(waitDur))
 }

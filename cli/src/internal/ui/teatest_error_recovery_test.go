@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -39,10 +38,10 @@ func TestAPIErrorShowsErrorMessage(t *testing.T) {
 	// The app should still render even on API errors - it shows the banner/tabs.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		// Either the app renders tabs or an error indicator appears.
-		return bytes.Contains(out, []byte("Inbox")) ||
-			bytes.Contains(out, []byte("Error")) ||
-			bytes.Contains(out, []byte("error")) ||
-			bytes.Contains(out, []byte("unavailable")) ||
+		return containsText(out, "Inbox") ||
+			containsText(out, "Error") ||
+			containsText(out, "error") ||
+			containsText(out, "unavailable") ||
 			len(out) > 0
 	}, teatest.WithDuration(waitDur))
 }
@@ -106,7 +105,7 @@ func TestRecoveryAfterError(t *testing.T) {
 
 	// The Entities tab should render (tab label visible in tab bar).
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Entities"))
+		return containsText(out, "Entities")
 	}, teatest.WithDuration(waitDur))
 }
 
@@ -118,7 +117,7 @@ func TestAppSurvivesAllTabsWithEmptyServer(t *testing.T) {
 	t.Cleanup(func() { _ = tm.Quit() })
 
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 
 	// Cycle all numeric tab keys; the app must not crash.
@@ -130,6 +129,6 @@ func TestAppSurvivesAllTabsWithEmptyServer(t *testing.T) {
 	// Return to Inbox - app still alive.
 	tm.Send(tea.KeyPressMsg{Code: '1', Text: "1"})
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
-		return bytes.Contains(out, []byte("Inbox"))
+		return containsText(out, "Inbox")
 	}, teatest.WithDuration(waitDur))
 }

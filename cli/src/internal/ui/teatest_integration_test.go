@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -17,6 +18,18 @@ import (
 // --- Helpers ---
 
 const waitDur = 3 * time.Second
+
+// ansiRe matches ANSI escape sequences that lipgloss/bubbletea insert into
+// rendered output. These sequences can split text tokens, breaking naive
+// bytes.Contains checks.
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x1b]*\x1b\\`)
+
+// containsText returns true if out contains needle after stripping ANSI
+// escape sequences from out.
+func containsText(out []byte, needle string) bool {
+	clean := ansiRe.ReplaceAll(out, nil)
+	return bytes.Contains(clean, []byte(needle))
+}
 
 // emptyAPIHandler returns empty JSON arrays for all API endpoints so the app
 // can initialize without panicking on nil client dereferences.
