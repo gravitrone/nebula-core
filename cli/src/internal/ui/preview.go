@@ -305,8 +305,8 @@ func renderPreviewTable(title string, kvs []previewKV, width int) string {
 		BorderForeground(ColorBorder).
 		BorderBottom(true).
 		Bold(false)
-	// Selected style matches Cell so no row gets visually highlighted.
-	s.Selected = s.Cell
+	// Selected style is transparent - no highlight, no extra padding.
+	s.Selected = lipgloss.NewStyle()
 
 	actualW := keyWidth + valWidth + (2 * 2)
 	t := table.New(
