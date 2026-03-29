@@ -492,9 +492,9 @@ func (m HistoryModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.items)))
+	countLine := ""
 	if filterLine != "" {
-		filterLine = MutedStyle.Render(filterLine)
+		countLine = MutedStyle.Render(fmt.Sprintf("%d total · %s", len(m.items), filterLine))
 	}
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
@@ -515,13 +515,10 @@ func (m HistoryModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	parts := []string{}
-	if filterLine != "" {
-		parts = append(parts, filterLine)
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
 	}
-	parts = append(parts, countLine, body)
-
-	result := strings.Join(parts, "\n\n")
 	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 
@@ -622,7 +619,6 @@ func (m HistoryModel) renderScopes() string {
 	m.scopeTable.SetWidth(actualTableWidth)
 	m.scopeTable.SetRows(tableRows)
 
-	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.scopes)))
 	tableView := components.TableBaseStyle.Render(m.scopeTable.View())
 	preview := ""
 	var previewItem *api.AuditScope
@@ -641,8 +637,7 @@ func (m HistoryModel) renderScopes() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
-	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body), 1)
 }
 
 // renderScopePreview renders render scope preview.
@@ -724,7 +719,6 @@ func (m HistoryModel) renderActors() string {
 	m.actorTable.SetWidth(actualTableWidth)
 	m.actorTable.SetRows(tableRows)
 
-	countLine := MutedStyle.Render(fmt.Sprintf("%d total", len(m.actors)))
 	tableView := components.TableBaseStyle.Render(m.actorTable.View())
 	preview := ""
 	var previewItem *api.AuditActor
@@ -743,8 +737,7 @@ func (m HistoryModel) renderActors() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
-	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body), 1)
 }
 
 // renderActorPreview renders render actor preview.

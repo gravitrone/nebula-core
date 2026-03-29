@@ -655,9 +655,7 @@ func (m ProfileModel) renderKeys() string {
 		previewItem = &m.keys[idx]
 	}
 
-	title := "API Keys"
-	countLine := MutedStyle.Render(fmt.Sprintf("%d keys", len(m.keys)))
-	tableView := m.keyList.View()
+	tableView := components.TableBaseStyle.Render(m.keyList.View())
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
 		content := m.renderKeyPreview(*previewItem, previewBoxContentWidth(previewWidth))
@@ -671,9 +669,7 @@ func (m ProfileModel) renderKeys() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
-	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
-	return components.Indent(components.TitledBox(title, centered+"\n", m.width), 1)
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body), 1)
 }
 
 // renderKeyPreview renders render key preview.
@@ -794,7 +790,6 @@ func (m ProfileModel) renderAgents() string {
 		previewItem = &m.agents[idx]
 	}
 
-	countLine := MutedStyle.Render(fmt.Sprintf("%d agents", len(m.agents)))
 	tableView := components.TableBaseStyle.Render(m.agentList.View())
 	preview := ""
 	if previewItem != nil && !m.sectionFocus {
@@ -809,8 +804,7 @@ func (m ProfileModel) renderAgents() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
-	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
+	return components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, body), 1)
 }
 
 // renderAgentPreview renders render agent preview.

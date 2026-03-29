@@ -394,14 +394,14 @@ func (m FilesModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := fmt.Sprintf("%d total", len(m.items))
+	countLine := ""
 	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
+		countLine = fmt.Sprintf("%d total · search: %s", len(m.items), strings.TrimSpace(m.searchBuf))
 		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
 			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
 		}
+		countLine = MutedStyle.Render(countLine)
 	}
-	countLine = MutedStyle.Render(countLine)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -429,7 +429,10 @@ func (m FilesModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 

@@ -262,7 +262,10 @@ func (m SearchModel) View() string {
 		m.dataTable.SetWidth(actualTableWidth)
 		m.dataTable.SetRows(tableRows)
 
-		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.items)))
+		countLine := ""
+		if query := strings.TrimSpace(m.textInput.Value()); query != "" {
+			countLine = MutedStyle.Render(fmt.Sprintf("%d results · search: %s", len(m.items), query))
+		}
 		tableView := components.TableBaseStyle.Render(m.dataTable.View())
 		preview := ""
 		var previewItem *searchEntry
@@ -281,7 +284,10 @@ func (m SearchModel) View() string {
 			body = tableView + "\n\n" + preview
 		}
 
-		result := countLine + "\n\n" + body
+		result := body
+		if countLine != "" {
+			result += "\n" + countLine
+		}
 		b.WriteString(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result))
 	}
 

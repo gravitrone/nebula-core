@@ -768,11 +768,10 @@ func (m ContextModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := fmt.Sprintf("%d total", len(m.items))
+	countLine := ""
 	if query := strings.TrimSpace(m.filterBuf); query != "" {
-		countLine = fmt.Sprintf("%s · filter: %s", countLine, query)
+		countLine = MutedStyle.Render(fmt.Sprintf("%d total · filter: %s", len(m.items), query))
 	}
-	countLine = MutedStyle.Render(countLine)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -798,7 +797,10 @@ func (m ContextModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 

@@ -298,14 +298,18 @@ func (m InboxModel) View() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := fmt.Sprintf("%d pending", len(m.items))
-	if m.filterBuf != "" {
-		countLine = fmt.Sprintf("%s · filter: %s", countLine, m.filterBuf)
+	countLine := ""
+	hasContext := m.filterBuf != "" || m.selectedCount() > 0
+	if hasContext {
+		parts := []string{fmt.Sprintf("%d pending", len(m.items))}
+		if m.filterBuf != "" {
+			parts = append(parts, fmt.Sprintf("filter: %s", m.filterBuf))
+		}
+		if count := m.selectedCount(); count > 0 {
+			parts = append(parts, fmt.Sprintf("selected: %d", count))
+		}
+		countLine = MutedStyle.Render(strings.Join(parts, " · "))
 	}
-	if count := m.selectedCount(); count > 0 {
-		countLine = fmt.Sprintf("%s · selected: %d", countLine, count)
-	}
-	countLine = MutedStyle.Render(countLine)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -326,7 +330,10 @@ func (m InboxModel) View() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	centered := lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 	return lipgloss.JoinVertical(lipgloss.Left, components.Indent(centered, 1), m.renderStatusHints())
 }

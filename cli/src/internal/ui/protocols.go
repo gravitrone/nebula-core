@@ -579,11 +579,10 @@ func (m ProtocolsModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := fmt.Sprintf("%d total", len(m.items))
+	countLine := ""
 	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
+		countLine = MutedStyle.Render(fmt.Sprintf("%d total · search: %s", len(m.items), strings.TrimSpace(m.searchBuf)))
 	}
-	countLine = MutedStyle.Render(countLine)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -611,7 +610,10 @@ func (m ProtocolsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 

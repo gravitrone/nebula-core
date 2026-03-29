@@ -443,17 +443,21 @@ func (m JobsModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	countLine := fmt.Sprintf("%d total", len(m.items))
-	if selected := m.selectedCount(); selected > 0 {
-		countLine = fmt.Sprintf("%s · selected: %d", countLine, selected)
-	}
-	if strings.TrimSpace(m.searchBuf) != "" {
-		countLine = fmt.Sprintf("%s · search: %s", countLine, strings.TrimSpace(m.searchBuf))
-		if m.searchSuggest != "" && !strings.EqualFold(strings.TrimSpace(m.searchBuf), strings.TrimSpace(m.searchSuggest)) {
-			countLine = fmt.Sprintf("%s · next: %s", countLine, strings.TrimSpace(m.searchSuggest))
+	countLine := ""
+	hasContext := m.selectedCount() > 0 || strings.TrimSpace(m.searchBuf) != ""
+	if hasContext {
+		parts := []string{fmt.Sprintf("%d total", len(m.items))}
+		if selected := m.selectedCount(); selected > 0 {
+			parts = append(parts, fmt.Sprintf("selected: %d", selected))
 		}
+		if query := strings.TrimSpace(m.searchBuf); query != "" {
+			parts = append(parts, fmt.Sprintf("search: %s", query))
+			if m.searchSuggest != "" && !strings.EqualFold(query, strings.TrimSpace(m.searchSuggest)) {
+				parts = append(parts, fmt.Sprintf("next: %s", strings.TrimSpace(m.searchSuggest)))
+			}
+		}
+		countLine = MutedStyle.Render(strings.Join(parts, " · "))
 	}
-	countLine = MutedStyle.Render(countLine)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -473,7 +477,10 @@ func (m JobsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 

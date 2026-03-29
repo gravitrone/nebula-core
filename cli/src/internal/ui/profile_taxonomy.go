@@ -287,16 +287,17 @@ func (m ProfileModel) renderTaxonomy() string {
 
 	contentWidth := components.BoxContentWidth(m.width)
 
-	filterText := m.taxSearch
-	if filterText == "" {
-		filterText = "-"
+	countLine := ""
+	if m.taxSearch != "" || m.taxIncludeInactive {
+		parts := []string{fmt.Sprintf("%d rows", len(m.taxItems))}
+		if m.taxIncludeInactive {
+			parts = append(parts, "include inactive: true")
+		}
+		if m.taxSearch != "" {
+			parts = append(parts, fmt.Sprintf("filter: %s", m.taxSearch))
+		}
+		countLine = MutedStyle.Render(strings.Join(parts, " · "))
 	}
-	info := fmt.Sprintf(
-		"%d rows  ·  include inactive: %t  ·  filter: %s",
-		len(m.taxItems),
-		m.taxIncludeInactive,
-		filterText,
-	)
 
 	previewWidth := preferredPreviewWidth(contentWidth)
 
@@ -384,7 +385,10 @@ func (m ProfileModel) renderTaxonomy() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := MutedStyle.Render(info) + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return b.String() + components.Indent(lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result), 1)
 }
 

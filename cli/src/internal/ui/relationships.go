@@ -530,11 +530,10 @@ func (m RelationshipsModel) renderList() string {
 	m.dataTable.SetWidth(actualTableWidth)
 	m.dataTable.SetRows(tableRows)
 
-	count := fmt.Sprintf("%d total", len(m.items))
+	countLine := ""
 	if query := strings.TrimSpace(m.filterBuf); query != "" {
-		count = fmt.Sprintf("%s · filter: %s", count, query)
+		countLine = MutedStyle.Render(fmt.Sprintf("%d total · filter: %s", len(m.items), query))
 	}
-	countLine := MutedStyle.Render(count)
 
 	tableView := components.TableBaseStyle.Render(m.dataTable.View())
 	preview := ""
@@ -560,7 +559,10 @@ func (m RelationshipsModel) renderList() string {
 		body = tableView + "\n\n" + preview
 	}
 
-	result := countLine + "\n\n" + body
+	result := body
+	if countLine != "" {
+		result += "\n" + countLine
+	}
 	return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, result)
 }
 
@@ -1101,7 +1103,10 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 		m.createTable.SetWidth(actualTableWidth)
 		m.createTable.SetRows(tableRows)
 
-		countLine := MutedStyle.Render(fmt.Sprintf("%d results", len(m.createResults)))
+		countLine := ""
+		if strings.TrimSpace(m.createQuery) != "" {
+			countLine = MutedStyle.Render(fmt.Sprintf("%d results · search: %s", len(m.createResults), strings.TrimSpace(m.createQuery)))
+		}
 		tableView := components.TableBaseStyle.Render(m.createTable.View())
 		preview := ""
 		var previewItem *relationshipCreateCandidate
@@ -1120,9 +1125,10 @@ func (m RelationshipsModel) renderCreateSearch(title string) string {
 			body = tableView + "\n\n" + preview
 		}
 
-		b.WriteString(countLine)
-		b.WriteString("\n\n")
 		b.WriteString(body)
+		if countLine != "" {
+			b.WriteString("\n" + countLine)
+		}
 	}
 
 	return b.String()
@@ -1169,7 +1175,10 @@ func (m RelationshipsModel) renderCreateType() string {
 		m.createTypeTable.SetWidth(actualTableWidth)
 		m.createTypeTable.SetRows(tableRows)
 
-		countLine := MutedStyle.Render(fmt.Sprintf("%d suggestions", len(m.createTypeResults)))
+		countLine := ""
+		if strings.TrimSpace(m.createType) != "" {
+			countLine = MutedStyle.Render(fmt.Sprintf("%d suggestions · type: %s", len(m.createTypeResults), strings.TrimSpace(m.createType)))
+		}
 		tableView := components.TableBaseStyle.Render(m.createTypeTable.View())
 		preview := ""
 		var selectedSuggestion string
@@ -1188,9 +1197,10 @@ func (m RelationshipsModel) renderCreateType() string {
 			body = tableView + "\n\n" + preview
 		}
 
-		b.WriteString(countLine)
-		b.WriteString("\n\n")
 		b.WriteString(body)
+		if countLine != "" {
+			b.WriteString("\n" + countLine)
+		}
 	}
 
 	return b.String()
