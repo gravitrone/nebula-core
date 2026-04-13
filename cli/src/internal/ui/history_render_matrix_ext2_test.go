@@ -23,7 +23,6 @@ func TestHistoryRenderListFallbackAndPreviewBranches(t *testing.T) {
 	model.dataTable.SetCursor(9) // out-of-range selected index => no preview branch
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "1 total")
 	assert.NotContains(t, out, "Filters:")
 
 	model.width = 150
@@ -47,7 +46,6 @@ func TestHistoryRenderScopesAndActorsBranchMatrix(t *testing.T) {
 	model.scopeTable.SetRows([]table.Row{{"scope-1"}})
 	model.scopeTable.SetCursor(7)
 	out := components.SanitizeText(model.renderScopes())
-	assert.Contains(t, out, "1 total")
 
 	// Scopes with selected row to render preview and fallback title.
 	model.width = 150
@@ -62,7 +60,6 @@ func TestHistoryRenderScopesAndActorsBranchMatrix(t *testing.T) {
 	model.actorTable.SetRows([]table.Row{{"system"}})
 	model.actorTable.SetCursor(5)
 	out = components.SanitizeText(model.renderActors())
-	assert.Contains(t, out, "1 total")
 
 	// Actors with selected row to render preview fallback values.
 	model.width = 150

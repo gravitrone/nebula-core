@@ -56,6 +56,7 @@ func TestContextSaveLinksEntities(t *testing.T) {
 // TestContextLinkSearchAddsEntity handles test context link search adds entity.
 func TestContextLinkSearchAddsEntity(t *testing.T) {
 	model := NewContextModel(nil)
+	model.view = contextViewAdd
 	model.linkSearching = true
 	model.linkResults = []api.Entity{{ID: "ent-1", Name: "Alpha"}}
 	model.linkTable.SetRows([]table.Row{{"Alpha"}})
@@ -77,6 +78,7 @@ func TestContextLinkSearchCommand(t *testing.T) {
 	})
 
 	model := NewContextModel(client)
+	model.view = contextViewAdd
 	model.linkSearching = true
 	model.linkQuery = ""
 

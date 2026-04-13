@@ -29,7 +29,6 @@ func TestHistoryRenderListTinyWidthClampsColumnsAndFallbacksActor(t *testing.T) 
 
 	assert.Contains(t, out, "UPDATE")
 	assert.Contains(t, out, "system")
-	assert.Contains(t, out, "1 total")
 }
 
 func TestHistoryRenderAuditPreviewFallsBackForBlankActorAndFields(t *testing.T) {

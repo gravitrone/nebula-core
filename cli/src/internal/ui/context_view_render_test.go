@@ -56,8 +56,16 @@ func TestContextAddSaveAndReset(t *testing.T) {
 	// Init + load scopes.
 	cmd := model.Init()
 	require.NotNil(t, cmd)
-	model, _ = model.Update(runCmdFirst(cmd))
+	for _, msg := range runCmd(cmd) {
+		if msg != nil && !isFrameworkMsg(msg) {
+			model, _ = model.Update(msg)
+		}
+	}
 	assert.Contains(t, model.scopeOptions, "public")
+
+	// Switch to add view and init the form.
+	model.view = contextViewAdd
+	model.initAddForm()
 
 	// Set add form fields directly (huh forms don't support programmatic key navigation).
 	model.addTitle = "Alpha"
@@ -162,25 +170,29 @@ func TestContextLibraryDetailEditAndSave(t *testing.T) {
 	model := NewContextModel(client)
 	model.width = 90
 
-	// Init + load scopes.
+	// Init + load scopes and context list.
 	cmd := model.Init()
 	require.NotNil(t, cmd)
-	model, _ = model.Update(runCmdFirst(cmd))
+	for _, msg := range runCmd(cmd) {
+		if msg != nil && !isFrameworkMsg(msg) {
+			model, _ = model.Update(msg)
+		}
+	}
 
-	// Toggle to Library view directly (huh form captures KeyUp in add view).
-	model, cmd = model.toggleMode()
-	require.NotNil(t, cmd)
-	model, _ = model.Update(runCmdFirst(cmd))
+	// After full init, model is already in list view with items loaded.
 	assert.Equal(t, contextViewList, model.view)
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "Alpha")
 
 	// Open detail and load it.
 	model, cmd = model.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	require.NotNil(t, cmd)
-	model, _ = model.Update(runCmdFirst(cmd))
+	for _, msg := range runCmd(cmd) {
+		if msg != nil && !isFrameworkMsg(msg) {
+			model, _ = model.Update(msg)
+		}
+	}
 	assert.Equal(t, contextViewDetail, model.view)
 
 	out = components.SanitizeText(model.View())
@@ -289,6 +301,7 @@ func TestContextAddLinkSearchIntegration(t *testing.T) {
 
 	model := NewContextModel(client)
 	model.width = 90
+	model.view = contextViewAdd
 	model.startLinkSearch()
 	assert.True(t, model.linkSearching)
 

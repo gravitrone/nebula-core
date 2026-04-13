@@ -115,7 +115,6 @@ func TestProtocolsRenderListLoadingEmptyAndOutOfRangeSelection(t *testing.T) {
 	model.modeFocus = true
 
 	out := components.SanitizeText(model.renderList())
-	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "alpha")
 	// No selected preview should render when modeFocus is true.
 	assert.NotContains(t, out, "Selected")

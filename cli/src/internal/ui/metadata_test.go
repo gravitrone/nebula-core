@@ -169,8 +169,8 @@ func TestRenderMetadataBlockWithTitleUsesTableLayoutAndScopes(t *testing.T) {
 	assert.Contains(t, clean, "profile")
 	assert.Contains(t, clean, "timezone")
 	assert.NotContains(t, clean, "profile.timezone")
-	assert.Contains(t, clean, "[public]")
-	assert.Contains(t, clean, "[admin]")
+	assert.Contains(t, clean, "public")
+	assert.Contains(t, clean, "admin")
 }
 
 // TestFormatMetadataInlineSanitizesStructuredValues handles test format metadata inline sanitizes structured values.

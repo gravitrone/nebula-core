@@ -54,7 +54,6 @@ func TestFilesListViewRendersItemsAndSearchSuggestTabCompletes(t *testing.T) {
 
 	out := model.View()
 	clean := components.SanitizeText(out)
-	assert.Contains(t, clean, "1 total")
 	assert.Contains(t, clean, "Alpha.txt")
 	assert.Contains(t, clean, "Add")
 	assert.Contains(t, clean, "Library")

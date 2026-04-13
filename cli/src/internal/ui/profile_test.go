@@ -264,6 +264,7 @@ func TestProfileHandlePendingLimitInputAndRenderAgentDetail(t *testing.T) {
 	now := time.Now()
 	cfg := &config.Config{Username: "alxx", APIKey: "nbl_key", PendingLimit: 25}
 	model := NewProfileModel(nil, cfg)
+	model.width = 120
 
 	model.editPendingLimit = true
 	model.pendingLimitBuf = ""

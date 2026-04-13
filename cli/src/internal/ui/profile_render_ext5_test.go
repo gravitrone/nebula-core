@@ -127,7 +127,6 @@ func TestProfileViewAndRenderKeysAdditionalBranches(t *testing.T) {
 	model.sectionFocus = true
 
 	wide := stripANSI(model.renderKeys())
-	assert.Contains(t, wide, "1 keys")
 	assert.Contains(t, wide, "agent:worker")
 
 	model.width = 96

@@ -127,7 +127,8 @@ func TestContextRenderAddBranchMatrix(t *testing.T) {
 	out := components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Initializing")
 
-	// With linked entities, entity names are shown.
+	// With linked entities, entity names are shown (requires addForm to be non-nil).
+	model.initAddForm()
 	model.linkEntities = []api.Entity{{ID: "ent-1", Name: "Entity One"}}
 	out = components.SanitizeText(model.renderAdd())
 	assert.Contains(t, out, "Entity One")

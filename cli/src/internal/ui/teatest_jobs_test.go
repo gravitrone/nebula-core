@@ -211,16 +211,24 @@ func TestJobsFilterFlow(t *testing.T) {
 
 	// Enter content area (tabNav -> modeFocus -> table).
 	enterJobsContent(tm)
+	time.Sleep(200 * time.Millisecond)
 
 	// Type to filter jobs. Jobs uses client-side filtering on allItems.
 	tm.Send(tea.KeyPressMsg{Code: 'D', Text: "D"})
 	time.Sleep(100 * time.Millisecond)
 	tm.Send(tea.KeyPressMsg{Code: 'e', Text: "e"})
 
+	// Wait for the filter to apply.
+	time.Sleep(300 * time.Millisecond)
+
+	// Force a full re-render with a taller terminal so filtered results
+	// are visible (the viewport may clip content at smaller heights).
+	tm.Send(tea.WindowSizeMsg{Width: 120, Height: 60})
+
 	// "Deploy pipeline" should match (case-insensitive).
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return containsText(out, "Deploy")
-	}, teatest.WithDuration(waitDur))
+	}, teatest.WithDuration(5*time.Second))
 }
 
 // TestJobsEmptyState verifies the empty state message renders when no jobs

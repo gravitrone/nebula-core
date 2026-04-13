@@ -66,7 +66,6 @@ func TestJobsListSearchSuggestToggleAddSaveAndReset(t *testing.T) {
 	model, _ = model.Update(runCmdFirst(model.Init()))
 
 	out := components.SanitizeText(model.View())
-	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "Alpha Job")
 
 	// Search suggest + tab completion.

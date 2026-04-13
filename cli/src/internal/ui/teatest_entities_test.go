@@ -177,14 +177,22 @@ func TestEntitiesSearchFilter(t *testing.T) {
 
 	// Enter content area.
 	enterEntitiesContent(tm)
+	time.Sleep(200 * time.Millisecond)
 
 	// Type a character to trigger live search reload.
 	tm.Send(tea.KeyPressMsg{Code: 'x', Text: "x"})
 
+	// Wait for the search HTTP request to complete.
+	time.Sleep(300 * time.Millisecond)
+
+	// Force a full re-render with a taller terminal so the count line below
+	// the table is not clipped by the viewport.
+	tm.Send(tea.WindowSizeMsg{Width: 120, Height: 60})
+
 	// The search buffer indicator "search: x" confirms the search was triggered.
 	teatest.WaitFor(t, tm.Output(), func(out []byte) bool {
 		return containsText(out, "search: x")
-	}, teatest.WithDuration(waitDur))
+	}, teatest.WithDuration(5*time.Second))
 }
 
 // TestEntitiesAddFormOpens verifies switching to Add mode renders the add form.

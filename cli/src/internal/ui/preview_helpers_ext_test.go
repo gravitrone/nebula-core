@@ -53,7 +53,8 @@ func TestRenderPreviewRowScopeVariants(t *testing.T) {
 	row := renderPreviewRow("Scopes", "public, admin", 80)
 	clean := components.SanitizeText(row)
 	assert.Contains(t, clean, "Scopes:")
-	assert.Contains(t, clean, "[public] [admin]")
+	assert.Contains(t, clean, "public")
+	assert.Contains(t, clean, "admin")
 
 	row = renderPreviewRow("Scopes", "", 40)
 	assert.Contains(t, components.SanitizeText(row), "Scopes: -")

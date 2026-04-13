@@ -28,6 +28,7 @@ func TestContextRenderListLoadingAndEmptyBranches(t *testing.T) {
 
 func TestContextRenderListPreviewAndFilterBranches(t *testing.T) {
 	model := NewContextModel(nil)
+	model.loadingList = false
 	model.width = 160
 	model.filterBuf = "alpha"
 	model.modeFocus = true

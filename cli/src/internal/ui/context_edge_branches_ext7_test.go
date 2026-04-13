@@ -26,6 +26,7 @@ func TestContextAddTagStrNormalizesViaParseAndNormalize(t *testing.T) {
 func TestContextRenderListHandlesNarrowColumnsAndOutOfRangeVisibleRows(t *testing.T) {
 	now := time.Now().UTC()
 	model := NewContextModel(nil)
+	model.loadingList = false
 	model.width = 24 // force availableCols/titleWidth clamp branches
 	model.items = []api.Context{{
 		ID:         "ctx-1",
@@ -46,6 +47,7 @@ func TestContextRenderListHandlesNarrowColumnsAndOutOfRangeVisibleRows(t *testin
 func TestContextRenderDetailFallsBackToListWhenDetailMissing(t *testing.T) {
 	now := time.Now().UTC()
 	model := NewContextModel(nil)
+	model.loadingList = false
 	model.width = 80
 	model.items = []api.Context{{
 		ID:         "ctx-1",

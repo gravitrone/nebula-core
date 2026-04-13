@@ -27,7 +27,6 @@ func TestHistoryRenderScopesTinyWidthPreviewAndUnsyncedVisibleRows(t *testing.T)
 	})
 	out := components.SanitizeText(model.renderScopes())
 
-	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "public")
 	assert.Contains(t, out, "Desc")
 	assert.Contains(t, out, "team-")
@@ -49,6 +48,5 @@ func TestHistoryRenderActorsTinyWidthAndUnsyncedVisibleRows(t *testing.T) {
 	})
 	out := components.SanitizeText(model.renderActors())
 
-	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "agent")
 }

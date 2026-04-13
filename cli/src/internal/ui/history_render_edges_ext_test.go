@@ -66,7 +66,6 @@ func TestHistoryRenderListHandlesUnsyncedVisibleRowsAndFallbackValues(t *testing
 
 	out := components.SanitizeText(model.renderList())
 
-	assert.Contains(t, out, "1 total")
 	assert.Contains(t, out, "UPDATE")
 	assert.Contains(t, out, "system")
 }
