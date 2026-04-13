@@ -778,51 +778,27 @@ func (m HistoryModel) renderDetail(entry api.AuditEntry) string {
 		fields = strings.Join(entry.ChangedFields, ", ")
 	}
 
+	var sections []string
+
 	// --- Info table ---
-	infoRows := []table.Row{
-		{"Table", entry.TableName},
-		{"Action", entry.Action},
-		{"Record", entry.RecordID},
-		{"Actor", actor},
-		{"At", when},
+	infoRows := []components.InfoTableRow{
+		{Key: "Table", Value: entry.TableName},
+		{Key: "Action", Value: entry.Action},
+		{Key: "Record", Value: entry.RecordID},
+		{Key: "Actor", Value: actor},
+		{Key: "At", Value: when},
 	}
 	if fields != "" {
-		infoRows = append(infoRows, table.Row{"Fields", fields})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Fields", Value: fields})
 	}
 	if entry.ChangeReason != nil && *entry.ChangeReason != "" {
-		infoRows = append(infoRows, table.Row{"Reason", *entry.ChangeReason})
+		infoRows = append(infoRows, components.InfoTableRow{Key: "Reason", Value: *entry.ChangeReason})
 	}
-
-	fieldColWidth := 8
-	valueColWidth := 50
-	if m.width > 0 {
-		avail := components.BoxContentWidth(m.width) - fieldColWidth - 4
-		if avail > valueColWidth {
-			valueColWidth = avail
-		}
+	infoW := m.width
+	if infoW <= 0 {
+		infoW = 80
 	}
-
-	infoCols := []table.Column{
-		{Title: "Field", Width: fieldColWidth},
-		{Title: "Value", Width: valueColWidth},
-	}
-
-	sNoHL := table.DefaultStyles()
-	sNoHL.Header = sNoHL.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(ColorBorder).
-		BorderBottom(true).
-		Bold(false)
-	sNoHL.Selected = lipgloss.NewStyle()
-
-	infoTable := table.New(
-		table.WithColumns(infoCols),
-		table.WithRows(infoRows),
-		table.WithHeight(len(infoRows)+1),
-		table.WithStyles(sNoHL),
-	)
-	infoTable.Blur()
-	section := components.TableBaseStyle.Render(infoTable.View())
+	sections = append(sections, components.RenderInfoTable(infoRows, infoW))
 
 	// --- Diff view ---
 	diffRows := buildAuditDiffRows(entry)
@@ -832,10 +808,9 @@ func (m HistoryModel) renderDetail(entry api.AuditEntry) string {
 			diffW = 80
 		}
 		diffLines := components.DiffRowsToLines(diffRows)
-		diff := components.RenderDiffView(diffLines, components.BoxContentWidth(diffW))
-		section = section + "\n\n" + diff
+		sections = append(sections, components.RenderDiffView(diffLines, diffW))
 	}
-	return components.Indent(section, 1)
+	return components.Indent(strings.Join(sections, "\n\n"), 1)
 }
 
 // detailDiffChangeKind classifies a diff row as added/removed/updated/same.
@@ -1180,6 +1155,12 @@ func formatAuditValue(value any) string {
 		if parsed, ok := parseJSONStructuredString(trimmed); ok {
 			return formatAuditValue(parsed)
 		}
+		if t, err := time.Parse(time.RFC3339Nano, trimmed); err == nil {
+			return formatLocalTimeFull(t)
+		}
+		if t, err := time.Parse(time.RFC3339, trimmed); err == nil {
+			return formatLocalTimeFull(t)
+		}
 		trimmed = humanizeGoMapString(trimmed)
 		return components.SanitizeText(trimmed)
 	case time.Time:
@@ -1191,11 +1172,14 @@ func formatAuditValue(value any) string {
 		}
 		return components.SanitizeText(strings.Join(lines, "\n"))
 	case []any:
-		lines := metadataListLinesPlain(v, 0)
-		if len(lines) == 0 {
+		if len(v) == 0 {
 			return "None"
 		}
-		return components.SanitizeText(strings.Join(lines, "\n"))
+		parts := make([]string, 0, len(v))
+		for _, item := range v {
+			parts = append(parts, fmt.Sprintf("%v", item))
+		}
+		return components.SanitizeText(strings.Join(parts, ", "))
 	default:
 		b, err := json.Marshal(v)
 		if err != nil {
@@ -1224,8 +1208,8 @@ func humanizeAuditField(raw string) string {
 			continue
 		}
 		lower := strings.ToLower(part)
-		if lower == "id" {
-			out = append(out, "ID")
+		if lower == "id" || lower == "ids" {
+			out = append(out, strings.ToUpper(lower))
 			continue
 		}
 		out = append(out, strings.ToUpper(lower[:1])+lower[1:])
